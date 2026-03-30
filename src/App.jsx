@@ -5468,26 +5468,116 @@ function farmKnowledgeEngine(query, data) {
   return `I didn't find a specific answer for "${query}" in my database.\n\nTry asking about:\n- A specific crop: "How to grow tomatoes"\n- An animal: "Chicken care"\n- Seasonal advice: "What to plant now"\n- Your farm: "My farm status"\n- Tasks: "What should I do today"\n\nI have ${CROPS.length} crops and ${Object.keys(LDB).length} animals in my offline knowledge base!`;
 }
 
+// ── Build suggestion catalog from all database entries ──
+const AI_SUGGESTIONS = (() => {
+  const s = [];
+  // Crop suggestions — each crop gets multiple query variants
+  CROPS.forEach(c => {
+    s.push({e:c.emoji, q:`How to grow ${c.name}`, cat:"Crop Guide", keys:[c.name.toLowerCase(),"grow","plant","guide"]});
+    s.push({e:c.emoji, q:`${c.name} pests & diseases`, cat:"Pest Help", keys:[c.name.toLowerCase(),"pest","disease","bug"]});
+    s.push({e:c.emoji, q:`${c.name} watering guide`, cat:"Watering", keys:[c.name.toLowerCase(),"water","irrigat"]});
+    s.push({e:c.emoji, q:`${c.name} harvest info`, cat:"Harvest", keys:[c.name.toLowerCase(),"harvest","pick","ready"]});
+    s.push({e:c.emoji, q:`${c.name} varieties`, cat:"Varieties", keys:[c.name.toLowerCase(),"variet","type","best"]});
+    s.push({e:c.emoji, q:`Companion planting for ${c.name}`, cat:"Companions", keys:[c.name.toLowerCase(),"companion","plant with"]});
+  });
+  // Animal suggestions
+  Object.entries(LDB).forEach(([name, db]) => {
+    s.push({e:db.e, q:`${name} care guide`, cat:"Animal Care", keys:[name.toLowerCase(),"care","guide"]});
+    s.push({e:db.e, q:`${name} feeding guide`, cat:"Feeding", keys:[name.toLowerCase(),"feed","food","diet"]});
+    s.push({e:db.e, q:`${name} housing`, cat:"Housing", keys:[name.toLowerCase(),"house","coop","barn","shelter"]});
+    s.push({e:db.e, q:`${name} breeding`, cat:"Breeding", keys:[name.toLowerCase(),"breed","mating","baby"]});
+    s.push({e:db.e, q:`${name} health & injuries`, cat:"Health", keys:[name.toLowerCase(),"health","sick","vet","injur"]});
+    s.push({e:db.e, q:`${name} produce & yield`, cat:"Produce", keys:[name.toLowerCase(),"produce","egg","milk","yield"]});
+    if (BREEDS[name]?.length > 0) s.push({e:db.e, q:`${name} breeds`, cat:"Breeds", keys:[name.toLowerCase(),"breed","type"]});
+    if (LIVESTOCK_CALENDAR[name]) s.push({e:db.e, q:`${name} monthly calendar`, cat:"Calendar", keys:[name.toLowerCase(),"calendar","month","schedule"]});
+  });
+  // Preservation suggestions
+  Object.entries(PRESERVATION).forEach(([name, p]) => {
+    s.push({e:p.emoji||"🫙", q:`How to ${name.toLowerCase()}`, cat:"Preservation", keys:[name.toLowerCase(),"preserv","store"]});
+  });
+  // General topics
+  s.push({e:"🌱", q:"What should I plant now?", cat:"Seasonal", keys:["plant","sow","season","month","now"]});
+  s.push({e:"📋", q:"What should I do today?", cat:"Tasks", keys:["today","task","todo","do","action"]});
+  s.push({e:"🌾", q:"My farm status", cat:"Farm", keys:["farm","status","overview","my"]});
+  s.push({e:"🤝", q:"Companion planting tips", cat:"Companions", keys:["companion","together","pair"]});
+  s.push({e:"💧", q:"Watering tips for my crops", cat:"Watering", keys:["water","irrigat"]});
+  s.push({e:"🌿", q:"Soil health guide", cat:"Soil", keys:["soil","ph","compost","mulch","fertiliz"]});
+  s.push({e:"🌡️", q:"Heat stress management", cat:"Weather", keys:["heat","hot","summer","shade","wilt"]});
+  s.push({e:"🍂", q:"Yellowing leaves diagnosis", cat:"Diagnosis", keys:["yellow","leaf","leaves"]});
+  s.push({e:"🌱", q:"Beginner's guide to farming", cat:"Getting Started", keys:["beginner","start","new","first","easy"]});
+  s.push({e:"📜", q:"List all crops", cat:"Lists", keys:["list","all crop","crop list"]});
+  s.push({e:"🐾", q:"List all animals", cat:"Lists", keys:["list","all animal","animal list"]});
+  s.push({e:"❓", q:"What can you help with?", cat:"Help", keys:["help","what can","feature"]});
+  return s;
+})();
+
 function AIAssistant({data}) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([
-    {role:"assistant", content:`Hi! I'm your farm assistant. I know everything about the ${CROPS.length} crops and ${Object.keys(LDB).length} animals in your database — and I work offline!\n\nAsk me anything: crop guides, pest help, what to plant now, companion planting, animal care, or your farm status.`}
+    {role:"assistant", content:`Hi! I'm your farm assistant. I know everything about the ${CROPS.length} crops and ${Object.keys(LDB).length} animals in your database — and I work offline!\n\nStart typing a crop or animal name and pick from the dropdown, or tap a quick prompt below.`}
   ]);
   const [input, setInput] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [selIdx, setSelIdx] = useState(-1);
   const scrollRef = useRef(null);
+  const sugRef = useRef(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, open]);
 
-  const send = () => {
-    const text = input.trim();
-    if (!text) return;
-    const userMsg = {role:"user", content: text};
-    // Get response from offline knowledge engine
+  // Filter suggestions as user types
+  useEffect(() => {
+    const q = input.trim().toLowerCase();
+    if (q.length < 2) { setSuggestions([]); setSelIdx(-1); return; }
+    const words = q.split(/\s+/);
+    const scored = AI_SUGGESTIONS.map(s => {
+      let score = 0;
+      // Exact name match at start of any key
+      if (s.keys.some(k => k.startsWith(q))) score += 10;
+      // Partial match on any key
+      else if (s.keys.some(k => k.includes(q))) score += 6;
+      // Word-level matches
+      else {
+        words.forEach(w => {
+          if (w.length < 2) return;
+          s.keys.forEach(k => { if (k.includes(w)) score += 3; });
+          if (s.q.toLowerCase().includes(w)) score += 2;
+          if (s.cat.toLowerCase().includes(w)) score += 1;
+        });
+      }
+      return {...s, score};
+    }).filter(s => s.score > 0).sort((a,b) => b.score - a.score);
+    // Deduplicate by query text, keep top 8
+    const seen = new Set();
+    const unique = [];
+    for (const s of scored) {
+      if (!seen.has(s.q) && unique.length < 8) { seen.add(s.q); unique.push(s); }
+    }
+    setSuggestions(unique);
+    setSelIdx(-1);
+  }, [input]);
+
+  const sendQuery = (text) => {
+    if (!text.trim()) return;
     const reply = farmKnowledgeEngine(text, data);
-    setMsgs(prev => [...prev, userMsg, {role:"assistant", content: reply}]);
+    setMsgs(prev => [...prev, {role:"user", content: text}, {role:"assistant", content: reply}]);
     setInput("");
+    setSuggestions([]);
+    setSelIdx(-1);
+  };
+
+  const send = () => sendQuery(input.trim());
+
+  const handleKeyDown = (e) => {
+    if (suggestions.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setSelIdx(i => Math.min(i + 1, suggestions.length - 1)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setSelIdx(i => Math.max(i - 1, -1)); return; }
+      if (e.key === "Enter" && !e.shiftKey && selIdx >= 0) { e.preventDefault(); sendQuery(suggestions[selIdx].q); return; }
+      if (e.key === "Tab" && selIdx >= 0) { e.preventDefault(); setInput(suggestions[selIdx].q); setSuggestions([]); return; }
+      if (e.key === "Escape") { setSuggestions([]); setSelIdx(-1); return; }
+    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
   const quickPrompts = [
@@ -5569,30 +5659,58 @@ function AIAssistant({data}) {
           {msgs.length <= 1 && (
             <div style={{padding:"4px 12px 2px",flexShrink:0,display:"flex",gap:4,flexWrap:"wrap"}}>
               {quickPrompts.map((p,i)=>(
-                <button key={i} onClick={()=>{ setInput(p.q); setTimeout(()=>{
-                  const text = p.q;
-                  const reply = farmKnowledgeEngine(text, data);
-                  setMsgs(prev => [...prev, {role:"user", content: text}, {role:"assistant", content: reply}]);
-                  setInput("");
-                },50); }} style={{padding:"5px 10px",borderRadius:16,border:`1px solid ${C.bdr}`,background:C.bg,fontSize:11,cursor:"pointer",color:C.t2,fontFamily:F.body,transition:"all .15s"}}>{p.e} {p.q}</button>
+                <button key={i} onClick={()=>sendQuery(p.q)} style={{padding:"5px 10px",borderRadius:16,border:`1px solid ${C.bdr}`,background:C.bg,fontSize:11,cursor:"pointer",color:C.t2,fontFamily:F.body,transition:"all .15s"}}>{p.e} {p.q}</button>
               ))}
             </div>
           )}
 
-          {/* Input area */}
-          <div style={{padding:"10px 12px",borderTop:`1px solid ${C.bdr}`,flexShrink:0,background:C.bg}}>
+          {/* Input area with autocomplete dropdown */}
+          <div style={{padding:"10px 12px",borderTop:`1px solid ${C.bdr}`,flexShrink:0,background:C.bg,position:"relative"}}>
+            {/* Autocomplete dropdown — appears above input */}
+            {suggestions.length > 0 && (
+              <div ref={sugRef} style={{
+                position:"absolute", bottom:"100%", left:0, right:0,
+                background:C.card, borderTop:`1px solid ${C.bdr}`,
+                boxShadow:"0 -4px 16px rgba(0,0,0,.1)",
+                maxHeight:280, overflowY:"auto",
+                borderRadius:"12px 12px 0 0",
+              }}>
+                {suggestions.map((s,i) => (
+                  <button key={i}
+                    onClick={() => sendQuery(s.q)}
+                    onMouseEnter={() => setSelIdx(i)}
+                    style={{
+                      display:"flex", alignItems:"center", gap:10,
+                      width:"100%", padding:"10px 14px",
+                      background: i === selIdx ? "#f0fdf4" : "transparent",
+                      border:"none", borderBottom:`1px solid ${C.bdr}`,
+                      cursor:"pointer", textAlign:"left",
+                      transition:"background .1s",
+                    }}
+                  >
+                    <span style={{fontSize:18,flexShrink:0}}>{s.e}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:F.body,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.q}</div>
+                      <div style={{fontSize:10,color:C.t3,fontFamily:F.body}}>{s.cat}</div>
+                    </div>
+                    <span style={{fontSize:10,color:C.t3,flexShrink:0}}>tap</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
               <textarea
                 value={input}
                 onChange={e=>setInput(e.target.value)}
-                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
-                placeholder="Ask about crops, animals, seasons..."
+                onKeyDown={handleKeyDown}
+                placeholder="Type a crop or animal name..."
                 rows={1}
                 style={{
-                  flex:1, padding:"8px 12px", border:`1.5px solid ${C.bdr}`,
+                  flex:1, padding:"8px 12px", border:`1.5px solid ${suggestions.length > 0 ? C.green : C.bdr}`,
                   borderRadius:18, fontSize:13, fontFamily:F.body,
                   outline:"none", resize:"none", background:C.card,
                   lineHeight:1.4, maxHeight:80, overflowY:"auto",
+                  transition:"border-color .2s",
                 }}
               />
               <button
@@ -5601,7 +5719,7 @@ function AIAssistant({data}) {
                 style={{flexShrink:0,width:34,height:34,borderRadius:17,background:!input.trim()?"#ccc":C.green,border:"none",cursor:!input.trim()?"default":"pointer",color:"#fff",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"background .2s"}}
               >➤</button>
             </div>
-            <div style={{fontSize:10,color:C.t3,textAlign:"center",marginTop:5}}>Works offline · Enter to send</div>
+            <div style={{fontSize:10,color:C.t3,textAlign:"center",marginTop:5}}>Type 2+ letters to see suggestions · Works offline</div>
           </div>
         </div>
       )}
