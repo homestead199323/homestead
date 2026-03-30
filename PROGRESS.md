@@ -45,7 +45,11 @@
 - [x] Quick prompt buttons for common questions (8 prompts)
 - [x] Responsive chat panel (380px wide, mobile-friendly)
 - [x] Works 100% offline — no API keys, no external calls
+- [x] Autocomplete dropdown: type 2+ letters to see matching queries from all crops, animals, preservation methods
+- [x] Scored fuzzy matching with deduplication (top 8 suggestions)
+- [x] Keyboard nav (arrow keys, Enter, Tab, Escape) + tap to send
 - [x] Pushed to GitHub and auto-deployed to Vercel
+
 ## Phase 5: Multi-user (Supabase) — PENDING
 ## Phase 6: Monetization (Stripe) — PENDING
 ## Phase 7: Launch & Marketing — PENDING
