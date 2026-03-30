@@ -1,2 +1,307 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* ═══════════════════════════════════════════
+   HOMESTEAD — Premium Visual Design System
+   Viral app visual tricks: smooth animations,
+   glass effects, satisfying micro-interactions
+   ═══════════════════════════════════════════ */
+
+/* ── Google Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+/* ── Reset & Base ── */
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f5f7;
+  overscroll-behavior: none;
+}
+
+/* ── Scrollbar — thin, elegant ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #86868b; }
+
+/* ── Selection highlight ── */
+::selection { background: rgba(45, 106, 79, 0.15); color: #1d1d1f; }
+
+/* ── Focus ring — modern accessible style ── */
+:focus-visible {
+  outline: 2px solid #40916c;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS — the secret sauce of viral apps
+   ═══════════════════════════════════════════ */
+
+/* Fade + slide up — the "Instagram" entrance */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade in — simple opacity */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Scale bounce — the "tap" effect */
+@keyframes scaleBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+/* Gentle pulse — draws attention */
+@keyframes gentlePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Shimmer — loading skeleton effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Float up — for toasts/notifications */
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Ring fill — progress animation */
+@keyframes ringFill {
+  from { stroke-dashoffset: var(--ring-circumference); }
+  to { stroke-dashoffset: var(--ring-target); }
+}
+
+/* Confetti burst — celebration */
+@keyframes confettiBurst {
+  0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translateY(-80px) rotate(360deg) scale(0); opacity: 0; }
+}
+
+/* Slide in from left — sidebar items */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Subtle float — for hero elements */
+@keyframes subtleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY CLASSES — apply via className
+   ═══════════════════════════════════════════ */
+
+/* Page entrance — every page switch */
+.page-enter { animation: fadeUp 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+
+/* Staggered card entrance — for grids */
+.card-enter { animation: fadeUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+.card-enter:nth-child(1) { animation-delay: 0s; }
+.card-enter:nth-child(2) { animation-delay: 0.05s; }
+.card-enter:nth-child(3) { animation-delay: 0.1s; }
+.card-enter:nth-child(4) { animation-delay: 0.15s; }
+.card-enter:nth-child(5) { animation-delay: 0.2s; }
+.card-enter:nth-child(6) { animation-delay: 0.25s; }
+.card-enter:nth-child(7) { animation-delay: 0.3s; }
+.card-enter:nth-child(8) { animation-delay: 0.35s; }
+
+/* ═══════════════════════════════════════════
+   PREMIUM BUTTON EFFECTS
+   ═══════════════════════════════════════════ */
+
+/* Primary button — tactile press effect */
+button {
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Card hover lift — premium feel */
+.card-hover {
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.04);
+}
+
+/* Nav item — smooth active state */
+.nav-item {
+  transition: all 0.2s ease;
+  position: relative;
+}
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: #2d6a4f;
+  border-radius: 0 3px 3px 0;
+  transition: height 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.nav-item.active::before {
+  height: 24px;
+}
+
+/* ═══════════════════════════════════════════
+   GLASS MORPHISM — the "Apple" effect
+   ═══════════════════════════════════════════ */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Status pill — notification badge style */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Gradient text — eye-catching headers */
+.gradient-text {
+  background: linear-gradient(135deg, #2d6a4f 0%, #40916c 50%, #52b788 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR — premium navigation
+   ═══════════════════════════════════════════ */
+nav button:hover {
+  background: rgba(45, 106, 79, 0.06) !important;
+}
+
+/* ═══════════════════════════════════════════
+   TOOLTIP — modern tooltip style
+   ═══════════════════════════════════════════ */
+[title] {
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════
+   SMOOTH PAGE TRANSITIONS
+   ═══════════════════════════════════════════ */
+main > div {
+  animation: fadeUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE REFINEMENTS
+   ═══════════════════════════════════════════ */
+@media (max-width: 700px) {
+  /* Bottom safe area for PWA */
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  
+  /* Larger touch targets on mobile */
+  button { min-height: 44px; }
+  
+  /* Cards full bleed on mobile */
+  main { padding: 12px !important; }
+}
+
+/* ═══════════════════════════════════════════
+   PREMIUM CHECKBOX — satisfying toggle
+   ═══════════════════════════════════════════ */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #c7c7cc;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  flex-shrink: 0;
+}
+
+input[type="checkbox"]:checked {
+  background: #2d6a4f;
+  border-color: #2d6a4f;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+input[type="checkbox"]:active {
+  transform: scale(0.9);
+}
+
+/* ═══════════════════════════════════════════
+   INPUT FIELDS — modern, clean
+   ═══════════════════════════════════════════ */
+input[type="text"], input[type="number"], input[type="date"],
+input[type="email"], input[type="url"], select, textarea {
+  transition: all 0.2s ease;
+  border: 1.5px solid #e5e5ea !important;
+  border-radius: 10px !important;
+}
+
+input[type="text"]:focus, input[type="number"]:focus,
+input[type="date"]:focus, input[type="email"]:focus,
+input[type="url"]:focus, select:focus, textarea:focus {
+  border-color: #40916c !important;
+  box-shadow: 0 0 0 3px rgba(64, 145, 108, 0.12) !important;
+  outline: none;
+}
+
+/* ═══════════════════════════════════════════
+   REDUCED MOTION — accessibility
+   ═══════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   PRINT — clean printout
+   ═══════════════════════════════════════════ */
+@media print {
+  nav { display: none !important; }
+  main { padding: 0 !important; }
+  .no-print { display: none !important; }
+}

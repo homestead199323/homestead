@@ -38,11 +38,18 @@ const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.
    THEME
    ═══════════════════════════════════════════ */
 const C = {
-  bg: "#f5f5f7", card: "#ffffff", green: "#2d6a4f", gl: "#40916c", gp: "#d8f3dc",
-  gm: "#95d5b2", text: "#1d1d1f", t2: "#86868b", t3: "#c7c7cc", bdr: "#e5e5ea",
-  red: "#ff3b30", orange: "#ff9500", blue: "#007aff", yellow: "#ffcc00",
-  sh: "0 1px 4px rgba(0,0,0,.06)", shL: "0 6px 20px rgba(0,0,0,.08)",
-  r: 14, rs: 10,
+  bg: "#f8faf9", card: "#ffffff", green: "#2d6a4f", gl: "#40916c", gp: "#e8f5e9",
+  gm: "#95d5b2", text: "#1a2e1a", t2: "#6b7b6b", t3: "#b8c4b8", bdr: "#e8ece8",
+  red: "#ef4444", orange: "#f59e0b", blue: "#3b82f6", yellow: "#eab308",
+  sh: "0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06)",
+  shL: "0 10px 25px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.04)",
+  shXL: "0 20px 40px rgba(0,0,0,.08), 0 8px 16px rgba(0,0,0,.04)",
+  r: 16, rs: 12,
+  // Gradient presets — viral apps always use gradients
+  grd: "linear-gradient(135deg, #2d6a4f 0%, #40916c 100%)",
+  grdLight: "linear-gradient(135deg, #f0faf4 0%, #e8f5e9 50%, #f0f9ff 100%)",
+  grdWarm: "linear-gradient(135deg, #fef9ef 0%, #fff7ed 50%, #fef3c7 100%)",
+  grdHero: "linear-gradient(160deg, #1a4731 0%, #2d6a4f 40%, #40916c 100%)",
 };
 const F = { body: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", head: "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", mono: "'JetBrains Mono','SF Mono','Cascadia Code',monospace" };
 
@@ -1277,13 +1284,20 @@ const BADGES = [
    UI COMPONENTS
    ═══════════════════════════════════════════ */
 const Btn = React.memo(function Btn({children,onClick,v="primary",sm,dis,style:s}) {
-  const st={primary:{bg:C.green,c:"#fff"},secondary:{bg:"transparent",c:C.green,border:`1.5px solid ${C.bdr}`},danger:{bg:C.red,c:"#fff"},ghost:{bg:"transparent",c:C.t2},success:{bg:"#34c759",c:"#fff"},orange:{bg:C.orange,c:"#fff"}};
+  const st={
+    primary:{bg:C.grd,c:"#fff",shadow:"0 2px 8px rgba(45,106,79,.25)"},
+    secondary:{bg:"transparent",c:C.green,border:`1.5px solid ${C.bdr}`,shadow:"none"},
+    danger:{bg:"linear-gradient(135deg, #ef4444, #dc2626)",c:"#fff",shadow:"0 2px 8px rgba(239,68,68,.25)"},
+    ghost:{bg:"transparent",c:C.t2,shadow:"none"},
+    success:{bg:"linear-gradient(135deg, #22c55e, #16a34a)",c:"#fff",shadow:"0 2px 8px rgba(34,197,94,.25)"},
+    orange:{bg:"linear-gradient(135deg, #f59e0b, #d97706)",c:"#fff",shadow:"0 2px 8px rgba(245,158,11,.25)"}
+  };
   const b=st[v]||st.primary;
-  return <button onClick={dis?undefined:onClick} style={{background:b.bg,color:b.c,border:b.border||"none",borderRadius:C.rs,fontFamily:F.body,fontWeight:600,fontSize:sm?12:13,padding:sm?"6px 12px":"10px 20px",cursor:dis?"not-allowed":"pointer",opacity:dis?0.4:1,display:"inline-flex",alignItems:"center",gap:6,transition:"all .2s",...s}}>{children}</button>;
+  return <button onClick={dis?undefined:onClick} style={{background:b.bg,color:b.c,border:b.border||"none",borderRadius:C.rs,fontFamily:F.body,fontWeight:600,fontSize:sm?12:13,padding:sm?"7px 14px":"11px 22px",cursor:dis?"not-allowed":"pointer",opacity:dis?0.4:1,display:"inline-flex",alignItems:"center",gap:7,transition:"all .2s cubic-bezier(.25,.46,.45,.94)",boxShadow:dis?"none":b.shadow,letterSpacing:"0.01em",...s}}>{children}</button>;
 });
 
-const Card = React.memo(function Card({children,onClick,active,style:s,p=true}) {
-  return <div onClick={onClick} style={{background:C.card,borderRadius:C.r,boxShadow:active?`0 0 0 2px ${C.green}`:C.sh,padding:p?"16px":0,cursor:onClick?"pointer":"default",transition:"all .2s",...s}}>{children}</div>;
+const Card = React.memo(function Card({children,onClick,active,style:s,p=true,className=""}) {
+  return <div onClick={onClick} className={`${onClick?"card-hover":""} ${className}`} style={{background:C.card,borderRadius:C.r,boxShadow:active?`0 0 0 2px ${C.green}, ${C.sh}`:C.sh,padding:p?"18px":0,cursor:onClick?"pointer":"default",transition:"all .25s cubic-bezier(.25,.46,.45,.94)",border:`1px solid ${active?C.green:"rgba(0,0,0,.04)"}`,...s}}>{children}</div>;
 });
 
 const Inp = React.memo(function Inp({label,...p}) {
@@ -2857,7 +2871,7 @@ function Livestock({data, setData}) {
     <div style={{maxWidth:800}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><h2 style={{fontFamily:F.head,fontSize:28,margin:0}}>Livestock</h2><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
       <Stat label="Total" value={data.livestock.animals.reduce((s,a)=>s+a.count,0)}/>
-      <div style={{marginTop:16,display:"grid",gap:8}}>{data.livestock.animals.length===0?<Card style={{textAlign:"center",padding:48}}><div style={{fontSize:40}}>🐄</div><div style={{color:C.t2,marginTop:8}}>Add your first animals</div></Card>:data.livestock.animals.map(a=>{const db=LDB[a.type];return (
+      <div style={{marginTop:16,display:"grid",gap:8}}>{data.livestock.animals.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🐄</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>No animals yet</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Add chickens, goats, or any livestock to track them</div></Card>:data.livestock.animals.map(a=>{const db=LDB[a.type];return (
         <Card key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
           <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setSel(a.id)}>
             <span style={{fontSize:28}}>{db?.e}</span><div><strong style={{fontSize:15}}>{a.name||a.type}</strong>{a.breed?<span style={{fontSize:12,color:C.t2}}> ({a.breed})</span>:null}<div style={{fontSize:12,color:C.t2}}>×{a.count} · Tap for guide</div></div>
@@ -3202,7 +3216,7 @@ function Dashboard({data, setData, setPage, tasks}) {
   return (
     <div style={{maxWidth:1100}}>
       {/* ── Progress Rings + Streak Strip ── */}
-      <Card style={{marginBottom:16,padding:"16px 20px",background:`linear-gradient(135deg, ${C.card}, #f0faf4)`}}>
+      <Card style={{marginBottom:20,padding:"20px 24px",background:C.grdLight,border:"1px solid rgba(45,106,79,.08)"}}>
         <div style={{display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
           {/* Three nested-style rings */}
           <div style={{position:"relative",width:80,height:80,flexShrink:0}}>
@@ -3242,10 +3256,10 @@ function Dashboard({data, setData, setPage, tasks}) {
       </Card>
 
       {/* Header + stats bar */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{fontFamily:F.head,fontSize:28,margin:0,letterSpacing:"-0.02em"}}>Your Homestead</h2>
-          <p style={{color:C.t2,fontSize:13,margin:"4px 0 0"}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
+          <h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>Your Homestead</h2>
+          <p style={{color:C.t2,fontSize:13,margin:"5px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {(()=>{
@@ -3259,7 +3273,7 @@ function Dashboard({data, setData, setPage, tasks}) {
             if (ac > 0) chips.push({l:`${ac} animals`});
             chips.push({l:`Health ${Math.min(100, Math.round(((ap.filter(p=>p.steps?.some(s=>s.done)).length+1)/(ap.length+1))*100))}`});
             return chips.map((ch,i) => (
-              <span key={i} style={{fontSize:12,fontWeight:600,padding:"6px 12px",borderRadius:20,background:C.card,border:`1px solid ${C.bdr}`,color:ch.c||"#3a5a3c",boxShadow:C.sh}}>{ch.l}</span>
+              <span key={i} style={{fontSize:12,fontWeight:600,padding:"6px 14px",borderRadius:100,background:C.card,border:`1px solid ${C.bdr}`,color:ch.c||"#3a5a3c",boxShadow:C.sh,letterSpacing:"0.01em",transition:"all .2s"}}>{ch.l}</span>
             ));
           })()}
         </div>
@@ -3270,16 +3284,16 @@ function Dashboard({data, setData, setPage, tasks}) {
 
         {/* LEFT: Task Pipeline */}
         <Card p={false} style={{overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bdr}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:14,fontWeight:800,fontFamily:F.head,letterSpacing:"-0.01em"}}>Task Pipeline</div>
-            <button onClick={()=>setPage("tasks")} style={{background:"none",border:"none",fontSize:12,color:C.green,fontWeight:600,cursor:"pointer",padding:"4px 8px"}}>View all →</button>
+          <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${C.bdr}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:15,fontWeight:800,fontFamily:F.head,letterSpacing:"-0.02em",color:C.text}}>Task Pipeline</div>
+            <button onClick={()=>setPage("tasks")} style={{background:C.gp,border:"none",fontSize:12,color:C.green,fontWeight:600,cursor:"pointer",padding:"5px 12px",borderRadius:8,transition:"all .2s"}}>View all →</button>
           </div>
           <div style={{flex:1,overflow:"auto",padding:"6px 10px"}}>
             {enrichedTasks.length === 0 ? (
-              <div style={{textAlign:"center",padding:40,color:C.t2}}>
-                <div style={{fontSize:28,marginBottom:8}}>🌱</div>
-                <div style={{fontSize:13,fontWeight:600}}>No tasks yet</div>
-                <div style={{fontSize:12,marginTop:4}}>Add crops or livestock to generate tasks</div>
+              <div style={{textAlign:"center",padding:"48px 24px",color:C.t2,background:C.grdLight,borderRadius:12,margin:8}}>
+                <div style={{fontSize:40,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌱</div>
+                <div style={{fontSize:14,fontWeight:700,color:C.text}}>Your garden awaits</div>
+                <div style={{fontSize:12.5,marginTop:6,lineHeight:1.5,maxWidth:220,margin:"6px auto 0"}}>Add crops or livestock to get personalized daily tasks</div>
               </div>
             ) : enrichedTasks.slice(0, 12).map((t, i) => {
               const isActive = t.zoneId === activeZone;
@@ -4998,37 +5012,40 @@ function AppInner() {
   return (
     <>
       {/* Fonts loaded via system fallback for offline use */}
-      <div style={{display:"flex",height:"100vh",fontFamily:F.body,background:C.bg,color:C.text,overflow:"hidden"}}>
-        <nav style={{width:200,minWidth:200,background:C.card,borderRight:`1px solid ${C.bdr}`,display:"flex",flexDirection:"column",padding:"24px 0",position:isMob?"fixed":"relative",left:isMob?(mob?0:-220):0,top:0,bottom:0,zIndex:500,transition:"left .25s",boxShadow:isMob?C.shL:"none"}}>
-          <div style={{padding:"0 20px",marginBottom:28}}>
-            <div style={{fontSize:20,fontFamily:F.head,fontWeight:700}}>🌾 Your Homestead</div>
-            <div style={{fontSize:11,color:C.t2,marginTop:2}}>Farm Manager</div>
-            {saveStatus && <div style={{fontSize:10,color:saveStatus==="✓"?C.green:C.orange,marginTop:4,fontFamily:F.mono}}>{saveStatus} saved</div>}
+      <div style={{display:"flex",height:"100vh",fontFamily:F.body,background:C.bg,color:C.text,overflow:"hidden",letterSpacing:"0.005em"}}>
+        <nav style={{width:220,minWidth:220,background:C.card,borderRight:`1px solid ${C.bdr}`,display:"flex",flexDirection:"column",padding:"0",position:isMob?"fixed":"relative",left:isMob?(mob?0:-240):0,top:0,bottom:0,zIndex:500,transition:"left .3s cubic-bezier(.25,.46,.45,.94)",boxShadow:isMob?C.shXL:"none"}}>
+          {/* Premium brand header */}
+          <div style={{padding:"24px 20px 20px",marginBottom:4,background:C.grdHero,borderRadius:"0 0 20px 0"}}>
+            <div style={{fontSize:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>🌾 Your Homestead</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>
+            {saveStatus && <div style={{fontSize:10,color:"#86efac",marginTop:6,fontFamily:F.mono,fontWeight:600,display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#86efac",display:"inline-block"}}></span>{saveStatus} saved</div>}
           </div>
+          <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
           {NAV.map(n=>(
-            <button key={n.id} onClick={()=>{setPage(n.id);setMob(false)}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 20px",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRight:page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative"}}>
-              <span style={{fontSize:16}}>{n.e}</span>{n.l}
-              {n.id==="home"&&taskCount>0&&<span style={{position:"absolute",right:12,background:C.red,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10,minWidth:16,textAlign:"center"}}>{taskCount}</span>}
-              {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:12,background:C.orange,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10}}>{taskCount}</span>}
+            <button key={n.id} onClick={()=>{setPage(n.id);setMob(false)}} className="nav-item" style={{display:"flex",alignItems:"center",gap:11,padding:"10px 14px",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}}>
+              <span style={{fontSize:17,width:24,textAlign:"center",filter:page===n.id?"none":"grayscale(30%)",transition:"filter .2s"}}>{n.e}</span>{n.l}
+              {n.id==="home"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #ef4444, #dc2626)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,minWidth:18,textAlign:"center",boxShadow:"0 2px 6px rgba(239,68,68,.3)"}}>{taskCount}</span>}
+              {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
             </button>
           ))}
+          </div>
           <div style={{flex:1}}/>
           {/* Backup controls */}
-          <div style={{padding:"8px 16px",borderTop:`1px solid ${C.bdr}`}}>
-            <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:6,width:"100%",padding:"6px 8px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11,fontFamily:F.body,fontWeight:500,borderRadius:6}} title="Download farm data as JSON backup">
-              <span style={{fontSize:13}}>💾</span> Export Backup
+          <div style={{padding:"10px 14px",borderTop:`1px solid ${C.bdr}`,margin:"0 10px"}}>
+            <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Download farm data as JSON backup">
+              <span style={{fontSize:14}}>💾</span> Export Backup
             </button>
-            <label style={{display:"flex",alignItems:"center",gap:6,width:"100%",padding:"6px 8px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11,fontFamily:F.body,fontWeight:500,borderRadius:6}} title="Restore from a JSON backup file">
-              <span style={{fontSize:13}}>📂</span> Import Backup
+            <label style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Restore from a JSON backup file">
+              <span style={{fontSize:14}}>📂</span> Import Backup
               <input type="file" accept=".json" onChange={e => { if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; }} style={{display:"none"}}/>
             </label>
           </div>
-          <div style={{padding:"8px 20px 16px",fontSize:10,color:C.t3}}>{CROPS.length} crops · {Object.keys(LDB).length} animals</div>
-          {isOffline&&<div style={{padding:"6px 20px",fontSize:10,fontWeight:600,color:"#e65100",background:"#fff3e0",textAlign:"center"}}>📡 Offline Mode</div>}
+          <div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{CROPS.length} crops · {Object.keys(LDB).length} animals</div>
+          {isOffline&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:"#ea580c",background:"linear-gradient(135deg, #fff7ed, #fef3c7)",textAlign:"center",borderRadius:8,margin:"0 10px 10px"}}>📡 Offline — data saved locally</div>}
         </nav>
-        {mob&&isMob&&<div onClick={()=>setMob(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.2)",zIndex:499}}/>}
-        <main style={{flex:1,overflow:"auto",padding:isMob?"16px":"32px",paddingBottom:80}}>
-          {isMob&&<button onClick={()=>setMob(!mob)} style={{border:"none",background:"none",fontSize:24,cursor:"pointer",marginBottom:16}}>☰</button>}
+        {mob&&isMob&&<div onClick={()=>setMob(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",zIndex:499,transition:"all .3s"}}/>}
+        <main style={{flex:1,overflow:"auto",padding:isMob?"16px":"32px 36px",paddingBottom:80,background:C.bg}}>
+          {isMob&&<button onClick={()=>setMob(!mob)} style={{border:"none",background:C.card,fontSize:20,cursor:"pointer",marginBottom:16,width:42,height:42,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:C.sh,transition:"all .2s"}}>☰</button>}
           {pg()}
         </main>
       </div>
