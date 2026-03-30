@@ -2047,9 +2047,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const goToFarm = useCallback(() => setPage("farm"), [setPage]);
 
   return (
-    <div style={{maxWidth:1100}}>
-      <h2 style={{fontFamily:F.head,fontSize:28,margin:"0 0 4px"}}>📋 Task Calendar</h2>
-      <p style={{color:C.t2,fontSize:14,margin:"0 0 16px"}}>All upcoming farm tasks, sorted by urgency and time</p>
+    <div className="page-enter" style={{maxWidth:1100}}>
+      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📋 Task Calendar</h2>
+      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>All upcoming farm tasks, sorted by urgency and time</p>
 
       {/* ── Row 1: Urgent + Upcoming side by side ── */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
@@ -2209,11 +2209,11 @@ function Setup({data, setData}) {
   // Drag is handled inline on the map container div
 
   return (
-    <div style={{maxWidth:860}}>
+    <div className="page-enter" style={{maxWidth:860}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{fontFamily:F.head,fontSize:28,margin:0}}>Farm Designer</h2>
-          <p style={{color:C.t2,fontSize:14,margin:"4px 0"}}>Drag zones to position · Enter real measurements in metres</p>
+          <h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>🗺 Farm Designer</h2>
+          <p style={{color:C.t2,fontSize:13,margin:"4px 0",fontWeight:500}}>Drag zones to position · Enter real measurements in metres</p>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Zone</Btn>
@@ -2621,9 +2621,9 @@ function Farming({data, setData}) {
   const spC=sp?CROP_MAP.get(sp.crop):null;
 
   return (
-    <div style={{maxWidth:800}}>
+    <div className="page-enter" style={{maxWidth:800}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-        <div><h2 style={{fontFamily:F.head,fontSize:28,margin:0}}>Farming</h2></div>
+        <div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>🌱 Farming</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Track your crops from seed to harvest</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>
       </div>
       {(()=>{
@@ -2643,7 +2643,7 @@ function Farming({data, setData}) {
         );
       })()}
       {data.garden.plots.filter(p=>p.status!=="harvested").length===0?
-        <Card style={{textAlign:"center",padding:48}}><div style={{fontSize:40}}>🌱</div><div style={{color:C.t2,marginTop:8}}>Plant your first crop</div></Card>:
+        <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌱</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
       <div style={{display:"grid",gap:8}}>{data.garden.plots.filter(p=>p.status!=="harvested").map(p=>{
         const c=CROP_MAP.get(p.crop);
         const done=p.steps?p.steps.filter(s=>s.done).length:0;
@@ -2868,8 +2868,8 @@ function Livestock({data, setData}) {
   const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;const saDB=sa?LDB[sa.type]:null;
 
   return (
-    <div style={{maxWidth:800}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><h2 style={{fontFamily:F.head,fontSize:28,margin:0}}>Livestock</h2><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
+    <div className="page-enter" style={{maxWidth:800}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>🐄 Livestock</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Manage your animals, collect produce, track care</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
       <Stat label="Total" value={data.livestock.animals.reduce((s,a)=>s+a.count,0)}/>
       <div style={{marginTop:16,display:"grid",gap:8}}>{data.livestock.animals.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🐄</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>No animals yet</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Add chickens, goats, or any livestock to track them</div></Card>:data.livestock.animals.map(a=>{const db=LDB[a.type];return (
         <Card key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -2972,13 +2972,13 @@ function Pantry({data, setData}) {
   };
 
   return (
-    <div style={{maxWidth:800}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><h2 style={{fontFamily:F.head,fontSize:28,margin:0}}>Pantry</h2><Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Manual</Btn></div>
+    <div className="page-enter" style={{maxWidth:800}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>📦 Pantry</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Everything you've harvested and stored</p></div><Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Manual</Btn></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:16}}>
         <Stat label="Items" value={data.pantry.items.length}/><Stat label="kg" value={Math.round(data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0))}/>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>{cats.map(c=><button key={c} onClick={()=>setCat(c)} style={{padding:"6px 14px",borderRadius:20,border:"none",background:cat===c?C.green:C.card,color:cat===c?"#fff":C.t2,fontSize:12,fontWeight:600,cursor:"pointer",boxShadow:cat===c?"none":C.sh}}>{c}</button>)}</div>
-      {fil.length===0?<Card style={{textAlign:"center",padding:48}}><div style={{fontSize:40}}>📦</div></Card>:
+      {fil.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>📦</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Pantry is empty</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Harvest crops or collect produce to stock up</div></Card>:
       <div style={{display:"grid",gap:6}}>{fil.map(item=>(
         <Card key={item.id}><div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:20}}>{itemIcon(item)}</span>
@@ -3044,9 +3044,9 @@ function Financials({data, setData}) {
   const last5=items.slice(-5).reverse();
 
   return (
-    <div style={{maxWidth:800}}>
+    <div className="page-enter" style={{maxWidth:800}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-        <h2 style={{fontFamily:F.head,fontSize:28,margin:0}}>Financials</h2>
+        <div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>💰 Financials</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Income, expenses, and profitability</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Add Entry</Btn>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
@@ -3214,7 +3214,7 @@ function Dashboard({data, setData, setPage, tasks}) {
   const allRingsClosed = ringData.taskPct >= 1 && ringData.growPct >= 1 && ringData.harvestPct >= 1;
 
   return (
-    <div style={{maxWidth:1100}}>
+    <div className="page-enter" style={{maxWidth:1100}}>
       {/* ── Progress Rings + Streak Strip ── */}
       <Card style={{marginBottom:20,padding:"20px 24px",background:C.grdLight,border:"1px solid rgba(45,106,79,.08)"}}>
         <div style={{display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
@@ -3527,9 +3527,9 @@ function Manuals() {
   const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const TABS=[{id:"crops",l:"🌱 Crops"},{id:"animals",l:"🐄 Animals"},{id:"preserving",l:"🫙 Preserving"},{id:"projects",l:"🔨 Projects"}];
   return (
-    <div style={{maxWidth:960}}>
-      <h2 style={{fontFamily:F.head,fontSize:28,margin:"0 0 4px"}}>📖 Homestead Manuals</h2>
-      <p style={{color:C.t2,fontSize:14,margin:"0 0 16px"}}>Everything you need to know — crops, animals, preservation, and DIY builds</p>
+    <div className="page-enter" style={{maxWidth:960}}>
+      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📖 Homestead Manuals</h2>
+      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>Everything you need to know — crops, animals, preservation, and DIY builds</p>
       <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{TABS.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setSel(null);setS("");}} style={{padding:"8px 20px",borderRadius:20,border:"none",background:tab===t.id?C.green:C.card,color:tab===t.id?"#fff":C.t2,fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:tab===t.id?"none":C.sh}}>{t.l}</button>)}</div>
 
       {tab==="crops"&&<>
@@ -3858,9 +3858,9 @@ function SeasonalCalendar({data, setPage}) {
   );
 
   return (
-    <div style={{maxWidth:800}}>
-      <h2 style={{fontFamily:F.head,fontSize:28,margin:"0 0 4px"}}>🗓 Seasonal Calendar</h2>
-      <p style={{color:C.t2,fontSize:14,margin:"0 0 16px"}}>What to plant and harvest each month — tailored to your farm</p>
+    <div className="page-enter" style={{maxWidth:800}}>
+      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>🗓 Seasonal Calendar</h2>
+      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>What to plant and harvest each month — tailored to your farm</p>
 
       {/* Month selector */}
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
@@ -3909,7 +3909,7 @@ function SeasonalCalendar({data, setPage}) {
 
       {/* Crop list */}
       {filtered.length === 0
-        ? <Card style={{textAlign:"center",padding:48}}><div style={{fontSize:40}}>🌾</div><div style={{color:C.t2,marginTop:8}}>Nothing to {filter} in {MN_FULL[month]}</div></Card>
+        ? <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌾</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Quiet month</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Nothing to {filter} in {MN_FULL[month]} — try a different filter</div></Card>
         : filtered.map(c => <CropRow key={c.name + c.action} c={c}/>)
       }
 
