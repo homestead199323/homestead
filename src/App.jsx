@@ -5059,131 +5059,446 @@ export default function App() {
 }
 
 /* ═══════════════════════════════════════════
-   AI FARM ASSISTANT — floating button + chat panel
-   Uses Anthropic API with vision for image analysis
+   AI FARM ASSISTANT — Offline Knowledge Engine
+   Powered by the app's own crop/animal database.
+   No API keys. No internet needed. Works in the field.
    ═══════════════════════════════════════════ */
-function AIAssistant({data, setData}) {
+
+// ── Knowledge Engine: smart offline query matcher ──
+function farmKnowledgeEngine(query, data) {
+  const q = query.toLowerCase().trim();
+  const words = q.split(/\s+/);
+  const now = new Date();
+  const month = now.getMonth();
+  const MN = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+  const MN_SHORT = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+
+  // ── Helper: find crop by name (fuzzy) ──
+  const findCrop = (text) => {
+    const t = text.toLowerCase();
+    return CROPS.find(c => t.includes(c.name.toLowerCase())) || CROPS.find(c => c.name.toLowerCase().includes(t));
+  };
+
+  // ── Helper: find animal by name (fuzzy) ──
+  const findAnimal = (text) => {
+    const t = text.toLowerCase();
+    return Object.entries(LDB).find(([k]) => t.includes(k.toLowerCase()));
+  };
+
+  // ── Helper: get user's active crops ──
+  const activePlots = data.garden.plots.filter(p => p.status !== "harvested");
+  const userAnimals = data.livestock.animals;
+  const zones = data.zones;
+
+  // ── 1. CROP-SPECIFIC QUERIES ──
+  const matchedCrop = findCrop(q);
+  if (matchedCrop) {
+    const c = matchedCrop;
+    const varieties = VARIETIES[c.name] || [];
+    const companions = COMP[c.name];
+    const diff = getCropDifficulty(c.name);
+    const userPlot = activePlots.find(p => p.crop === c.name);
+
+    // "how to grow X" / "X guide" / "plant X"
+    if (q.match(/how|grow|plant|guide|care|tips|start/)) {
+      let r = `${c.emoji} ${c.name} — Complete Growing Guide\n\n`;
+      r += `Category: ${c.cat} | Difficulty: ${diff.l}\n`;
+      r += `Days to harvest: ${c.days} | Spacing: ${c.spacing}cm\n`;
+      r += `Sun: ${c.sun} | Water: ${c.waterFreq}\n`;
+      if (c.pH) r += `Ideal pH: ${c.pH}\n`;
+      r += `Sow: ${c.sowIn} | Harvest: ${c.harvest}\n\n`;
+      r += `Step-by-step:\n`;
+      c.steps.forEach((s, i) => { r += `${i + 1}. Day ${s.d}: ${s.l} — ${s.t}\n`; });
+      if (c.fert) r += `\nFertilizer: ${c.fert}\n`;
+      if (companions) {
+        r += `\nCompanions:\n`;
+        r += `Good with: ${companions.good.join(", ") || "None listed"}\n`;
+        if (companions.bad.length > 0) r += `Avoid near: ${companions.bad.join(", ")}\n`;
+      }
+      if (varieties.length > 0) {
+        r += `\nBest varieties:\n`;
+        varieties.slice(0, 3).forEach(v => { r += `- ${v.name}: ${v.note}\n`; });
+      }
+      r += `\nStorage: ${c.storage}`;
+      if (userPlot) r += `\n\nYou currently have ${userPlot.name || c.name} planted${userPlot.plantDate ? ` since ${userPlot.plantDate}` : ""}.`;
+      return r;
+    }
+
+    // "X pests" / "pest" / "disease" / "bugs"
+    if (q.match(/pest|disease|bug|problem|sick|dying|yellow|wilt|rot|mold|mildew|aphid|worm/)) {
+      let r = `${c.emoji} ${c.name} — Pests & Disease Guide\n\n`;
+      if (c.pests && c.pests.length > 0) {
+        c.pests.forEach((p, i) => { r += `${i + 1}. ${p.n}\nTreatment: ${p.t}\n\n`; });
+      } else {
+        r += `No major pest data recorded for ${c.name}. General tips:\n`;
+        r += `- Check leaves daily for spots, holes, or discoloration\n`;
+        r += `- Neem oil spray for most common pests\n`;
+        r += `- Good spacing and airflow prevent fungal issues\n`;
+      }
+      return r;
+    }
+
+    // "water X" / "watering"
+    if (q.match(/water|irrigat/)) {
+      return `${c.emoji} ${c.name} — Watering Guide\n\nFrequency: ${c.waterFreq}\n\n${c.waterNote}\n\nTip: Water at the base, not the leaves. Early morning is best.`;
+    }
+
+    // "harvest X" / "when to pick"
+    if (q.match(/harvest|pick|ready|ripe/)) {
+      let r = `${c.emoji} ${c.name} — Harvest Info\n\n`;
+      r += `Days to harvest: ${c.days}\n`;
+      r += `Harvest season: ${c.harvest}\n`;
+      r += `Storage: ${c.storage}\n`;
+      if (userPlot && userPlot.plantDate) {
+        const dLeft = Math.ceil((new Date(userPlot.plantDate).getTime() + c.days * 864e5 - now.getTime()) / 864e5);
+        r += dLeft <= 0 ? `\nYour ${c.name} should be ready to harvest now!` : `\nYour ${c.name} should be ready in about ${dLeft} days.`;
+      }
+      return r;
+    }
+
+    // "X varieties" / "best variety"
+    if (q.match(/variet|breed|type|which|best/)) {
+      if (varieties.length > 0) {
+        let r = `${c.emoji} ${c.name} — Varieties\n\n`;
+        varieties.forEach(v => { r += `${v.name} (${v.days}d): ${v.note}${v.yld ? ` — Yield: ~${v.yld}kg/plant` : ""}\n\n`; });
+        return r;
+      }
+      return `${c.emoji} ${c.name}: No specific variety data available. The general variety works well for most conditions. Days to harvest: ${c.days}, Spacing: ${c.spacing}cm.`;
+    }
+
+    // "companion" / "what to plant with X"
+    if (q.match(/companion|plant with|next to|near|together|pair/)) {
+      if (companions) {
+        return `${c.emoji} ${c.name} — Companion Planting\n\nGood companions: ${companions.good.join(", ") || "None listed"}\nAvoid planting near: ${companions.bad.length > 0 ? companions.bad.join(", ") : "No known bad companions"}\n\nTip: Companion planting helps with pest control, pollination, and soil health.`;
+      }
+      return `No companion planting data for ${c.name} yet. General rule: mix plant families and avoid grouping the same crop type.`;
+    }
+
+    // Default: quick crop summary
+    let r = `${c.emoji} ${c.name}\n\n`;
+    r += `${c.cat} | ${diff.l} | ${c.days} days | ${c.sun}\n`;
+    r += `Sow: ${c.sowIn} | Harvest: ${c.harvest}\n`;
+    r += `Water: ${c.waterFreq} | Spacing: ${c.spacing}cm\n`;
+    if (c.storage) r += `Storage: ${c.storage}\n`;
+    r += `\nAsk me specifics like "${c.name} pests", "${c.name} varieties", or "how to grow ${c.name}".`;
+    return r;
+  }
+
+  // ── 2. ANIMAL-SPECIFIC QUERIES ──
+  const matchedAnimal = findAnimal(q);
+  if (matchedAnimal) {
+    const [name, db] = matchedAnimal;
+    const breeds = BREEDS[name] || [];
+    const cal = LIVESTOCK_CALENDAR[name];
+    const userAnimal = userAnimals.find(a => a.type === name);
+
+    if (q.match(/feed|food|eat|diet|nutrition/)) {
+      return `${db.e} ${name} — Feeding Guide\n\n${db.feed}\n\nYour farm: ${userAnimal ? `${userAnimal.count}x ${name}${userAnimal.breed ? ` (${userAnimal.breed})` : ""}` : "None yet"}`;
+    }
+    if (q.match(/house|housing|coop|barn|shelter|space/)) {
+      return `${db.e} ${name} — Housing\n\n${db.house}\n\nSleep: ${db.sleep}`;
+    }
+    if (q.match(/breed|mating|reproduc|baby|pregnan|gestat/)) {
+      return `${db.e} ${name} — Breeding\n\n${db.breed}`;
+    }
+    if (q.match(/sick|health|injur|hurt|limp|wound|treat|vet/)) {
+      let r = `${db.e} ${name} — Health & Injuries\n\n`;
+      db.inj.forEach((j, i) => { r += `${i + 1}. ${j.n}\nTreatment: ${j.t}\n\n`; });
+      return r;
+    }
+    if (q.match(/produce|egg|milk|meat|wool|honey|output|yield/)) {
+      let r = `${db.e} ${name} — Produce\n\nProduces: ${db.prod.join(", ")}\n\n`;
+      Object.entries(db.out).forEach(([k, v]) => { r += `${k}: ~${v.p} ${v.u}\nStorage: ${v.s}\n\n`; });
+      if (userAnimal) r += `Your ${userAnimal.count}x ${name} could produce:\n`;
+      if (userAnimal) Object.entries(db.out).forEach(([k, v]) => { r += `- ${k}: ~${Math.round(v.p * userAnimal.count * 10) / 10} ${v.u}\n`; });
+      return r;
+    }
+    if (q.match(/breed|which breed|best breed|variet|type/i) && breeds.length > 0) {
+      let r = `${db.e} ${name} — Breeds\n\n`;
+      breeds.forEach(b => { r += `${b.name}: ${b.note}${b.eggs ? ` (${b.eggs} eggs/day)` : ""}\n\n`; });
+      return r;
+    }
+    if (q.match(/calendar|month|schedul|when/i) && cal) {
+      let r = `${db.e} ${name} — Monthly Calendar\n\n`;
+      Object.entries(cal).forEach(([m, t]) => { r += `${m}: ${t}\n`; });
+      return r;
+    }
+    // Default animal summary
+    let r = `${db.e} ${name}\n\nProduces: ${db.prod.join(", ")}\n`;
+    r += `Feed: ${db.feed}\nHousing: ${db.house}\nBreeding: ${db.breed}\n`;
+    if (userAnimal) r += `\nYour farm: ${userAnimal.count}x ${name}${userAnimal.breed ? ` (${userAnimal.breed})` : ""}`;
+    r += `\n\nAsk me: "${name} feeding", "${name} health", "${name} breeds", or "${name} produce"`;
+    return r;
+  }
+
+  // ── 3. SEASONAL QUERIES ──
+  if (q.match(/what.*plant|what.*sow|what.*grow|plant now|sow now|this month|season/)) {
+    const sowNow = CROPS.filter(c => {
+      const months = c.sowIn.toLowerCase();
+      return MN_SHORT[month] && months.includes(MN_SHORT[month].toLowerCase());
+    });
+    const harvestNow = CROPS.filter(c => {
+      const months = c.harvest.toLowerCase();
+      return MN_SHORT[month] && months.includes(MN_SHORT[month].toLowerCase());
+    });
+    const alreadyPlanted = new Set(activePlots.map(p => p.crop));
+    const newOptions = sowNow.filter(c => !alreadyPlanted.has(c.name));
+
+    let r = `${MN[month].charAt(0).toUpperCase() + MN[month].slice(1)} — What to Plant & Harvest\n\n`;
+    r += `SOW NOW (${sowNow.length} crops):\n`;
+    sowNow.slice(0, 10).forEach(c => {
+      const diff = getCropDifficulty(c.name);
+      r += `${c.emoji} ${c.name} — ${c.days}d, ${diff.l}${alreadyPlanted.has(c.name) ? " (already planted)" : ""}\n`;
+    });
+    if (sowNow.length > 10) r += `...and ${sowNow.length - 10} more\n`;
+    if (harvestNow.length > 0) {
+      r += `\nHARVEST NOW (${harvestNow.length} crops):\n`;
+      harvestNow.slice(0, 8).forEach(c => { r += `${c.emoji} ${c.name}\n`; });
+    }
+    if (newOptions.length > 0) {
+      const easy = newOptions.filter(c => getCropDifficulty(c.name).l === "Easy").slice(0, 3);
+      if (easy.length > 0) {
+        r += `\nRecommended for you (easy, not yet planted):\n`;
+        easy.forEach(c => { r += `${c.emoji} ${c.name} — ${c.days}d to harvest\n`; });
+      }
+    }
+    return r;
+  }
+
+  // ── 4. COMPANION PLANTING QUERIES ──
+  if (q.match(/companion|plant.*with|plant.*near|good.*together|bad.*together/)) {
+    if (activePlots.length > 0) {
+      let r = "Companion Planting — Your Current Crops\n\n";
+      activePlots.forEach(p => {
+        const co = COMP[p.crop];
+        if (co) {
+          r += `${p.name || p.crop}:\n`;
+          r += `  Good with: ${co.good.join(", ") || "—"}\n`;
+          if (co.bad.length > 0) r += `  Avoid: ${co.bad.join(", ")}\n`;
+          r += "\n";
+        }
+      });
+      return r;
+    }
+    let r = "Companion Planting — Top Pairings\n\n";
+    r += "Tomato + Basil: Classic duo. Basil repels pests, improves flavor.\n";
+    r += "Carrot + Onion: Each repels the other's main pest.\n";
+    r += "Corn + Bean + Squash: The Three Sisters. Corn supports beans, squash shades soil.\n";
+    r += "Lettuce + Radish: Fast radish marks slow lettuce rows.\n\n";
+    r += "Plant some crops and I'll give you personalized companion advice!";
+    return r;
+  }
+
+  // ── 5. MY FARM STATUS ──
+  if (q.match(/my farm|my crop|my animal|status|overview|what do i have|farm summary|how.*my/)) {
+    let r = "Your Farm Summary\n\n";
+    r += `Zones: ${zones.length > 0 ? zones.map(z => z.name).join(", ") : "None yet — set up your farm layout first"}\n\n`;
+    if (activePlots.length > 0) {
+      r += `Active crops (${activePlots.length}):\n`;
+      activePlots.forEach(p => {
+        const c = CROP_MAP.get(p.crop);
+        if (c && p.plantDate) {
+          const dLeft = Math.ceil((new Date(p.plantDate).getTime() + c.days * 864e5 - now.getTime()) / 864e5);
+          r += `${c.emoji} ${p.name || p.crop}${dLeft <= 0 ? " — READY TO HARVEST!" : ` — ${dLeft}d to harvest`}\n`;
+        } else {
+          r += `${c?.emoji || "🌱"} ${p.name || p.crop} (planned)\n`;
+        }
+      });
+    } else { r += "No crops planted yet.\n"; }
+    if (userAnimals.length > 0) {
+      r += `\nLivestock:\n`;
+      userAnimals.forEach(a => {
+        const db = LDB[a.type];
+        r += `${db?.e || "🐄"} ${a.count}x ${a.type}${a.breed ? ` (${a.breed})` : ""}\n`;
+      });
+    } else { r += "\nNo animals yet.\n"; }
+    const costs = data.costs?.items || [];
+    const exp = costs.filter(i => i.type === "expense").reduce((s, i) => s + i.amount, 0);
+    const inc = costs.filter(i => i.type !== "expense").reduce((s, i) => s + i.amount, 0);
+    if (costs.length > 0) r += `\nFinancials: Spent \u20ac${exp.toFixed(0)} | Revenue \u20ac${inc.toFixed(0)} | Net \u20ac${(inc - exp).toFixed(0)}`;
+    return r;
+  }
+
+  // ── 6. WHAT TO DO TODAY ──
+  if (q.match(/what.*do|today|task|todo|should i|next step|what now|action/)) {
+    const tasks = buildTaskQueue(data);
+    if (tasks.length === 0) {
+      return "No tasks right now! Here's what you can do:\n\n1. Plant a new crop (go to Farming)\n2. Add livestock (go to Livestock)\n3. Check the Seasonal Calendar for what's in season\n4. Set up your farm layout in Farm Designer";
+    }
+    let r = "Today's Priority Tasks\n\n";
+    tasks.slice(0, 8).forEach((t, i) => {
+      const pri = t.pri === 0 ? "URGENT" : t.pri <= 1 ? "High" : t.pri <= 2 ? "Medium" : "Low";
+      r += `${i + 1}. [${pri}] ${t.emoji} ${t.title}\n   ${t.loc}${t.daysOut > 0 ? ` — in ${t.daysOut}d` : t.daysOut === 0 ? " — TODAY" : ""}\n`;
+    });
+    return r;
+  }
+
+  // ── 7. PRESERVATION QUERIES ──
+  if (q.match(/preserv|can|pickle|ferment|dry|freeze|store|jam|sauce|smoke|cure/)) {
+    const pKeys = Object.keys(PRESERVATION);
+    const match = pKeys.find(k => q.includes(k.toLowerCase()));
+    if (match) {
+      const p = PRESERVATION[match];
+      let r = `${p.emoji || "🫙"} ${match}\n\n`;
+      r += `Category: ${p.cat} | Difficulty: ${p.diff}\n`;
+      r += `Time: ${p.time}\n\n`;
+      if (p.overview) r += `${p.overview}\n\n`;
+      if (p.ingredients) r += `Ingredients: ${p.ingredients}\n\n`;
+      if (p.steps) r += `Steps:\n${p.steps}\n`;
+      return r;
+    }
+    // General preservation advice
+    let r = "Food Preservation Methods\n\n";
+    r += "Available in your Manuals tab:\n";
+    const cats = {};
+    Object.entries(PRESERVATION).forEach(([name, p]) => {
+      if (!cats[p.cat]) cats[p.cat] = [];
+      cats[p.cat].push(name);
+    });
+    Object.entries(cats).slice(0, 6).forEach(([cat, items]) => {
+      r += `\n${cat}: ${items.slice(0, 4).join(", ")}${items.length > 4 ? "..." : ""}\n`;
+    });
+    r += "\nAsk me about a specific method like 'how to pickle' or 'how to make jam'.";
+    return r;
+  }
+
+  // ── 8. WATERING GENERAL ──
+  if (q.match(/water|irrigat/)) {
+    if (activePlots.length > 0) {
+      let r = "Watering Guide for Your Crops\n\n";
+      activePlots.forEach(p => {
+        const c = CROP_MAP.get(p.crop);
+        if (c) r += `${c.emoji} ${p.name || p.crop}: ${c.waterFreq} — ${c.waterNote}\n\n`;
+      });
+      r += "General tip: Water in the early morning at the base of plants, not on leaves.";
+      return r;
+    }
+    return "Watering Tips\n\nEarly morning is best. Water at the base, not on leaves. Most vegetables need water every 2-3 days in summer. Check soil moisture by sticking your finger 5cm deep — if dry, water.\n\nPlant some crops and I'll give you specific watering schedules!";
+  }
+
+  // ── 9. YELLOWING LEAVES ──
+  if (q.match(/yellow|leaf|leaves/)) {
+    return "Yellowing Leaves — Common Causes\n\n1. Nitrogen deficiency: Lower leaves yellow first. Fix with compost tea or balanced fertilizer.\n2. Overwatering: Leaves yellow and droop. Let soil dry between waterings.\n3. Underwatering: Leaves dry and curl. Water deeply and consistently.\n4. pH imbalance: Test soil. Most vegetables want pH 6.0-7.0.\n5. Pests: Check undersides of leaves for aphids, whitefly, or mites.\n6. Natural aging: Oldest leaves yellow as plant matures — normal.\n\nTip: If it's just the bottom leaves, it's likely nitrogen. If it's all over, check water and pH first.";
+  }
+
+  // ── 10. HEAT STRESS ──
+  if (q.match(/heat|hot|summer|shade|scorch|sunburn|wilt/)) {
+    return "Heat Stress Management\n\nSigns: Wilting in afternoon, leaf curl, blossom drop, sunscald on fruit.\n\nImmediate actions:\n1. Water deeply in early morning (before 8am)\n2. Mulch 8-10cm thick to keep roots cool\n3. Shade cloth (30-50%) over sensitive crops\n4. Mist plants in late afternoon (not midday!)\n5. Harvest early morning when cool\n\nHeat-tolerant crops: Okra, eggplant, peppers, sweet potato, watermelon.\nHeat-sensitive: Lettuce, spinach, peas, broccoli — grow these in spring/fall.";
+  }
+
+  // ── 11. BEGINNER QUERIES ──
+  if (q.match(/beginner|start|new|first time|easy|simple|recommend/)) {
+    const easyCrops = CROPS.filter(c => getCropDifficulty(c.name).l === "Easy").slice(0, 6);
+    let r = "Getting Started — Beginner's Guide\n\n";
+    r += "Start with these easy crops:\n";
+    easyCrops.forEach(c => { r += `${c.emoji} ${c.name} — ${c.days} days, ${c.spacing}cm spacing\n`; });
+    r += "\nFirst steps:\n";
+    r += "1. Set up your Farm Layout (map your zones)\n";
+    r += "2. Plant 2-3 easy crops to build confidence\n";
+    r += "3. Follow the step-by-step guides in each crop card\n";
+    r += "4. Check your Tasks page daily\n";
+    r += "5. Harvest and enjoy!\n\n";
+    r += "For animals, start with chickens — they're the easiest and give you eggs daily.";
+    return r;
+  }
+
+  // ── 12. SOIL QUERIES ──
+  if (q.match(/soil|ph|compost|mulch|fertiliz|nutrient|nitrogen|potassium|phosphor/)) {
+    return "Soil Health Guide\n\nIdeal soil pH for most vegetables: 6.0-7.0\n\nImproving soil:\n1. Compost: Add 5-8cm yearly. Best all-round amendment.\n2. Mulch: 8-10cm straw or wood chips. Retains moisture, suppresses weeds.\n3. Crop rotation: Never plant the same family in the same spot 2 years running.\n4. Cover crops: Plant clover or rye in fallow beds over winter.\n\nFertilizer basics:\n- N (Nitrogen): Leafy growth. Compost, blood meal, fish emulsion.\n- P (Phosphorus): Roots and flowers. Bone meal, rock phosphate.\n- K (Potassium): Fruit and disease resistance. Wood ash, potassium sulfate.\n\nTest your soil yearly. Local agricultural offices often do free tests.";
+  }
+
+  // ── 13. LIST ALL CROPS ──
+  if (q.match(/list.*crop|all crop|crop list|what crop|how many crop/)) {
+    let r = `All ${CROPS.length} Crops in Database\n\n`;
+    const byCat = {};
+    CROPS.forEach(c => { if (!byCat[c.cat]) byCat[c.cat] = []; byCat[c.cat].push(c); });
+    Object.entries(byCat).forEach(([cat, crops]) => {
+      r += `${cat} (${crops.length}):\n`;
+      crops.forEach(c => { r += `  ${c.emoji} ${c.name} — ${c.days}d\n`; });
+      r += "\n";
+    });
+    return r;
+  }
+
+  // ── 14. LIST ALL ANIMALS ──
+  if (q.match(/list.*animal|all animal|animal list|what animal|how many animal/)) {
+    let r = `All ${Object.keys(LDB).length} Animals in Database\n\n`;
+    Object.entries(LDB).forEach(([name, db]) => {
+      r += `${db.e} ${name} — Produces: ${db.prod.join(", ")}\n`;
+    });
+    r += "\nAsk about any animal for detailed care guide, breeds, and produce info.";
+    return r;
+  }
+
+  // ── 15. HELP / WHAT CAN YOU DO ──
+  if (q.match(/help|what can you|can you|how to use|feature|capabilit/)) {
+    return "I'm your offline farming encyclopedia! Here's what I can help with:\n\n" +
+      "Crops: \"How to grow tomatoes\", \"tomato pests\", \"tomato varieties\"\n" +
+      "Animals: \"chicken feeding\", \"goat health\", \"cow breeds\"\n" +
+      "Seasonal: \"What to plant now\", \"what's in season\"\n" +
+      "Companions: \"What to plant with tomatoes\"\n" +
+      "Tasks: \"What should I do today\"\n" +
+      "My farm: \"Farm status\", \"My crops\"\n" +
+      "Preservation: \"How to pickle\", \"how to make jam\"\n" +
+      "General: \"Soil health\", \"watering tips\", \"heat stress\"\n" +
+      "Lists: \"All crops\", \"All animals\"\n\n" +
+      `I have data on ${CROPS.length} crops, ${Object.keys(LDB).length} animals, ${Object.keys(PRESERVATION).length} preservation methods, and ${Object.keys(VARIETIES).length > 0 ? Object.values(VARIETIES).flat().length : 0} varieties. All offline!`;
+  }
+
+  // ── FALLBACK: Try to find any matching content ──
+  // Search crop names, animal names, preservation names
+  const allNames = [...CROPS.map(c => ({name: c.name, type: "crop", emoji: c.emoji})),
+    ...Object.entries(LDB).map(([k, v]) => ({name: k, type: "animal", emoji: v.e})),
+    ...Object.keys(PRESERVATION).map(k => ({name: k, type: "preservation", emoji: "🫙"}))];
+
+  const fuzzyMatches = allNames.filter(n => {
+    const nLow = n.name.toLowerCase();
+    return words.some(w => w.length > 2 && nLow.includes(w));
+  });
+
+  if (fuzzyMatches.length > 0) {
+    let r = "I found some matches for your question:\n\n";
+    fuzzyMatches.slice(0, 5).forEach(m => {
+      r += `${m.emoji} ${m.name} (${m.type})\n`;
+    });
+    r += "\nTry asking specifically, like \"how to grow " + fuzzyMatches[0].name + "\" or \"" + fuzzyMatches[0].name + " care guide\".";
+    return r;
+  }
+
+  return `I didn't find a specific answer for "${query}" in my database.\n\nTry asking about:\n- A specific crop: "How to grow tomatoes"\n- An animal: "Chicken care"\n- Seasonal advice: "What to plant now"\n- Your farm: "My farm status"\n- Tasks: "What should I do today"\n\nI have ${CROPS.length} crops and ${Object.keys(LDB).length} animals in my offline knowledge base!`;
+}
+
+function AIAssistant({data}) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([
-    {role:"assistant", content:"👋 Hi! I'm your AI farm assistant. Upload a photo of a crop, animal, or soil issue and I'll diagnose it — or just ask me anything about your farm."}
+    {role:"assistant", content:`Hi! I'm your farm assistant. I know everything about the ${CROPS.length} crops and ${Object.keys(LDB).length} animals in your database — and I work offline!\n\nAsk me anything: crop guides, pest help, what to plant now, companion planting, animal care, or your farm status.`}
   ]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [image, setImage] = useState(null); // {base64, mediaType, preview}
-  const fileRef = useRef(null);
-  const bottomRef = useRef(null);
-  const inputRef = useRef(null);
   const scrollRef = useRef(null);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, open]);
 
-  const handleFile = (file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target.result.split(",")[1];
-      setImage({base64, mediaType: file.type, preview: e.target.result, name: file.name});
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    handleFile(file);
-  };
-
-  // Build farm context for the system prompt — memoized to avoid rebuilding every render
-  const farmCtx = useMemo(() => {
-    const plots = data.garden.plots.filter(p => p.status !== "harvested");
-    const animals = data.livestock.animals;
-    const zones = data.zones;
-    let ctx = "FARM CONTEXT:\n";
-    if (zones.length > 0) ctx += `Zones: ${zones.map(z=>z.name).join(", ")}\n`;
-    if (plots.length > 0) ctx += `Active crops: ${plots.map(p=>`${p.name||p.crop} (planted ${p.plantDate||"?"}, zone: ${zones.find(z=>z.id===p.zone)?.name||"?"})`).join("; ")}\n`;
-    if (animals.length > 0) ctx += `Livestock: ${animals.map(a=>`${a.count}x ${a.type}${a.breed?` (${a.breed})`:""}`).join(", ")}\n`;
-    return ctx;
-  }, [data.garden.plots, data.livestock.animals, data.zones]);
-
-  const send = async () => {
+  const send = () => {
     const text = input.trim();
-    if (!text && !image) return;
-
-    const userMsg = {role:"user", content: image
-      ? [{type:"image",source:{type:"base64",media_type:image.mediaType,data:image.base64}},{type:"text",text: text || "What do you see in this image? What does my farm need?"}]
-      : text
-    };
-    const displayMsg = {role:"user", content: text || (image ? `📸 ${image.name}` : ""), image: image?.preview};
-    // Cap displayed messages at 50 and drop old image preview blobs to save memory
-    setMsgs(prev => {
-      const updated = [...prev, displayMsg];
-      const capped = updated.length > 50 ? updated.slice(-50) : updated;
-      // Drop image previews from messages older than 10 to free memory
-      return capped.map((m, i) => (i < capped.length - 10 && m.image) ? {...m, image: null} : m);
-    });
-    setInput(""); setImage(null); setLoading(true);
-
-    // farmCtx is now memoized above
-    const systemPrompt = `You are an expert farm AI assistant for a smart homestead management app. You have deep knowledge of:
-- Crop growing, pest & disease identification, soil health
-- Livestock care and health assessment
-- Preservation techniques and harvest timing
-- Organic and conventional farming practices
-
-${farmCtx}
-
-When analyzing images:
-- Identify the plant, animal, or issue shown
-- Give a clear diagnosis with confidence level
-- Provide 3-5 specific, actionable steps the farmer should take immediately
-- Mention relevant risks if untreated
-- Keep responses concise but complete — farmers are busy
-
-Format your response clearly with the most important action first. Use emojis sparingly for readability.`;
-
-    // Build messages for API (last 6 for context, excluding images from old messages to save tokens)
-    const historyForApi = msgs.slice(-6).map(m => ({
-      role: m.role,
-      content: typeof m.content === "string" ? m.content : m.content
-    }));
-
-    try {
-      // ─── IMPORTANT: Use your own serverless proxy instead of calling Anthropic directly ───
-      // In production, replace this URL with your Vercel/Supabase Edge Function endpoint:
-      //   e.g. "/api/chat" or "https://your-app.vercel.app/api/chat"
-      // The proxy should forward the request to Anthropic with the API key server-side.
-      // See the code review for the Vercel serverless function template.
-      const AI_ENDPOINT = "/api/chat"; // ← Change to your proxy URL
-      const res = await fetch(AI_ENDPOINT, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514",
-          max_tokens:1000,
-          system: systemPrompt,
-          messages:[...historyForApi, userMsg]
-        })
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const d = await res.json();
-      const reply = d.content?.[0]?.text || "Sorry, I couldn't process that. Please try again.";
-      setMsgs(prev => [...prev, {role:"assistant", content: reply}]);
-    } catch(e) {
-      setMsgs(prev => [...prev, {role:"assistant", content:`⚠️ ${e.message || "Connection error"}. Check your internet and try again.`}]);
-    }
-    setLoading(false);
+    if (!text) return;
+    const userMsg = {role:"user", content: text};
+    // Get response from offline knowledge engine
+    const reply = farmKnowledgeEngine(text, data);
+    setMsgs(prev => [...prev, userMsg, {role:"assistant", content: reply}]);
+    setInput("");
   };
 
   const quickPrompts = [
-    "🌱 Why are my leaves yellowing?",
-    "🐛 Identify this pest",
-    "💧 Is it safe to water today?",
-    "🧺 When should I harvest?",
-    "🌡 Heat stress signs to watch for",
-    "🐄 My animal seems unwell",
+    {e:"🌱", q:"What should I plant now?"},
+    {e:"📋", q:"What should I do today?"},
+    {e:"🌾", q:"My farm status"},
+    {e:"🐔", q:"Chicken care guide"},
+    {e:"🍅", q:"How to grow tomatoes"},
+    {e:"🤝", q:"Companion planting tips"},
+    {e:"💧", q:"Watering tips for my crops"},
+    {e:"📚", q:"What can you help with?"},
   ];
 
   return (
@@ -5191,19 +5506,20 @@ Format your response clearly with the most important action first. Use emojis sp
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
+        className="emoji-bounce"
         style={{
           position:"fixed", bottom:24, right:24, zIndex:2000,
           width:56, height:56, borderRadius:28,
-          background:`linear-gradient(135deg,${C.green},#40916c)`,
+          background:C.grd,
           border:"none", cursor:"pointer",
           boxShadow:"0 4px 20px rgba(45,106,79,.5)",
           display:"flex", alignItems:"center", justifyContent:"center",
           fontSize:24, color:"#fff",
           transition:"transform .2s, box-shadow .2s",
         }}
-        title="AI Farm Assistant"
+        title="Farm Assistant"
       >
-        {open ? "✕" : "🤖"}
+        {open ? "\u2715" : "\uD83C\uDF3E"}
       </button>
 
       {/* Chat panel */}
@@ -5217,86 +5533,60 @@ Format your response clearly with the most important action first. Use emojis sp
           display:"flex", flexDirection:"column",
           overflow:"hidden",
           border:`1px solid ${C.bdr}`,
+          animation:"fadeUp .3s ease both",
         }}>
           {/* Header */}
-          <div style={{background:`linear-gradient(135deg,${C.green},#40916c)`,padding:"14px 18px",flexShrink:0}}>
+          <div style={{background:C.grdHero,padding:"14px 18px",flexShrink:0}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:36,height:36,borderRadius:18,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🤖</div>
+              <div style={{width:36,height:36,borderRadius:18,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🌾</div>
               <div>
-                <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>AI Farm Assistant</div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,.8)"}}>Upload photos · Ask anything</div>
+                <div style={{fontSize:15,fontWeight:700,color:"#fff",fontFamily:F.head}}>Farm Assistant</div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>Offline · {CROPS.length} crops · {Object.keys(LDB).length} animals</div>
               </div>
               <button onClick={()=>setOpen(false)} style={{marginLeft:"auto",background:"rgba(255,255,255,.2)",border:"none",borderRadius:16,width:28,height:28,cursor:"pointer",color:"#fff",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
             </div>
           </div>
 
           {/* Messages */}
-          <div ref={el => { scrollRef.current = el; }} style={{flex:1,overflowY:"auto",padding:"14px 14px 8px",display:"flex",flexDirection:"column",gap:10}}>
+          <div ref={scrollRef} style={{flex:1,overflowY:"auto",padding:"14px 14px 8px",display:"flex",flexDirection:"column",gap:10}}>
             {msgs.map((m,i) => (
               <div key={i} style={{display:"flex",flexDirection:"column",alignItems:m.role==="user"?"flex-end":"flex-start",gap:4}}>
-                {m.image && (
-                  <img src={m.image} alt="Uploaded" style={{maxWidth:180,maxHeight:140,borderRadius:12,objectFit:"cover",border:`1px solid ${C.bdr}`}}/>
-                )}
                 <div style={{
-                  maxWidth:"85%", padding:"10px 13px",
+                  maxWidth:"88%", padding:"10px 13px",
                   background:m.role==="user"?C.green:"#f3f4f6",
                   color:m.role==="user"?"#fff":C.text,
                   borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
-                  fontSize:13, lineHeight:1.55,
-                  whiteSpace:"pre-wrap",
+                  fontSize:13, lineHeight:1.6,
+                  whiteSpace:"pre-wrap", fontFamily:F.body,
                 }}>
-                  {typeof m.content === "string" ? m.content : m.content}
+                  {m.content}
                 </div>
               </div>
             ))}
-            {loading && (
-              <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
-                <div style={{padding:"10px 14px",background:"#f3f4f6",borderRadius:"18px 18px 18px 4px",fontSize:13,color:C.t2}}>
-                  <span style={{display:"inline-flex",gap:4}}>
-                    {[0,1,2].map(i=><span key={i} style={{width:6,height:6,borderRadius:3,background:C.t3,display:"inline-block",animation:`bounce 1s ${i*.2}s infinite`}}>·</span>)}
-                  </span>
-                  Analyzing…
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Image preview */}
-          {image && (
-            <div style={{padding:"6px 14px",flexShrink:0,display:"flex",alignItems:"center",gap:10,background:"#f0f7f4",borderTop:`1px solid ${C.bdr}`}}>
-              <img src={image.preview} alt="" style={{width:44,height:44,borderRadius:8,objectFit:"cover"}}/>
-              <div style={{flex:1,fontSize:12,color:C.green,fontWeight:600}}>📎 {image.name}</div>
-              <button onClick={()=>setImage(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:16}}>✕</button>
-            </div>
-          )}
-
           {/* Quick prompts */}
-          {msgs.length <= 1 && !image && (
-            <div style={{padding:"6px 14px 4px",flexShrink:0,display:"flex",gap:4,flexWrap:"wrap"}}>
-              {quickPrompts.map((q,i)=>(
-                <button key={i} onClick={()=>{ setInput(q.slice(2)); }} style={{padding:"4px 10px",borderRadius:16,border:`1px solid ${C.bdr}`,background:C.bg,fontSize:11,cursor:"pointer",color:C.t2,fontFamily:F.body}}>{q}</button>
+          {msgs.length <= 1 && (
+            <div style={{padding:"4px 12px 2px",flexShrink:0,display:"flex",gap:4,flexWrap:"wrap"}}>
+              {quickPrompts.map((p,i)=>(
+                <button key={i} onClick={()=>{ setInput(p.q); setTimeout(()=>{
+                  const text = p.q;
+                  const reply = farmKnowledgeEngine(text, data);
+                  setMsgs(prev => [...prev, {role:"user", content: text}, {role:"assistant", content: reply}]);
+                  setInput("");
+                },50); }} style={{padding:"5px 10px",borderRadius:16,border:`1px solid ${C.bdr}`,background:C.bg,fontSize:11,cursor:"pointer",color:C.t2,fontFamily:F.body,transition:"all .15s"}}>{p.e} {p.q}</button>
               ))}
             </div>
           )}
 
           {/* Input area */}
-          <div
-            onDragOver={e=>e.preventDefault()}
-            onDrop={handleDrop}
-            style={{padding:"10px 12px",borderTop:`1px solid ${C.bdr}`,flexShrink:0,background:C.bg}}
-          >
+          <div style={{padding:"10px 12px",borderTop:`1px solid ${C.bdr}`,flexShrink:0,background:C.bg}}>
             <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
-              {/* Image upload */}
-              <label style={{flexShrink:0,cursor:"pointer",width:34,height:34,borderRadius:17,background:C.card,border:`1.5px solid ${C.bdr}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}} title="Upload photo">
-                📷
-                <input type="file" accept="image/*" onChange={e=>handleFile(e.target.files[0])} style={{display:"none"}}/>
-              </label>
-              {/* Text input */}
               <textarea
                 value={input}
                 onChange={e=>setInput(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
-                placeholder="Ask about crops, animals, soil… or drop a photo"
+                placeholder="Ask about crops, animals, seasons..."
                 rows={1}
                 style={{
                   flex:1, padding:"8px 12px", border:`1.5px solid ${C.bdr}`,
@@ -5305,23 +5595,16 @@ Format your response clearly with the most important action first. Use emojis sp
                   lineHeight:1.4, maxHeight:80, overflowY:"auto",
                 }}
               />
-              {/* Send */}
               <button
                 onClick={send}
-                disabled={loading || (!input.trim() && !image)}
-                style={{flexShrink:0,width:34,height:34,borderRadius:17,background:(loading||(!input.trim()&&!image))?"#ccc":C.green,border:"none",cursor:(loading||(!input.trim()&&!image))?"default":"pointer",color:"#fff",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}
+                disabled={!input.trim()}
+                style={{flexShrink:0,width:34,height:34,borderRadius:17,background:!input.trim()?"#ccc":C.green,border:"none",cursor:!input.trim()?"default":"pointer",color:"#fff",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"background .2s"}}
               >➤</button>
             </div>
-            <div style={{fontSize:10,color:C.t3,textAlign:"center",marginTop:5}}>Enter to send · Shift+Enter for new line · Drag & drop images</div>
+            <div style={{fontSize:10,color:C.t3,textAlign:"center",marginTop:5}}>Works offline · Enter to send</div>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes bounce {
-          0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)}
-        }
-      `}</style>
     </>
   );
 }
