@@ -1322,8 +1322,8 @@ const Txt = React.memo(function Txt({label,...p}) {
 });
 
 const Overlay = React.memo(function Overlay({title,onClose,children,wide}) {
-  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.08)",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:1000,padding:16,paddingTop:80,overflowY:"auto"}} onClick={onClose}>
-    <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"88vh",overflowY:"auto",boxShadow:"0 12px 40px rgba(0,0,0,.15)"}}>
+  return <div style={{position:"fixed",inset:0,background:"transparent",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:1000,padding:16,paddingTop:40,overflowY:"auto",WebkitOverflowScrolling:"touch"}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",boxShadow:"0 8px 32px rgba(0,0,0,.12)",marginBottom:40,border:`1px solid ${C.bdr}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
         <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
         <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:32,height:32,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
