@@ -3666,7 +3666,8 @@ function Dashboard({data, setData, setPage, tasks}) {
                         const pct = Math.round(cp.pct * 100);
                         const r = 32, stroke = 6, circ = 2 * Math.PI * (r - stroke);
                         const offset = circ - (circ * pct / 100);
-                        const gaugeColor = pct >= 90 ? "#e74c3c" : pct >= 60 ? "#f39c12" : C.green;
+                        const gaugeColor = pct >= 90 ? "#e74c3c" : pct >= 50 ? "#f39c12" : C.green;
+                        const statusLabel = pct >= 100 ? "Ready to harvest!" : pct >= 80 ? "Almost ready" : pct >= 50 ? "Growing strong" : pct >= 25 ? "Sprouting" : "Just planted";
                         return (
                           <div key={i} style={{textAlign:"center",minWidth:80}}>
                             <div style={{position:"relative",width:r*2,height:r*2,margin:"0 auto"}}>
@@ -3681,7 +3682,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                               </div>
                             </div>
                             <div style={{fontSize:11,fontWeight:600,color:"#445644",marginTop:4}}>{cp.emoji} {cp.name}</div>
-                            <div style={{fontSize:9,color:C.t3,marginTop:1}}>{pct >= 90 ? "Almost ready!" : pct >= 60 ? "Growing well" : "Early stage"}</div>
+                            <div style={{fontSize:9,color:C.t3,marginTop:1}}>{statusLabel}</div>
                           </div>
                         );
                       })}
