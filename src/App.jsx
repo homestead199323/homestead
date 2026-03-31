@@ -3562,7 +3562,7 @@ function Dashboard({data, setData, setPage, tasks}) {
             </div>
 
             {/* Info boxes — what a farmer reads first */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
               {/* TODAY'S WORK */}
               <Card style={{padding:"14px 16px",background:urgentTasks>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:urgentTasks>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Today's Work</div>
@@ -3590,13 +3590,30 @@ function Dashboard({data, setData, setPage, tasks}) {
                 )}
               </Card>
 
+              {/* ANIMALS */}
+              <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#faf8f0,#f5f0e5)",border:"1px solid rgba(180,150,60,.08)"}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Animals</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{ac2}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                  {(()=>{
+                    const types = {};
+                    data.livestock.animals.forEach(a => { types[a.type] = (types[a.type]||0) + a.count; });
+                    const entries = Object.entries(types).sort((a,b) => b[1]-a[1]);
+                    if (entries.length === 0) return "none yet";
+                    return entries.slice(0,2).map(([t,c]) => `${c} ${t}`).join(", ");
+                  })()}
+                </div>
+                {data.livestock.animals.length > 2 && (
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>{Object.keys(data.livestock.animals.reduce((m,a)=>{m[a.type]=1;return m;},{})).length} types</div>
+                )}
+              </Card>
+
               {/* FARM */}
               <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Farm</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{data.zones.length}</div>
-                <div style={{fontSize:11,color:C.t2,marginTop:4}}>zones · {ac2} animals</div>
-                {fy > 0 && <div style={{fontSize:10,color:C.green,fontWeight:600,marginTop:2}}>Est. yield {fy.toFixed(0)}kg</div>}
-                {fp > 0 && <div style={{fontSize:10,color:C.t3,marginTop:1}}>{fp.toLocaleString()} plants total</div>}
+                <div style={{fontSize:11,color:C.t2,marginTop:4}}>zones</div>
+                {fp > 0 && <div style={{fontSize:10,color:C.t3,marginTop:2}}>{fp.toLocaleString()} plants total</div>}
               </Card>
 
               {/* MONEY */}
