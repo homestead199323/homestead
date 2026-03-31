@@ -3512,67 +3512,75 @@ function Dashboard({data, setData, setPage, tasks}) {
 
   return (
     <div className="page-enter" style={{maxWidth:1100}}>
-      {/* ── Progress Rings + Streak Strip ── */}
-      <Card style={{marginBottom:20,padding:"20px 24px",background:C.grdLight,border:"1px solid rgba(45,106,79,.08)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
-          {/* Three nested-style rings */}
-          <div style={{position:"relative",width:80,height:80,flexShrink:0}}>
-            <Ring pct={ringData.taskPct} size={80} sw={5} color="#34c759">{""}</Ring>
-            <div style={{position:"absolute",top:10,left:10}}><Ring pct={ringData.growPct} size={60} sw={5} color={C.blue}>{""}</Ring></div>
-            <div style={{position:"absolute",top:20,left:20}}><Ring pct={ringData.harvestPct} size={40} sw={5} color={C.orange}>{allRingsClosed ? "✨" : ""}</Ring></div>
-          </div>
+      {/* ── Dashboard Header — Stats + Rings ── */}
+      <Card style={{marginBottom:20,padding:"16px 20px",background:C.grdLight,border:"1px solid rgba(45,106,79,.08)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+          {/* Left: Stats boxes */}
+          {(()=>{
+            const ap2 = data.garden.plots.filter(p=>p.status!=="harvested");
+            const fp = ap2.reduce((s,p)=>s+(p.plantCount||0),0);
+            const fa = ap2.reduce((s,p)=>s+(p.measureType==="area"?+(p.qty||0):0),0);
+            const fy = ap2.reduce((s,p)=>s+(p.expectedYieldKg||0),0);
+            const ac2 = data.livestock.animals.reduce((s,a)=>s+a.count,0);
+            const stats = [
+              {label:"Crops",value:ap2.length,sub:fp>0?`${fp} plants`:"active"},
+              {label:"Animals",value:ac2},
+            ];
+            if(fa>0) stats.push({label:"Cultivated",value:`${fa.toFixed(0)}m²`,sub:"under crops"});
+            if(fy>0) stats.push({label:"Est. Harvest",value:`${fy.toFixed(0)}kg`,color:C.green});
+            stats.push({label:"Pantry",value:`${Math.round(totalKg)}kg`});
+            stats.push({label:"Net",value:"€"+(inc-exp).toFixed(0),color:inc-exp>=0?C.green:C.red});
+            return (
+              <div style={{flex:1,display:"grid",gridTemplateColumns:`repeat(${Math.min(stats.length,6)},1fr)`,gap:8,minWidth:0}}>
+                {stats.map((st,i)=>(
+                  <div key={i} style={{background:"rgba(255,255,255,.7)",borderRadius:10,padding:"8px 10px",textAlign:"center",border:"1px solid rgba(45,106,79,.06)"}}>
+                    <div style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em",marginBottom:2}}>{st.label}</div>
+                    <div style={{fontSize:18,fontWeight:800,fontFamily:F.head,color:st.color||C.text,lineHeight:1.1}}>{st.value}</div>
+                    {st.sub && <div style={{fontSize:9,color:C.t3,marginTop:1}}>{st.sub}</div>}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
-          {/* Ring legends */}
-          <div style={{flex:1,minWidth:180}}>
-            <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:12}}>
-              <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:"#34c759",marginRight:5}}/>Tasks <span style={{fontWeight:700}}>{ringData.doneSteps}/{ringData.totalSteps}</span></div>
-              <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.blue,marginRight:5}}/>Growing <span style={{fontWeight:700}}>{ringData.plantedCount}</span></div>
-              <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.orange,marginRight:5}}/>Harvest-ready <span style={{fontWeight:700}}>{ringData.readyCount}</span></div>
+          {/* Right: Rings + Streak + Badges */}
+          <div style={{display:"flex",alignItems:"center",gap:14,flexShrink:0}}>
+            {/* Three nested rings */}
+            <div style={{position:"relative",width:70,height:70,flexShrink:0}}>
+              <Ring pct={ringData.taskPct} size={70} sw={4.5} color="#34c759">{""}</Ring>
+              <div style={{position:"absolute",top:9,left:9}}><Ring pct={ringData.growPct} size={52} sw={4.5} color={C.blue}>{""}</Ring></div>
+              <div style={{position:"absolute",top:18,left:18}}><Ring pct={ringData.harvestPct} size={34} sw={4.5} color={C.orange}>{allRingsClosed ? "✨" : ""}</Ring></div>
             </div>
-            {allRingsClosed && <div style={{marginTop:6,fontSize:11,color:C.green,fontWeight:600}}>All rings closed today — nice work! 🎉</div>}
-          </div>
-
-          {/* Streak counter */}
-          <div style={{textAlign:"center",flexShrink:0,padding:"8px 16px",background:g.streak>=7?"linear-gradient(135deg,#fff8e1,#ffe0b2)":C.bg,borderRadius:12,minWidth:80}}>
-            <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:g.streak>=7?C.orange:C.green,lineHeight:1}}>{g.streak}</div>
-            <div style={{fontSize:10,color:C.t2,fontWeight:600,marginTop:2}}>day streak {g.streak>=7?"🔥":""}</div>
-            {g.bestStreak > g.streak && <div style={{fontSize:9,color:C.t3,marginTop:2}}>Best: {g.bestStreak}</div>}
-          </div>
-
-          {/* Badges earned (compact) */}
-          {g.badges.length > 0 && (
-            <div style={{display:"flex",gap:4,flexShrink:0}}>
-              {g.badges.slice(-4).map(b => {
-                const def = BADGES.find(bd => bd.id === b.id);
-                return def ? <Tooltip key={b.id} width={180} content={<div><div style={{fontWeight:700}}>{def.emoji} {def.name}</div><div style={{opacity:.85,marginTop:2}}>{def.desc}</div><div style={{marginTop:4,color:"#ffcc00",fontSize:11}}>Unlocked {b.unlockedAt}</div></div>}><span style={{fontSize:20,cursor:"pointer"}}>{def.emoji}</span></Tooltip> : null;
-              })}
-              {g.badges.length > 4 && <span style={{fontSize:11,color:C.t2,alignSelf:"center"}}>+{g.badges.length-4}</span>}
+            {/* Ring legends compact */}
+            <div style={{fontSize:10,lineHeight:1.8}}>
+              <div><span style={{display:"inline-block",width:7,height:7,borderRadius:4,background:"#34c759",marginRight:4}}/>Tasks <strong>{ringData.doneSteps}/{ringData.totalSteps}</strong></div>
+              <div><span style={{display:"inline-block",width:7,height:7,borderRadius:4,background:C.blue,marginRight:4}}/>Growing <strong>{ringData.plantedCount}</strong></div>
+              <div><span style={{display:"inline-block",width:7,height:7,borderRadius:4,background:C.orange,marginRight:4}}/>Ready <strong>{ringData.readyCount}</strong></div>
             </div>
-          )}
+            {/* Streak */}
+            <div style={{textAlign:"center",padding:"6px 12px",background:g.streak>=7?"linear-gradient(135deg,#fff8e1,#ffe0b2)":"rgba(255,255,255,.7)",borderRadius:10,minWidth:50}}>
+              <div style={{fontSize:22,fontWeight:800,fontFamily:F.head,color:g.streak>=7?C.orange:C.green,lineHeight:1}}>{g.streak}</div>
+              <div style={{fontSize:9,color:C.t2,fontWeight:600,marginTop:1}}>streak{g.streak>=7?" 🔥":""}</div>
+            </div>
+            {/* Badges */}
+            {g.badges.length > 0 && (
+              <div style={{display:"flex",gap:3,flexShrink:0}}>
+                {g.badges.slice(-3).map(b => {
+                  const def = BADGES.find(bd => bd.id === b.id);
+                  return def ? <Tooltip key={b.id} width={180} content={<div><div style={{fontWeight:700}}>{def.emoji} {def.name}</div><div style={{opacity:.85,marginTop:2}}>{def.desc}</div><div style={{marginTop:4,color:"#ffcc00",fontSize:11}}>Unlocked {b.unlockedAt}</div></div>}><span style={{fontSize:18,cursor:"pointer"}}>{def.emoji}</span></Tooltip> : null;
+                })}
+                {g.badges.length > 3 && <span style={{fontSize:10,color:C.t2,alignSelf:"center"}}>+{g.badges.length-3}</span>}
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
-      {/* Header + stats bar */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:20,flexWrap:"wrap",gap:12}}>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:16}}>
         <div>
-          <h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>Your Homestead</h2>
-          <p style={{color:C.t2,fontSize:13,margin:"5px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
-        </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {(()=>{
-            const ap = data.garden.plots.filter(p=>p.status!=="harvested");
-            const ac = data.livestock.animals.reduce((s,a)=>s+a.count,0);
-            const chips = [
-              {l:`${enrichedTasks.length} open tasks`, c: enrichedTasks.filter(t=>t.pri<=1).length > 0 ? C.red : C.green},
-              {l:`${data.zones.length} zones`},
-              {l:`${ap.length} crops`},
-            ];
-            if (ac > 0) chips.push({l:`${ac} animals`});
-            chips.push({l:`Health ${Math.min(100, Math.round(((ap.filter(p=>p.steps?.some(s=>s.done)).length+1)/(ap.length+1))*100))}`});
-            return chips.map((ch,i) => (
-              <span key={i} style={{fontSize:12,fontWeight:600,padding:"6px 14px",borderRadius:100,background:C.card,border:`1px solid ${C.bdr}`,color:ch.c||"#3a5a3c",boxShadow:C.sh,letterSpacing:"0.01em",transition:"all .2s"}}>{ch.l}</span>
-            ));
-          })()}
+          <h2 style={{fontFamily:F.head,fontSize:26,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>Your Homestead</h2>
+          <p style={{color:C.t2,fontSize:12,margin:"4px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
         </div>
       </div>
 
@@ -3872,23 +3880,7 @@ function Dashboard({data, setData, setPage, tasks}) {
         )}
       </div>
 
-      {/* Stats row — compact */}
-      {(()=>{
-        const activePlots = data.garden.plots.filter(p=>p.status!=="harvested");
-        const farmPlants = activePlots.reduce((s,p)=>s+(p.plantCount||0),0);
-        const farmArea = activePlots.reduce((s,p)=>s+(p.measureType==="area"?+(p.qty||0):0),0);
-        const farmYield = activePlots.reduce((s,p)=>s+(p.expectedYieldKg||0),0);
-        return (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(115px,1fr))",gap:10,marginBottom:20}}>
-            <Stat label="Crops" value={activePlots.length} sub={farmPlants>0?`${farmPlants} plants`:"active"}/>
-            <Stat label="Animals" value={data.livestock.animals.reduce((s,a)=>s+a.count,0)}/>
-            {farmArea>0&&<Stat label="Cultivated" value={`${farmArea.toFixed(0)}m²`} sub="under crops"/>}
-            {farmYield>0&&<Stat label="Est. Harvest" value={`${farmYield.toFixed(0)}kg`} color={C.green}/>}
-            <Stat label="Pantry" value={`${Math.round(totalKg)}kg`}/>
-            <Stat label="Net" value={"€"+(inc-exp).toFixed(0)} color={inc-exp>=0?C.green:C.red}/>
-          </div>
-        );
-      })()}
+      {/* Stats row moved to header above */}
 
       {/* Recent Activity */}
       {data.log.length>0&&<div><div style={{fontSize:14,fontWeight:700,fontFamily:F.head,marginBottom:8}}>Recent Activity</div>{data.log.slice(-5).reverse().map((l,i)=><div key={i} style={{fontSize:12,color:C.t2,padding:"6px 0",borderBottom:`1px solid ${C.bg}`}}>{l.text}</div>)}</div>}
