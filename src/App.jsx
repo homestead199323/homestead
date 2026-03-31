@@ -3659,20 +3659,32 @@ function Dashboard({data, setData, setPage, tasks}) {
                     </div>
                   </div>
 
-                  {/* Crop progress bars */}
+                  {/* Crop progress gauges */}
                   {azData.cropProgress.length > 0 && (
-                    <div style={{display:"grid",gap:8}}>
-                      {azData.cropProgress.slice(0, 5).map((cp, i) => (
-                        <div key={i}>
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#445644",marginBottom:3}}>
-                            <span>{cp.emoji} {cp.name}</span>
-                            <strong>{Math.round(cp.pct * 100)}%</strong>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:12,justifyContent:"center"}}>
+                      {azData.cropProgress.slice(0, 5).map((cp, i) => {
+                        const pct = Math.round(cp.pct * 100);
+                        const r = 32, stroke = 6, circ = 2 * Math.PI * (r - stroke);
+                        const offset = circ - (circ * pct / 100);
+                        const gaugeColor = pct >= 90 ? "#e74c3c" : pct >= 60 ? "#f39c12" : C.green;
+                        return (
+                          <div key={i} style={{textAlign:"center",minWidth:80}}>
+                            <div style={{position:"relative",width:r*2,height:r*2,margin:"0 auto"}}>
+                              <svg width={r*2} height={r*2} style={{transform:"rotate(-90deg)"}}>
+                                <circle cx={r} cy={r} r={r-stroke} fill="none" stroke="#edf3e9" strokeWidth={stroke}/>
+                                <circle cx={r} cy={r} r={r-stroke} fill="none" stroke={gaugeColor} strokeWidth={stroke}
+                                  strokeDasharray={circ} strokeDashoffset={offset}
+                                  strokeLinecap="round" style={{transition:"stroke-dashoffset .6s ease"}}/>
+                              </svg>
+                              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                                <div style={{fontSize:14,fontWeight:800,color:"#2d3a2d",fontFamily:F.mono}}>{pct}%</div>
+                              </div>
+                            </div>
+                            <div style={{fontSize:11,fontWeight:600,color:"#445644",marginTop:4}}>{cp.emoji} {cp.name}</div>
+                            <div style={{fontSize:9,color:C.t3,marginTop:1}}>{pct >= 90 ? "Almost ready!" : pct >= 60 ? "Growing well" : "Early stage"}</div>
                           </div>
-                          <div style={{height:7,borderRadius:20,background:"#edf3e9",overflow:"hidden",border:"1px solid #e0e9da"}}>
-                            <div style={{height:"100%",width:`${Math.round(cp.pct*100)}%`,background:`linear-gradient(90deg, ${C.gl}, ${C.green})`,borderRadius:20,transition:"width .4s ease"}}/>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
