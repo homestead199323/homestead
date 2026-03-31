@@ -3718,8 +3718,8 @@ function Dashboard({data, setData, setPage, tasks}) {
               )}
             </Card>
 
-            {/* Mini Farm Map */}
-            <div style={{position:"relative",background:"linear-gradient(180deg,#f7faf5,#edf4e8)",border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",minHeight:160}}>
+            {/* Mini Farm Map — preserves actual farm proportions */}
+            <div style={{position:"relative",background:"linear-gradient(180deg,#f7faf5,#edf4e8)",border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
               {/* Grid overlay */}
               <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
               {/* Zone blocks — with crop color overlays */}
@@ -3795,7 +3795,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                         cursor:"pointer",transition:"all .15s",overflow:"hidden",
                       }}>
                       {/* Zone name label — floating on top */}
-                      <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,
+                      <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,
                         color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                         zIndex:3}}>
                         {z.name}
@@ -3809,22 +3809,22 @@ function Dashboard({data, setData, setPage, tasks}) {
                           width:`${(cb.pw * 100).toFixed(1)}%`,
                           height:`${(cb.ph * 100).toFixed(1)}%`,
                           background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,
-                          borderRadius:6,overflow:"hidden",
+                          borderRadius:4,overflow:"hidden",
                           display:"flex",alignItems:"center",justifyContent:"center",
                           zIndex:1,
                         }}>
                           {/* Inner glow */}
                           <div style={{position:"absolute",inset:"10%",borderRadius:"50%",
                             background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,
-                            filter:"blur(8px)",zIndex:0}}/>
+                            filter:"blur(6px)",zIndex:0}}/>
                           {/* Label */}
-                          <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2}}>
-                            <div style={{fontSize:10,fontWeight:900,color:"#fff",
-                              textShadow:"0 1px 4px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
-                            <div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,.9)",
+                          <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.1}}>
+                            <div style={{fontSize:8,fontWeight:900,color:"#fff",
+                              textShadow:"0 1px 3px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
+                            <div style={{fontSize:6,fontWeight:700,color:"rgba(255,255,255,.85)",
                               textShadow:"0 1px 2px rgba(0,0,0,.4)",
                               overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-                              maxWidth:"100%",padding:"0 2px"}}>{cb.name}</div>
+                              maxWidth:"100%",padding:"0 1px"}}>{cb.name}</div>
                           </div>
                         </div>
                       ))}
