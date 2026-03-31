@@ -1322,8 +1322,8 @@ const Txt = React.memo(function Txt({label,...p}) {
 });
 
 const Overlay = React.memo(function Overlay({title,onClose,children,wide}) {
-  return <div style={{position:"fixed",inset:0,background:"transparent",backdropFilter:"none",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}} onClick={onClose}>
-    <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"88vh",overflowY:"auto",boxShadow:"0 12px 40px rgba(0,0,0,.15)"}}>
+  return <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} className="page-enter" style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"88vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
         <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
         <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:32,height:32,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
@@ -5079,7 +5079,7 @@ function Projects({embedded}) {
   );
 }
 
-const NAV=[{id:"home",l:"Home",e:"🏠"},{id:"tasks",l:"Tasks",e:"📋"},{id:"setup",l:"Farm Layout",e:"🗺"},{id:"farm",l:"Farming",e:"🌱"},{id:"season",l:"Seasonal",e:"🗓"},{id:"live",l:"Livestock",e:"🐄"},{id:"pantry",l:"Pantry",e:"📦"},{id:"fin",l:"Financials",e:"💰"},{id:"manuals",l:"Manuals",e:"📖"},{id:"feedback",l:"Give Feedback",e:"💬"}];
+const NAV=[{id:"home",l:"Home",e:"🏠"},{id:"tasks",l:"Tasks",e:"📋"},{id:"setup",l:"Farm Layout",e:"🗺"},{id:"farm",l:"Farming",e:"🌱"},{id:"live",l:"Livestock",e:"🐄"},{id:"season",l:"Seasonal",e:"🗓"},{id:"pantry",l:"Pantry",e:"📦"},{id:"fin",l:"Financials",e:"💰"},{id:"manuals",l:"Manuals",e:"📖"},{id:"feedback",l:"Give Feedback",e:"💬"}];
 
 /* ═══════════════════════════════════════════
    DATA REDUCER — replaces spread-based state updates
