@@ -1619,18 +1619,33 @@ const FarmMap = React.memo(function FarmMap({zones, plots=[], tasks=[], onZoneCl
   }
 
   // ── Classic Topo: full farm view ──
-  // Crop band colors — alternating muted tints
-  const bandColors = ["rgba(90,100,40,.18)","rgba(70,110,50,.15)","rgba(100,120,30,.12)","rgba(60,90,60,.14)","rgba(80,80,50,.10)"];
-
-  // Growth-stage color gradient: shifts band fill from seed→sprout→vegetative→flowering→harvest
-  // pct 0-1 maps across 5 stages with distinct hues
-  const growthColor = (pct) => {
-    if (pct < 0.15) return "rgba(139,119,80,.18)";   // Seed — earthy brown
-    if (pct < 0.35) return "rgba(120,180,80,.20)";   // Sprout — light green
-    if (pct < 0.60) return "rgba(60,140,60,.22)";    // Vegetative — deep green
-    if (pct < 0.85) return "rgba(140,170,50,.22)";   // Flowering — yellow-green
-    return "rgba(200,130,30,.25)";                    // Harvest-ready — warm gold
-  };
+  // Distinct crop colors — each vegetable gets its own hue so you can tell them apart at a glance
+  const CROP_COLORS = [
+    {r:220,g:60,b:60},   // red (tomato-ish)
+    {r:60,g:160,b:60},   // green
+    {r:60,g:100,b:200},  // blue
+    {r:200,g:160,b:30},  // gold
+    {r:160,g:60,b:180},  // purple
+    {r:230,g:120,b:30},  // orange
+    {r:40,g:180,b:170},  // teal
+    {r:200,g:80,b:140},  // pink
+    {r:100,g:140,b:60},  // olive
+    {r:80,g:80,b:180},   // indigo
+    {r:180,g:100,b:60},  // brown
+    {r:60,g:180,b:100},  // mint
+  ];
+  // Map each unique crop name to a stable color index
+  const cropColorMap = useMemo(() => {
+    const map = new Map();
+    const seen = [];
+    plots.forEach(p => {
+      if (p.status !== "harvested" && !map.has(p.crop)) {
+        map.set(p.crop, CROP_COLORS[seen.length % CROP_COLORS.length]);
+        seen.push(p.crop);
+      }
+    });
+    return map;
+  }, [plots]);
   // Zone style overrides for topo palette
   const TOPO = {
     veg:{fill:"#c5d5a6",stroke:"#7a9456",grad:"#a8c278"},
@@ -1717,6 +1732,10 @@ const FarmMap = React.memo(function FarmMap({zones, plots=[], tasks=[], onZoneCl
             <feGaussianBlur in="s" stdDeviation="1.5" result="b"/>
             <feComposite in="b" in2="SourceAlpha" operator="in"/>
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          {/* Blur filter for crop color overlays */}
+          <filter id="crop-blur" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
           </filter>
           {/* Zone gradients */}
           {Object.entries(TOPO).map(([k,v]) => (
@@ -1829,38 +1848,51 @@ const FarmMap = React.memo(function FarmMap({zones, plots=[], tasks=[], onZoneCl
                 </ellipse>
               </>}
 
-              {/* ── CROP BANDS: each fills exact % of zone as horizontal slab ── */}
+              {/* ── CROP OVERLAYS: blurred color wash per vegetable showing area % ── */}
               {isPlantZone && cropBands.length > 0 && (
                 <g style={{pointerEvents:"none"}}>
+                  {/* Blurred color layer — clipped to zone bounds */}
+                  <clipPath id={`zclip-${z.id}`}>
+                    <rect x={innerX} y={innerY} width={innerW} height={innerH} rx="2"/>
+                  </clipPath>
+                  <g clipPath={`url(#zclip-${z.id})`}>
+                    {cropBands.map((b) => {
+                      const cc = cropColorMap.get(b.p.crop) || {r:100,g:140,b:60};
+                      return (
+                        <rect key={`blur-${b.p.id}`} x={b.bx - 4} y={b.by - 3} width={b.bW + 8} height={b.bH + 6} rx="4"
+                          fill={`rgba(${cc.r},${cc.g},${cc.b},.38)`} filter="url(#crop-blur)"/>
+                      );
+                    })}
+                  </g>
+                  {/* Sharp labels on top of blur — emoji, name, percentage */}
                   {cropBands.map((b, i) => {
-                    const bCol = growthColor(b.pct); // Dynamic color based on growth stage
+                    const cc = cropColorMap.get(b.p.crop) || {r:100,g:140,b:60};
                     const emojiSize = Math.min(16, Math.max(7, b.bH * 0.65));
                     const showLabel = b.bW > 30 && b.bH > 10;
                     const showPct = b.bW > 18 && b.bH > 8;
                     return (
                       <g key={b.p.id}>
-                        {/* Band fill — color shifts through growth stages */}
-                        <rect x={b.bx} y={b.by} width={b.bW} height={b.bH} rx="2" fill={bCol} style={{transition:"fill 2s ease"}}/>
-                        {/* Band separator */}
-                        {i > 0 && <line x1={b.bx} y1={b.by} x2={b.bx+b.bW} y2={b.by} stroke="rgba(255,255,255,.25)" strokeWidth=".4"/>}
+                        {/* Subtle band separator */}
+                        {i > 0 && <line x1={b.bx} y1={b.by} x2={b.bx+b.bW} y2={b.by} stroke="rgba(255,255,255,.3)" strokeWidth=".4"/>}
                         {/* Emoji centered */}
                         <text x={b.bx + b.bW/2} y={b.by + b.bH/2 + emojiSize*0.35}
                           textAnchor="middle" fontSize={emojiSize}>{b.emoji}</text>
-                        {/* Name on left */}
+                        {/* Crop name on left */}
                         {showLabel && <text x={b.bx+4} y={b.by+b.bH/2+3}
-                          fontSize="5.5" fontFamily={F.mono} fontWeight="600" fill="rgba(50,40,20,.65)">{(b.p.name||b.p.crop).slice(0,10)}</text>}
-                        {/* % on right */}
-                        {showPct && <text x={b.bx+b.bW-3} y={b.by+b.bH/2+2.5}
-                          textAnchor="end" fontSize="5" fontFamily={F.mono} fill="rgba(50,40,20,.4)">{b.pctLabel}%</text>}
-                        {/* Growth progress bar at bottom of band — color matches stage */}
-                        <rect x={b.bx+1} y={b.by+b.bH-1.8} width={b.bW-2} height="1.5" rx=".75" fill="rgba(50,40,20,.05)"/>
-                        <rect x={b.bx+1} y={b.by+b.bH-1.8} width={(b.bW-2)*b.pct} height="1.5" rx=".75"
-                          fill={b.pct>=1?"rgba(200,130,30,.5)":b.pct>=0.6?"rgba(140,170,50,.4)":"rgba(80,140,60,.35)"}
-                          style={{transition:"width 1s ease, fill 2s ease"}}/>
+                          fontSize="5.5" fontFamily={F.mono} fontWeight="700" fill={`rgba(${Math.max(0,cc.r-60)},${Math.max(0,cc.g-60)},${Math.max(0,cc.b-60)},.85)`}>{(b.p.name||b.p.crop).slice(0,10)}</text>}
+                        {/* Percentage on right — bold and visible */}
+                        {showPct && (
+                          <g>
+                            <rect x={b.bx+b.bW-18} y={b.by+b.bH/2-5} width="16" height="9" rx="2"
+                              fill={`rgba(${cc.r},${cc.g},${cc.b},.55)`}/>
+                            <text x={b.bx+b.bW-10} y={b.by+b.bH/2+2}
+                              textAnchor="middle" fontSize="5.5" fontFamily={F.mono} fontWeight="800" fill="#fff">{b.pctLabel}%</text>
+                          </g>
+                        )}
                       </g>
                     );
                   })}
-                  {/* Free space */}
+                  {/* Free space indicator */}
                   {freePct > 2 && freeH > 4 && (
                     <g>
                       <rect x={innerX} y={freeY} width={innerW} height={freeH} rx="2"
@@ -1937,6 +1969,18 @@ const FarmMap = React.memo(function FarmMap({zones, plots=[], tasks=[], onZoneCl
         </g>
       </svg>
       <div style={{position:"absolute",bottom:6,left:12,fontSize:9,color:"#7a6a50",fontFamily:F.mono,opacity:.45}}>Click any zone to zoom in</div>
+      {/* Crop color legend */}
+      {cropColorMap.size > 0 && (
+        <div style={{padding:"8px 14px 10px",borderTop:`1px solid ${C.bdr}`,display:"flex",flexWrap:"wrap",gap:"6px 12px",alignItems:"center"}}>
+          <span style={{fontSize:10,fontWeight:700,color:C.t2,fontFamily:F.mono}}>Crops:</span>
+          {[...cropColorMap.entries()].map(([name, cc]) => (
+            <div key={name} style={{display:"flex",alignItems:"center",gap:4}}>
+              <div style={{width:10,height:10,borderRadius:3,background:`rgba(${cc.r},${cc.g},${cc.b},.5)`,boxShadow:`0 0 6px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
+              <span style={{fontSize:10,color:C.t1,fontFamily:F.mono}}>{name}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 });
