@@ -3608,12 +3608,22 @@ function Dashboard({data, setData, setPage, tasks}) {
                 )}
               </Card>
 
-              {/* FARM */}
+              {/* WHAT'S GROWING — crop categories */}
               <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Farm</div>
-                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{data.zones.length}</div>
-                <div style={{fontSize:11,color:C.t2,marginTop:4}}>zones</div>
-                {fp > 0 && <div style={{fontSize:10,color:C.t3,marginTop:2}}>{fp.toLocaleString()} plants total</div>}
+                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Growing</div>
+                {(()=>{
+                  const cats = {};
+                  ap2.forEach(p => { const cr = CROP_MAP.get(p.crop); if(cr) cats[cr.cat] = (cats[cr.cat]||0)+1; });
+                  const entries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+                  const catIcons = {Fruit:"🍅",Vegetable:"🥬",Herb:"🌿",Legume:"🫘",Root:"🥕",Grain:"🌾",Flower:"🌻",Brassica:"🥦",Perennial:"🫐",Tuber:"🥔"};
+                  return <>
+                    <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{entries.length}</div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:4}}>{entries.length === 1 ? "category" : "categories"}</div>
+                    <div style={{fontSize:10,color:C.t3,marginTop:3,lineHeight:1.6}}>
+                      {entries.slice(0,3).map(([cat,n]) => <div key={cat}>{catIcons[cat]||"🌱"} {n} {cat}{n>1?"s":""}</div>)}
+                    </div>
+                  </>;
+                })()}
               </Card>
 
               {/* MONEY */}
