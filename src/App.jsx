@@ -784,6 +784,7 @@ const CROPS = [
    O(1) LOOKUP MAP — replaces 18 linear CROPS.find scans
    ═══════════════════════════════════════════ */
 const CROP_MAP = new Map(CROPS.map(c => [c.name, c]));
+const CROP_COLORS = [{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140},{r:100,g:140,b:60},{r:80,g:80,b:180},{r:180,g:100,b:60},{r:60,g:180,b:100}];
 
 /* ═══════════════════════════════════════════
    LIVESTOCK
@@ -1475,514 +1476,9 @@ function buildTaskQueue(data) {
 }
 
 /* ═══════════════════════════════════════════
-   INTERACTIVE FARM MAP — with zoom
+   (FarmMap component removed — replaced by div-based farm map in Setup)
    ═══════════════════════════════════════════ */
-const FarmMap = React.memo(function FarmMap({zones, plots=[], tasks=[], onZoneClick, selectedZone, onBack, zoomedZone, expandedCrop, setExpandedCrop, expandedAnimal, setExpandedAnimal, onToggleStep, animals=[], allAnimals=[], farmW=100, farmH=60, zoneSpace={}}) {
-  const W = 700, H = 440;
 
-  // Compute "now" ONCE per render — avoid new Date() in every loop iteration
-  const now = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
-  const nowMs = now.getTime();
-
-  const getCropStage = useCallback((p) => {
-    const crop = CROP_MAP.get(p.crop);
-    if (!crop || !p.plantDate) return crop?.stages?.[0] || "🌱";
-    const ds = Math.floor((nowMs - new Date(p.plantDate).getTime()) / 864e5);
-    const pct = Math.min(1, ds / crop.days);
-    return crop.stages?.[Math.min(5, Math.floor(pct * 6))] || crop.emoji;
-  }, [nowMs]);
-
-  // Zoomed view of single zone
-  if (zoomedZone) {
-    const z = zones.find(zn => zn.id === zoomedZone);
-    if (!z) return null;
-    const zt = ZT.find(t => t.id === z.type);
-    const zPlots = plots.filter(p => p.zone === z.id && p.status !== "harvested");
-    const zTasks = tasks.filter(t => t.loc === z.name);
-    const isAnimalZone = ["barn","pasture"].includes(z.type);
-
-    return (
-      <Card p={false} style={{overflow:"hidden"}}>
-        <div style={{background:`linear-gradient(135deg, ${zt?.fill || "#ccc"}cc, ${zt?.fill || "#ccc"}88)`,padding:"20px 24px",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",right:-20,bottom:-20,fontSize:80,opacity:.15}}>{zt?.icon}</div>
-          <button onClick={onBack} style={{background:"rgba(255,255,255,.25)",backdropFilter:"blur(4px)",border:"none",borderRadius:20,padding:"5px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:"#fff",marginBottom:10,display:"flex",alignItems:"center",gap:4}}>← Back to farm</button>
-          <h3 style={{margin:0,fontSize:24,fontFamily:F.head,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,.2)"}}>{z.name}</h3>
-          <div style={{fontSize:13,color:"rgba(255,255,255,.85)",marginTop:4}}>{zt?.label}{zPlots.length > 0 ? ` · ${zPlots.length} crops` : ""}</div>
-        </div>
-        <div style={{padding:20,maxHeight:"60vh",overflowY:"auto"}}>
-          {/* Urgent tasks for this zone */}
-          {zTasks.filter(t => t.pri <= 2).length > 0 && (
-            <div style={{marginBottom:16,background:"#fff5f5",borderRadius:C.rs,padding:12,border:"1px solid #ffcdd2"}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.red,marginBottom:6}}>⚡ Actions needed</div>
-              {zTasks.filter(t => t.pri <= 2).slice(0, 4).map((t, i) => (
-                <div key={i} style={{fontSize:13,padding:"5px 0",borderBottom:i < 3 ? `1px solid ${C.bdr}` : "none",display:"flex",gap:8,alignItems:"center"}}>
-                  <span>{t.emoji}</span><span style={{flex:1}}>{t.title}</span>
-                  {t.stepIdx != null && <button onClick={() => onToggleStep?.(t.plotId, t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer",fontWeight:600}}>✓</button>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* CROPS — full detail with step checklists */}
-          {zPlots.length > 0 && zPlots.map(p => {
-            const crop = CROP_MAP.get(p.crop);
-            if (!crop) return null;
-            const ds = p.plantDate ? Math.floor((nowMs - new Date(p.plantDate).getTime()) / 864e5) : 0;
-            const pct = crop ? Math.min(1, ds / crop.days) : 0;
-            const isReady = pct >= 1;
-            const isExpanded = expandedCrop === p.id;
-            return (
-              <Card key={p.id} style={{marginBottom:10,border:isReady?`2px solid ${C.orange}`:`1px solid ${C.bdr}`}}>
-                <div onClick={() => setExpandedCrop(isExpanded ? null : p.id)} style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
-                  <Ring pct={pct} size={48} color={isReady?C.orange:C.green}>{getCropStage(p)}</Ring>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:15,fontWeight:600}}>{p.name || p.crop}</div>
-                    <div style={{fontSize:12,color:C.t2}}>
-                      {isReady ? "🧺 Ready to harvest!" : `${Math.round(pct*100)}% · ${Math.max(0,crop.days-ds)}d left`}
-                      {p.plantDate ? ` · Planted ${p.plantDate}` : ""}
-                    </div>
-                  </div>
-                  <span style={{fontSize:18,color:C.t3,transition:"transform .2s",transform:isExpanded?"rotate(90deg)":"none"}}>›</span>
-                </div>
-
-                {/* Expanded: full step checklist + info */}
-                {isExpanded && (
-                  <div style={{marginTop:16,borderTop:`1px solid ${C.bdr}`,paddingTop:16}}>
-                    {/* Quick info pills */}
-                    <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-                      <Pill>☀ {crop.sun}</Pill><Pill>💧 {crop.waterFreq}</Pill><Pill>📏 {crop.spacing}cm</Pill>
-                    </div>
-
-                    <WaterCard waterNote={crop.waterNote}/>
-                    <StepChecklist steps={p.steps} plantDate={p.plantDate} onToggle={onToggleStep} plotId={p.id}/>
-                    <StorageCard storage={crop.storage}/>
-
-                    {/* Harvest button */}
-                    {isReady && <Btn v="success" onClick={() => onZoneClick?.(p)} style={{width:"100%",justifyContent:"center"}}>🧺 Harvest → Pantry</Btn>}
-                  </div>
-                )}
-              </Card>
-            );
-          })}
-
-          {/* ANIMALS — for barn/pasture zones */}
-          {isAnimalZone && animals && animals.length > 0 && (
-            <div style={{marginTop:zPlots.length > 0 ? 16 : 0}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#8b6914",marginBottom:8}}>🐄 Animals in this area</div>
-              {animals.map(a => {
-                const db = LDB[a.type];
-                if (!db) return null;
-                const isAExpanded = expandedAnimal === a.id;
-                return (
-                  <Card key={a.id} style={{marginBottom:10}}>
-                    <div onClick={() => setExpandedAnimal(isAExpanded ? null : a.id)} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
-                      <span style={{fontSize:28}}>{db.e}</span>
-                      <div style={{flex:1}}>
-                        <strong style={{fontSize:15}}>{a.name || a.type}</strong>{a.breed ? ` (${a.breed})` : ""}
-                        <div style={{fontSize:12,color:C.t2}}>×{a.count} head</div>
-                      </div>
-                      <span style={{fontSize:18,color:C.t3,transition:"transform .2s",transform:isAExpanded?"rotate(90deg)":"none"}}>›</span>
-                    </div>
-
-                    {isAExpanded && (
-                      <div style={{marginTop:16,borderTop:`1px solid ${C.bdr}`,paddingTop:16}}>
-                        {[{i:"🍽",t:"Feeding",v:db.feed,vq:`${a.type} feeding guide homestead`},
-                          {i:"🏠",t:"Housing",v:db.house,vq:`${a.type} housing coop barn setup`},
-                          {i:"😴",t:"Sleeping",v:db.sleep,vq:`${a.type} sleeping arrangements farm`},
-                          {i:"💕",t:"Breeding",v:db.breed,vq:`${a.type} breeding guide beginners`}
-                        ].map(s => (
-                          <div key={s.t} style={{background:C.card,border:`1px solid ${C.bdr}`,borderRadius:C.rs,padding:10,marginBottom:6}}>
-                            <div style={{fontSize:11,fontWeight:700,color:C.green}}>{s.i} {s.t}</div>
-                            <div style={{fontSize:12,lineHeight:1.6,marginTop:4}}>{s.v}</div>
-                          </div>
-                        ))}
-                        <div style={{background:"#fce4ec",borderRadius:C.rs,padding:10,marginBottom:6}}>
-                          <div style={{fontSize:11,fontWeight:700,color:C.red}}>🩹 Common Injuries</div>
-                          {db.inj.map((j, i) => (
-                            <div key={i} style={{marginTop:6}}>
-                              <strong style={{fontSize:12}}>{j.n}</strong>
-                              <div style={{fontSize:11,color:C.t2}}>{j.t}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Empty state */}
-          {zPlots.length === 0 && !(isAnimalZone && animals && animals.length > 0) && (
-            <div style={{textAlign:"center",padding:32,color:C.t2}}>Nothing here yet. Go to {isAnimalZone ? "Livestock" : "Farming"} to add.</div>
-          )}
-        </div>
-      </Card>
-    );
-  }
-
-  // ── Classic Topo: full farm view ──
-  // Distinct crop colors — each vegetable gets its own hue so you can tell them apart at a glance
-  const CROP_COLORS = [
-    {r:220,g:60,b:60},   // red (tomato-ish)
-    {r:60,g:160,b:60},   // green
-    {r:60,g:100,b:200},  // blue
-    {r:200,g:160,b:30},  // gold
-    {r:160,g:60,b:180},  // purple
-    {r:230,g:120,b:30},  // orange
-    {r:40,g:180,b:170},  // teal
-    {r:200,g:80,b:140},  // pink
-    {r:100,g:140,b:60},  // olive
-    {r:80,g:80,b:180},   // indigo
-    {r:180,g:100,b:60},  // brown
-    {r:60,g:180,b:100},  // mint
-  ];
-  // Map each unique crop name to a stable color index
-  const cropColorMap = useMemo(() => {
-    const map = new Map();
-    const seen = [];
-    plots.forEach(p => {
-      if (p.status !== "harvested" && !map.has(p.crop)) {
-        map.set(p.crop, CROP_COLORS[seen.length % CROP_COLORS.length]);
-        seen.push(p.crop);
-      }
-    });
-    return map;
-  }, [plots]);
-  // Zone style overrides for topo palette
-  const TOPO = {
-    veg:{fill:"#c5d5a6",stroke:"#7a9456",grad:"#a8c278"},
-    orchard:{fill:"#b8cca0",stroke:"#6a8848",grad:"#9ab880"},
-    herbs:{fill:"#d0e0bc",stroke:"#8aa060",grad:"#bdd4a0"},
-    pasture:{fill:"#d8e0c8",stroke:"#98b078",grad:"#c8d4b0"},
-    greenhouse:{fill:"#c8dcc8",stroke:"#78a878",grad:"#b0d0b0"},
-    barn:{fill:"#d4c4a8",stroke:"#a08858",grad:"#c0aa88"},
-    water:{fill:"#a8c8d8",stroke:"#6898b0",grad:"#88b0c8"},
-    house:{fill:"#ddd4c0",stroke:"#b0a080",grad:"#d0c0a8"},
-    compost:{fill:"#b8a890",stroke:"#8a7050",grad:"#a89478"},
-    storage:{fill:"#c8bca8",stroke:"#988868",grad:"#b8a890"},
-  };
-
-  // Hover tooltip state for zones
-  const svgRef = useRef(null);
-  const [hoverZone, setHoverZone] = useState(null);
-  const [hoverPos, setHoverPos] = useState({x:0, y:0});
-
-  const handleZoneHover = useCallback((z, zPlots, zTasks, sp, e) => {
-    if (!svgRef.current) return;
-    const svgRect = svgRef.current.getBoundingClientRect();
-    const x = e.clientX - svgRect.left;
-    const y = e.clientY - svgRect.top;
-    setHoverPos({x, y});
-    setHoverZone({
-      name: z.name,
-      type: ZT_MAP.get(z.type)?.label || z.type,
-      icon: ZT_MAP.get(z.type)?.icon || "",
-      cropCount: zPlots.length,
-      taskCount: zTasks.length,
-      usedPct: sp?.pct ? Math.round(sp.pct * 100) : 0,
-      crops: zPlots.slice(0, 3).map(p => {
-        const crop = CROP_MAP.get(p.crop);
-        const ds = p.plantDate ? Math.floor((nowMs - new Date(p.plantDate).getTime()) / 864e5) : 0;
-        const pct = crop ? Math.min(100, Math.round(ds / crop.days * 100)) : 0;
-        return { name: p.name || p.crop, emoji: crop?.emoji || "🌱", pct };
-      }),
-    });
-  }, [nowMs]);
-
-  return (
-    <Card p={false} style={{overflow:"hidden",position:"relative"}}>
-      {/* Zone hover tooltip */}
-      {hoverZone && (
-        <div style={{
-          position:"absolute", left: hoverPos.x, top: hoverPos.y - 8,
-          transform:"translate(-50%, -100%)", zIndex:50, pointerEvents:"none",
-          minWidth:180, maxWidth:240,
-        }}>
-          <div style={{
-            background:"#1d1d1f", color:"#fff", borderRadius:10, padding:"10px 14px",
-            fontSize:12, lineHeight:1.5, fontFamily:F.body, boxShadow:"0 8px 24px rgba(0,0,0,.25)",
-          }}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>{hoverZone.icon} {hoverZone.name}</div>
-            <div style={{opacity:.7,fontSize:11,marginBottom:6}}>{hoverZone.type} · {hoverZone.usedPct}% used · {hoverZone.taskCount} tasks</div>
-            {hoverZone.crops.length > 0 && hoverZone.crops.map((c,i) => (
-              <div key={i} style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
-                <span>{c.emoji}</span>
-                <span style={{flex:1}}>{c.name}</span>
-                <span style={{fontSize:10,opacity:.7}}>{c.pct}%</span>
-                <div style={{width:30,height:3,borderRadius:2,background:"rgba(255,255,255,.15)"}}>
-                  <div style={{width:`${c.pct}%`,height:3,borderRadius:2,background:c.pct>=85?"#ffcc00":"#34c759"}}/>
-                </div>
-              </div>
-            ))}
-            {hoverZone.cropCount === 0 && <div style={{opacity:.5,fontSize:11}}>No crops planted</div>}
-          </div>
-          <div style={{width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"6px solid #1d1d1f",margin:"0 auto"}}/>
-        </div>
-      )}
-      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}}>
-        <defs>
-          {/* Contour line pattern — topographic feel */}
-          <pattern id="topo-ct" width="50" height="30" patternUnits="userSpaceOnUse">
-            <path d="M0,15 Q12,10 25,15 T50,15" fill="none" stroke="#5a7340" strokeWidth=".25" opacity=".12"/>
-            <path d="M0,25 Q12,20 25,25 T50,25" fill="none" stroke="#5a7340" strokeWidth=".2" opacity=".084"/>
-            <path d="M0,5 Q12,1 25,5 T50,5" fill="none" stroke="#5a7340" strokeWidth=".2" opacity=".10"/>
-          </pattern>
-          {/* Inner shadow filter for zone depth */}
-          <filter id="topo-in">
-            <feFlood floodColor="#000" floodOpacity=".04" result="f"/>
-            <feComposite in="f" in2="SourceAlpha" operator="in" result="s"/>
-            <feGaussianBlur in="s" stdDeviation="1.5" result="b"/>
-            <feComposite in="b" in2="SourceAlpha" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          {/* Zone gradients */}
-          {Object.entries(TOPO).map(([k,v]) => (
-            <linearGradient key={k} id={`tg-${k}`} x1="0" y1="0" x2=".3" y2="1">
-              <stop offset="0%" stopColor={v.fill}/><stop offset="100%" stopColor={v.grad}/>
-            </linearGradient>
-          ))}
-        </defs>
-
-        {/* Parchment background + contour overlay */}
-        <rect width={W} height={H} fill="#e8e0d0"/>
-        <rect width={W} height={H} fill="url(#topo-ct)"/>
-
-        {/* Survey grid ticks */}
-        {[...Array(Math.floor(farmW/10)-1)].map((_,i) => {
-          const px = ((i+1)*10/farmW)*W;
-          return <g key={`gx${i}`}><line x1={px} y1={0} x2={px} y2={5} stroke="#8a7a60" strokeWidth=".4" opacity=".25"/><line x1={px} y1={H-5} x2={px} y2={H} stroke="#8a7a60" strokeWidth=".4" opacity=".25"/></g>;
-        })}
-        {[...Array(Math.floor(farmH/10)-1)].map((_,i) => {
-          const py = ((i+1)*10/farmH)*H;
-          return <g key={`gy${i}`}><line x1={0} y1={py} x2={5} y2={py} stroke="#8a7a60" strokeWidth=".4" opacity=".25"/><line x1={W-5} y1={py} x2={W} y2={py} stroke="#8a7a60" strokeWidth=".4" opacity=".25"/></g>;
-        })}
-
-        {/* ── Zones ── */}
-        {zones.map(z => {
-          const zt = ZT_MAP.get(z.type);
-          const tp = TOPO[z.type] || TOPO.veg;
-          const x = z.xM !== undefined ? (z.xM/farmW)*W : (z.x/100)*W;
-          const y = z.yM !== undefined ? (z.yM/farmH)*H : (z.y/100)*H;
-          const w = z.wM !== undefined ? (z.wM/farmW)*W : (z.w/100)*W;
-          const h = z.hM !== undefined ? (z.hM/farmH)*H : (z.h/100)*H;
-          const sel = selectedZone === z.id;
-          const isWater = z.type === "water";
-          const isPlantZone = ["veg","orchard","herbs","greenhouse"].includes(z.type);
-          const isAnimalZone = ["barn","pasture"].includes(z.type);
-
-          // Crop data for proportional bands
-          const zPlots = plots.filter(p => p.zone === z.id && p.status !== "harvested");
-          const sp = zoneSpace[z.id] || {totalM2:0,usedM2:0,freeM2:0,pct:0};
-          const totalM2 = sp.totalM2;
-
-          // Build proportional crop bands — each fills exact % of zone as a horizontal slab
-          const PAD = 1.5, TOP = 13;
-          const innerX = x + PAD, innerY = y + TOP;
-          const innerW = w - PAD*2, innerH = h - TOP - PAD;
-          const cropBands = [];
-          let bandCurY = 0;
-
-          if (isPlantZone && totalM2 > 0 && zPlots.length > 0 && innerW > 8 && innerH > 8) {
-            // Compute area per plot, sort largest first
-            const plotsWithArea = zPlots.map(p => {
-              const area = plotAreaM2(p);
-              return { p, area, frac: Math.min(0.98, area / totalM2) };
-            }).filter(pa => pa.frac > 0.001).sort((a,b) => b.frac - a.frac);
-
-            plotsWithArea.forEach((pa, i) => {
-              const bH = pa.frac * innerH;
-              if (bH < 3 || bandCurY + bH > innerH) return;
-              const crop = CROP_MAP.get(pa.p.crop);
-              const ds = pa.p.plantDate ? Math.floor((nowMs - new Date(pa.p.plantDate).getTime()) / 864e5) : 0;
-              const pct = crop ? Math.min(1, ds / crop.days) : 0;
-              cropBands.push({
-                p: pa.p, crop, bx: innerX, by: innerY + bandCurY,
-                bW: innerW, bH, pct, frac: pa.frac,
-                pctLabel: Math.round(pa.frac * 100),
-                emoji: getCropStage(pa.p),
-              });
-              bandCurY += bH;
-            });
-          }
-
-          const freeFrac = Math.max(0, 1 - cropBands.reduce((s,b) => s + b.frac, 0));
-          const freePct = Math.round(freeFrac * 100);
-          const freeY = innerY + bandCurY;
-          const freeH = innerH - bandCurY;
-
-          // Animal icons
-          const zAnimals = isAnimalZone ? allAnimals.filter(a => LDB[a.type]) : [];
-          const animalIconMap = {};
-          zAnimals.forEach(a => {
-            if (!animalIconMap[a.type]) animalIconMap[a.type] = {emoji: LDB[a.type]?.e||"🐄", count:0};
-            animalIconMap[a.type].count += a.count;
-          });
-          const animalIcons = Object.entries(animalIconMap);
-
-          // Tasks
-          const zTasks = tasks.filter(t => t.loc === z.name && t.pri <= 2);
-          const urgentCount = zTasks.length;
-
-          return (
-            <g key={z.id} onClick={() => onZoneClick?.(z)}
-              onMouseMove={(e) => handleZoneHover(z, zPlots, zTasks, sp, e)}
-              onMouseLeave={() => setHoverZone(null)}
-              style={{cursor:"pointer"}}>
-              {/* Drop shadow */}
-              <rect x={x+1} y={y+1.5} width={w} height={h} rx={isWater?Math.min(w,h)/2:4} fill="rgba(50,40,20,.06)"/>
-
-              {/* Zone fill — topo gradient + inner shadow */}
-              <rect x={x} y={y} width={w} height={h} rx={isWater?Math.min(w,h)/2:4}
-                fill={`url(#tg-${z.type})`} stroke={sel?"#1d1d1f":tp.stroke}
-                strokeWidth={sel?2:0.7} filter="url(#topo-in)"/>
-
-              {/* Water: dual ripple animation */}
-              {isWater && <>
-                <ellipse cx={x+w/2} cy={y+h/2} rx={w/3} ry={h/3.5} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth=".6">
-                  <animate attributeName="rx" values={`${w/3};${w/3-1.5};${w/3}`} dur="3s" repeatCount="indefinite"/>
-                </ellipse>
-                <ellipse cx={x+w/2} cy={y+h/2} rx={w/5} ry={h/5} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth=".4">
-                  <animate attributeName="rx" values={`${w/5};${w/5+1};${w/5}`} dur="2.2s" repeatCount="indefinite"/>
-                </ellipse>
-              </>}
-
-              {/* ── CROP COLOR OVERLAYS: each vegetable gets a colored band ── */}
-              {isPlantZone && cropBands.length > 0 && (
-                <g style={{pointerEvents:"none"}}>
-                  {cropBands.map((b, i) => {
-                    const cc = cropColorMap.get(b.p.crop) || {r:100,g:140,b:60};
-                    const emojiSize = Math.min(16, Math.max(8, b.bH * 0.6));
-                    const showLabel = b.bW > 28 && b.bH > 9;
-                    const showPct = b.bW > 16 && b.bH > 7;
-                    return (
-                      <g key={b.p.id}>
-                        {/* Colored fill — the main visible overlay */}
-                        <rect x={b.bx} y={b.by} width={b.bW} height={b.bH} rx="2"
-                          fill={`rgba(${cc.r},${cc.g},${cc.b},.35)`}/>
-                        {/* Softer inner glow — slightly inset, more opaque center */}
-                        <rect x={b.bx+1.5} y={b.by+1} width={Math.max(1,b.bW-3)} height={Math.max(1,b.bH-2)} rx="2"
-                          fill={`rgba(${cc.r},${cc.g},${cc.b},.18)`}/>
-                        {/* Separator between crops */}
-                        {i > 0 && <line x1={b.bx} y1={b.by} x2={b.bx+b.bW} y2={b.by} stroke="rgba(255,255,255,.5)" strokeWidth=".6"/>}
-                        {/* Crop emoji */}
-                        <text x={b.bx + b.bW/2} y={b.by + b.bH/2 + emojiSize*0.35}
-                          textAnchor="middle" fontSize={emojiSize}>{b.emoji}</text>
-                        {/* Crop name */}
-                        {showLabel && <text x={b.bx+3} y={b.by+b.bH/2+2.5}
-                          fontSize="5.5" fontFamily={F.mono} fontWeight="700" fill={`rgb(${Math.max(0,cc.r-80)},${Math.max(0,cc.g-80)},${Math.max(0,cc.b-80)})`}>{(b.p.name||b.p.crop).slice(0,10)}</text>}
-                        {/* Percentage badge */}
-                        {showPct && (
-                          <g>
-                            <rect x={b.bx+b.bW-19} y={b.by+b.bH/2-5} width="17" height="9" rx="2.5"
-                              fill={`rgba(${cc.r},${cc.g},${cc.b},.75)`}/>
-                            <text x={b.bx+b.bW-10.5} y={b.by+b.bH/2+1.5}
-                              textAnchor="middle" fontSize="5.5" fontFamily={F.mono} fontWeight="800" fill="#fff">{b.pctLabel}%</text>
-                          </g>
-                        )}
-                      </g>
-                    );
-                  })}
-                  {/* Free space */}
-                  {freePct > 2 && freeH > 4 && (
-                    <g>
-                      <rect x={innerX} y={freeY} width={innerW} height={freeH} rx="2"
-                        fill="rgba(255,255,255,.1)" stroke="rgba(120,100,60,.15)" strokeWidth=".4" strokeDasharray="3 2"/>
-                      {freeH > 8 && <text x={innerX+innerW/2} y={freeY+freeH/2+3}
-                        textAnchor="middle" fontSize="5" fontFamily={F.mono} fill="rgba(80,70,40,.35)">{freePct}% free</text>}
-                    </g>
-                  )}
-                </g>
-              )}
-
-              {/* FULL indicator */}
-              {isPlantZone && sp.totalM2 > 0 && sp.pct >= 0.95 && (
-                <text x={x+w/2} y={y+h-3} textAnchor="middle" fontSize="6"
-                  fill="rgba(192,57,43,.85)" fontFamily={F.mono} fontWeight="800"
-                  style={{pointerEvents:"none"}}>FULL</text>
-              )}
-
-              {/* ── Animal icons ── */}
-              {!isPlantZone && !isWater && animalIcons.length > 0 && (
-                <g style={{pointerEvents:"none"}}>
-                  {animalIcons.slice(0,6).map(([type, {emoji, count}], i) => {
-                    const cols = Math.max(1, Math.floor((w-8)/22));
-                    const col = i % cols, row = Math.floor(i / cols);
-                    const cx = x + 12 + col * 22, cy = y + 24 + row * 22;
-                    return (
-                      <g key={type}>
-                        <circle cx={cx} cy={cy} r="8" fill="rgba(255,255,255,.45)"/>
-                        <text x={cx} y={cy+3.5} fontSize="10" textAnchor="middle">{emoji}</text>
-                        {count > 1 && <text x={cx+6} y={cy-3} fontSize="5" fill={tp.stroke} fontWeight="700" fontFamily={F.mono}>{count}</text>}
-                      </g>
-                    );
-                  })}
-                </g>
-              )}
-
-              {/* Zone label — pill with frosted background */}
-              <rect x={x+2} y={y+1.5} width={Math.min(w-4, z.name.length*5.2+10)} height="9.5" rx="2"
-                fill="rgba(255,255,255,.6)"/>
-              <text x={x+6} y={y+8.5} fontSize="6.5" fontFamily={F.mono} fontWeight="700" fill="#4a4030"
-                style={{pointerEvents:"none"}}>{z.name}</text>
-
-              {/* Task notification badge */}
-              {urgentCount > 0 && (
-                <g style={{pointerEvents:"none"}}>
-                  <circle cx={x+w-8} cy={y+8} r="8" fill="none" stroke="#c0392b" strokeWidth="1.5" opacity=".4">
-                    <animate attributeName="r" values="6;10;6" dur="1.5s" repeatCount="indefinite"/>
-                    <animate attributeName="opacity" values=".4;0;.4" dur="1.5s" repeatCount="indefinite"/>
-                  </circle>
-                  <circle cx={x+w-8} cy={y+8} r="6.5" fill={urgentCount>=3?"#c0392b":C.orange} opacity=".9"/>
-                  <text x={x+w-8} y={y+10.5} textAnchor="middle" fontSize="7" fill="#fff" fontWeight="800">{urgentCount}</text>
-                </g>
-              )}
-
-              {/* Hover border */}
-              <rect x={x} y={y} width={w} height={h} rx={isWater?Math.min(w,h)/2:4} fill="transparent" stroke="transparent" strokeWidth="1.5">
-                <set attributeName="stroke" to="#4a4030" begin="mouseover" end="mouseout"/>
-              </rect>
-            </g>
-          );
-        })}
-
-        {/* Scale bar — survey style */}
-        <line x1={W-70} y1={H-10} x2={W-18} y2={H-10} stroke="#7a6a50" strokeWidth="1" strokeLinecap="round" opacity=".45"/>
-        <line x1={W-70} y1={H-13} x2={W-70} y2={H-7} stroke="#7a6a50" strokeWidth=".7" opacity=".35"/>
-        <line x1={W-18} y1={H-13} x2={W-18} y2={H-7} stroke="#7a6a50" strokeWidth=".7" opacity=".35"/>
-        <text x={W-44} y={H-13.5} textAnchor="middle" fontSize="5.5" fill="#7a6a50" fontFamily={F.mono} opacity=".5">10m</text>
-
-        {/* Compass */}
-        <g transform="translate(16,16)" opacity=".4">
-          <circle cx="0" cy="0" r="7" fill="none" stroke="#7a6a50" strokeWidth=".5"/>
-          <line x1="0" y1="-5" x2="0" y2="-2" stroke="#7a6a50" strokeWidth=".8"/>
-          <text x="0" y="-9" textAnchor="middle" fontSize="4.5" fill="#7a6a50" fontFamily={F.mono} fontWeight="700">N</text>
-        </g>
-      </svg>
-      <div style={{position:"absolute",bottom:6,left:12,fontSize:9,color:"#7a6a50",fontFamily:F.mono,opacity:.45}}>Click any zone to zoom in</div>
-      {/* Crop color legend */}
-      {cropColorMap.size > 0 && (
-        <div style={{padding:"8px 14px 10px",borderTop:`1px solid ${C.bdr}`,display:"flex",flexWrap:"wrap",gap:"6px 12px",alignItems:"center"}}>
-          <span style={{fontSize:10,fontWeight:700,color:C.t2,fontFamily:F.mono}}>Crops:</span>
-          {[...cropColorMap.entries()].map(([name, cc]) => (
-            <div key={name} style={{display:"flex",alignItems:"center",gap:4}}>
-              <div style={{width:10,height:10,borderRadius:3,background:`rgba(${cc.r},${cc.g},${cc.b},.5)`,boxShadow:`0 0 6px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
-              <span style={{fontSize:10,color:C.t1,fontFamily:F.mono}}>{name}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </Card>
-  );
-});
-
-
-
-
-/* ═══════════════════════════════════════════
-   WEATHER MINI WIDGET — used in Dashboard & TaskQueue
-   ═══════════════════════════════════════════ */
 /* ═══════════════════════════════════════════
    WEATHER DASHBOARD CARD — full card for dashboard
    ═══════════════════════════════════════════ */
@@ -2438,7 +1934,7 @@ function Setup({data, setData}) {
 
         {/* Zone blocks — with crop color patches (same as Dashboard) */}
         {(()=>{
-          const SETUP_CC = [{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140},{r:100,g:140,b:60},{r:80,g:80,b:180},{r:180,g:100,b:60},{r:60,g:180,b:100}];
+          const SETUP_CC = CROP_COLORS;
           const setupColorMap = new Map(); let sci=0;
           data.garden.plots.forEach(p=>{ if(p.status!=="harvested"&&!setupColorMap.has(p.crop)){setupColorMap.set(p.crop,SETUP_CC[sci%SETUP_CC.length]);sci++;} });
           return zones.map(z => {
@@ -2677,7 +2173,7 @@ function Setup({data, setData}) {
       </div>
       {/* Crop color legend */}
       {(()=>{
-        const LCC=[{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140}];
+        const LCC = CROP_COLORS.slice(0, 8);
         const lm=new Map();let li=0;
         data.garden.plots.filter(p=>p.status!=="harvested").forEach(p=>{if(!lm.has(p.crop)){lm.set(p.crop,LCC[li%LCC.length]);li++;}});
         if(lm.size===0)return null;
@@ -3805,11 +3301,7 @@ function Dashboard({data, setData, setPage, tasks}) {
               {/* Zone blocks — with crop color overlays */}
               {(()=>{
                 // Build crop color map for the mini map
-                const MINI_CROP_COLORS = [
-                  {r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},
-                  {r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140},
-                  {r:100,g:140,b:60},{r:80,g:80,b:180},{r:180,g:100,b:60},{r:60,g:180,b:100},
-                ];
+                const MINI_CROP_COLORS = CROP_COLORS;
                 const miniCropColorMap = new Map();
                 let colorIdx = 0;
                 data.garden.plots.forEach(p => {
@@ -3917,7 +3409,7 @@ function Dashboard({data, setData, setPage, tasks}) {
             </div>
             {/* Crop color legend */}
             {(()=>{
-              const MINI_CC = [{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140}];
+              const MINI_CC = CROP_COLORS.slice(0, 8);
               const legendMap = new Map(); let li=0;
               data.garden.plots.filter(p=>p.status!=="harvested").forEach(p=>{
                 if(!legendMap.has(p.crop)){legendMap.set(p.crop,MINI_CC[li%MINI_CC.length]);li++;}
@@ -3939,7 +3431,7 @@ function Dashboard({data, setData, setPage, tasks}) {
         )}
       </div>
 
-      {/* Stats row moved to header above */}
+
 
       {/* Recent Activity */}
       {data.log.length>0&&<div><div style={{fontSize:14,fontWeight:700,fontFamily:F.head,marginBottom:8}}>Recent Activity</div>{data.log.slice(-5).reverse().map((l,i)=><div key={i} style={{fontSize:12,color:C.t2,padding:"6px 0",borderBottom:`1px solid ${C.bg}`}}>{l.text}</div>)}</div>}
