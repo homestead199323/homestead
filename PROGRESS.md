@@ -1,64 +1,113 @@
-# Homestead Launch Progress
+# Homestead Launch — Progress Tracker
+# Last updated: 2026-03-31
 
-## Phase 1: Project Scaffolding — COMPLETE (2026-03-31)
-- [x] Scaffold Vite + React project
-- [x] Integrate v30 JSX (5,312 lines) — zero build errors
-- [x] Test all 9 modules in browser
-- [x] Initialize Git, create GitHub repo (homestead199323/homestead)
-- [x] Push to GitHub (4 commits on main)
-
-## Phase 2: PWA + Deploy — COMPLETE (2026-03-31)
-- [x] Create manifest.json with app metadata
-- [x] Create service worker (sw.js) with cache-first strategy
-- [x] Generate app icons (192px + 512px)
-- [x] Update index.html with PWA meta tags
-- [x] Sign up for Vercel (Hobby/free tier)
-- [x] Link GitHub account to Vercel
-- [x] Deploy to Vercel — LIVE at https://homestead-sigma.vercel.app
-- [x] Verify app loads correctly in production
-
-## Phase 3: Visual Polish — COMPLETE (2026-03-31)
-- [x] Premium design system CSS (Google Fonts: Inter + Plus Jakarta Sans)
-- [x] 10+ keyframe animations (fadeUp, scaleBounce, shimmer, floatUp, confettiBurst, etc.)
-- [x] Glass morphism, custom scrollbar, reduced-motion accessibility
-- [x] Gradient sidebar header (grdHero), polished nav items with active indicators
-- [x] Upgraded Card/Btn/Overlay/Stat components with gradient accents and shadows
-- [x] Page-enter animations on ALL pages (Dashboard, Farming, Livestock, Pantry, Financials, Calendar, Tasks, Farm Designer, Manuals)
-- [x] Consistent page headers (30px/800wt/tight tracking) with descriptive subtitles
-- [x] Premium empty states with gradient backgrounds and encouraging copy
-- [x] Micro-interactions: tactile press, card hover lift, pill hover effects
-- [x] Success flash, badge unlock, emoji bounce, progress bar animations
-- [x] Print styles and prefers-reduced-motion accessibility
-- [x] All changes pushed to GitHub and auto-deployed to Vercel
-
-## Phase 4: AI Assistant Integration — COMPLETE (2026-03-31)
-- [x] Built farmKnowledgeEngine() — offline query matcher with 15+ query types
-- [x] Crop-specific queries: growing guides, pests, watering, harvesting, varieties, companion planting
-- [x] Animal-specific queries: feeding, housing, breeding, health, produce, breeds, monthly calendar
-- [x] Seasonal queries: what to plant/harvest this month, personalized recommendations
-- [x] Farm status: personalized summary of user's crops, animals, zones, financials
-- [x] Daily task integration: pulls from buildTaskQueue() with priority levels
-- [x] Preservation queries: all methods from PRESERVATION database
-- [x] General advice: soil health, watering tips, heat stress, yellowing leaves, beginner guide
-- [x] Fuzzy matching for crop/animal name lookups across all databases
-- [x] Floating chat bubble UI with gradient header and close button
-- [x] Quick prompt buttons for common questions (8 prompts)
-- [x] Responsive chat panel (380px wide, mobile-friendly)
-- [x] Works 100% offline — no API keys, no external calls
-- [x] Autocomplete dropdown: type 2+ letters to see matching queries from all crops, animals, preservation methods
-- [x] Scored fuzzy matching with deduplication (top 8 suggestions)
-- [x] Keyboard nav (arrow keys, Enter, Tab, Escape) + tap to send
-- [x] Pushed to GitHub and auto-deployed to Vercel
-
-## Phase 5: Multi-user (Supabase) — PENDING
-## Phase 6: Monetization (Stripe) — PENDING
-## Phase 7: Launch & Marketing — PENDING
+## Current Phase: 3 — Landing Page + Feedback Loop
+## Note: Phases were done out of order (1→2→5→3). That's fine — the app needed polish before showing it to people.
 
 ---
 
-## Key Info
-- **Live URL:** https://homestead-sigma.vercel.app
-- **GitHub:** homestead199323/homestead (private, 4 commits)
-- **Vercel account:** derviskanina-5360 (Hobby tier, Google login)
-- **App version:** v30 (5,613 lines JSX + 370 lines CSS)
-- **Stack:** Vite 8, React 19, single-file JSX, localStorage persistence
+## Phase 1: Project Scaffolding ✅ COMPLETE
+- [x] Install Node.js (LTS)
+- [x] Scaffold Vite project
+- [x] Replace src/App.jsx with v27 JSX content
+- [x] Run npm run dev — app loads at localhost:5173
+- [x] Test all 9 modules in Chrome
+- [x] Fix artifact-only code (conditional spreads, unicode, imports)
+- [x] Initialize Git repo
+- [x] Create GitHub repo and push
+## Phase 2: PWA + Deploy ✅ COMPLETE
+- [x] Install vite-plugin-pwa
+- [x] Configure vite.config.js with PWA manifest
+- [x] Create app icons (192px + 512px)
+- [x] Build and test production build locally
+- [x] Create Vercel account
+- [x] Connect GitHub to Vercel
+- [x] Test PWA install on phone
+- [ ] (Optional) Custom domain
+
+## Phase 5: UI/UX Polish ✅ COMPLETE (done before Phase 3)
+- [x] Visual consistency audit (premium design system: Google Fonts, gradient sidebar, glass morphism)
+- [x] Redesign Dashboard (farm map, stats, activity log all on one screen)
+- [x] Mobile responsiveness
+- [x] Performance optimization (v25: CROP_MAP, React.memo, debounced saves, useReducer)
+- [x] Micro-interactions (10+ keyframe animations, page-enter transitions on all 9 pages)
+- [x] Empty states for all modules
+- [x] Professional app icon + splash screen
+- [x] AI Assistant — fully offline farming assistant with knowledge engine + autocomplete dropdown
+- [x] Farm Layout Designer — draggable/resizable crop patches with % zone coverage
+- [x] Seasonal crop planting popup fix
+- [x] Removed "Saved" flash indicator (autosaves quietly)
+## Phase 3: Landing Page + Feedback Loop — IN PROGRESS (7/11 done)
+- [x] Build landing page (custom HTML with real Playwright screenshots of all 7 features)
+- [x] Write landing page copy (hero, features, pricing, stats bar, CTA)
+- [x] Deploy landing page as site front door (root URL = landing, /app = React app)
+- [x] Capture real screenshots with rich data (Dashboard, Farming, Tasks, Financials, Preserving, Projects, Farm Layout)
+- [x] Add mailto: feedback button in app
+- [x] Create feedback survey (4 questions: most-used module, first 5 min confusion, missing feature, willingness to pay)
+- [x] Add in-app feedback prompt (triggers after 7 days of use)
+- [ ] Set up analytics (Plausible or Umami, free tier)
+- [ ] Announce on X/Twitter
+- [ ] Share in Facebook Groups (3-5 homesteading/permaculture/Mediterranean gardening groups)
+- [ ] Submit to ProductHunt (schedule for a Tuesday)
+
+## Phase 4: Real-World Testing — NOT STARTED (depends on Phase 3 users)
+- [ ] Monitor feedback daily
+- [ ] Categorize bugs vs. feature requests
+- [ ] Fix critical bugs within 48h
+- [ ] Validate crop data with real growers
+- [ ] Test on low-end Android devices
+- [ ] Test offline 48+ hours
+- [ ] Stress-test localStorage (50+ crops, 20+ animals)
+- [ ] Evaluate onboarding completion rate
+## Phase 6: Auth + Monetization — NOT STARTED
+- [ ] Create Supabase project
+- [ ] Design database schema
+- [ ] Migrate localStorage to Supabase
+- [ ] Add Supabase Auth (email + Google)
+- [ ] Build login/signup screens
+- [ ] Create Stripe account + products
+- [ ] Integrate Stripe Checkout (Edge Functions)
+- [ ] Build subscription gate
+- [ ] Offline token caching (72h)
+- [ ] Test full flow: signup > trial > subscribe > cancel
+
+## Phase 7: Growth + Community — NOT STARTED
+- [ ] X/Twitter content cadence (3-5/week)
+- [ ] TikTok/Reels content (2-3/week)
+- [ ] Reddit engagement (expert mode)
+- [ ] Facebook Groups (10-15 groups)
+- [ ] YouTube monthly deep-dives
+- [ ] Discord/Telegram community
+- [ ] Monthly newsletter
+- [ ] User spotlights
+- [ ] Open-source manual data
+
+---
+
+## Milestone Tracker
+- [ ] 100 users (Month 1 target)
+- [ ] 500 users (Month 3 target)
+- [ ] 2,000 users (Month 6 target)
+- [ ] First paying subscriber
+- [ ] $100 MRR
+- [ ] $500 MRR
+---
+
+## App Version History
+- v24: Base app with all 9 modules
+- v25: Performance optimizations (CROP_MAP, React.memo, debounced saves, useReducer)
+- v27: Stable baseline with bug fixes
+- v30: Farm Layout clean design (light green gradient, CSS grid, flat colored zones)
+
+## Key Decisions Made
+- Phases done out of order: 1→2→5→3 (polished before launching)
+- Landing page at root URL, app at /app (Vercel rewrites + postbuild script)
+- Screenshots captured via Playwright with injected localStorage data
+- Mediterranean/Albanian agriculture focus is non-negotiable
+- Pricing: Free 7-day trial, Basic $4.99/mo, Pro $9.99/mo, Lifetime $190
+
+## Key Links
+- Live site: https://homestead-sigma.vercel.app
+- App: https://homestead-sigma.vercel.app/app
+- GitHub: homestead199323/homestead (private)
+- Vercel account: derviskanina-5360 (Google login)

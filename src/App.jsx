@@ -5079,7 +5079,7 @@ function Projects({embedded}) {
   );
 }
 
-const NAV=[{id:"home",l:"Home",e:"🏠"},{id:"tasks",l:"Tasks",e:"📋"},{id:"setup",l:"Farm Layout",e:"🗺"},{id:"farm",l:"Farming",e:"🌱"},{id:"season",l:"Seasonal",e:"🗓"},{id:"live",l:"Livestock",e:"🐄"},{id:"pantry",l:"Pantry",e:"📦"},{id:"fin",l:"Financials",e:"💰"},{id:"manuals",l:"Manuals",e:"📖"}];
+const NAV=[{id:"home",l:"Home",e:"🏠"},{id:"tasks",l:"Tasks",e:"📋"},{id:"setup",l:"Farm Layout",e:"🗺"},{id:"farm",l:"Farming",e:"🌱"},{id:"season",l:"Seasonal",e:"🗓"},{id:"live",l:"Livestock",e:"🐄"},{id:"pantry",l:"Pantry",e:"📦"},{id:"fin",l:"Financials",e:"💰"},{id:"manuals",l:"Manuals",e:"📖"},{id:"feedback",l:"Give Feedback",e:"💬"}];
 
 /* ═══════════════════════════════════════════
    DATA REDUCER — replaces spread-based state updates
@@ -5238,6 +5238,24 @@ function AppInner() {
   const [isMob,setIsMob]=useState(typeof window !== "undefined" ? window.innerWidth < 700 : false);
   const [saveStatus,setSaveStatus]=useState("");
   const [isOffline,setIsOffline]=useState(typeof navigator !== "undefined" && !navigator.onLine);
+  const [showFeedbackPrompt,setShowFeedbackPrompt]=useState(false);
+
+  // 7-day feedback prompt — record first use, show prompt after 7 days (once)
+  useEffect(() => {
+    try {
+      const done = localStorage.getItem("hfm_feedback_done");
+      if (done) return; // already submitted
+      const dismissed = localStorage.getItem("hfm_feedback_dismissed");
+      if (dismissed) return; // user said "maybe later"
+      let firstUse = localStorage.getItem("hfm_first_use");
+      if (!firstUse) {
+        localStorage.setItem("hfm_first_use", Date.now().toString());
+        return; // just started using, check again next time
+      }
+      const daysSinceFirst = (Date.now() - parseInt(firstUse)) / (1000 * 60 * 60 * 24);
+      if (daysSinceFirst >= 7) setShowFeedbackPrompt(true);
+    } catch(e) {}
+  }, []);
 
   // Online/offline detection
   useEffect(() => {
@@ -5322,6 +5340,7 @@ function AppInner() {
       case "pantry": return <Pantry data={data} setData={setData}/>;
       case "fin": return <Financials data={data} setData={setData}/>;
       case "manuals": return <Manuals/>;
+      case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       default: return <Dashboard data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
     }
   };
@@ -5366,6 +5385,7 @@ function AppInner() {
           {pg()}
         </main>
       </div>
+      {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { localStorage.setItem("hfm_feedback_dismissed", "true"); } catch(e) {} }}/>}
       <AIAssistant data={data} setData={setData}/>
     </>
   );
@@ -5373,6 +5393,111 @@ function AppInner() {
 
 export default function App() {
   return <ErrorBoundary><AppInner/></ErrorBoundary>;
+}
+
+/* ═══════════════════════════════════════════
+   FEEDBACK SURVEY — 4-question user feedback
+   ═══════════════════════════════════════════ */
+function FeedbackSurvey({ setPage }) {
+  const [answers, setAnswers] = useState({ module: "", confusion: "", missing: "", pay: "" });
+  const [submitted, setSubmitted] = useState(false);
+
+  const modules = ["Dashboard","Tasks","Farm Layout","Farming","Seasonal Calendar","Livestock","Pantry","Financials","Manuals","AI Assistant"];
+
+  const update = (key, val) => setAnswers(prev => ({ ...prev, [key]: val }));
+
+  const handleSubmit = () => {
+    const subject = encodeURIComponent("Homestead App Feedback");
+    const body = encodeURIComponent(
+      `Most used module: ${answers.module || "Not answered"}\n\n` +
+      `Confusing in first 5 minutes: ${answers.confusion || "Not answered"}\n\n` +
+      `Missing feature: ${answers.missing || "Not answered"}\n\n` +
+      `Willingness to pay: ${answers.pay || "Not answered"}`
+    );
+    window.open(`mailto:dervis.kanina@gmail.com?subject=${subject}&body=${body}`, "_blank");
+    setSubmitted(true);
+    // Mark survey as done so 7-day prompt won't show again
+    try { localStorage.setItem("hfm_feedback_done", "true"); } catch(e) {}
+  };
+
+  if (submitted) {
+    return (
+      <div className="page-enter" style={{maxWidth:560,margin:"0 auto",textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:56,marginBottom:16}}>🎉</div>
+        <h2 style={{fontFamily:F.head,fontSize:24,fontWeight:800,color:C.green,marginBottom:8}}>Thank you!</h2>
+        <p style={{color:C.t2,fontSize:15,lineHeight:1.6,marginBottom:24}}>Your feedback helps us build a better tool for farmers like you. We read every single response.</p>
+        <button onClick={() => setPage("home")} style={{padding:"10px 24px",background:C.grd,color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:F.body}}>Back to Dashboard</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-enter" style={{maxWidth:600,margin:"0 auto"}}>
+      <div style={{marginBottom:28}}>
+        <h1 style={{fontFamily:F.head,fontSize:26,fontWeight:800,color:C.text,letterSpacing:"-0.02em"}}>💬 Help Us Improve</h1>
+        <p style={{color:C.t2,fontSize:14,marginTop:4}}>4 quick questions — takes about 1 minute</p>
+      </div>
+
+      {/* Q1: Most used module */}
+      <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
+        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>1. Which module do you use the most?</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+          {modules.map(m => (
+            <button key={m} onClick={() => update("module", m)} style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${answers.module === m ? C.green : C.bdr}`,background:answers.module === m ? C.gp : C.bg,color:answers.module === m ? C.green : C.t2,fontSize:13,fontWeight:answers.module === m ? 600 : 500,cursor:"pointer",fontFamily:F.body,transition:"all .2s"}}>{m}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Q2: Confusion */}
+      <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
+        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>2. What confused you in the first 5 minutes?</div>
+        <textarea value={answers.confusion} onChange={e => update("confusion", e.target.value)} placeholder="e.g. I didn't know where to start, the layout was unclear..." rows={3} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:12,fontSize:13,fontFamily:F.body,resize:"vertical",outline:"none",background:C.bg,boxSizing:"border-box"}}/>
+      </div>
+
+      {/* Q3: Missing feature */}
+      <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
+        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>3. What feature is missing that you'd really want?</div>
+        <textarea value={answers.missing} onChange={e => update("missing", e.target.value)} placeholder="e.g. Weather integration, community forum, export to PDF..." rows={3} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:12,fontSize:13,fontFamily:F.body,resize:"vertical",outline:"none",background:C.bg,boxSizing:"border-box"}}/>
+      </div>
+
+      {/* Q4: Willingness to pay */}
+      <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
+        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>4. Would you pay for this app?</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+          {["No, must be free","Maybe, if it had more features","Yes, $4.99/mo sounds fair","Yes, I'd pay $9.99/mo for a pro version"].map(opt => (
+            <button key={opt} onClick={() => update("pay", opt)} style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${answers.pay === opt ? C.green : C.bdr}`,background:answers.pay === opt ? C.gp : C.bg,color:answers.pay === opt ? C.green : C.t2,fontSize:13,fontWeight:answers.pay === opt ? 600 : 500,cursor:"pointer",fontFamily:F.body,transition:"all .2s",textAlign:"left"}}>{opt}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Submit */}
+      <button onClick={handleSubmit} style={{width:"100%",padding:"14px",background:C.grd,color:"#fff",border:"none",borderRadius:14,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F.head,boxShadow:"0 4px 16px rgba(45,106,79,.3)",transition:"transform .2s",marginBottom:12}}>
+        Send Feedback via Email
+      </button>
+      <p style={{color:C.t3,fontSize:12,textAlign:"center"}}>Opens your email app with the answers pre-filled. Just hit send!</p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   FEEDBACK PROMPT — shows once after 7 days
+   ═══════════════════════════════════════════ */
+function FeedbackPrompt({ onOpen, onDismiss }) {
+  return (
+    <div style={{position:"fixed",bottom:92,left:"50%",transform:"translateX(-50%)",zIndex:1800,background:C.card,borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.18)",padding:"20px 24px",maxWidth:360,width:"calc(100% - 32px)",border:`1px solid ${C.bdr}`,animation:"fadeUp .4s ease both"}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+        <div style={{fontSize:32,lineHeight:1}}>💬</div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:16,fontWeight:700,color:C.text,fontFamily:F.head,marginBottom:4}}>How's it going?</div>
+          <p style={{fontSize:13,color:C.t2,lineHeight:1.5,margin:0}}>You've been using Homestead for a week! We'd love your feedback — it takes just 1 minute.</p>
+          <div style={{display:"flex",gap:8,marginTop:12}}>
+            <button onClick={onOpen} style={{padding:"8px 16px",background:C.grd,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:F.body}}>Give Feedback</button>
+            <button onClick={onDismiss} style={{padding:"8px 16px",background:"transparent",color:C.t2,border:`1px solid ${C.bdr}`,borderRadius:10,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:F.body}}>Maybe Later</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /* ═══════════════════════════════════════════
