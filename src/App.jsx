@@ -2385,77 +2385,132 @@ function Setup({data, setData}) {
           </div>
         )}
 
-        {/* Zone blocks — flat colored divs (same as Dashboard) */}
-        {zones.map(z => {
-          const zt = ZT_MAP.get(z.type);
-          const xPct = ((z.xM||0) / farmW * 100).toFixed(2);
-          const yPct = ((z.yM||0) / farmH * 100).toFixed(2);
-          const wPct = ((z.wM||10) / farmW * 100).toFixed(2);
-          const hPct = ((z.hM||8) / farmH * 100).toFixed(2);
-          const isSel = sel === z.id;
-          const isDraggingThis = dragging?.id === z.id;
-          const zPlots = data.garden.plots.filter(p => p.zone === z.id && p.status !== "harvested");
-          const isAnimalZone = ["barn","pasture"].includes(z.type);
-          const zAnimals = isAnimalZone ? data.livestock.animals.filter(a => LDB[a.type]) : [];
-          const animalCount = zAnimals.reduce((s,a) => s + a.count, 0);
+        {/* Zone blocks — with crop color patches (same as Dashboard) */}
+        {(()=>{
+          const SETUP_CC = [{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140},{r:100,g:140,b:60},{r:80,g:80,b:180},{r:180,g:100,b:60},{r:60,g:180,b:100}];
+          const setupColorMap = new Map(); let sci=0;
+          data.garden.plots.forEach(p=>{ if(p.status!=="harvested"&&!setupColorMap.has(p.crop)){setupColorMap.set(p.crop,SETUP_CC[sci%SETUP_CC.length]);sci++;} });
+          return zones.map(z => {
+            const zt = ZT_MAP.get(z.type);
+            const xPct = ((z.xM||0) / farmW * 100).toFixed(2);
+            const yPct = ((z.yM||0) / farmH * 100).toFixed(2);
+            const wPct = ((z.wM||10) / farmW * 100).toFixed(2);
+            const hPct = ((z.hM||8) / farmH * 100).toFixed(2);
+            const isSel = sel === z.id;
+            const isDraggingThis = dragging?.id === z.id;
+            const isPlant = ["veg","orchard","herbs","greenhouse"].includes(z.type);
+            const zPlots = data.garden.plots.filter(p => p.zone === z.id && p.status !== "harvested");
+            const isAnimalZone = ["barn","pasture"].includes(z.type);
+            const zAnimals = isAnimalZone ? data.livestock.animals.filter(a => LDB[a.type]) : [];
+            const animalCount = zAnimals.reduce((s,a) => s + a.count, 0);
 
-          return (
-            <div key={z.id}
-              onMouseDown={e => {
-                e.stopPropagation();
-                const rect = svgRef.current.getBoundingClientRect();
-                const z2 = zones.find(zz => zz.id === z.id);
-                setDragging({
-                  id: z.id,
-                  startX: e.clientX - rect.left,
-                  startY: e.clientY - rect.top,
-                  origXM: z2.xM||0, origYM: z2.yM||0,
-                  rect,
-                });
-                setSel(z.id);
-              }}
-              onMouseMove={e => {
-                if (!dragging) {
-                  const rect = svgRef.current.getBoundingClientRect();
-                  setHoverInfo({
-                    x: e.clientX - rect.left, y: e.clientY - rect.top,
-                    name: z.name, icon: zt?.icon||"", typeLabel: zt?.label||z.type,
-                    wM: (z.wM||10).toFixed(0), hM: (z.hM||8).toFixed(0),
-                    area: ((z.wM||10)*(z.hM||8)).toFixed(0),
-                    cropCount: zPlots.length, animalCount,
-                  });
+            // Build crop patches for this zone
+            const zoneTotalM2 = (z.wM||10)*(z.hM||8);
+            const cropPatches = [];
+            if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
+              const bands = [];
+              zPlots.forEach(p => {
+                let area = 0;
+                if (p.measureType==="area"&&p.qty) area=+p.qty;
+                else if (p.plantCount) { const cr=CROP_MAP.get(p.crop); if(cr){const sp=cr.spacing/100;area=p.plantCount*sp*sp;} }
+                if (area>0) {
+                  const frac=Math.min(0.98,area/zoneTotalM2);
+                  const cc=setupColorMap.get(p.crop)||{r:100,g:140,b:60};
+                  bands.push({crop:p.crop,name:p.name||p.crop,frac,pctLabel:Math.round(frac*100),cc});
                 }
-              }}
-              onMouseLeave={() => setHoverInfo(null)}
-              onClick={e => { if (!dragging) setSel(z.id===sel?null:z.id); }}
-              style={{
-                position:"absolute",
-                left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
-                borderRadius:10,
-                border:`1.5px solid ${isSel ? C.green : "rgba(35,50,35,.15)"}`,
-                boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
-                background: zt?.fill ? `${zt.fill}88` : "#ddd8",
-                cursor: isDraggingThis ? "grabbing" : "grab",
-                opacity: isDraggingThis ? 0.75 : 1,
-                transition: dragging ? "none" : "all .15s",
-                overflow:"hidden",
-                display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",
-                padding:"4px 6px",
-              }}>
-              <span style={{fontSize:11,fontWeight:700,color:"#213321",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",pointerEvents:"none"}}>{z.name}</span>
-              {/* Size label */}
-              <span style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",fontSize:8,fontFamily:F.mono,color:"rgba(35,50,35,.4)",whiteSpace:"nowrap",pointerEvents:"none"}}>{(z.wM||0).toFixed(0)}×{(z.hM||0).toFixed(0)}m</span>
-              {/* Drag handle */}
-              <span style={{position:"absolute",top:3,right:5,fontSize:9,color:"rgba(35,50,35,.3)",pointerEvents:"none"}}>⠿</span>
-              {/* Selection dashed border */}
-              {isSel && <div style={{position:"absolute",inset:-2,borderRadius:12,border:`1.5px dashed ${C.green}`,opacity:.6,pointerEvents:"none"}}/>}
-            </div>
-          );
-        })}
+              });
+              bands.sort((a,b)=>b.frac-a.frac);
+              let fillY=1;
+              bands.forEach(cb=>{
+                const side=Math.sqrt(cb.frac);
+                const pw=Math.min(1,side*1.2);
+                const ph=Math.min(1,cb.frac/pw);
+                const py=fillY-ph;
+                cropPatches.push({...cb,pw,ph,py:Math.max(0,py)});
+                fillY-=ph+0.02;
+              });
+            }
+
+            return (
+              <div key={z.id}
+                onMouseDown={e => {
+                  e.stopPropagation();
+                  const rect = svgRef.current.getBoundingClientRect();
+                  const z2 = zones.find(zz => zz.id === z.id);
+                  setDragging({id:z.id,startX:e.clientX-rect.left,startY:e.clientY-rect.top,origXM:z2.xM||0,origYM:z2.yM||0,rect});
+                  setSel(z.id);
+                }}
+                onMouseMove={e => {
+                  if (!dragging) {
+                    const rect = svgRef.current.getBoundingClientRect();
+                    setHoverInfo({x:e.clientX-rect.left,y:e.clientY-rect.top,name:z.name,icon:zt?.icon||"",typeLabel:zt?.label||z.type,wM:(z.wM||10).toFixed(0),hM:(z.hM||8).toFixed(0),area:((z.wM||10)*(z.hM||8)).toFixed(0),cropCount:zPlots.length,animalCount});
+                  }
+                }}
+                onMouseLeave={() => setHoverInfo(null)}
+                onClick={e => { if (!dragging) setSel(z.id===sel?null:z.id); }}
+                style={{
+                  position:"absolute",
+                  left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
+                  borderRadius:10,
+                  border:`1.5px solid ${isSel ? C.green : "rgba(35,50,35,.15)"}`,
+                  boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
+                  background: zt?.fill ? `${zt.fill}88` : "#ddd8",
+                  cursor: isDraggingThis ? "grabbing" : "grab",
+                  opacity: isDraggingThis ? 0.75 : 1,
+                  transition: dragging ? "none" : "all .15s",
+                  overflow:"hidden",
+                }}>
+                {/* Zone name */}
+                <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none"}}>{z.name}</div>
+                {/* Crop patches */}
+                {cropPatches.map((cb,i) => (
+                  <div key={i} style={{
+                    position:"absolute",
+                    left:`3%`,top:`${(cb.py*100).toFixed(1)}%`,
+                    width:`${(cb.pw*94).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,
+                    background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,
+                    borderRadius:6,overflow:"hidden",
+                    display:"flex",alignItems:"center",justifyContent:"center",zIndex:1,pointerEvents:"none",
+                  }}>
+                    <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,filter:"blur(8px)",zIndex:0}}/>
+                    <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2}}>
+                      <div style={{fontSize:10,fontWeight:900,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
+                      <div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,.9)",textShadow:"0 1px 2px rgba(0,0,0,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%",padding:"0 2px"}}>{cb.name}</div>
+                    </div>
+                  </div>
+                ))}
+                {/* Size label */}
+                <span style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",fontSize:8,fontFamily:F.mono,color:"rgba(35,50,35,.4)",whiteSpace:"nowrap",pointerEvents:"none",zIndex:2}}>{(z.wM||0).toFixed(0)}×{(z.hM||0).toFixed(0)}m</span>
+                {/* Drag handle */}
+                <span style={{position:"absolute",top:3,right:5,fontSize:9,color:"rgba(35,50,35,.3)",pointerEvents:"none",zIndex:3}}>⠿</span>
+                {/* Selection dashed border */}
+                {isSel && <div style={{position:"absolute",inset:-2,borderRadius:12,border:`1.5px dashed ${C.green}`,opacity:.6,pointerEvents:"none",zIndex:4}}/>}
+              </div>
+            );
+          });
+        })()}
 
         {/* Helper text */}
         <div style={{position:"absolute",bottom:6,left:10,fontSize:9,color:"rgba(80,95,80,.45)",fontFamily:F.mono,pointerEvents:"none"}}>Drag zones to reposition · Click to edit</div>
       </div>
+      {/* Crop color legend */}
+      {(()=>{
+        const LCC=[{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140}];
+        const lm=new Map();let li=0;
+        data.garden.plots.filter(p=>p.status!=="harvested").forEach(p=>{if(!lm.has(p.crop)){lm.set(p.crop,LCC[li%LCC.length]);li++;}});
+        if(lm.size===0)return null;
+        return(
+          <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"8px 0 0",alignItems:"center"}}>
+            <span style={{fontSize:10,fontWeight:700,color:C.t2}}>Crops:</span>
+            {[...lm.entries()].map(([name,cc])=>(
+              <div key={name} style={{display:"flex",alignItems:"center",gap:3}}>
+                <div style={{width:8,height:8,borderRadius:2,background:`rgba(${cc.r},${cc.g},${cc.b},.55)`,boxShadow:`0 0 4px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
+                <span style={{fontSize:10,color:C.t1}}>{name}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Inline editor for selected zone */}
       {sz && (
