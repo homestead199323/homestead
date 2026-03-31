@@ -2781,10 +2781,19 @@ function buildZoneSpaceMap(zones, plots, farmW, farmH) {
   return map;
 }
 
-function Farming({data, setData}) {
+function Farming({data, setData, pageData, clearPageData}) {
   const [showAdd,setShowAdd]=useState(false);
   const [selP,setSelP]=useState(null);
   const [form,setForm]=useState({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});
+
+  // Auto-open add form when arriving from Seasonal Calendar with a specific crop
+  useEffect(() => {
+    if (pageData?.crop) {
+      setForm(f => ({...f, crop: pageData.crop, plantDate: pageData.plantDate || ""}));
+      setShowAdd(true);
+      if (clearPageData) clearPageData();
+    }
+  }, [pageData]);
   const ci=CROP_MAP.get(form.crop);
   const vi=ci && form.variety ? (VARIETIES[ci.name]||[]).find(v=>v.name===form.variety) : null;
   const effectiveDays = vi?.days || ci?.days || 0;
@@ -4159,7 +4168,7 @@ function SeasonalCalendar({data, setPage}) {
             <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:"#e8f5e9",color:C.green,fontWeight:600}}>💧 {c.waterFreq}</span>
           </div>
         </div>
-        {!c.planted && <Btn sm onClick={() => setPage("farm")}>+ Plant</Btn>}
+        {!c.planted && <Btn sm onClick={() => setPage("farm", {crop: c.name, plantDate: new Date().toISOString().slice(0,10)})}>+ Plant</Btn>}
       </div>
     </Card>
   );
@@ -5223,6 +5232,7 @@ function AppInner() {
   const [page,setPageRaw]=useState(() => {
     try { const p = localStorage.getItem("hfm_page"); return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
   });
+  const [pageData,setPageData]=useState(null);
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
   const [mob,setMob]=useState(false);
   const [isMob,setIsMob]=useState(typeof window !== "undefined" ? window.innerWidth < 700 : false);
@@ -5253,8 +5263,9 @@ function AppInner() {
   }, []);
 
   // Navigate + persist current page
-  const setPage = useCallback((p) => {
+  const setPage = useCallback((p, pData) => {
     setPageRaw(p);
+    setPageData(pData || null);
     try { localStorage.setItem("hfm_page", p); } catch(e) {}
   }, []);
 
@@ -5305,7 +5316,7 @@ function AppInner() {
     switch(page) {
       case "setup": return <Setup data={data} setData={setData}/>;
       case "tasks": return <TaskQueue data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
-      case "farm": return <Farming data={data} setData={setData}/>;
+      case "farm": return <Farming data={data} setData={setData} pageData={pageData} clearPageData={() => setPageData(null)}/>;
       case "season": return <SeasonalCalendar data={data} setPage={setPage}/>;
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
