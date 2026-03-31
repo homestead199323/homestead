@@ -3512,77 +3512,104 @@ function Dashboard({data, setData, setPage, tasks}) {
 
   return (
     <div className="page-enter" style={{maxWidth:1100}}>
-      {/* ── Dashboard Header — Stats + Rings ── */}
-      <Card style={{marginBottom:20,padding:"16px 20px",background:C.grdLight,border:"1px solid rgba(45,106,79,.08)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-          {/* Left: Stats boxes */}
-          {(()=>{
-            const ap2 = data.garden.plots.filter(p=>p.status!=="harvested");
-            const fp = ap2.reduce((s,p)=>s+(p.plantCount||0),0);
-            const fa = ap2.reduce((s,p)=>s+(p.measureType==="area"?+(p.qty||0):0),0);
-            const fy = ap2.reduce((s,p)=>s+(p.expectedYieldKg||0),0);
-            const ac2 = data.livestock.animals.reduce((s,a)=>s+a.count,0);
-            const stats = [
-              {label:"Crops",value:ap2.length,sub:fp>0?`${fp} plants`:"active"},
-              {label:"Animals",value:ac2},
-            ];
-            if(fa>0) stats.push({label:"Cultivated",value:`${fa.toFixed(0)}m²`,sub:"under crops"});
-            if(fy>0) stats.push({label:"Est. Harvest",value:`${fy.toFixed(0)}kg`,color:C.green});
-            stats.push({label:"Pantry",value:`${Math.round(totalKg)}kg`});
-            stats.push({label:"Net",value:"€"+(inc-exp).toFixed(0),color:inc-exp>=0?C.green:C.red});
-            return (
-              <div style={{flex:1,display:"grid",gridTemplateColumns:`repeat(${Math.min(stats.length,6)},1fr)`,gap:8,minWidth:0}}>
-                {stats.map((st,i)=>(
-                  <div key={i} style={{background:"rgba(255,255,255,.7)",borderRadius:10,padding:"8px 10px",textAlign:"center",border:"1px solid rgba(45,106,79,.06)"}}>
-                    <div style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em",marginBottom:2}}>{st.label}</div>
-                    <div style={{fontSize:18,fontWeight:800,fontFamily:F.head,color:st.color||C.text,lineHeight:1.1}}>{st.value}</div>
-                    {st.sub && <div style={{fontSize:9,color:C.t3,marginTop:1}}>{st.sub}</div>}
+      {/* ── Morning Dashboard Header ── */}
+      {(()=>{
+        const ap2 = data.garden.plots.filter(p=>p.status!=="harvested");
+        const fp = ap2.reduce((s,p)=>s+(p.plantCount||0),0);
+        const fa = ap2.reduce((s,p)=>s+(p.measureType==="area"?+(p.qty||0):0),0);
+        const fy = ap2.reduce((s,p)=>s+(p.expectedYieldKg||0),0);
+        const ac2 = data.livestock.animals.reduce((s,a)=>s+a.count,0);
+        const urgentTasks = enrichedTasks.filter(t=>t.pri<=1).length;
+        const readyToHarvest = ap2.filter(p => {
+          if (!p.plantDate) return false;
+          const crop = CROP_MAP.get(p.crop);
+          if (!crop) return false;
+          return (Date.now() - new Date(p.plantDate).getTime()) >= crop.days * 864e5;
+        });
+        const netVal = inc - exp;
+        return (
+          <div style={{marginBottom:20}}>
+            {/* Top row: Rings + Title + Date */}
+            <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
+              <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
+                <Ring pct={ringData.taskPct} size={64} sw={4} color="#34c759">{""}</Ring>
+                <div style={{position:"absolute",top:8,left:8}}><Ring pct={ringData.growPct} size={48} sw={4} color={C.blue}>{""}</Ring></div>
+                <div style={{position:"absolute",top:16,left:16}}><Ring pct={ringData.harvestPct} size={32} sw={4} color={C.orange}>{allRingsClosed?"✨":""}</Ring></div>
+              </div>
+              <div style={{flex:1}}>
+                <h2 style={{fontFamily:F.head,fontSize:24,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>Your Homestead</h2>
+                <p style={{color:C.t2,fontSize:12,margin:"2px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                <div style={{textAlign:"center",padding:"5px 10px",background:g.streak>=7?"linear-gradient(135deg,#fff8e1,#ffe0b2)":C.bg,borderRadius:10}}>
+                  <div style={{fontSize:20,fontWeight:800,fontFamily:F.head,color:g.streak>=7?C.orange:C.green,lineHeight:1}}>{g.streak}</div>
+                  <div style={{fontSize:8,color:C.t2,fontWeight:600,marginTop:1}}>streak{g.streak>=7?" 🔥":""}</div>
+                </div>
+                {g.badges.length > 0 && (
+                  <div style={{display:"flex",gap:2}}>
+                    {g.badges.slice(-3).map(b => {
+                      const def = BADGES.find(bd => bd.id === b.id);
+                      return def ? <Tooltip key={b.id} width={180} content={<div><div style={{fontWeight:700}}>{def.emoji} {def.name}</div><div style={{opacity:.85,marginTop:2}}>{def.desc}</div></div>}><span style={{fontSize:16,cursor:"pointer"}}>{def.emoji}</span></Tooltip> : null;
+                    })}
                   </div>
-                ))}
+                )}
               </div>
-            );
-          })()}
+            </div>
 
-          {/* Right: Rings + Streak + Badges */}
-          <div style={{display:"flex",alignItems:"center",gap:14,flexShrink:0}}>
-            {/* Three nested rings */}
-            <div style={{position:"relative",width:70,height:70,flexShrink:0}}>
-              <Ring pct={ringData.taskPct} size={70} sw={4.5} color="#34c759">{""}</Ring>
-              <div style={{position:"absolute",top:9,left:9}}><Ring pct={ringData.growPct} size={52} sw={4.5} color={C.blue}>{""}</Ring></div>
-              <div style={{position:"absolute",top:18,left:18}}><Ring pct={ringData.harvestPct} size={34} sw={4.5} color={C.orange}>{allRingsClosed ? "✨" : ""}</Ring></div>
+            {/* Info boxes — what a farmer reads first */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+              {/* TODAY'S WORK */}
+              <Card style={{padding:"14px 16px",background:urgentTasks>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:urgentTasks>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Today's Work</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:urgentTasks>0?C.red:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                  {urgentTasks > 0 ? <span style={{color:C.red,fontWeight:700}}>{urgentTasks} urgent</span> : "tasks pending"}
+                </div>
+                <div style={{fontSize:10,color:C.t3,marginTop:2}}>
+                  <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:"#34c759",marginRight:4}}/>{ringData.doneSteps}/{ringData.totalSteps} done
+                </div>
+              </Card>
+
+              {/* CROPS */}
+              <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f5fbf0,#edf5e5)",border:"1px solid rgba(45,106,79,.08)"}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Crops</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{ap2.length}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                  <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.blue,marginRight:4}}/>{ringData.plantedCount} growing
+                </div>
+                {readyToHarvest.length > 0 && (
+                  <div style={{fontSize:10,color:C.orange,fontWeight:700,marginTop:2}}>🌾 {readyToHarvest.length} ready to harvest!</div>
+                )}
+                {readyToHarvest.length === 0 && fa > 0 && (
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>{fa.toFixed(0)}m² cultivated</div>
+                )}
+              </Card>
+
+              {/* FARM */}
+              <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Farm</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{data.zones.length}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:4}}>zones · {ac2} animals</div>
+                {fy > 0 && <div style={{fontSize:10,color:C.green,fontWeight:600,marginTop:2}}>Est. yield {fy.toFixed(0)}kg</div>}
+                {fp > 0 && <div style={{fontSize:10,color:C.t3,marginTop:1}}>{fp.toLocaleString()} plants total</div>}
+              </Card>
+
+              {/* MONEY */}
+              <Card style={{padding:"14px 16px",background:netVal>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:netVal>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Money</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:netVal>=0?C.green:C.red,lineHeight:1,marginTop:4}}>€{netVal.toFixed(0)}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                  {inc > 0 && <span style={{color:C.green}}>+€{inc.toFixed(0)}</span>}
+                  {inc > 0 && exp > 0 && " / "}
+                  {exp > 0 && <span style={{color:C.red}}>-€{exp.toFixed(0)}</span>}
+                  {inc === 0 && exp === 0 && "no transactions"}
+                </div>
+                <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pantry: {Math.round(totalKg)}kg stored</div>
+              </Card>
             </div>
-            {/* Ring legends compact */}
-            <div style={{fontSize:10,lineHeight:1.8}}>
-              <div><span style={{display:"inline-block",width:7,height:7,borderRadius:4,background:"#34c759",marginRight:4}}/>Tasks <strong>{ringData.doneSteps}/{ringData.totalSteps}</strong></div>
-              <div><span style={{display:"inline-block",width:7,height:7,borderRadius:4,background:C.blue,marginRight:4}}/>Growing <strong>{ringData.plantedCount}</strong></div>
-              <div><span style={{display:"inline-block",width:7,height:7,borderRadius:4,background:C.orange,marginRight:4}}/>Ready <strong>{ringData.readyCount}</strong></div>
-            </div>
-            {/* Streak */}
-            <div style={{textAlign:"center",padding:"6px 12px",background:g.streak>=7?"linear-gradient(135deg,#fff8e1,#ffe0b2)":"rgba(255,255,255,.7)",borderRadius:10,minWidth:50}}>
-              <div style={{fontSize:22,fontWeight:800,fontFamily:F.head,color:g.streak>=7?C.orange:C.green,lineHeight:1}}>{g.streak}</div>
-              <div style={{fontSize:9,color:C.t2,fontWeight:600,marginTop:1}}>streak{g.streak>=7?" 🔥":""}</div>
-            </div>
-            {/* Badges */}
-            {g.badges.length > 0 && (
-              <div style={{display:"flex",gap:3,flexShrink:0}}>
-                {g.badges.slice(-3).map(b => {
-                  const def = BADGES.find(bd => bd.id === b.id);
-                  return def ? <Tooltip key={b.id} width={180} content={<div><div style={{fontWeight:700}}>{def.emoji} {def.name}</div><div style={{opacity:.85,marginTop:2}}>{def.desc}</div><div style={{marginTop:4,color:"#ffcc00",fontSize:11}}>Unlocked {b.unlockedAt}</div></div>}><span style={{fontSize:18,cursor:"pointer"}}>{def.emoji}</span></Tooltip> : null;
-                })}
-                {g.badges.length > 3 && <span style={{fontSize:10,color:C.t2,alignSelf:"center"}}>+{g.badges.length-3}</span>}
-              </div>
-            )}
           </div>
-        </div>
-      </Card>
-
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:16}}>
-        <div>
-          <h2 style={{fontFamily:F.head,fontSize:26,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>Your Homestead</h2>
-          <p style={{color:C.t2,fontSize:12,margin:"4px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* ── Main two-column: Task Pipeline + Zone Inspector ── */}
       <div style={{display:"grid",gridTemplateColumns: data.zones.length > 0 && wide ? "1.05fr 1.25fr" : "1fr",gap:16,marginBottom:20}}>
