@@ -5193,8 +5193,7 @@ function AppInner() {
     const withGamify = updateGamify(nd);
     dispatchData({type:'SET_ALL', data: withGamify});
     DB.save(withGamify);
-    setSaveStatus("✓");
-    setTimeout(() => setSaveStatus(""), 1500);
+    // silent save — no UI indicator
   }, []);
 
   // Export farm data as JSON backup
@@ -5254,7 +5253,7 @@ function AppInner() {
           <div style={{padding:"24px 20px 20px",marginBottom:4,background:C.grdHero,borderRadius:"0 0 20px 0"}}>
             <div style={{fontSize:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>🌾 Your Homestead</div>
             <div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>
-            {saveStatus && <div style={{fontSize:10,color:"#86efac",marginTop:6,fontFamily:F.mono,fontWeight:600,display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#86efac",display:"inline-block"}}></span>{saveStatus} saved</div>}
+            {/* save indicator removed — saves silently */}
           </div>
           <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
           {NAV.map(n=>(
