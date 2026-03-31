@@ -2255,6 +2255,7 @@ function Setup({data, setData}) {
   const [farmW, setFarmW] = useState(data.farmW || 100); // total farm width in meters
   const [farmH, setFarmH] = useState(data.farmH || 60);  // total farm height in meters
   const [dragging, setDragging] = useState(null); // {id, startX, startY, origXM, origYM}
+  const [zoneResize, setZoneResize] = useState(null); // {id, edge, startX, startY, origXM, origYM, origWM, origHM}
   const [cropDrag, setCropDrag] = useState(null); // {plotId, zoneId, startX, startY, origPx, origPy}
   const [cropResize, setCropResize] = useState(null); // {plotId, zoneId, startX, startY, origPw, origPh, frac}
   const [hoverInfo, setHoverInfo] = useState(null); // zone hover tooltip
@@ -2367,6 +2368,20 @@ function Setup({data, setData}) {
             }
             return;
           }
+          // Zone resize — drag edges/corners to change size
+          if (zoneResize) {
+            const dxM = ((curX - zoneResize.startX) / rect.width) * farmW;
+            const dyM = ((curY - zoneResize.startY) / rect.height) * farmH;
+            const e2 = zoneResize.edge;
+            let {origXM, origYM, origWM, origHM} = zoneResize;
+            let newXM = origXM, newYM = origYM, newWM = origWM, newHM = origHM;
+            if (e2.includes("r")) newWM = Math.max(3, origWM + dxM);
+            if (e2.includes("b")) newHM = Math.max(3, origHM + dyM);
+            if (e2.includes("l")) { newXM = Math.max(0, origXM + dxM); newWM = Math.max(3, origWM - dxM); }
+            if (e2.includes("t")) { newYM = Math.max(0, origYM + dyM); newHM = Math.max(3, origHM - dyM); }
+            upZ(zoneResize.id, {xM:newXM, yM:newYM, wM:newWM, hM:newHM, x:newXM/farmW*100, y:newYM/farmH*100, w:newWM/farmW*100, h:newHM/farmH*100});
+            return;
+          }
           // Zone drag
           if (!dragging) return;
           const dxPct = ((curX - dragging.startX) / rect.width) * 100;
@@ -2378,8 +2393,8 @@ function Setup({data, setData}) {
           const newYM = Math.max(0, Math.min(farmH - (z.hM||8), dragging.origYM + dyM));
           upZ(dragging.id, {xM: newXM, yM: newYM, x: newXM/farmW*100, y: newYM/farmH*100});
         }}
-        onMouseUp={() => { setDragging(null); setCropDrag(null); setCropResize(null); }}
-        onMouseLeave={() => { setDragging(null); setCropDrag(null); setCropResize(null); setHoverInfo(null); }}>
+        onMouseUp={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); }}
+        onMouseLeave={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); setHoverInfo(null); }}>
 
         {/* Grid overlay */}
         <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px",pointerEvents:"none"}}/>
@@ -2489,7 +2504,7 @@ function Setup({data, setData}) {
                   }
                 }}
                 onMouseLeave={() => setHoverInfo(null)}
-                onClick={e => { if (!dragging && !cropDrag && !cropResize) setSel(z.id===sel?null:z.id); }}
+                onClick={e => { if (!dragging && !cropDrag && !cropResize) setSel(z.id); }}
                 style={{
                   position:"absolute",
                   left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
@@ -2559,10 +2574,32 @@ function Setup({data, setData}) {
                 })}
                 {/* Size label */}
                 <span style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",fontSize:8,fontFamily:F.mono,color:"rgba(35,50,35,.4)",whiteSpace:"nowrap",pointerEvents:"none",zIndex:2}}>{(z.wM||0).toFixed(0)}×{(z.hM||0).toFixed(0)}m</span>
-                {/* Drag handle */}
-                <span style={{position:"absolute",top:3,right:5,fontSize:9,color:"rgba(35,50,35,.3)",pointerEvents:"none",zIndex:3}}>⠿</span>
-                {/* Selection dashed border */}
-                {isSel && <div style={{position:"absolute",inset:-2,borderRadius:12,border:`1.5px dashed ${C.green}`,opacity:.6,pointerEvents:"none",zIndex:4}}/>}
+                {/* Resize handles — show when selected, like Paint */}
+                {isSel && ["r","b","l","t","rb","lb","rt","lt"].map(edge => {
+                  const isCorner = edge.length === 2;
+                  const sz3 = isCorner ? 10 : 6;
+                  const pos = {};
+                  if (edge.includes("t")) { pos.top = -sz3/2; }
+                  if (edge.includes("b")) { pos.bottom = -sz3/2; }
+                  if (edge.includes("l")) { pos.left = -sz3/2; }
+                  if (edge.includes("r")) { pos.right = -sz3/2; }
+                  if (edge === "t" || edge === "b") { pos.left = "50%"; pos.transform = "translateX(-50%)"; }
+                  if (edge === "l" || edge === "r") { pos.top = "50%"; pos.transform = "translateY(-50%)"; }
+                  const cursors = {r:"ew-resize",l:"ew-resize",t:"ns-resize",b:"ns-resize",rb:"nwse-resize",lt:"nwse-resize",rt:"nesw-resize",lb:"nesw-resize"};
+                  return (
+                    <div key={edge} data-crop-patch="true"
+                      onMouseDown={e => {
+                        e.stopPropagation();
+                        const rect2 = svgRef.current.getBoundingClientRect();
+                        setZoneResize({id:z.id, edge, startX:e.clientX-rect2.left, startY:e.clientY-rect2.top,
+                          origXM:z.xM||0, origYM:z.yM||0, origWM:z.wM||10, origHM:z.hM||8});
+                      }}
+                      style={{position:"absolute",...pos, width:sz3, height:sz3,
+                        background:"#fff", border:`2px solid ${C.green}`, borderRadius:isCorner?2:1,
+                        cursor:cursors[edge], zIndex:10,
+                      }}/>
+                  );
+                })}
               </div>
             );
           });
@@ -2667,37 +2704,11 @@ function Setup({data, setData}) {
               <Btn v="ghost" sm onClick={()=>setSel(null)}>Done</Btn>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             <Inp label="Name" value={sz.name} onChange={e=>upZ(sz.id,{name:e.target.value})}/>
-            <div>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>Width (m)</label>
-              <input type="number" min="1" value={(sz.wM||10).toFixed(1)}
-                onChange={e => upZ(sz.id,{wM:+e.target.value||1, w:(+e.target.value||1)/farmW*100})}
-                style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,fontSize:14,fontFamily:F.body,boxSizing:"border-box"}}/>
-            </div>
-            <div>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>Height (m)</label>
-              <input type="number" min="1" value={(sz.hM||8).toFixed(1)}
-                onChange={e => upZ(sz.id,{hM:+e.target.value||1, h:(+e.target.value||1)/farmH*100})}
-                style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,fontSize:14,fontFamily:F.body,boxSizing:"border-box"}}/>
-            </div>
-            <div>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>X pos (m)</label>
-              <input type="number" min="0" value={(sz.xM||0).toFixed(1)}
-                onChange={e => upZ(sz.id,{xM:+e.target.value||0, x:(+e.target.value||0)/farmW*100})}
-                style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,fontSize:14,fontFamily:F.body,boxSizing:"border-box"}}/>
-            </div>
-            <div>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>Y pos (m)</label>
-              <input type="number" min="0" value={(sz.yM||0).toFixed(1)}
-                onChange={e => upZ(sz.id,{yM:+e.target.value||0, y:(+e.target.value||0)/farmH*100})}
-                style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,fontSize:14,fontFamily:F.body,boxSizing:"border-box"}}/>
-            </div>
+            <Sel label="Zone Type" value={sz.type} onChange={e=>upZ(sz.id,{type:e.target.value})} options={ZT.map(t=>({value:t.id,label:`${t.icon} ${t.label}`}))}/>
           </div>
-          <Sel label="Zone Type" value={sz.type} onChange={e=>upZ(sz.id,{type:e.target.value})} options={ZT.map(t=>({value:t.id,label:`${t.icon} ${t.label}`}))}/>
-          <div style={{fontSize:12,color:C.t2,marginTop:4}}>
-            Area: <strong>{((sz.wM||0)*(sz.hM||0)).toFixed(0)} m²</strong>
-          </div>
+          <div style={{fontSize:12,color:C.t3,marginTop:6,fontStyle:"italic"}}>Drag to move · Drag edges to resize on the map above</div>
         </Card>
       )}
 
