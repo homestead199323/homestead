@@ -2007,6 +2007,7 @@ const TaskRow = React.memo(function TaskRow({t, showCheck=true, onToggleStep, on
 function TaskQueue({data, setData, setPage, tasks}) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD" or null
 
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
@@ -2165,19 +2166,20 @@ function TaskQueue({data, setData, setPage, tasks}) {
             const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
             const evts = calendarEvents[dateStr] || [];
             const isToday = dateStr === todayStr;
+            const isSel = dateStr === selectedDate;
             const hasHarvest = evts.some(e=>e.type==="harvest");
             const hasStep = evts.some(e=>e.type==="step");
             return (
-              <div key={i} style={{textAlign:"center",padding:"6px 2px",borderRadius:10,background:isToday?C.green:evts.length>0?"#f0f7f4":"transparent",minHeight:52}}>
-                <div style={{fontSize:13,fontWeight:isToday?700:400,color:isToday?"#fff":C.text}}>{d}</div>
+              <div key={i} onClick={()=>setSelectedDate(isSel?null:dateStr)} style={{textAlign:"center",padding:"6px 2px",borderRadius:10,background:isSel?"#1a5c2e":isToday?C.green:evts.length>0?"#f0f7f4":"transparent",minHeight:52,cursor:"pointer",border:isSel?"2px solid #145224":"2px solid transparent",transition:"all 0.15s ease"}}>
+                <div style={{fontSize:13,fontWeight:(isToday||isSel)?700:400,color:(isToday||isSel)?"#fff":C.text}}>{d}</div>
                 {evts.length > 0 && (
                   <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:3,flexWrap:"wrap"}}>
-                    {hasHarvest && <div style={{width:7,height:7,borderRadius:4,background:C.orange}} title="Harvest"/>}
-                    {hasStep && <div style={{width:7,height:7,borderRadius:4,background:C.blue}} title="Step due"/>}
+                    {hasHarvest && <div style={{width:7,height:7,borderRadius:4,background:isSel?"#ffb347":C.orange}} title="Harvest"/>}
+                    {hasStep && <div style={{width:7,height:7,borderRadius:4,background:isSel?"#87ceeb":C.blue}} title="Step due"/>}
                   </div>
                 )}
                 {evts.length > 0 && (
-                  <div style={{fontSize:10,color:isToday?"rgba(255,255,255,.8)":C.t2,marginTop:2,lineHeight:1.1}}>
+                  <div style={{fontSize:10,color:(isToday||isSel)?"rgba(255,255,255,.8)":C.t2,marginTop:2,lineHeight:1.1}}>
                     {evts.slice(0,1).map(e=>e.emoji).join("")}{evts.length>1?`+${evts.length-1}`:""}
                   </div>
                 )}
@@ -2188,7 +2190,50 @@ function TaskQueue({data, setData, setPage, tasks}) {
         <div style={{display:"flex",gap:14,padding:"8px 18px 14px",borderTop:`1px solid ${C.bdr}`,flexWrap:"wrap"}}>
           <span style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.t2}}><div style={{width:8,height:8,borderRadius:4,background:C.orange}}/> Harvest</span>
           <span style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.t2}}><div style={{width:8,height:8,borderRadius:4,background:C.blue}}/> Growing step</span>
+          <span style={{fontSize:10,color:C.t2,marginLeft:"auto"}}>Tap a day to see tasks</span>
         </div>
+
+        {/* ── Selected Day Task List ── */}
+        {selectedDate && (() => {
+          const selEvts = calendarEvents[selectedDate] || [];
+          const selDateObj = new Date(selectedDate + "T00:00:00");
+          const dayLabel = selDateObj.toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+          const isSelToday = selectedDate === todayStr;
+          return (
+            <div style={{borderTop:`2px solid ${C.green}`,padding:"14px 18px 16px",background:"#f8fdf9"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,color:C.text}}>
+                    {isSelToday ? "📌 Today" : "📅"} {dayLabel}
+                  </div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>
+                    {selEvts.length === 0 ? "No tasks scheduled" : `${selEvts.length} task${selEvts.length>1?"s":""} scheduled`}
+                  </div>
+                </div>
+                <button onClick={()=>setSelectedDate(null)} style={{background:"none",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"4px 10px",fontSize:11,color:C.t2,cursor:"pointer",fontWeight:600}}>✕ Close</button>
+              </div>
+              {selEvts.length === 0
+                ? <div style={{textAlign:"center",padding:"20px 0",color:C.t2,fontSize:12}}>🌱 Nothing to do — enjoy the day!</div>
+                : <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {selEvts.map((evt,idx) => (
+                      <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,borderLeft:`4px solid ${evt.type==="harvest"?C.orange:C.blue}`}}>
+                        <span style={{fontSize:20}}>{evt.emoji}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600,color:C.text}}>{evt.label}</div>
+                          <div style={{fontSize:10,color:C.t2,marginTop:2}}>
+                            {evt.type==="harvest" ? "🧺 Ready to harvest" : "📋 Growing step due"}
+                          </div>
+                        </div>
+                        <div style={{flexShrink:0,padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:700,color:"#fff",background:evt.type==="harvest"?C.orange:C.blue}}>
+                          {evt.type==="harvest"?"Harvest":"Step"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+              }
+            </div>
+          );
+        })()}
       </Card>
     </div>
   );
@@ -3504,6 +3549,20 @@ function Dashboard({data, setData, setPage, tasks}) {
                     cropBandData.sort((a,b) => b.frac - a.frac);
                   }
 
+                  // Position crop patches as square-ish blocks covering actual % of zone surface
+                  // Placed from bottom-left, stacking upward then rightward
+                  let fillY = 1; // tracks vertical fill position (1 = bottom)
+                  const patches = [];
+                  cropBandData.forEach((cb) => {
+                    // sqrt(frac) gives a square whose area = frac of the zone
+                    const side = Math.sqrt(cb.frac);
+                    const pw = Math.min(1, side * 1.2);   // slightly wider than tall
+                    const ph = Math.min(1, cb.frac / pw);  // height adjusted to match exact area
+                    const py = fillY - ph;                  // position from top (going upward)
+                    patches.push({...cb, pw, ph, py: Math.max(0, py)});
+                    fillY -= ph + 0.02; // small gap between patches
+                  });
+
                   return (
                     <div key={z.id}
                       onClick={() => setSelZone(z.id)}
@@ -3515,39 +3574,41 @@ function Dashboard({data, setData, setPage, tasks}) {
                         boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
                         background: zt?.fill ? `${zt.fill}88` : "#ddd8",
                         cursor:"pointer",transition:"all .15s",overflow:"hidden",
-                        display:"flex",flexDirection:"column",
                       }}>
-                      {/* Zone name label */}
-                      <div style={{padding:"3px 6px",fontSize:11,fontWeight:700,color:"#213321",textAlign:"center",
-                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0,zIndex:2,position:"relative"}}>
+                      {/* Zone name label — floating on top */}
+                      <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,
+                        color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                        zIndex:3}}>
                         {z.name}
                       </div>
-                      {/* Crop color bands — each takes proportional vertical space */}
-                      {cropBandData.length > 0 && (
-                        <div style={{flex:1,display:"flex",flexDirection:"column",padding:"0 3px 3px",gap:1,minHeight:0}}>
-                          {cropBandData.map((cb,i) => (
-                            <div key={i} style={{
-                              flex: cb.frac,
-                              background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.4)`,
-                              borderRadius:4,
-                              display:"flex",alignItems:"center",justifyContent:"center",
-                              position:"relative",overflow:"hidden",minHeight:0,
-                              backdropFilter:"blur(2px)",
-                            }}>
-                              {/* Soft glow inner layer */}
-                              <div style={{position:"absolute",inset:"15%",borderRadius:"50%",
-                                background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,
-                                filter:"blur(8px)"}}/>
-                              {/* Label */}
-                              <span style={{fontSize:8,fontWeight:800,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,.5)",
-                                position:"relative",zIndex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
-                                padding:"0 2px"}}>
-                                {cb.pctLabel}%
-                              </span>
-                            </div>
-                          ))}
+                      {/* Crop patches — square blocks representing actual area % */}
+                      {patches.map((cb,i) => (
+                        <div key={i} style={{
+                          position:"absolute",
+                          left:`${(3).toFixed(0)}%`,
+                          top:`${(cb.py * 100).toFixed(1)}%`,
+                          width:`${(cb.pw * 94).toFixed(1)}%`,
+                          height:`${(cb.ph * 100).toFixed(1)}%`,
+                          background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,
+                          borderRadius:6,overflow:"hidden",
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          zIndex:1,
+                        }}>
+                          {/* Inner glow */}
+                          <div style={{position:"absolute",inset:"10%",borderRadius:"50%",
+                            background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,
+                            filter:"blur(8px)",zIndex:0}}/>
+                          {/* Label */}
+                          <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2}}>
+                            <div style={{fontSize:10,fontWeight:900,color:"#fff",
+                              textShadow:"0 1px 4px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
+                            <div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,.9)",
+                              textShadow:"0 1px 2px rgba(0,0,0,.4)",
+                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                              maxWidth:"100%",padding:"0 2px"}}>{cb.name}</div>
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   );
                 });
