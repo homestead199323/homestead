@@ -2335,6 +2335,7 @@ function Setup({data, setData}) {
         minHeight:440,userSelect:"none",
         cursor:dragging?"grabbing":"default",
       }}
+        onClick={e => { if (e.target === svgRef.current) setSel(null); }}
         onMouseMove={e => {
           const rect = svgRef.current.getBoundingClientRect();
           const curX = e.clientX - rect.left;
@@ -2493,12 +2494,13 @@ function Setup({data, setData}) {
                   position:"absolute",
                   left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
                   borderRadius:10,
-                  border:`1.5px solid ${isSel ? C.green : "rgba(35,50,35,.15)"}`,
-                  boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
-                  background: zt?.fill ? `${zt.fill}88` : "#ddd8",
-                  cursor: isDraggingThis ? "grabbing" : "grab",
+                  border:`2px solid ${isSel ? C.green : "rgba(35,50,35,.12)"}`,
+                  boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.25), 0 0 16px rgba(45,106,79,.15), inset 0 0 20px rgba(45,106,79,.08)` : "0 2px 8px rgba(0,0,0,.06)",
+                  background: zt?.fill ? `${zt.fill}${isSel ? "bb" : "88"}` : "#ddd8",
+                  cursor: isDraggingThis ? "grabbing" : "pointer",
                   opacity: isDraggingThis ? 0.75 : 1,
-                  transition: dragging ? "none" : "all .15s",
+                  transition: dragging ? "none" : "all .2s ease",
+                  transform: isSel && !isDraggingThis ? "scale(1.02)" : "scale(1)",
                   overflow:"hidden",
                 }}>
                 {/* Zone name */}
@@ -2566,8 +2568,75 @@ function Setup({data, setData}) {
           });
         })()}
 
+        {/* Selected zone info panel — persistent game-style HUD */}
+        {sel && !dragging && (() => {
+          const sz2 = zones.find(z => z.id === sel);
+          if (!sz2) return null;
+          const zt2 = ZT_MAP.get(sz2.type);
+          const area2 = ((sz2.wM||10)*(sz2.hM||8)).toFixed(0);
+          const zPlots2 = data.garden.plots.filter(p => p.zone === sel && p.status !== "harvested");
+          const isAnimal2 = ["barn","pasture"].includes(sz2.type);
+          const animalCount2 = isAnimal2 ? data.livestock.animals.filter(a => LDB[a.type]).reduce((s,a) => s + a.count, 0) : 0;
+          // Position panel near the zone
+          const panelX = Math.min(75, Math.max(5, ((sz2.xM||0) / farmW * 100) + ((sz2.wM||10) / farmW * 100) + 1));
+          const panelY = Math.max(3, ((sz2.yM||0) / farmH * 100));
+          // If panel would go off-right, put it on the left side of zone
+          const flipLeft = panelX > 70;
+          const finalX = flipLeft ? Math.max(2, ((sz2.xM||0) / farmW * 100) - 26) : panelX;
+          return (
+            <div style={{
+              position:"absolute", left:`${finalX}%`, top:`${panelY}%`,
+              zIndex:60, width:180, animation:"fadeIn .2s ease",
+            }}>
+              <div style={{
+                background:"linear-gradient(135deg,#1a2e1a,#243524)", color:"#fff",
+                borderRadius:14, padding:"14px 16px",
+                boxShadow:"0 8px 32px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08)",
+                backdropFilter:"blur(8px)", border:"1px solid rgba(100,180,100,.2)",
+              }}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{fontSize:18}}>{zt2?.icon || "📍"}</div>
+                  <div onClick={(e) => { e.stopPropagation(); setSel(null); }}
+                    style={{width:20,height:20,borderRadius:10,background:"rgba(255,255,255,.1)",
+                      display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",
+                      fontSize:11,color:"rgba(255,255,255,.5)",lineHeight:1}}>✕</div>
+                </div>
+                <div style={{fontSize:15,fontWeight:800,marginBottom:2,fontFamily:F.head,letterSpacing:"-0.02em"}}>{sz2.name}</div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,.5)",marginBottom:10,fontWeight:500}}>{zt2?.label || sz2.type}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+                  <div style={{background:"rgba(255,255,255,.06)",borderRadius:8,padding:"6px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:15,fontWeight:800,fontFamily:F.mono}}>{(sz2.wM||10).toFixed(0)}×{(sz2.hM||8).toFixed(0)}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginTop:1}}>metres</div>
+                  </div>
+                  <div style={{background:"rgba(255,255,255,.06)",borderRadius:8,padding:"6px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:15,fontWeight:800,fontFamily:F.mono}}>{area2}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginTop:1}}>m²</div>
+                  </div>
+                </div>
+                {zPlots2.length > 0 && (
+                  <div style={{borderTop:"1px solid rgba(255,255,255,.08)",paddingTop:8,marginTop:4}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.4)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>Crops</div>
+                    {zPlots2.slice(0,4).map(p => (
+                      <div key={p.id} style={{fontSize:11,color:"rgba(255,255,255,.8)",marginBottom:2}}>
+                        🌱 {p.name || p.crop} {p.status === "growing" ? "· growing" : p.status === "ready" ? "· ready!" : ""}
+                      </div>
+                    ))}
+                    {zPlots2.length > 4 && <div style={{fontSize:10,color:"rgba(255,255,255,.3)"}}>+{zPlots2.length-4} more</div>}
+                  </div>
+                )}
+                {animalCount2 > 0 && (
+                  <div style={{borderTop:"1px solid rgba(255,255,255,.08)",paddingTop:8,marginTop:4}}>
+                    <div style={{fontSize:11,color:"#ffcc00"}}>🐄 {animalCount2} animal{animalCount2>1?"s":""}</div>
+                  </div>
+                )}
+                <div style={{marginTop:10,fontSize:10,color:"rgba(255,255,255,.3)",textAlign:"center",fontStyle:"italic"}}>Click zone to edit below ↓</div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Helper text */}
-        <div style={{position:"absolute",bottom:6,left:10,fontSize:9,color:"rgba(80,95,80,.45)",fontFamily:F.mono,pointerEvents:"none"}}>Drag zones to reposition · Click to edit</div>
+        <div style={{position:"absolute",bottom:6,left:10,fontSize:9,color:"rgba(80,95,80,.45)",fontFamily:F.mono,pointerEvents:"none"}}>Drag zones to reposition · Click to select</div>
       </div>
       {/* Crop color legend */}
       {(()=>{
