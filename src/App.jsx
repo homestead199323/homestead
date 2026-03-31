@@ -1733,9 +1733,9 @@ const FarmMap = React.memo(function FarmMap({zones, plots=[], tasks=[], onZoneCl
             <feComposite in="b" in2="SourceAlpha" operator="in"/>
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          {/* Blur filter for crop color overlays */}
-          <filter id="crop-blur" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+          {/* Blur filter for crop color overlays — soft glow effect */}
+          <filter id="crop-blur" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3.5"/>
           </filter>
           {/* Zone gradients */}
           {Object.entries(TOPO).map(([k,v]) => (
@@ -1853,40 +1853,49 @@ const FarmMap = React.memo(function FarmMap({zones, plots=[], tasks=[], onZoneCl
                 <g style={{pointerEvents:"none"}}>
                   {/* Blurred color layer — clipped to zone bounds */}
                   <clipPath id={`zclip-${z.id}`}>
-                    <rect x={innerX} y={innerY} width={innerW} height={innerH} rx="2"/>
+                    <rect x={x+1} y={y+1} width={w-2} height={h-2} rx="3"/>
                   </clipPath>
                   <g clipPath={`url(#zclip-${z.id})`}>
+                    {/* Layer 1: solid color base per crop band */}
                     {cropBands.map((b) => {
                       const cc = cropColorMap.get(b.p.crop) || {r:100,g:140,b:60};
                       return (
-                        <rect key={`blur-${b.p.id}`} x={b.bx - 4} y={b.by - 3} width={b.bW + 8} height={b.bH + 6} rx="4"
-                          fill={`rgba(${cc.r},${cc.g},${cc.b},.38)`} filter="url(#crop-blur)"/>
+                        <rect key={`base-${b.p.id}`} x={b.bx} y={b.by} width={b.bW} height={b.bH} rx="1"
+                          fill={`rgba(${cc.r},${cc.g},${cc.b},.3)`}/>
+                      );
+                    })}
+                    {/* Layer 2: blurred glow on top — gives the soft watercolor feel */}
+                    {cropBands.map((b) => {
+                      const cc = cropColorMap.get(b.p.crop) || {r:100,g:140,b:60};
+                      return (
+                        <rect key={`blur-${b.p.id}`} x={b.bx + 2} y={b.by + 1} width={b.bW - 4} height={Math.max(2, b.bH - 2)} rx="3"
+                          fill={`rgba(${cc.r},${cc.g},${cc.b},.45)`} filter="url(#crop-blur)"/>
                       );
                     })}
                   </g>
-                  {/* Sharp labels on top of blur — emoji, name, percentage */}
+                  {/* Sharp labels on top — emoji, name, percentage */}
                   {cropBands.map((b, i) => {
                     const cc = cropColorMap.get(b.p.crop) || {r:100,g:140,b:60};
-                    const emojiSize = Math.min(16, Math.max(7, b.bH * 0.65));
+                    const emojiSize = Math.min(16, Math.max(8, b.bH * 0.6));
                     const showLabel = b.bW > 30 && b.bH > 10;
                     const showPct = b.bW > 18 && b.bH > 8;
                     return (
                       <g key={b.p.id}>
-                        {/* Subtle band separator */}
-                        {i > 0 && <line x1={b.bx} y1={b.by} x2={b.bx+b.bW} y2={b.by} stroke="rgba(255,255,255,.3)" strokeWidth=".4"/>}
+                        {/* Band separator line */}
+                        {i > 0 && <line x1={b.bx} y1={b.by} x2={b.bx+b.bW} y2={b.by} stroke="rgba(255,255,255,.45)" strokeWidth=".5"/>}
                         {/* Emoji centered */}
                         <text x={b.bx + b.bW/2} y={b.by + b.bH/2 + emojiSize*0.35}
                           textAnchor="middle" fontSize={emojiSize}>{b.emoji}</text>
                         {/* Crop name on left */}
                         {showLabel && <text x={b.bx+4} y={b.by+b.bH/2+3}
-                          fontSize="5.5" fontFamily={F.mono} fontWeight="700" fill={`rgba(${Math.max(0,cc.r-60)},${Math.max(0,cc.g-60)},${Math.max(0,cc.b-60)},.85)`}>{(b.p.name||b.p.crop).slice(0,10)}</text>}
-                        {/* Percentage on right — bold and visible */}
+                          fontSize="6" fontFamily={F.mono} fontWeight="700" fill={`rgb(${Math.max(0,cc.r-80)},${Math.max(0,cc.g-80)},${Math.max(0,cc.b-80)})`}>{(b.p.name||b.p.crop).slice(0,10)}</text>}
+                        {/* Percentage badge on right */}
                         {showPct && (
                           <g>
-                            <rect x={b.bx+b.bW-18} y={b.by+b.bH/2-5} width="16" height="9" rx="2"
-                              fill={`rgba(${cc.r},${cc.g},${cc.b},.55)`}/>
-                            <text x={b.bx+b.bW-10} y={b.by+b.bH/2+2}
-                              textAnchor="middle" fontSize="5.5" fontFamily={F.mono} fontWeight="800" fill="#fff">{b.pctLabel}%</text>
+                            <rect x={b.bx+b.bW-20} y={b.by+b.bH/2-5.5} width="18" height="10" rx="3"
+                              fill={`rgba(${cc.r},${cc.g},${cc.b},.7)`}/>
+                            <text x={b.bx+b.bW-11} y={b.by+b.bH/2+2}
+                              textAnchor="middle" fontSize="6" fontFamily={F.mono} fontWeight="800" fill="#fff">{b.pctLabel}%</text>
                           </g>
                         )}
                       </g>
