@@ -3457,36 +3457,124 @@ function Dashboard({data, setData, setPage, tasks}) {
             <div style={{position:"relative",background:"linear-gradient(180deg,#f7faf5,#edf4e8)",border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",minHeight:160}}>
               {/* Grid overlay */}
               <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
-              {/* Zone blocks */}
-              {data.zones.map(z => {
-                const fW = data.farmW || 100, fH = data.farmH || 60;
-                const xPct = ((z.xM || 0) / fW * 100).toFixed(1);
-                const yPct = ((z.yM || 0) / fH * 100).toFixed(1);
-                const wPct = ((z.wM || 10) / fW * 100).toFixed(1);
-                const hPct = ((z.hM || 8) / fH * 100).toFixed(1);
-                const zt = ZT_MAP.get(z.type);
-                const isSel = z.id === activeZone;
-                return (
-                  <div key={z.id}
-                    onClick={() => setSelZone(z.id)}
-                    style={{
-                      position:"absolute",
-                      left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
-                      borderRadius:10,
-                      border:`1.5px solid ${isSel ? C.green : "rgba(35,50,35,.15)"}`,
-                      boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
-                      background: zt?.fill ? `${zt.fill}88` : "#ddd8",
-                      padding:"4px 6px",fontSize:11,fontWeight:700,color:"#213321",
-                      cursor:"pointer",transition:"all .15s",overflow:"hidden",
-                      display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center"
-                    }}>
-                    <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{z.name}</span>
-                  </div>
-                );
-              })}
+              {/* Zone blocks — with crop color overlays */}
+              {(()=>{
+                // Build crop color map for the mini map
+                const MINI_CROP_COLORS = [
+                  {r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},
+                  {r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140},
+                  {r:100,g:140,b:60},{r:80,g:80,b:180},{r:180,g:100,b:60},{r:60,g:180,b:100},
+                ];
+                const miniCropColorMap = new Map();
+                let colorIdx = 0;
+                data.garden.plots.forEach(p => {
+                  if (p.status !== "harvested" && !miniCropColorMap.has(p.crop)) {
+                    miniCropColorMap.set(p.crop, MINI_CROP_COLORS[colorIdx % MINI_CROP_COLORS.length]);
+                    colorIdx++;
+                  }
+                });
+                return data.zones.map(z => {
+                  const fW = data.farmW || 100, fH = data.farmH || 60;
+                  const xPct = ((z.xM || 0) / fW * 100).toFixed(1);
+                  const yPct = ((z.yM || 0) / fH * 100).toFixed(1);
+                  const wPct = ((z.wM || 10) / fW * 100).toFixed(1);
+                  const hPct = ((z.hM || 8) / fH * 100).toFixed(1);
+                  const zt = ZT_MAP.get(z.type);
+                  const isSel = z.id === activeZone;
+                  const isPlant = ["veg","orchard","herbs","greenhouse"].includes(z.type);
+
+                  // Calculate crop bands for this zone
+                  const zPlots = isPlant ? data.garden.plots.filter(p => p.zone === z.id && p.status !== "harvested") : [];
+                  const zoneTotalM2 = (z.wM||10)*(z.hM||8);
+                  const cropBandData = [];
+                  if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
+                    zPlots.forEach(p => {
+                      let area = 0;
+                      if (p.measureType === "area" && p.qty) area = +p.qty;
+                      else if (p.plantCount) {
+                        const crop = CROP_MAP.get(p.crop);
+                        if (crop) { const sp = crop.spacing/100; area = p.plantCount * sp * sp; }
+                      }
+                      if (area > 0) {
+                        const frac = Math.min(0.98, area / zoneTotalM2);
+                        const cc = miniCropColorMap.get(p.crop) || {r:100,g:140,b:60};
+                        cropBandData.push({crop: p.crop, name: p.name || p.crop, frac, pctLabel: Math.round(frac*100), cc});
+                      }
+                    });
+                    cropBandData.sort((a,b) => b.frac - a.frac);
+                  }
+
+                  return (
+                    <div key={z.id}
+                      onClick={() => setSelZone(z.id)}
+                      style={{
+                        position:"absolute",
+                        left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
+                        borderRadius:10,
+                        border:`1.5px solid ${isSel ? C.green : "rgba(35,50,35,.15)"}`,
+                        boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
+                        background: zt?.fill ? `${zt.fill}88` : "#ddd8",
+                        cursor:"pointer",transition:"all .15s",overflow:"hidden",
+                        display:"flex",flexDirection:"column",
+                      }}>
+                      {/* Zone name label */}
+                      <div style={{padding:"3px 6px",fontSize:11,fontWeight:700,color:"#213321",textAlign:"center",
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0,zIndex:2,position:"relative"}}>
+                        {z.name}
+                      </div>
+                      {/* Crop color bands — each takes proportional vertical space */}
+                      {cropBandData.length > 0 && (
+                        <div style={{flex:1,display:"flex",flexDirection:"column",padding:"0 3px 3px",gap:1,minHeight:0}}>
+                          {cropBandData.map((cb,i) => (
+                            <div key={i} style={{
+                              flex: cb.frac,
+                              background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.4)`,
+                              borderRadius:4,
+                              display:"flex",alignItems:"center",justifyContent:"center",
+                              position:"relative",overflow:"hidden",minHeight:0,
+                              backdropFilter:"blur(2px)",
+                            }}>
+                              {/* Soft glow inner layer */}
+                              <div style={{position:"absolute",inset:"15%",borderRadius:"50%",
+                                background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,
+                                filter:"blur(8px)"}}/>
+                              {/* Label */}
+                              <span style={{fontSize:8,fontWeight:800,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,.5)",
+                                position:"relative",zIndex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
+                                padding:"0 2px"}}>
+                                {cb.pctLabel}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
               {/* Edit link */}
               <button onClick={()=>setPage("setup")} style={{position:"absolute",top:6,right:8,background:"rgba(255,255,255,.85)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:600,color:C.green,cursor:"pointer"}}>Edit Map</button>
             </div>
+            {/* Crop color legend */}
+            {(()=>{
+              const MINI_CC = [{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140}];
+              const legendMap = new Map(); let li=0;
+              data.garden.plots.filter(p=>p.status!=="harvested").forEach(p=>{
+                if(!legendMap.has(p.crop)){legendMap.set(p.crop,MINI_CC[li%MINI_CC.length]);li++;}
+              });
+              if(legendMap.size===0) return null;
+              return (
+                <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"6px 0 0",alignItems:"center"}}>
+                  <span style={{fontSize:10,fontWeight:700,color:C.t2}}>Crops:</span>
+                  {[...legendMap.entries()].map(([name,cc])=>(
+                    <div key={name} style={{display:"flex",alignItems:"center",gap:3}}>
+                      <div style={{width:8,height:8,borderRadius:2,background:`rgba(${cc.r},${cc.g},${cc.b},.55)`,boxShadow:`0 0 4px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
+                      <span style={{fontSize:10,color:C.t1}}>{name}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
