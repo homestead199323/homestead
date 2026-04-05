@@ -787,6 +787,422 @@ const CROP_MAP = new Map(CROPS.map(c => [c.name, c]));
 const CROP_COLORS = [{r:220,g:60,b:60},{r:60,g:160,b:60},{r:60,g:100,b:200},{r:200,g:160,b:30},{r:160,g:60,b:180},{r:230,g:120,b:30},{r:40,g:180,b:170},{r:200,g:80,b:140},{r:100,g:140,b:60},{r:80,g:80,b:180},{r:180,g:100,b:60},{r:60,g:180,b:100}];
 
 /* ═══════════════════════════════════════════
+   CLIMATE REGIONS — adapts all crop data
+   ═══════════════════════════════════════════ */
+const REGIONS = [
+  {id:"mediterranean",name:"Mediterranean",emoji:"🫒",desc:"Hot dry summers, mild wet winters (USDA 8b-10a)",examples:"Albania, S. Italy, Greece, Spain, Portugal"},
+  {id:"western_europe",name:"Western Europe",emoji:"🌧️",desc:"Mild maritime climate, cool summers, rain year-round (USDA 7-9)",examples:"UK, Ireland, Belgium, Netherlands, NW France"},
+  {id:"northern_europe",name:"Northern Europe",emoji:"❄️",desc:"Cold winters, shorter growing season (USDA 5-7)",examples:"Germany, Scandinavia, Baltics, Poland, Czechia"},
+  {id:"us_warm",name:"US/Canada Warm",emoji:"☀️",desc:"Long hot summers, mild winters (USDA 7-10)",examples:"US South, California, Pacific NW, Texas"},
+  {id:"us_cold",name:"US/Canada Cold",emoji:"🏔️",desc:"Harsh winters, warm short summers (USDA 3-6)",examples:"US Northeast, Midwest, N. Plains, S. Canada"},
+];
+const REGION_MAP = new Map(REGIONS.map(r => [r.id, r]));
+
+/* ═══════════════════════════════════════════
+   CITY DATABASE — maps cities to climate regions
+   ═══════════════════════════════════════════ */
+const CITY_DB = [
+  // Mediterranean
+  {city:"Tirana",country:"Albania",region:"mediterranean"},{city:"Durres",country:"Albania",region:"mediterranean"},{city:"Vlore",country:"Albania",region:"mediterranean"},{city:"Sarande",country:"Albania",region:"mediterranean"},{city:"Berat",country:"Albania",region:"mediterranean"},{city:"Korce",country:"Albania",region:"mediterranean"},{city:"Shkoder",country:"Albania",region:"mediterranean"},{city:"Elbasan",country:"Albania",region:"mediterranean"},
+  {city:"Athens",country:"Greece",region:"mediterranean"},{city:"Thessaloniki",country:"Greece",region:"mediterranean"},{city:"Crete",country:"Greece",region:"mediterranean"},{city:"Patras",country:"Greece",region:"mediterranean"},
+  {city:"Rome",country:"Italy",region:"mediterranean"},{city:"Naples",country:"Italy",region:"mediterranean"},{city:"Palermo",country:"Italy",region:"mediterranean"},{city:"Florence",country:"Italy",region:"mediterranean"},{city:"Bari",country:"Italy",region:"mediterranean"},{city:"Catania",country:"Italy",region:"mediterranean"},
+  {city:"Barcelona",country:"Spain",region:"mediterranean"},{city:"Valencia",country:"Spain",region:"mediterranean"},{city:"Malaga",country:"Spain",region:"mediterranean"},{city:"Seville",country:"Spain",region:"mediterranean"},{city:"Madrid",country:"Spain",region:"mediterranean"},{city:"Alicante",country:"Spain",region:"mediterranean"},
+  {city:"Lisbon",country:"Portugal",region:"mediterranean"},{city:"Porto",country:"Portugal",region:"mediterranean"},{city:"Faro",country:"Portugal",region:"mediterranean"},
+  {city:"Dubrovnik",country:"Croatia",region:"mediterranean"},{city:"Split",country:"Croatia",region:"mediterranean"},{city:"Antalya",country:"Turkey",region:"mediterranean"},{city:"Izmir",country:"Turkey",region:"mediterranean"},{city:"Marseille",country:"France",region:"mediterranean"},{city:"Nice",country:"France",region:"mediterranean"},{city:"Montpellier",country:"France",region:"mediterranean"},
+  // Western Europe
+  {city:"London",country:"UK",region:"western_europe"},{city:"Manchester",country:"UK",region:"western_europe"},{city:"Birmingham",country:"UK",region:"western_europe"},{city:"Edinburgh",country:"UK",region:"western_europe"},{city:"Bristol",country:"UK",region:"western_europe"},{city:"Cardiff",country:"UK",region:"western_europe"},{city:"Leeds",country:"UK",region:"western_europe"},{city:"Liverpool",country:"UK",region:"western_europe"},{city:"Glasgow",country:"UK",region:"western_europe"},{city:"Belfast",country:"UK",region:"western_europe"},{city:"Cornwall",country:"UK",region:"western_europe"},{city:"Devon",country:"UK",region:"western_europe"},{city:"Kent",country:"UK",region:"western_europe"},{city:"Surrey",country:"UK",region:"western_europe"},
+  {city:"Dublin",country:"Ireland",region:"western_europe"},{city:"Cork",country:"Ireland",region:"western_europe"},{city:"Galway",country:"Ireland",region:"western_europe"},
+  {city:"Amsterdam",country:"Netherlands",region:"western_europe"},{city:"Rotterdam",country:"Netherlands",region:"western_europe"},{city:"Utrecht",country:"Netherlands",region:"western_europe"},{city:"The Hague",country:"Netherlands",region:"western_europe"},{city:"Eindhoven",country:"Netherlands",region:"western_europe"},{city:"Groningen",country:"Netherlands",region:"western_europe"},
+  {city:"Brussels",country:"Belgium",region:"western_europe"},{city:"Antwerp",country:"Belgium",region:"western_europe"},{city:"Ghent",country:"Belgium",region:"western_europe"},{city:"Bruges",country:"Belgium",region:"western_europe"},
+  {city:"Paris",country:"France",region:"western_europe"},{city:"Lyon",country:"France",region:"western_europe"},{city:"Bordeaux",country:"France",region:"western_europe"},{city:"Nantes",country:"France",region:"western_europe"},{city:"Rennes",country:"France",region:"western_europe"},{city:"Lille",country:"France",region:"western_europe"},
+  {city:"Luxembourg",country:"Luxembourg",region:"western_europe"},
+  // Northern Europe
+  {city:"Berlin",country:"Germany",region:"northern_europe"},{city:"Munich",country:"Germany",region:"northern_europe"},{city:"Hamburg",country:"Germany",region:"northern_europe"},{city:"Frankfurt",country:"Germany",region:"northern_europe"},{city:"Cologne",country:"Germany",region:"northern_europe"},{city:"Stuttgart",country:"Germany",region:"northern_europe"},{city:"Dresden",country:"Germany",region:"northern_europe"},{city:"Leipzig",country:"Germany",region:"northern_europe"},{city:"Dusseldorf",country:"Germany",region:"northern_europe"},{city:"Hannover",country:"Germany",region:"northern_europe"},
+  {city:"Copenhagen",country:"Denmark",region:"northern_europe"},{city:"Aarhus",country:"Denmark",region:"northern_europe"},
+  {city:"Stockholm",country:"Sweden",region:"northern_europe"},{city:"Gothenburg",country:"Sweden",region:"northern_europe"},{city:"Malmo",country:"Sweden",region:"northern_europe"},
+  {city:"Oslo",country:"Norway",region:"northern_europe"},{city:"Bergen",country:"Norway",region:"northern_europe"},
+  {city:"Helsinki",country:"Finland",region:"northern_europe"},
+  {city:"Tallinn",country:"Estonia",region:"northern_europe"},{city:"Riga",country:"Latvia",region:"northern_europe"},{city:"Vilnius",country:"Lithuania",region:"northern_europe"},{city:"Kaunas",country:"Lithuania",region:"northern_europe"},
+  {city:"Warsaw",country:"Poland",region:"northern_europe"},{city:"Krakow",country:"Poland",region:"northern_europe"},{city:"Gdansk",country:"Poland",region:"northern_europe"},{city:"Wroclaw",country:"Poland",region:"northern_europe"},{city:"Poznan",country:"Poland",region:"northern_europe"},
+  {city:"Prague",country:"Czechia",region:"northern_europe"},{city:"Brno",country:"Czechia",region:"northern_europe"},
+  {city:"Vienna",country:"Austria",region:"northern_europe"},{city:"Zurich",country:"Switzerland",region:"northern_europe"},{city:"Bern",country:"Switzerland",region:"northern_europe"},{city:"Geneva",country:"Switzerland",region:"northern_europe"},
+  {city:"Budapest",country:"Hungary",region:"northern_europe"},{city:"Bratislava",country:"Slovakia",region:"northern_europe"},
+  // US/Canada Warm
+  {city:"Los Angeles",country:"US",region:"us_warm"},{city:"San Francisco",country:"US",region:"us_warm"},{city:"San Diego",country:"US",region:"us_warm"},{city:"Sacramento",country:"US",region:"us_warm"},{city:"Portland",country:"US",region:"us_warm"},{city:"Seattle",country:"US",region:"us_warm"},
+  {city:"Houston",country:"US",region:"us_warm"},{city:"Dallas",country:"US",region:"us_warm"},{city:"Austin",country:"US",region:"us_warm"},{city:"San Antonio",country:"US",region:"us_warm"},
+  {city:"Miami",country:"US",region:"us_warm"},{city:"Tampa",country:"US",region:"us_warm"},{city:"Orlando",country:"US",region:"us_warm"},{city:"Jacksonville",country:"US",region:"us_warm"},
+  {city:"Atlanta",country:"US",region:"us_warm"},{city:"Nashville",country:"US",region:"us_warm"},{city:"Charlotte",country:"US",region:"us_warm"},{city:"Raleigh",country:"US",region:"us_warm"},
+  {city:"Phoenix",country:"US",region:"us_warm"},{city:"Tucson",country:"US",region:"us_warm"},{city:"Las Vegas",country:"US",region:"us_warm"},{city:"Albuquerque",country:"US",region:"us_warm"},
+  {city:"New Orleans",country:"US",region:"us_warm"},{city:"Memphis",country:"US",region:"us_warm"},{city:"Charleston",country:"US",region:"us_warm"},{city:"Savannah",country:"US",region:"us_warm"},
+  {city:"Vancouver",country:"Canada",region:"us_warm"},{city:"Victoria",country:"Canada",region:"us_warm"},
+  // US/Canada Cold
+  {city:"New York",country:"US",region:"us_cold"},{city:"Boston",country:"US",region:"us_cold"},{city:"Philadelphia",country:"US",region:"us_cold"},{city:"Washington DC",country:"US",region:"us_cold"},{city:"Baltimore",country:"US",region:"us_cold"},{city:"Pittsburgh",country:"US",region:"us_cold"},
+  {city:"Chicago",country:"US",region:"us_cold"},{city:"Detroit",country:"US",region:"us_cold"},{city:"Milwaukee",country:"US",region:"us_cold"},{city:"Minneapolis",country:"US",region:"us_cold"},{city:"Indianapolis",country:"US",region:"us_cold"},{city:"Columbus",country:"US",region:"us_cold"},{city:"Cleveland",country:"US",region:"us_cold"},{city:"St Louis",country:"US",region:"us_cold"},{city:"Kansas City",country:"US",region:"us_cold"},
+  {city:"Denver",country:"US",region:"us_cold"},{city:"Salt Lake City",country:"US",region:"us_cold"},{city:"Boise",country:"US",region:"us_cold"},
+  {city:"Toronto",country:"Canada",region:"us_cold"},{city:"Montreal",country:"Canada",region:"us_cold"},{city:"Ottawa",country:"Canada",region:"us_cold"},{city:"Calgary",country:"Canada",region:"us_cold"},{city:"Edmonton",country:"Canada",region:"us_cold"},{city:"Winnipeg",country:"Canada",region:"us_cold"},{city:"Halifax",country:"Canada",region:"us_cold"},{city:"Quebec City",country:"Canada",region:"us_cold"},
+];
+
+function searchCity(query) {
+  if (!query || query.length < 2) return [];
+  const q = query.toLowerCase().trim();
+  const exact = [];
+  const starts = [];
+  const contains = [];
+  for (let i = 0; i < CITY_DB.length; i++) {
+    const c = CITY_DB[i];
+    const cn = c.city.toLowerCase();
+    const co = c.country.toLowerCase();
+    if (cn === q || co === q) exact.push(c);
+    else if (cn.startsWith(q) || co.startsWith(q)) starts.push(c);
+    else if (cn.includes(q) || co.includes(q)) contains.push(c);
+  }
+  return exact.concat(starts, contains).slice(0, 8);
+}
+
+/* ═══════════════════════════════════════════
+   REGION CROP OVERRIDES — per-region adaptations
+   Only fields that differ from Mediterranean base.
+   _na = true means crop not viable in this region.
+   ═══════════════════════════════════════════ */
+const RO = {
+  western_europe: {
+    "Tomato":{sowIn:"Mar-Apr",harvest:"Jul-Sep",days:90,yld:3.5,waterFreq:"Every 2-3 days",waterNote:"Greenhouse recommended in UK/NL. Outdoor in warm sheltered spots only.",regionNote:"Start indoors Feb-Mar, transplant after last frost (May). Greenhouse or polytunnel gives best results."},
+    "Pepper (Sweet)":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:95,yld:2,regionNote:"Needs greenhouse or very warm sheltered wall. Start indoors early March."},
+    "Potato":{sowIn:"Mar-May",harvest:"Jun-Sep",days:100,yld:2.5,regionNote:"Excellent crop for maritime climate. Earth up regularly. First earlies from March."},
+    "Onion":{sowIn:"Feb-Mar, Sep",harvest:"Jul-Sep",days:110,regionNote:"Sets in spring, or overwintering varieties from September. Great crop for this climate."},
+    "Garlic":{sowIn:"Oct-Nov",harvest:"Jun-Jul",days:240,regionNote:"Plant in autumn. Hardneck varieties do best in cooler maritime climates."},
+    "Cabbage":{sowIn:"Feb-Apr, Jul-Aug",harvest:"Jun-Nov",days:90,yld:2.5,regionNote:"Thrives in cool moist conditions. Excellent crop for UK/NL/BE."},
+    "Bean (Dry)":{sowIn:"May-Jun",harvest:"Sep-Oct",days:100,regionNote:"Wait until soil is warm. French and runner beans both do well."},
+    "Zucchini":{sowIn:"May-Jun",harvest:"Jul-Sep",days:55,yld:5,regionNote:"Sow after last frost. Very productive even in cool summers."},
+    "Carrot":{sowIn:"Mar-Jun, Aug-Sep",harvest:"Jun-Oct",days:75,regionNote:"Excellent crop. Succession sow for continuous harvest. Maincrop stores well."},
+    "Spinach":{sowIn:"Mar-May, Aug-Oct",harvest:"Apr-Nov",days:40,regionNote:"Loves cool maritime climate. Less bolting than in warmer regions."},
+    "Cucumber":{sowIn:"May-Jun",harvest:"Jul-Sep",days:60,yld:3,regionNote:"Greenhouse varieties give best results. Outdoor ridge types in sheltered spots."},
+    "Lettuce":{sowIn:"Mar-Sep",harvest:"May-Oct",days:45,regionNote:"Perfect climate for lettuce. Less bolting risk. Sow every 2-3 weeks."},
+    "Pumpkin":{sowIn:"May-Jun",harvest:"Sep-Oct",days:110,yld:6,regionNote:"Start indoors May, plant out June. Needs warm spot."},
+    "Beetroot":{sowIn:"Apr-Jul",harvest:"Jul-Nov",days:65,regionNote:"Reliable crop. Bolt-resistant varieties for early sowing."},
+    "Broad Bean":{sowIn:"Oct-Nov, Feb-Mar",harvest:"May-Jul",days:150,regionNote:"Classic UK crop. Autumn sowing overwinters well in mild maritime climate."},
+    "Leek":{sowIn:"Feb-Apr",harvest:"Sep-Mar",days:130,yld:0.4,regionNote:"Excellent winter crop. Harvest right through winter. King of the allotment."},
+    "Olive":{_na:true,regionNote:"Not hardy enough for outdoor growing. Possible in containers moved indoors for winter."},
+    "Grape":{sowIn:"Dec-Mar",harvest:"Sep-Oct",days:365,yld:4,regionNote:"Wine grapes possible in SE England, Belgium. Table grapes need wall or greenhouse."},
+    "Fig":{sowIn:"Nov-Feb",harvest:"Aug-Sep",days:365,yld:5,regionNote:"Fan-train against south-facing wall. Hardy varieties (Brown Turkey, Brunswick). One crop per year."},
+    "Pomegranate":{_na:true,regionNote:"Not hardy enough. Grow in containers in greenhouse."},
+    "Basil":{sowIn:"May-Jun",harvest:"Jul-Sep",days:35,yld:0.2,regionNote:"Greenhouse or windowsill. Too cool for outdoor growing in most years."},
+    "Oregano":{sowIn:"Apr-May",harvest:"Jun-Sep",days:50,regionNote:"Hardy perennial. Grows well once established. Prefers well-drained spot."},
+    "Rosemary":{sowIn:"Apr-May",harvest:"Year-round",days:90,regionNote:"Hardy in mild areas. Protect from wet winters. Well-drained soil essential."},
+    "Sage":{sowIn:"Apr-May",harvest:"Year-round",days:60,regionNote:"Hardy. Good drainage essential. Protect from waterlogging in winter."},
+    "Mint":{sowIn:"Mar-May",harvest:"Apr-Oct",regionNote:"Thrives in damp maritime climate. ALWAYS in pots — very invasive."},
+    "Lavender":{sowIn:"Mar-Apr",harvest:"Jul-Aug",days:90,regionNote:"English lavender hardiest. Must have good drainage. Hates wet winter feet."},
+    "Wheat":{sowIn:"Oct-Nov",harvest:"Aug",days:240,regionNote:"Winter wheat thrives. Maritime climate good for grain. Combine in August."},
+    "Pepper (Hot)":{sowIn:"Mar-Apr",harvest:"Aug-Oct",days:100,yld:1,regionNote:"Greenhouse essential. Start very early indoors. Smaller but concentrated heat."},
+    "Eggplant":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:90,yld:2,regionNote:"Greenhouse only. Needs sustained heat. Start early indoors."},
+    "Watermelon":{_na:true,regionNote:"Not enough heat units. Possible only in exceptional summers under glass."},
+    "Melon":{sowIn:"May",harvest:"Aug-Sep",days:90,yld:2,regionNote:"Greenhouse essential in UK/NL. Charentais types do best."},
+    "Corn":{sowIn:"May-Jun",harvest:"Aug-Sep",days:90,yld:0.25,regionNote:"Choose early-maturing varieties. Start indoors. Needs warm sheltered spot."},
+    "Okra":{_na:true,regionNote:"Not enough sustained heat for outdoor growing. Greenhouse possible."},
+    "Radish":{sowIn:"Mar-Sep",harvest:"Apr-Oct",days:28,regionNote:"Fast and reliable. Succession sow every 2 weeks. Perfect beginner crop."},
+    "Turnip":{sowIn:"Mar-May, Jul-Sep",harvest:"May-Jul, Sep-Dec",days:50,regionNote:"Excellent cool-climate crop. Fast growing. Good for autumn sowing."},
+    "Celery":{sowIn:"Mar-Apr",harvest:"Aug-Oct",days:120,regionNote:"Loves moisture. Self-blanching varieties easiest."},
+    "Swiss Chard":{sowIn:"Apr-Jun, Aug",harvest:"Jun-Nov",days:55,regionNote:"Very hardy. Good through mild winters. Reliable producer."},
+    "Kale":{sowIn:"Apr-Jun, Aug",harvest:"Jun-Jul, Oct-Mar",days:60,yld:0.6,regionNote:"Thrives in cool wet climate. Sweeter after frost. Overwinters easily."},
+    "Asparagus":{sowIn:"Mar-Apr",harvest:"Apr-Jun (yr 3+)",days:730,regionNote:"Excellent long-term crop. Well-drained raised bed ideal."},
+    "Pea":{sowIn:"Mar-Jun, Oct-Nov",harvest:"Jun-Aug",days:65,regionNote:"Classic cool-climate crop. Autumn sow hardy varieties for early crop."},
+    "Strawberry":{sowIn:"Aug-Sep, Mar-Apr",harvest:"Jun-Jul",days:120,yld:0.35,regionNote:"Excellent crop. Net against birds. Runners for new plants. June-bearers or everbearing."},
+    "Raspberry":{sowIn:"Nov-Mar",harvest:"Jun-Jul, Sep-Oct",days:365,regionNote:"Ideal climate. Autumn and summer varieties. Support with post and wire."},
+    "Peach":{sowIn:"Nov-Feb",harvest:"Aug-Sep",days:365,yld:10,regionNote:"Fan-train against south wall. Peach leaf curl worst problem. Cover in winter."},
+    "Plum":{sowIn:"Nov-Feb",harvest:"Aug-Sep",days:365,yld:15,regionNote:"Very good in maritime climate. Victoria and Czar popular. Easy fruit tree."},
+    "Cherry":{sowIn:"Nov-Feb",harvest:"Jun-Jul",days:365,yld:12,regionNote:"Good crop. Net against birds. Morello for cooking in shadier spots."},
+    "Apricot":{sowIn:"Nov-Feb",harvest:"Jul-Aug",days:365,yld:8,regionNote:"Fan against warm wall. Early bloomer so frost risk. Choose late-flowering varieties."},
+    "Walnut":{sowIn:"Nov-Feb",harvest:"Oct",days:365,yld:20,regionNote:"Hardy. Needs space. Choose late-leafing varieties to avoid frost damage."},
+    "Almond":{_na:true,regionNote:"Not reliably hardy. Early blooming means frost kills flowers most years."},
+    "Chestnut":{sowIn:"Nov-Feb",harvest:"Oct-Nov",days:365,regionNote:"Hardy. Excellent large tree. Sweet chestnuts thrive in UK/France."},
+    "Quince":{sowIn:"Nov-Feb",harvest:"Oct-Nov",days:365,yld:12,regionNote:"Hardy and underused. Makes incredible jelly and membrillo."},
+    "Persimmon":{sowIn:"Nov-Feb",harvest:"Nov-Dec",days:365,yld:10,regionNote:"Choose hardy varieties (Diospyros virginiana). Needs warm wall in colder areas."},
+    "Lemon":{_na:true,regionNote:"Not hardy outdoors. Grow in containers, bring inside for winter."},
+    "Orange":{_na:true,regionNote:"Not hardy outdoors. Container growing only with winter protection."},
+    "Hazelnut":{sowIn:"Nov-Feb",harvest:"Sep-Oct",days:365,yld:5,regionNote:"Native to Europe. Excellent choice. Needs two varieties for pollination."},
+    "Chamomile":{sowIn:"Mar-May",harvest:"Jun-Aug",days:60,regionNote:"Grows well. Self-seeds freely. Good for borders and paths."},
+    "Thyme":{sowIn:"Apr-May",harvest:"Jun-Sep",days:90,regionNote:"Hardy. Good drainage essential. Woolly thyme for damp climates."},
+    "Parsley":{sowIn:"Mar-Jun",harvest:"Jun-Nov",days:75,regionNote:"Reliable. Slow to germinate. Curly and flat-leaf both do well."},
+    "Dill":{sowIn:"Apr-Jun",harvest:"Jun-Sep",days:45,regionNote:"Direct sow. Bolts in heat — less of a problem here than in Mediterranean."},
+    "Broccoli":{sowIn:"Mar-Apr, Jul-Aug",harvest:"Jun-Jul, Oct-Dec",days:75,yld:0.6,regionNote:"Excellent cool-climate crop. Purple sprouting overwinters for spring harvest."},
+    "Cauliflower":{sowIn:"Mar-Apr, Jun-Jul",harvest:"Jun-Aug, Oct-Dec",days:85,regionNote:"Demanding but possible. More forgiving in cool moist climate."},
+    "Brussels Sprouts":{sowIn:"Mar-Apr",harvest:"Oct-Feb",days:120,yld:1,regionNote:"Perfect climate. Better after hard frost. Classic winter crop."},
+    "Sweet Potato":{sowIn:"May-Jun",harvest:"Sep-Oct",days:130,yld:1.5,regionNote:"Possible with black plastic mulch and slips started indoors. Marginal."},
+    "Celeriac":{sowIn:"Feb-Mar",harvest:"Oct-Dec",days:150,regionNote:"Good in cool moist conditions. Mulch well. Leave in ground until needed."},
+    "Sunflower":{sowIn:"Apr-May",harvest:"Sep",days:90,regionNote:"Reliable. Choose shorter varieties in exposed areas. Great for kids."},
+    "Artichoke":{sowIn:"Feb-Mar",harvest:"Jun-Aug",days:365,yld:2,regionNote:"Hardy in mild maritime areas. Mulch crown in winter."},
+    "Rhubarb":{sowIn:"Nov-Mar",harvest:"Mar-Jun (yr 2+)",days:365,yld:3,regionNote:"Thrives in cool moist climate. Classic British crop. Very low maintenance."},
+    "Blackberry":{sowIn:"Nov-Mar",harvest:"Aug-Sep",days:365,regionNote:"Grows like a weed. Thornless varieties easier. Train on wires."},
+    "Fennel":{sowIn:"Apr-May, Jul-Aug",harvest:"Jul-Aug, Oct-Nov",days:80,regionNote:"Florence fennel for bulbs. Bolt-resistant varieties essential. Autumn crop more reliable."},
+    "Lentil":{sowIn:"Mar-Apr",harvest:"Aug",days:100,yld:0.08,regionNote:"Marginal in wet climate. Needs dry period for harvest. Better in eastern areas."},
+    "Chickpea":{_na:true,regionNote:"Too wet and cool. Needs dry Mediterranean-type summers to mature properly."},
+  },
+  northern_europe: {
+    "Tomato":{sowIn:"Apr-May",harvest:"Jul-Sep",days:95,yld:3,waterFreq:"Every 2-3 days",waterNote:"Greenhouse essential. Choose cold-tolerant varieties.",regionNote:"Greenhouse or polytunnel required. Varieties: Sungold, Moneymaker, Sub Arctic Plenty for outdoors."},
+    "Pepper (Sweet)":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:100,yld:1.5,regionNote:"Greenhouse only. Start very early indoors under grow lights."},
+    "Potato":{sowIn:"Apr-May",harvest:"Jul-Sep",days:100,yld:2,regionNote:"Wait until soil 8°C+. Excellent crop. Early varieties from April, maincrop May."},
+    "Onion":{sowIn:"Mar-Apr, Aug-Sep",harvest:"Aug-Sep",days:115,regionNote:"Sets easier than seed. Stuttgarter Riesen and Red Baron popular. Plant sets early spring."},
+    "Garlic":{sowIn:"Sep-Oct",harvest:"Jul-Aug",days:250,regionNote:"Plant autumn. Hardneck varieties essential — need cold period. Very reliable."},
+    "Cabbage":{sowIn:"Mar-May, Jul",harvest:"Jul-Nov",days:95,yld:2,regionNote:"Good crop for cold climates. Winter varieties store well. Sauerkraut tradition."},
+    "Bean (Dry)":{sowIn:"May-Jun",harvest:"Sep",days:105,regionNote:"Short season. Choose fast-maturing bush types. Soil must be warm."},
+    "Zucchini":{sowIn:"May-Jun",harvest:"Jul-Sep",days:55,yld:4,regionNote:"Start indoors May, plant out after last frost. Very productive."},
+    "Carrot":{sowIn:"Apr-Jun",harvest:"Jul-Oct",days:80,regionNote:"Good crop. Nantes types do well. Sow when soil workable. Store in sand."},
+    "Spinach":{sowIn:"Mar-May, Aug-Sep",harvest:"May-Jun, Sep-Nov",days:40,regionNote:"Cool climate suits spinach perfectly. Slow to bolt. Great for spring and autumn."},
+    "Cucumber":{sowIn:"May-Jun",harvest:"Jul-Aug",days:65,yld:2.5,regionNote:"Greenhouse varieties only. Outdoor very unreliable. Start indoors."},
+    "Lettuce":{sowIn:"Apr-Aug",harvest:"May-Oct",days:45,regionNote:"Good crop. Less bolting risk. Succession sow from April."},
+    "Pumpkin":{sowIn:"May-Jun",harvest:"Sep-Oct",days:115,yld:5,regionNote:"Start indoors. Choose fast-maturing varieties (Hokkaido, Uchiki Kuri). Need warm spot."},
+    "Beetroot":{sowIn:"Apr-Jul",harvest:"Jul-Oct",days:65,regionNote:"Reliable. Good for storage. Sow after soil warms above 7°C."},
+    "Broad Bean":{sowIn:"Feb-Apr",harvest:"Jun-Jul",days:130,regionNote:"Hardy. Spring sowing works well. Autumn sowing risky in harsh winters."},
+    "Leek":{sowIn:"Feb-Apr",harvest:"Sep-Mar",days:140,yld:0.3,regionNote:"Excellent winter crop. Very cold hardy. Harvest from autumn through winter."},
+    "Olive":{_na:true,regionNote:"Cannot survive winter outdoors. Container growing with indoor winter storage only."},
+    "Grape":{sowIn:"Mar-Apr",harvest:"Sep-Oct",days:365,yld:3,regionNote:"Only earliest varieties (Solaris, Phoenix). South-facing wall essential. Wine possible in good years."},
+    "Fig":{_na:true,regionNote:"Not reliably hardy. Container growing possible — move indoors in winter."},
+    "Pomegranate":{_na:true,regionNote:"Not hardy. Conservatory or greenhouse only."},
+    "Basil":{sowIn:"May-Jun",harvest:"Jul-Aug",days:40,yld:0.15,regionNote:"Windowsill or greenhouse only. Too cold for outdoor growing."},
+    "Oregano":{sowIn:"May",harvest:"Jul-Sep",days:55,regionNote:"Hardy perennial once established. Protect first winter. Full sun and drainage."},
+    "Rosemary":{sowIn:"May",harvest:"Year-round",days:90,regionNote:"Marginal hardiness. Protect in winter. Well-drained raised spot. Mulch crown."},
+    "Sage":{sowIn:"May",harvest:"Jun-Oct",days:65,regionNote:"Hardy once established. Protect first winter. Good drainage."},
+    "Mint":{sowIn:"Apr-May",harvest:"May-Sep",regionNote:"Very hardy. Thrives. ALWAYS in pots."},
+    "Lavender":{sowIn:"Apr-May",harvest:"Jul-Aug",days:95,regionNote:"English lavender only. Must have excellent drainage. Winter mulch."},
+    "Wheat":{sowIn:"Sep-Oct",harvest:"Jul-Aug",days:240,regionNote:"Winter wheat standard crop. Very reliable in continental climate."},
+    "Pepper (Hot)":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:110,yld:0.8,regionNote:"Greenhouse essential. Start very early under lights. Prairie Fire for outdoors."},
+    "Eggplant":{_na:true,regionNote:"Not enough heat even in greenhouse for most. Possible with dedicated heated greenhouse."},
+    "Watermelon":{_na:true,regionNote:"Growing season too short and too cool. Not viable."},
+    "Melon":{_na:true,regionNote:"Not enough heat. Only in heated greenhouse."},
+    "Corn":{sowIn:"May-Jun",harvest:"Sep",days:95,yld:0.2,regionNote:"Choose very early varieties (Swift, Earlibird). Black plastic mulch helps. Marginal."},
+    "Okra":{_na:true,regionNote:"Not enough sustained heat. Not viable."},
+    "Radish":{sowIn:"Apr-Sep",harvest:"May-Oct",days:30,regionNote:"Very fast and reliable. Great beginner crop. Sow every 2 weeks."},
+    "Turnip":{sowIn:"Apr-May, Jul-Aug",harvest:"Jun-Jul, Sep-Nov",days:55,regionNote:"Good cool-climate crop. Fast growing. Traditional storage vegetable."},
+    "Celery":{sowIn:"Mar-Apr",harvest:"Aug-Oct",days:130,regionNote:"Start indoors very early. Needs long season. Celeriac easier alternative."},
+    "Swiss Chard":{sowIn:"Apr-Jun",harvest:"Jun-Oct",days:55,regionNote:"Hardy. Good through light frosts. Bright Lights variety for colour."},
+    "Kale":{sowIn:"Apr-Jun, Jul-Aug",harvest:"Jun-Jul, Sep-Mar",days:60,yld:0.6,regionNote:"Thrives in cold. Sweeter after hard frost. Essential winter green."},
+    "Asparagus":{sowIn:"Apr",harvest:"May-Jun (yr 3+)",days:730,regionNote:"Hardy perennial. Plant crowns in spring. Needs well-drained bed."},
+    "Pea":{sowIn:"Mar-May",harvest:"Jun-Jul",days:65,regionNote:"Good cool-climate crop. Support with sticks or netting."},
+    "Strawberry":{sowIn:"Aug-Sep, Mar-Apr",harvest:"Jun-Jul",days:130,yld:0.3,regionNote:"Reliable. Mulch for winter protection. Everbearing types extend season."},
+    "Raspberry":{sowIn:"Nov-Mar",harvest:"Jun-Jul, Sep",days:365,regionNote:"Excellent. Very cold hardy. Summer and autumn varieties."},
+    "Peach":{_na:true,regionNote:"Not reliably hardy. Late frosts kill blossoms. Trained against heated wall possible."},
+    "Plum":{sowIn:"Nov-Feb",harvest:"Aug-Sep",days:365,yld:15,regionNote:"Hardy. Choose local varieties. Good crop in continental climate."},
+    "Cherry":{sowIn:"Nov-Feb",harvest:"Jun-Jul",days:365,yld:12,regionNote:"Hardy. Good crop. Sour cherries (Morello) very cold tolerant. Net birds."},
+    "Apricot":{_na:true,regionNote:"Early blooming means frost damage in most years. Not reliable."},
+    "Walnut":{sowIn:"Nov-Feb",harvest:"Oct",days:365,yld:20,regionNote:"Hardy. Choose late-leafing varieties (Buccaneer). Needs space."},
+    "Almond":{_na:true,regionNote:"Not hardy. Early flowering killed by frost."},
+    "Chestnut":{sowIn:"Nov-Feb",harvest:"Oct",days:365,regionNote:"Hardy. Large tree. Good in forest garden. European chestnut."},
+    "Quince":{sowIn:"Nov-Feb",harvest:"Oct",days:365,yld:10,regionNote:"Hardy. Reliable. Harvest after first frost for best flavour."},
+    "Persimmon":{_na:true,regionNote:"Not reliably hardy. American persimmon (D. virginiana) possible in mildest areas."},
+    "Lemon":{_na:true,regionNote:"Not hardy. Indoor/conservatory only."},
+    "Orange":{_na:true,regionNote:"Not hardy. Indoor/conservatory only."},
+    "Hazelnut":{sowIn:"Nov-Feb",harvest:"Sep-Oct",days:365,yld:5,regionNote:"Native and very hardy. Excellent choice. Coppice for poles too."},
+    "Chamomile":{sowIn:"Apr-May",harvest:"Jun-Aug",days:65,regionNote:"Hardy. Self-seeds. German chamomile for tea."},
+    "Thyme":{sowIn:"May",harvest:"Jun-Sep",days:95,regionNote:"Hardy once established. Must have drainage. Winter mulch helps."},
+    "Parsley":{sowIn:"Apr-Jun",harvest:"Jun-Oct",days:80,regionNote:"Reliable. Slow to germinate. Hamburg parsley (root) also useful."},
+    "Dill":{sowIn:"May-Jun",harvest:"Jul-Aug",days:45,regionNote:"Direct sow after frost. Short season. Important in Baltic/Nordic cooking."},
+    "Broccoli":{sowIn:"Apr-May, Jul",harvest:"Jun-Jul, Sep-Nov",days:75,regionNote:"Good cool-climate crop. Calabrese for summer, purple sprouting overwinters."},
+    "Cauliflower":{sowIn:"Apr-May",harvest:"Jul-Oct",days:90,regionNote:"Challenging in short season. Start early indoors."},
+    "Brussels Sprouts":{sowIn:"Mar-Apr",harvest:"Oct-Jan",days:120,yld:0.8,regionNote:"Excellent after hard frost. Perfect cold-climate crop."},
+    "Sweet Potato":{_na:true,regionNote:"Season too short. Not enough heat units."},
+    "Celeriac":{sowIn:"Feb-Mar",harvest:"Oct-Nov",days:160,regionNote:"Start very early indoors. Long season. Mulch. Traditional German vegetable."},
+    "Sunflower":{sowIn:"May",harvest:"Sep-Oct",days:85,regionNote:"Reliable. Direct sow after last frost. Choose appropriate height."},
+    "Artichoke":{_na:true,regionNote:"Not reliably hardy. Heavy mulching might work in mild winters. Cardoon hardier alternative."},
+    "Rhubarb":{sowIn:"Nov-Mar",harvest:"Apr-Jun (yr 2+)",days:365,yld:2.5,regionNote:"Very hardy. Loves cold winters. Easy and productive."},
+    "Blackberry":{sowIn:"Nov-Mar",harvest:"Aug-Sep",days:365,regionNote:"Very hardy. Train on fence or wires. Thornless varieties available."},
+    "Fennel":{sowIn:"May-Jun",harvest:"Aug-Sep",days:85,regionNote:"Bolt-resistant varieties only. Late sowing for autumn harvest more reliable."},
+    "Lentil":{_na:true,regionNote:"Too cool and wet. Needs dry harvest period. Not viable."},
+    "Chickpea":{_na:true,regionNote:"Needs hot dry summers. Not viable in Northern Europe."},
+  },
+  us_warm: {
+    "Tomato":{sowIn:"Feb-Apr",harvest:"Jun-Oct",days:75,yld:5.5,waterNote:"Deep water at base. Mulch heavily in heat. Afternoon shade helps in Deep South.",regionNote:"Start indoors 6-8wk before last frost. Determinate varieties for brutal summers. Heat-set varieties for South."},
+    "Pepper (Sweet)":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:80,yld:4,regionNote:"Thrives in heat. Direct sun. Long season gives heavy yields."},
+    "Potato":{sowIn:"Jan-Mar",harvest:"May-Jul",days:90,yld:2.5,regionNote:"Plant early — potatoes dislike hot summers. Yukon Gold, Red Pontiac do well."},
+    "Onion":{sowIn:"Oct-Jan",harvest:"Apr-Jun",days:100,regionNote:"Short-day varieties for the South (Texas Super Sweet, Yellow Granex). Plant autumn/winter."},
+    "Garlic":{sowIn:"Oct-Nov",harvest:"May-Jun",days:200,regionNote:"Softneck varieties for warm climates (California Early, Inchelium Red). Plant in fall."},
+    "Cabbage":{sowIn:"Sep-Feb",harvest:"Dec-Apr",days:85,regionNote:"Cool-season crop — plant for winter harvest in warm zones. Bolts in summer heat."},
+    "Bean (Dry)":{sowIn:"Mar-May",harvest:"Jul-Sep",days:90,regionNote:"Long season great for pole beans. Can do spring and fall crops."},
+    "Zucchini":{sowIn:"Mar-Apr",harvest:"May-Sep",days:48,yld:7,regionNote:"Very productive. Squash vine borer is #1 enemy. Succession plant."},
+    "Carrot":{sowIn:"Sep-Feb",harvest:"Dec-Apr",days:70,regionNote:"Cool-season crop in the South. Plant in fall. Heat causes bitter woody roots."},
+    "Spinach":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:40,regionNote:"Winter crop in warm zones. Bolts immediately in spring heat. Malabar spinach for summer."},
+    "Cucumber":{sowIn:"Mar-May",harvest:"May-Sep",days:55,yld:5,regionNote:"Loves heat. Very productive. Watch for cucumber beetles. Trellis to save space."},
+    "Lettuce":{sowIn:"Sep-Mar",harvest:"Nov-Apr",days:40,regionNote:"Winter crop. Bolts fast in heat. Shade cloth extends season."},
+    "Pumpkin":{sowIn:"Jun-Jul",harvest:"Oct-Nov",days:95,yld:10,regionNote:"Plant after worst summer heat passes. Long season. Squash bugs main pest."},
+    "Beetroot":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:55,regionNote:"Cool-season crop. Plant fall through winter."},
+    "Broad Bean":{sowIn:"Oct-Dec",harvest:"Mar-May",days:140,regionNote:"Winter crop in the South. Plant in autumn. Not heat tolerant."},
+    "Leek":{sowIn:"Sep-Nov",harvest:"Jan-Apr",days:120,regionNote:"Cool-season crop. Plant in fall for winter/spring harvest."},
+    "Olive":{sowIn:"Nov-Mar",harvest:"Oct-Dec",days:365,yld:20,regionNote:"California excellent for olives. Texas and parts of South work. Need winter chill."},
+    "Grape":{sowIn:"Dec-Mar",harvest:"Jul-Sep",days:365,yld:10,regionNote:"Muscadine grapes native to Southeast. Vinifera in California. Excellent crop."},
+    "Fig":{sowIn:"Nov-Feb",harvest:"Jun-Oct",days:365,yld:20,regionNote:"Thrives. Brown Turkey hardy. Two crops possible (breba + main). Easy care."},
+    "Pomegranate":{sowIn:"Nov-Mar",harvest:"Sep-Nov",days:365,yld:18,regionNote:"Excellent in hot dry areas. Wonderful Red is popular. Very drought tolerant."},
+    "Basil":{sowIn:"Mar-May",harvest:"May-Oct",days:28,yld:0.4,regionNote:"Thrives in heat. Long season. Succession sow. Pinch flowers."},
+    "Oregano":{sowIn:"Mar-Apr",harvest:"May-Oct",days:45,regionNote:"Thrives. Can be semi-evergreen in warm zones."},
+    "Rosemary":{sowIn:"Mar-Apr",harvest:"Year-round",days:90,regionNote:"Evergreen perennial. Thrives. Can become large hedge. Tuscan Blue popular."},
+    "Sage":{sowIn:"Mar-Apr",harvest:"Year-round",days:60,regionNote:"Semi-evergreen in warm climates. Good drainage."},
+    "Mint":{sowIn:"Mar-May",harvest:"Apr-Nov",regionNote:"Vigorous. IN POTS ONLY. Year-round in mildest zones."},
+    "Lavender":{sowIn:"Feb-Mar",harvest:"May-Jul",days:85,regionNote:"Excellent in dry heat. Spanish and French types for hottest areas. English for cooler zones."},
+    "Wheat":{sowIn:"Oct-Nov",harvest:"May-Jun",days:200,regionNote:"Winter wheat. Plant in fall. Harvest late spring before summer heat."},
+    "Pepper (Hot)":{sowIn:"Feb-Mar",harvest:"Jun-Nov",days:80,yld:2,regionNote:"Paradise for hot peppers. Long hot season = maximum heat. Carolina Reaper territory."},
+    "Eggplant":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:70,yld:5,regionNote:"Loves heat. Very productive with long season. Black Beauty, Ichiban popular."},
+    "Watermelon":{sowIn:"Mar-Apr",harvest:"Jul-Sep",days:80,yld:10,regionNote:"Excellent. Crimson Sweet, Sugar Baby popular. Long hot season perfect."},
+    "Melon":{sowIn:"Mar-Apr",harvest:"Jul-Sep",days:75,yld:5,regionNote:"Thrives. Cantaloupe and honeydew do great. Black plastic mulch."},
+    "Corn":{sowIn:"Mar-May",harvest:"Jun-Aug",days:75,yld:0.35,regionNote:"Excellent. Silver Queen, Peaches and Cream popular. Blocks not rows."},
+    "Okra":{sowIn:"Apr-Jun",harvest:"Jun-Oct",days:55,yld:3,regionNote:"Southern staple. Loves heat. Clemson Spineless popular. Pick every 2 days."},
+    "Radish":{sowIn:"Sep-Mar",harvest:"Oct-Apr",days:25,regionNote:"Cool-season. Plant fall through spring. Fast and easy."},
+    "Turnip":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:45,regionNote:"Cool-season crop. Plant in fall. Southern tradition: turnip greens."},
+    "Celery":{sowIn:"Sep-Nov",harvest:"Jan-Mar",days:110,regionNote:"Cool-season crop. Plant in fall. Needs consistent moisture."},
+    "Swiss Chard":{sowIn:"Sep-Mar",harvest:"Nov-May",days:50,regionNote:"Cool-season. Very heat tolerant for a green. Can survive summer with shade."},
+    "Kale":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:55,yld:0.6,regionNote:"Cool-season. Sweeter after light frost. Lacinato/Dinosaur kale heat tolerant."},
+    "Asparagus":{sowIn:"Jan-Feb",harvest:"Mar-May (yr 3+)",days:730,regionNote:"Plant crowns in late winter. Excellent long-term investment. Jersey series."},
+    "Pea":{sowIn:"Oct-Feb",harvest:"Mar-May",days:55,regionNote:"Cool-season only. Plant fall/winter. Snow peas and sugar snap popular."},
+    "Strawberry":{sowIn:"Sep-Nov",harvest:"Mar-May",days:110,yld:0.45,regionNote:"Plant in fall. Day-neutral varieties for extended harvest. Chandler popular."},
+    "Raspberry":{sowIn:"Nov-Feb",harvest:"May-Jun, Sep-Oct",days:365,yld:1,regionNote:"Heritage and Caroline for warm zones. Need some chill hours."},
+    "Peach":{sowIn:"Nov-Feb",harvest:"May-Jul",days:365,yld:25,regionNote:"Excellent. Choose low-chill varieties for Deep South (400-600 hrs). Georgia, Carolinas ideal."},
+    "Plum":{sowIn:"Nov-Feb",harvest:"Jun-Aug",days:365,yld:20,regionNote:"Santa Rosa, Methley popular. Japanese types for warmest zones."},
+    "Cherry":{sowIn:"Nov-Feb",harvest:"May-Jun",days:365,yld:15,regionNote:"Sweet cherries need chill hours. Marginal in Deep South. Pacific NW ideal."},
+    "Apricot":{sowIn:"Nov-Feb",harvest:"May-Jun",days:365,yld:15,regionNote:"Good in California, Texas. Early blooming = frost risk. Blenheim popular."},
+    "Walnut":{sowIn:"Nov-Feb",harvest:"Sep-Oct",days:365,yld:30,regionNote:"California = world walnut capital. Chandler variety dominant."},
+    "Almond":{sowIn:"Nov-Feb",harvest:"Aug-Sep",days:365,yld:10,regionNote:"California primary growing area. Need bee pollination. Nonpareil popular."},
+    "Chestnut":{sowIn:"Nov-Feb",harvest:"Oct",days:365,regionNote:"Chinese chestnuts for Southeast. European for Pacific NW. Hardy."},
+    "Quince":{sowIn:"Nov-Feb",harvest:"Oct-Nov",days:365,regionNote:"Easy care. Drought tolerant. Pineapple quince popular in US."},
+    "Persimmon":{sowIn:"Nov-Feb",harvest:"Oct-Dec",days:365,yld:25,regionNote:"American (D. virginiana) native. Fuyu for eating fresh. Hachiya for baking."},
+    "Lemon":{sowIn:"Mar-Apr",harvest:"Nov-Apr",days:365,yld:25,regionNote:"Meyer lemon most popular. Year-round fruit in warmest zones. Frost protection in borderline areas."},
+    "Orange":{sowIn:"Mar-Apr",harvest:"Dec-Apr",days:365,yld:35,regionNote:"Florida, California, Texas. Valencia, Navel. Need frost-free location."},
+    "Hazelnut":{sowIn:"Nov-Feb",harvest:"Sep-Oct",days:365,yld:5,regionNote:"Pacific NW (Oregon) ideal. American hazelnut for Eastern US."},
+    "Chamomile":{sowIn:"Feb-Apr, Sep-Oct",harvest:"Apr-Jun",days:55,regionNote:"Self-seeding. Fall sow in warm zones for spring harvest."},
+    "Thyme":{sowIn:"Mar-Apr",harvest:"Year-round",days:85,regionNote:"Evergreen in warm zones. Drought tolerant. Creeping thyme for paths."},
+    "Parsley":{sowIn:"Sep-Mar",harvest:"Nov-May",days:65,regionNote:"Cool-season herb. Plant in fall. Italian flat-leaf most popular."},
+    "Dill":{sowIn:"Sep-Mar",harvest:"Nov-May",days:38,regionNote:"Cool-season. Plant fall through spring. Bolts in summer heat."},
+    "Broccoli":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:65,yld:0.6,regionNote:"Cool-season. Fall/winter crop. Waltham 29 popular. Side shoots extend harvest."},
+    "Cauliflower":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:75,regionNote:"Cool-season. Less fussy in mild winter conditions."},
+    "Brussels Sprouts":{sowIn:"Aug-Sep",harvest:"Nov-Feb",days:110,regionNote:"Fall planting for winter harvest. Better after frost. Long season needed."},
+    "Sweet Potato":{sowIn:"Apr-Jun",harvest:"Sep-Oct",days:100,yld:3,regionNote:"Southern staple. Plant slips after soil warm. Beauregard #1 variety. Very easy."},
+    "Celeriac":{sowIn:"Jan-Feb",harvest:"Oct-Nov",days:150,regionNote:"Start very early indoors. Needs long cool finish. Difficult in Deep South."},
+    "Sunflower":{sowIn:"Mar-May",harvest:"Jul-Sep",days:75,regionNote:"Easy. Mammoth for seeds. Multi-head for cut flowers. Attracts pollinators."},
+    "Artichoke":{sowIn:"Sep-Nov",harvest:"Mar-May",days:365,yld:4,regionNote:"Perennial in mild zones. Green Globe standard. Imperial Star from seed."},
+    "Rhubarb":{sowIn:"Nov-Feb",harvest:"Mar-May (yr 2+)",days:365,yld:1.5,regionNote:"Needs winter chill. Marginal in Deep South. Northern zones better."},
+    "Blackberry":{sowIn:"Nov-Feb",harvest:"Jun-Jul",days:365,yld:4,regionNote:"Native. Thornless varieties (Triple Crown). Very productive in warm climates."},
+    "Fennel":{sowIn:"Sep-Nov, Feb-Mar",harvest:"Dec-Feb, May-Jun",days:70,regionNote:"Cool-season. Fall planting best. Bolts in heat."},
+    "Lentil":{sowIn:"Feb-Mar",harvest:"Jun",days:85,yld:0.1,regionNote:"Possible in dry areas. California, Pacific NW. Needs dry harvest period."},
+    "Chickpea":{sowIn:"Feb-Mar",harvest:"Jun-Jul",days:95,yld:0.12,regionNote:"California suitable. Needs hot dry finish. Irrigation until flowering then dry down."},
+  },
+  us_cold: {
+    "Tomato":{sowIn:"Apr-May",harvest:"Jul-Sep",days:80,yld:4,waterNote:"Deep water at base. Mulch after soil warms.",regionNote:"Start indoors 6-8wk before last frost (late May). Determinate varieties for short season. Wall-O-Waters for early start."},
+    "Pepper (Sweet)":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:90,yld:2,regionNote:"Start indoors 8-10wk early. Short season. Ace, King of the North for cold tolerance."},
+    "Potato":{sowIn:"Apr-May",harvest:"Jul-Sep",days:100,yld:2,regionNote:"Plant 2-3 weeks before last frost. Excellent crop. Kennebec, Yukon Gold."},
+    "Onion":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:115,regionNote:"Long-day varieties (Walla Walla, Copra, Candy). Start from sets or transplants."},
+    "Garlic":{sowIn:"Sep-Oct",harvest:"Jul-Aug",days:260,regionNote:"Plant 4-6 weeks before ground freezes. Hardneck varieties (Music, German Extra Hardy). Mulch heavily."},
+    "Cabbage":{sowIn:"Apr-May, Jul-Aug",harvest:"Jul-Aug, Oct-Nov",days:90,yld:2,regionNote:"Start indoors early. Can do spring and fall crop. Storage varieties (Danish Ballhead)."},
+    "Bean (Dry)":{sowIn:"May-Jun",harvest:"Sep",days:100,regionNote:"Wait for warm soil (15°C+). Short season — choose early varieties."},
+    "Zucchini":{sowIn:"May-Jun",harvest:"Jul-Sep",days:55,yld:5,regionNote:"After last frost. Very productive in warm summers. Dark Star, Black Beauty."},
+    "Carrot":{sowIn:"Apr-Jun",harvest:"Jul-Oct",days:75,regionNote:"Direct sow when soil workable. Napoli, Bolero for storage. Mulch to extend harvest."},
+    "Spinach":{sowIn:"Apr-May, Aug-Sep",harvest:"May-Jun, Sep-Nov",days:40,regionNote:"Great cool-season crop. Plant as soon as soil workable. Bloomsdale."},
+    "Cucumber":{sowIn:"May-Jun",harvest:"Jul-Sep",days:58,yld:3.5,regionNote:"After last frost. Marketmore, Straight Eight. Trellis saves space."},
+    "Lettuce":{sowIn:"Apr-Aug",harvest:"May-Oct",days:45,regionNote:"Direct sow as soon as soil workable. Succession sow every 2 weeks."},
+    "Pumpkin":{sowIn:"May-Jun",harvest:"Sep-Oct",days:105,yld:6,regionNote:"Start indoors in short-season areas. New England Pie, Howden. Need 100+ frost-free days."},
+    "Beetroot":{sowIn:"Apr-Jul",harvest:"Jun-Oct",days:60,regionNote:"Reliable cool-season crop. Detroit Dark Red standard. Good for storage."},
+    "Broad Bean":{sowIn:"Apr-May",harvest:"Jul-Aug",days:120,regionNote:"Spring sowing only — too cold for overwintering. Plant as soon as soil workable."},
+    "Leek":{sowIn:"Feb-Apr",harvest:"Sep-Feb",days:140,regionNote:"Start indoors early. Very cold hardy. King Richard, Giant Musselburgh."},
+    "Olive":{_na:true,regionNote:"Cannot survive cold winters. Not viable outdoors."},
+    "Grape":{sowIn:"Apr-May",harvest:"Sep-Oct",days:365,yld:5,regionNote:"Cold-hardy varieties (Marquette, Frontenac, Concord). Wine and juice. Needs winter protection in coldest zones."},
+    "Fig":{_na:true,regionNote:"Marginal. Chicago Hardy in sheltered spot with heavy winter protection, otherwise container only."},
+    "Pomegranate":{_na:true,regionNote:"Not hardy. Container growing only."},
+    "Basil":{sowIn:"May-Jun",harvest:"Jul-Sep",days:35,yld:0.2,regionNote:"After all frost danger. Short outdoor season. Genovese, Thai."},
+    "Oregano":{sowIn:"May",harvest:"Jun-Sep",days:50,regionNote:"Hardy perennial once established. Good drainage. Mulch for winter."},
+    "Rosemary":{sowIn:"May",harvest:"Jun-Oct",days:90,regionNote:"Not reliably hardy. Treat as annual or overwinter indoors. Arp is hardiest."},
+    "Sage":{sowIn:"May",harvest:"Jun-Oct",days:65,regionNote:"Hardy perennial. Mulch in winter. Holt's Mammoth good cultivar."},
+    "Mint":{sowIn:"Apr-May",harvest:"May-Sep",regionNote:"Very hardy. Spreads aggressively. ALWAYS in pots."},
+    "Lavender":{sowIn:"May",harvest:"Jul-Aug",days:95,regionNote:"Munstead, Hidcote hardiest. Excellent drainage essential. Winter mulch."},
+    "Wheat":{sowIn:"Sep-Oct",harvest:"Jul",days:240,regionNote:"Winter wheat standard. Hard red winter for bread. Spring wheat alternative."},
+    "Pepper (Hot)":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:100,yld:1,regionNote:"Start very early indoors. Short season. Hungarian Wax, Early Jalapeno."},
+    "Eggplant":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:85,yld:2.5,regionNote:"Start very early indoors. Short season. Fairy Tale, Orient Express for speed."},
+    "Watermelon":{sowIn:"May-Jun",harvest:"Aug-Sep",days:90,yld:6,regionNote:"Short-season varieties only (Sugar Baby, Blacktail Mountain). Black plastic mulch. Marginal in coldest zones."},
+    "Melon":{sowIn:"May-Jun",harvest:"Aug-Sep",days:85,yld:3,regionNote:"Short-season varieties (Minnesota Midget, Fastbreak). Black plastic. Marginal."},
+    "Corn":{sowIn:"May-Jun",harvest:"Aug-Sep",days:80,yld:0.25,regionNote:"Wait for warm soil. Early varieties (Golden Bantam, Early Sunglow). Blocks of at least 4 rows."},
+    "Okra":{sowIn:"Jun",harvest:"Aug-Sep",days:65,yld:1.5,regionNote:"Marginal in coldest zones. Start indoors. Short season varieties (Cajun Delight)."},
+    "Radish":{sowIn:"Apr-Sep",harvest:"May-Oct",days:28,regionNote:"Plant as soon as soil workable. Fastest crop in the garden."},
+    "Turnip":{sowIn:"Apr-May, Aug",harvest:"Jun, Oct-Nov",days:50,regionNote:"Spring and fall crop. Purple Top White Globe standard. Cold hardy."},
+    "Celery":{sowIn:"Feb-Mar",harvest:"Aug-Oct",days:130,regionNote:"Start indoors very early. Long season. Needs consistent moisture."},
+    "Swiss Chard":{sowIn:"Apr-Jun",harvest:"Jun-Oct",days:55,regionNote:"Cold tolerant. Good through light frosts. Bright Lights colourful."},
+    "Kale":{sowIn:"Apr-Jun, Jul-Aug",harvest:"Jun-Jul, Sep-Dec",days:60,yld:0.6,regionNote:"Extremely cold hardy. Sweeter after hard frost. Can overwinter in many zones."},
+    "Asparagus":{sowIn:"Apr-May",harvest:"May-Jun (yr 3+)",days:730,regionNote:"Very cold hardy perennial. Jersey Knight, Purple Passion. Great investment."},
+    "Pea":{sowIn:"Apr-May",harvest:"Jun-Jul",days:60,regionNote:"Plant as soon as soil workable. Likes cool weather. Sugar snap popular."},
+    "Strawberry":{sowIn:"Apr-May",harvest:"Jun-Jul",days:120,yld:0.3,regionNote:"Mulch heavily for winter. June-bearing (Jewel, Honeoye) or everbearing (Albion)."},
+    "Raspberry":{sowIn:"Apr-May",harvest:"Jun-Jul, Sep",days:365,yld:1,regionNote:"Very cold hardy. Heritage, Latham. Excellent fruit for cold climates."},
+    "Peach":{sowIn:"Apr",harvest:"Aug-Sep",days:365,yld:15,regionNote:"Hardy varieties (Reliance, Contender). Late-blooming to avoid frost. Protect blossoms."},
+    "Plum":{sowIn:"Apr",harvest:"Aug-Sep",days:365,yld:15,regionNote:"European plums hardier than Japanese. Stanley, Mount Royal. Good for cold zones."},
+    "Cherry":{sowIn:"Apr",harvest:"Jul",days:365,yld:12,regionNote:"Sour cherries (Montmorency) very cold hardy. Sweet cherries marginal in coldest zones."},
+    "Apricot":{sowIn:"Apr",harvest:"Jul-Aug",days:365,yld:10,regionNote:"Hardy varieties (Harcot, Goldcot). Late-blooming types to avoid frost. Zone 5+ only."},
+    "Walnut":{sowIn:"Apr",harvest:"Oct",days:365,yld:15,regionNote:"Black walnut native. Carpathian walnut (English) hardy to zone 5. Large tree."},
+    "Almond":{_na:true,regionNote:"Not cold hardy enough. Early blooming killed by late frosts."},
+    "Chestnut":{sowIn:"Apr",harvest:"Oct",days:365,regionNote:"Chinese chestnuts hardy. Dunstan hybrids. Good alternative to walnut."},
+    "Quince":{sowIn:"Apr",harvest:"Oct",days:365,yld:10,regionNote:"Hardy to zone 5. Orange, Pineapple varieties. Easy care."},
+    "Persimmon":{sowIn:"Apr",harvest:"Oct-Nov",days:365,yld:15,regionNote:"American persimmon (D. virginiana) native and very cold hardy (zone 4). Meader, Yates."},
+    "Lemon":{_na:true,regionNote:"Not hardy. Indoor growing or containers moved inside for winter."},
+    "Orange":{_na:true,regionNote:"Not hardy. Cannot grow outdoors."},
+    "Hazelnut":{sowIn:"Apr",harvest:"Sep-Oct",days:365,yld:4,regionNote:"American hazelnut very cold hardy. Oregon breeding program. Two varieties for pollination."},
+    "Chamomile":{sowIn:"Apr-May",harvest:"Jun-Aug",days:65,regionNote:"Self-seeding annual. German chamomile hardier. Easy."},
+    "Thyme":{sowIn:"May",harvest:"Jun-Sep",days:95,regionNote:"Hardy perennial. Good drainage. Winter mulch. English thyme hardiest."},
+    "Parsley":{sowIn:"Apr-Jun",harvest:"Jun-Oct",days:80,regionNote:"Biennial. Flat-leaf or curly. Start early indoors for jump start."},
+    "Dill":{sowIn:"May-Jun",harvest:"Jul-Aug",days:45,regionNote:"Direct sow after frost. Succession sow. Bouquet or Mammoth varieties."},
+    "Broccoli":{sowIn:"Apr-May, Jul",harvest:"Jun-Jul, Sep-Oct",days:70,yld:0.5,regionNote:"Cool-season crop. Spring and fall plantings. Waltham 29, Belstar."},
+    "Cauliflower":{sowIn:"Apr-May, Jul",harvest:"Jun-Jul, Sep-Oct",days:80,regionNote:"Cool-season. Snow Crown earliest. More demanding than broccoli."},
+    "Brussels Sprouts":{sowIn:"Apr-May",harvest:"Sep-Nov",days:110,yld:0.8,regionNote:"Plant early for fall harvest. Better after frost. Long Island Improved."},
+    "Sweet Potato":{sowIn:"Jun",harvest:"Sep-Oct",days:120,yld:1.5,regionNote:"Short season challenge. Black plastic mulch essential. Georgia Jet, Beauregard. Start slips indoors."},
+    "Celeriac":{sowIn:"Feb-Mar",harvest:"Oct",days:150,regionNote:"Start very early indoors (Feb). Long season. Mulch. Brilliant for cold climate storage."},
+    "Sunflower":{sowIn:"May-Jun",harvest:"Sep",days:85,regionNote:"Direct sow after last frost. Mammoth, Ring of Fire. Easy."},
+    "Artichoke":{sowIn:"Feb-Mar",harvest:"Jul-Aug",days:365,yld:1.5,regionNote:"Treat as annual. Imperial Star from seed, harvest first year. Vernalize transplants."},
+    "Rhubarb":{sowIn:"Apr",harvest:"May-Jun (yr 2+)",days:365,yld:3,regionNote:"Thrives in cold climate. Victoria, Canada Red. Very long-lived perennial."},
+    "Blackberry":{sowIn:"Apr",harvest:"Jul-Aug",days:365,yld:2.5,regionNote:"Choose cold-hardy varieties (Illini Hardy). Thornless less hardy. Mulch for winter."},
+    "Fennel":{sowIn:"May-Jun, Jul-Aug",harvest:"Aug-Sep, Oct",days:80,regionNote:"Direct sow. Bolt-resistant varieties. Fall crop more reliable."},
+    "Lentil":{sowIn:"Apr-May",harvest:"Aug",days:95,yld:0.08,regionNote:"Possible in dry western areas (Montana, Dakotas). Needs dry harvest period."},
+    "Chickpea":{_na:true,regionNote:"Too wet and cool in most areas. Marginal in driest zones only."},
+  },
+};
+
+/* ═══════════════════════════════════════════
+   REGION-AWARE CROP FUNCTIONS
+   ═══════════════════════════════════════════ */
+function getRegionalCrop(baseCrop, region) {
+  if (!region || region === "mediterranean") return baseCrop;
+  const regionOverrides = RO[region];
+  if (!regionOverrides) return baseCrop;
+  const ov = regionOverrides[baseCrop.name];
+  if (!ov) return baseCrop;
+  if (ov._na) return null;
+  const merged = {};
+  const keys = Object.keys(baseCrop);
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    merged[k] = ov[k] !== undefined ? ov[k] : baseCrop[k];
+  }
+  if (ov.regionNote) merged.regionNote = ov.regionNote;
+  return merged;
+}
+
+function getRegionalCrops(region) {
+  if (!region || region === "mediterranean") return CROPS;
+  const result = [];
+  for (let i = 0; i < CROPS.length; i++) {
+    const rc = getRegionalCrop(CROPS[i], region);
+    if (rc) result.push(rc);
+  }
+  return result;
+}
+
+function getRegionalCropMap(region) {
+  if (!region || region === "mediterranean") return CROP_MAP;
+  return new Map(getRegionalCrops(region).map(function(c) { return [c.name, c]; }));
+}
+// Cached region helpers — cheap way to avoid recomputing on every render
+let _rCacheId = null, _rCacheMap = null, _rCacheCrops = null;
+function rCM(region) {
+  const r = region || "mediterranean";
+  if (r !== _rCacheId) { _rCacheId = r; _rCacheMap = getRegionalCropMap(r); _rCacheCrops = getRegionalCrops(r); }
+  return _rCacheMap;
+}
+function rCR(region) {
+  const r = region || "mediterranean";
+  if (r !== _rCacheId) { _rCacheId = r; _rCacheMap = getRegionalCropMap(r); _rCacheCrops = getRegionalCrops(r); }
+  return _rCacheCrops;
+}
+
+/* ═══════════════════════════════════════════
    LIVESTOCK
    ═══════════════════════════════════════════ */
 const LDB = {
@@ -1250,7 +1666,7 @@ const LIVESTOCK_CALENDAR = {
 /* ═══════════════════════════════════════════
    DEFAULT STATE
    ═══════════════════════════════════════════ */
-const DEF = {zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,
+const DEF = {zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,region:"mediterranean",city:"",
   // Gamification state
   gamify: {
     streak: 0,               // Current consecutive-day streak
@@ -1432,7 +1848,7 @@ function buildTaskQueue(data) {
 
   data.garden.plots.forEach(p => {
     if (!p.plantDate || p.status === "harvested") return;
-    const crop = CROP_MAP.get(p.crop);
+    const crop = rCM(data.region).get(p.crop);
     if (!crop) return;
     const dSince = Math.floor((now - new Date(p.plantDate)) / 864e5);
     const zone = data.zones.find(z => z.id === p.zone);
@@ -1526,7 +1942,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
     data.garden.plots.forEach(p => {
       if (!p.plantDate || p.status === "harvested") return;
-      const crop = CROP_MAP.get(p.crop);
+      const crop = rCM(data.region).get(p.crop);
       if (!crop) return;
       const plantMs = new Date(p.plantDate).getTime();
       const loc = data.zones.find(z => z.id === p.zone)?.name || "Farm";
@@ -1756,6 +2172,12 @@ function Setup({data, setData}) {
   const [cropResize, setCropResize] = useState(null); // {plotId, zoneId, startX, startY, origPw, origPh, frac}
   const [hoverInfo, setHoverInfo] = useState(null); // zone hover tooltip
   const svgRef = useRef(null);
+  const [cityQuery, setCityQuery] = useState(data.city || "");
+  const [cityResults, setCityResults] = useState([]);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const cityRef = useRef(null);
+  const curRegion = REGION_MAP.get(data.region || "mediterranean");
+  const regionCropCount = getRegionalCrops(data.region || "mediterranean").length;
 
   // Zones already migrated to meter coords on load (see migrateZones)
   const zones = data.zones;
@@ -1801,6 +2223,65 @@ function Setup({data, setData}) {
           {data.zones.length>0 && <Btn onClick={doSave}>{saved?"✓ Saved!":"Save Layout"}</Btn>}
         </div>
       </div>
+
+      {/* Climate Region — city input */}
+      <Card style={{marginBottom:12,padding:"14px 18px",background:"linear-gradient(135deg,#f0f7f0,#e8f5e9)",border:`1.5px solid ${C.gm}`}}>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+          <span style={{fontSize:18}}>{curRegion ? curRegion.emoji : "🌍"}</span>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:C.green}}>Climate Region{curRegion ? `: ${curRegion.name}` : ""}</div>
+            <div style={{fontSize:11,color:C.t2}}>{curRegion ? curRegion.desc : "Type your city below to set your growing region"}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
+          <div style={{position:"relative",flex:"1 1 200px",minWidth:180}} ref={cityRef}>
+            <label style={{fontSize:11,fontWeight:600,color:C.t2,display:"block",marginBottom:3}}>Your City</label>
+            <input type="text" placeholder="Type your city (e.g. London, Berlin, Chicago...)" value={cityQuery}
+              onChange={function(e) {
+                const v = e.target.value;
+                setCityQuery(v);
+                const res = searchCity(v);
+                setCityResults(res);
+                setShowCityDropdown(res.length > 0 && v.length >= 2);
+              }}
+              onFocus={function() { if (cityResults.length > 0) setShowCityDropdown(true); }}
+              onBlur={function() { setTimeout(function() { setShowCityDropdown(false); }, 200); }}
+              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:14,fontFamily:F.body,background:"#fff",outline:"none",boxSizing:"border-box"}}/>
+            {showCityDropdown && cityResults.length > 0 && (
+              <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:`1px solid ${C.bdr}`,borderRadius:10,boxShadow:C.shL,zIndex:50,maxHeight:220,overflowY:"auto",marginTop:4}}>
+                {cityResults.map(function(c, idx) {
+                  const rInfo = REGION_MAP.get(c.region);
+                  return (
+                    <div key={c.city + "-" + c.country + "-" + idx}
+                      onMouseDown={function() {
+                        setCityQuery(c.city + ", " + c.country);
+                        setData({...data, city: c.city + ", " + c.country, region: c.region});
+                        setShowCityDropdown(false);
+                      }}
+                      style={{padding:"8px 14px",cursor:"pointer",borderBottom:`1px solid ${C.bdr}`,fontSize:13,display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                      onMouseOver={function(e) { e.currentTarget.style.background = C.gp; }}
+                      onMouseOut={function(e) { e.currentTarget.style.background = "transparent"; }}>
+                      <span style={{fontWeight:600}}>{c.city}, {c.country}</span>
+                      <span style={{fontSize:11,color:C.t2}}>{rInfo ? rInfo.emoji + " " + rInfo.name : c.region}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div style={{flex:"1 1 200px",minWidth:180}}>
+            <label style={{fontSize:11,fontWeight:600,color:C.t2,display:"block",marginBottom:3}}>Or pick a region</label>
+            <select value={data.region || "mediterranean"}
+              onChange={function(e) { setData({...data, region: e.target.value}); }}
+              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:13,fontFamily:F.body,background:"#fff",cursor:"pointer",boxSizing:"border-box"}}>
+              {REGIONS.map(function(r) {
+                return <option key={r.id} value={r.id}>{r.emoji} {r.name} — {r.examples}</option>;
+              })}
+            </select>
+          </div>
+        </div>
+        {curRegion && <div style={{marginTop:8,fontSize:11,color:C.t2,fontStyle:"italic"}}>{regionCropCount} crops available for {curRegion.name} climate</div>}
+      </Card>
 
       {/* Farm size config */}
       <Card style={{marginBottom:12,padding:"10px 16px"}}>
@@ -1959,7 +2440,7 @@ function Setup({data, setData}) {
               zPlots.forEach(p => {
                 let area = 0;
                 if (p.measureType==="area"&&p.qty) area=+p.qty;
-                else if (p.plantCount) { const cr=CROP_MAP.get(p.crop); if(cr){const sp=cr.spacing/100;area=p.plantCount*sp*sp;} }
+                else if (p.plantCount) { const cr=rCM(data.region).get(p.crop); if(cr){const sp=cr.spacing/100;area=p.plantCount*sp*sp;} }
                 if (area>0) {
                   const frac=Math.min(0.98,area/zoneTotalM2);
                   const cc=setupColorMap.get(p.crop)||{r:100,g:140,b:60};
@@ -2284,7 +2765,7 @@ function Setup({data, setData}) {
    ═══════════════════════════════════════════ */
 // How this crop is best measured
 function cropMeasureType(cropName) {
-  const crop = CROP_MAP.get(cropName);
+  const crop = rCM(data.region).get(cropName);
   if (!crop) return "plants";
   if (["Olive","Grape","Fig","Pomegranate","Peach","Plum","Cherry","Apricot",
        "Walnut","Almond","Chestnut","Quince","Persimmon","Lemon","Orange",
@@ -2296,7 +2777,7 @@ function cropMeasureType(cropName) {
 
 // Auto-calculate plant count from area (m²) and crop spacing (cm)
 function plantsFromArea(cropName, areaSqm) {
-  const crop = CROP_MAP.get(cropName);
+  const crop = rCM(data.region).get(cropName);
   if (!crop || !areaSqm) return null;
   const spacingM = crop.spacing / 100;
   return Math.round(areaSqm / (spacingM * spacingM));
@@ -2307,7 +2788,7 @@ function plantsFromArea(cropName, areaSqm) {
 // Plants mode: direct multiply.
 // varietyYld overrides base crop yld when a specific variety is selected.
 function expectedYield(cropName, quantity, measureType, varietyYld) {
-  const crop = CROP_MAP.get(cropName);
+  const crop = rCM(data.region).get(cropName);
   if (!crop || !quantity) return null;
   const yldPerPlant = varietyYld || crop.yld || 3;
   let plants;
@@ -2335,7 +2816,7 @@ function plotAreaM2(plot) {
   if (!plot || plot.status === "harvested") return 0;
   if (plot.measureType === "area" && plot.qty) return +plot.qty;
   if (plot.plantCount) {
-    const crop = CROP_MAP.get(plot.crop);
+    const crop = rCM(data.region).get(plot.crop);
     if (crop) {
       const spacingM = crop.spacing / 100;
       return plot.plantCount * spacingM * spacingM;
@@ -2374,7 +2855,7 @@ function Farming({data, setData, pageData, clearPageData}) {
       if (clearPageData) clearPageData();
     }
   }, [pageData]);
-  const ci=CROP_MAP.get(form.crop);
+  const ci=rCM(data.region).get(form.crop);
   const vi=ci && form.variety ? (VARIETIES[ci.name]||[]).find(v=>v.name===form.variety) : null;
   const effectiveDays = vi?.days || ci?.days || 0;
   const effectiveYld = vi?.yld || ci?.yld || 3;
@@ -2388,7 +2869,7 @@ function Farming({data, setData, pageData, clearPageData}) {
 
   const add=()=>{
     if(!form.crop)return;
-    const c=CROP_MAP.get(form.crop);
+    const c=rCM(data.region).get(form.crop);
     const v=form.variety?(VARIETIES[form.crop]||[]).find(vr=>vr.name===form.variety):null;
     const displayName=form.name||(form.variety?`${form.crop} (${form.variety})`:form.crop);
     const _measure = form.measureType || (c ? cropMeasureType(c.name) : "plants");
@@ -2403,7 +2884,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const del=id=>{setData({...data,garden:{plots:data.garden.plots.filter(p=>p.id!==id)}});setSelP(null);};
   const tog=(pid,si)=>{const plots=data.garden.plots.map(p=>{if(p.id===pid){const st=[...p.steps];st[si]={...st[si],done:!st[si].done};return{...p,steps:st};}return p;});setData({...data,garden:{plots}});};
   const harv=(plot)=>{
-    const c=CROP_MAP.get(plot.crop);
+    const c=rCM(data.region).get(plot.crop);
     // Use stored expectedYieldKg (plants * per-plant yield), fall back to single-plant yield
     const qty = plot.expectedYieldKg || (plot.plantCount && c ? plot.plantCount * (c.yld||3) : c?.cat==="Herb"?0.5:c?.cat==="Grain"?5:c?.yld||3);
     const item={id:uid(),name:plot.crop,category:"Fresh Produce",qty,unit:"kg",source:"farm",addedDate:new Date().toISOString().slice(0,10),storageNote:c?.storage||""};
@@ -2411,7 +2892,7 @@ function Farming({data, setData, pageData, clearPageData}) {
     setSelP(null);
   };
   const sp=data.garden.plots.find(p=>p.id===selP);
-  const spC=sp?CROP_MAP.get(sp.crop):null;
+  const spC=sp?rCM(data.region).get(sp.crop):null;
 
   return (
     <div className="page-enter" style={{maxWidth:800}}>
@@ -2438,7 +2919,7 @@ function Farming({data, setData, pageData, clearPageData}) {
       {data.garden.plots.filter(p=>p.status!=="harvested").length===0?
         <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌱</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
       <div style={{display:"grid",gap:8}}>{data.garden.plots.filter(p=>p.status!=="harvested").map(p=>{
-        const c=CROP_MAP.get(p.crop);
+        const c=rCM(data.region).get(p.crop);
         const done=p.steps?p.steps.filter(s=>s.done).length:0;
         const total=p.steps?p.steps.length:0;
         const pct=total>0?done/total:0;
@@ -2479,7 +2960,7 @@ function Farming({data, setData, pageData, clearPageData}) {
               {sp.qty&&sp.measureType==="area"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}m²</div><div style={{fontSize:10,color:C.t2}}>bed size</div></Card>}
               {sp.qty&&sp.measureType==="plants"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}</div><div style={{fontSize:10,color:C.t2}}>plants</div></Card>}
               {sp.expectedYieldKg&&<Card style={{background:"#fff3e0",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{sp.expectedYieldKg}kg</div><div style={{fontSize:10,color:C.t2}}>at harvest</div></Card>}
-              {sp.plantCount&&(() => {const c2=CROP_MAP.get(sp.crop);const space=c2?.spacing;return space?<Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{space}cm</div><div style={{fontSize:10,color:C.t2}}>between plants</div></Card>:null;})()}
+              {sp.plantCount&&(() => {const c2=rCM(data.region).get(sp.crop);const space=c2?.spacing;return space?<Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{space}cm</div><div style={{fontSize:10,color:C.t2}}>between plants</div></Card>:null;})()}
             </div>
           )}
 
@@ -2542,7 +3023,7 @@ function Farming({data, setData, pageData, clearPageData}) {
 
       {showAdd&&(
         <Overlay title="🌱 Plant a Crop" onClose={()=>setShowAdd(false)}>
-          <Sel label="Crop" value={form.crop} onChange={e=>setForm({...form,crop:e.target.value,variety:""})} options={[{value:"",label:"Choose..."},...CROPS.map(c=>({value:c.name,label:`${c.emoji} ${c.name} — ${c.cat}`}))]}/>
+          <Sel label="Crop" value={form.crop} onChange={e=>setForm({...form,crop:e.target.value,variety:""})} options={[{value:"",label:"Choose..."},...rCR(data.region).map(c=>({value:c.name,label:`${c.emoji} ${c.name} — ${c.cat}`}))]}/>
           {ci && VARIETIES[ci.name] && VARIETIES[ci.name].length > 0 && (
             <Sel label="Variety / Breed" value={form.variety} onChange={e=>setForm({...form,variety:e.target.value})} options={[{value:"",label:"— Any / General —"},...VARIETIES[ci.name].map(v=>({value:v.name,label:`${v.name} — ${v.note.slice(0,50)}`}))]}/>
           )}
@@ -2742,7 +3223,7 @@ function Pantry({data, setData}) {
   const fil=cat==="All"?data.pantry.items:data.pantry.items.filter(i=>i.category===cat);
   const itemIcon = (item) => {
     if (item.source === "farm") {
-      const crop = CROP_MAP.get(item.name);
+      const crop = rCM(data.region).get(item.name);
       return crop?.emoji || "🌱";
     }
     if (item.source === "livestock") {
@@ -2936,7 +3417,7 @@ function Dashboard({data, setData, setPage, tasks}) {
       const totalAnimals = zAnimals.reduce((s,a) => s + a.count, 0);
       const yieldEst = zPlots.reduce((s,p) => s + (p.expectedYieldKg || 0), 0);
       const cropProgress = zPlots.map(p => {
-        const crop = CROP_MAP.get(p.crop);
+        const crop = rCM(data.region).get(p.crop);
         if (!crop || !p.plantDate) return null;
         const dSince = Math.floor((new Date() - new Date(p.plantDate)) / 864e5);
         const pct = Math.min(1, dSince / crop.days);
@@ -2993,7 +3474,7 @@ function Dashboard({data, setData, setPage, tasks}) {
     const now = Date.now();
     const readyCount = activePlots.filter(p => {
       if (!p.plantDate) return false;
-      const crop = CROP_MAP.get(p.crop);
+      const crop = rCM(data.region).get(p.crop);
       if (!crop) return false;
       const harvestDate = new Date(p.plantDate).getTime() + crop.days * 864e5;
       return harvestDate - now <= 7 * 864e5;
@@ -3018,7 +3499,7 @@ function Dashboard({data, setData, setPage, tasks}) {
         const urgentTasks = enrichedTasks.filter(t=>t.pri<=1).length;
         const readyToHarvest = ap2.filter(p => {
           if (!p.plantDate) return false;
-          const crop = CROP_MAP.get(p.crop);
+          const crop = rCM(data.region).get(p.crop);
           if (!crop) return false;
           return (Date.now() - new Date(p.plantDate).getTime()) >= crop.days * 864e5;
         });
@@ -3109,7 +3590,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Growing</div>
                 {(()=>{
                   const cats = {};
-                  ap2.forEach(p => { const cr = CROP_MAP.get(p.crop); if(cr) cats[cr.cat] = (cats[cr.cat]||0)+1; });
+                  ap2.forEach(p => { const cr = rCM(data.region).get(p.crop); if(cr) cats[cr.cat] = (cats[cr.cat]||0)+1; });
                   const entries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
                   const catIcons = {Fruit:"🍅",Vegetable:"🥬",Herb:"🌿",Legume:"🫘",Root:"🥕",Grain:"🌾",Flower:"🌻",Brassica:"🥦",Perennial:"🫐",Tuber:"🥔"};
                   return <>
@@ -3330,7 +3811,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                       let area = 0;
                       if (p.measureType === "area" && p.qty) area = +p.qty;
                       else if (p.plantCount) {
-                        const crop = CROP_MAP.get(p.crop);
+                        const crop = rCM(data.region).get(p.crop);
                         if (crop) { const sp = crop.spacing/100; area = p.plantCount * sp * sp; }
                       }
                       if (area > 0) {
@@ -3477,9 +3958,11 @@ function Dashboard({data, setData, setPage, tasks}) {
 /* ═══════════════════════════════════════════
    ENCYCLOPEDIA
    ═══════════════════════════════════════════ */
-function Manuals() {
+function Manuals({data}) {
   const [s,setS]=useState("");const [sel,setSel]=useState(null);const [tab,setTab]=useState("crops");
-  const fil=CROPS.filter(c=>!s||c.name.toLowerCase().includes(s.toLowerCase()));
+  const rgCrops = rCR(data && data.region);
+  const curRegion = REGION_MAP.get((data && data.region) || "mediterranean");
+  const fil=rgCrops.filter(c=>!s||c.name.toLowerCase().includes(s.toLowerCase()));
   const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const TABS=[{id:"crops",l:"🌱 Crops"},{id:"animals",l:"🐄 Animals"},{id:"preserving",l:"🫙 Preserving"},{id:"projects",l:"🔨 Projects"}];
   return (
@@ -3495,6 +3978,7 @@ function Manuals() {
           {(()=>{const a=sel.name;return a?<div style={{background:"#f0f7f4",borderRadius:C.rs,padding:10,marginBottom:12,border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span></div></div>:null})()}
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}><Pill c="#fff" bg={sel.color}>{sel.cat}</Pill><Pill>☀ {sel.sun}</Pill><Pill>💧 {sel.waterFreq}</Pill>{(()=>{sel?.pH?<Pill c="#6d4c41" bg="#efebe9">pH {sel.pH}</Pill>:null})()}</div>
           <div style={{marginBottom:16}}><div style={{fontSize:11,fontFamily:F.mono,color:C.t2,marginBottom:4}}>CALENDAR</div><div style={{display:"flex",gap:2}}>{mn.map(m=>{const iS=sel.sowIn.toLowerCase().includes(m.toLowerCase());const iH=sel.harvest.toLowerCase().includes(m.toLowerCase());return <div key={m} style={{flex:1,textAlign:"center"}}><div style={{fontSize:8,color:C.t2,fontFamily:F.mono}}>{m}</div><div style={{height:14,borderRadius:3,background:iS&&iH?`linear-gradient(135deg,${C.green} 50%,${C.orange} 50%)`:iS?C.green:iH?C.orange:C.bdr,opacity:(iS||iH)?1:.25}}/></div>})}</div><div style={{display:"flex",gap:12,marginTop:4}}><span style={{fontSize:10,color:C.green}}>■ Sow</span><span style={{fontSize:10,color:C.orange}}>■ Harvest</span></div></div>
+          {sel.regionNote && <Card style={{marginBottom:12,background:"linear-gradient(135deg,#e8f5e9,#f1f8e9)",border:"1.5px solid #a5d6a7"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>{curRegion ? curRegion.emoji + " " : "🌍 "}Regional Note — {curRegion ? curRegion.name : "Your Region"}</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5,color:C.text}}>{sel.regionNote}</div></Card>}
           {COMP[sel.name]&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🌱 Companions</div><div style={{fontSize:12,marginTop:4}}>✓ {COMP[sel.name].good.join(", ")||"—"}{COMP[sel.name].bad.length>0?<span style={{color:C.red}}> · ✕ {COMP[sel.name].bad.join(", ")}</span>:""}</div></Card>}
           <Card style={{marginBottom:12,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Water</div><div style={{fontSize:13,marginTop:4}}>{sel.waterNote}</div></Card>
           {sel.steps?.length>0&&<div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:700,color:C.green,marginBottom:8}}>Step-by-Step Guide</div>{sel.steps.map((s,i)=><Card key={i} style={{marginBottom:4,padding:10}}><div style={{display:"flex",justifyContent:"space-between"}}><strong style={{fontSize:13}}>{s.l}</strong><span style={{fontSize:10,color:C.t2,fontFamily:F.mono}}>Day {s.d}</span></div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{s.t}</div></Card>)}</div>}
@@ -3760,7 +4244,7 @@ function SeasonalCalendar({data, setPage}) {
 
   const results = useMemo(() => {
     const sow = [], harvest = [], maintain = [];
-    CROPS.forEach(c => {
+    rCR(data.region).forEach(c => {
       const sowM = parseSowMonths(c.sowIn);
       const harM = parseHarvestMonths(c.harvest);
       const diff = getCropDifficulty(c.name);
@@ -3770,7 +4254,7 @@ function SeasonalCalendar({data, setPage}) {
     });
     // Maintenance: crops planted that are growing during this month
     data.garden.plots.filter(p => p.status !== "harvested" && p.plantDate).forEach(p => {
-      const crop = CROP_MAP.get(p.crop);
+      const crop = rCM(data.region).get(p.crop);
       if (!crop) return;
       const ds = Math.floor((new Date() - new Date(p.plantDate)) / 864e5);
       const pendingSteps = (p.steps||[]).filter(s => !s.done && Math.abs(s.d - ds) <= 14);
@@ -4979,7 +5463,7 @@ function AppInner() {
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
       case "fin": return <Financials data={data} setData={setData}/>;
-      case "manuals": return <Manuals/>;
+      case "manuals": return <Manuals data={data}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       default: return <Dashboard data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
     }
@@ -5016,7 +5500,7 @@ function AppInner() {
               <input type="file" accept=".json" onChange={e => { if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; }} style={{display:"none"}}/>
             </label>
           </div>
-          <div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{CROPS.length} crops · {Object.keys(LDB).length} animals</div>
+          <div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>
           {isOffline&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:"#ea580c",background:"linear-gradient(135deg, #fff7ed, #fef3c7)",textAlign:"center",borderRadius:8,margin:"0 10px 10px"}}>📡 Offline — data saved locally</div>}
         </nav>
         {mob&&isMob&&<div onClick={()=>setMob(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",zIndex:499,transition:"all .3s"}}/>}
@@ -5158,7 +5642,7 @@ function farmKnowledgeEngine(query, data) {
   // ── Helper: find crop by name (fuzzy) ──
   const findCrop = (text) => {
     const t = text.toLowerCase();
-    return CROPS.find(c => t.includes(c.name.toLowerCase())) || CROPS.find(c => c.name.toLowerCase().includes(t));
+    return rCR(data.region).find(c => t.includes(c.name.toLowerCase())) || rCR(data.region).find(c => c.name.toLowerCase().includes(t));
   };
 
   // ── Helper: find animal by name (fuzzy) ──
@@ -5315,11 +5799,11 @@ function farmKnowledgeEngine(query, data) {
 
   // ── 3. SEASONAL QUERIES ──
   if (q.match(/what.*plant|what.*sow|what.*grow|plant now|sow now|this month|season/)) {
-    const sowNow = CROPS.filter(c => {
+    const sowNow = rCR(data.region).filter(c => {
       const months = c.sowIn.toLowerCase();
       return MN_SHORT[month] && months.includes(MN_SHORT[month].toLowerCase());
     });
-    const harvestNow = CROPS.filter(c => {
+    const harvestNow = rCR(data.region).filter(c => {
       const months = c.harvest.toLowerCase();
       return MN_SHORT[month] && months.includes(MN_SHORT[month].toLowerCase());
     });
@@ -5378,7 +5862,7 @@ function farmKnowledgeEngine(query, data) {
     if (activePlots.length > 0) {
       r += `Active crops (${activePlots.length}):\n`;
       activePlots.forEach(p => {
-        const c = CROP_MAP.get(p.crop);
+        const c = rCM(data.region).get(p.crop);
         if (c && p.plantDate) {
           const dLeft = Math.ceil((new Date(p.plantDate).getTime() + c.days * 864e5 - now.getTime()) / 864e5);
           r += `${c.emoji} ${p.name || p.crop}${dLeft <= 0 ? " — READY TO HARVEST!" : ` — ${dLeft}d to harvest`}\n`;
@@ -5449,7 +5933,7 @@ function farmKnowledgeEngine(query, data) {
     if (activePlots.length > 0) {
       let r = "Watering Guide for Your Crops\n\n";
       activePlots.forEach(p => {
-        const c = CROP_MAP.get(p.crop);
+        const c = rCM(data.region).get(p.crop);
         if (c) r += `${c.emoji} ${p.name || p.crop}: ${c.waterFreq} — ${c.waterNote}\n\n`;
       });
       r += "General tip: Water in the early morning at the base of plants, not on leaves.";
@@ -5470,7 +5954,7 @@ function farmKnowledgeEngine(query, data) {
 
   // ── 11. BEGINNER QUERIES ──
   if (q.match(/beginner|start|new|first time|easy|simple|recommend/)) {
-    const easyCrops = CROPS.filter(c => getCropDifficulty(c.name).l === "Easy").slice(0, 6);
+    const easyCrops = rCR(data.region).filter(c => getCropDifficulty(c.name).l === "Easy").slice(0, 6);
     let r = "Getting Started — Beginner's Guide\n\n";
     r += "Start with these easy crops:\n";
     easyCrops.forEach(c => { r += `${c.emoji} ${c.name} — ${c.days} days, ${c.spacing}cm spacing\n`; });
@@ -5491,9 +5975,9 @@ function farmKnowledgeEngine(query, data) {
 
   // ── 13. LIST ALL CROPS ──
   if (q.match(/list.*crop|all crop|crop list|what crop|how many crop/)) {
-    let r = `All ${CROPS.length} Crops in Database\n\n`;
+    let r = `All ${rCR(data.region).length} Crops in Database\n\n`;
     const byCat = {};
-    CROPS.forEach(c => { if (!byCat[c.cat]) byCat[c.cat] = []; byCat[c.cat].push(c); });
+    rCR(data.region).forEach(c => { if (!byCat[c.cat]) byCat[c.cat] = []; byCat[c.cat].push(c); });
     Object.entries(byCat).forEach(([cat, crops]) => {
       r += `${cat} (${crops.length}):\n`;
       crops.forEach(c => { r += `  ${c.emoji} ${c.name} — ${c.days}d\n`; });
@@ -5524,12 +6008,12 @@ function farmKnowledgeEngine(query, data) {
       "Preservation: \"How to pickle\", \"how to make jam\"\n" +
       "General: \"Soil health\", \"watering tips\", \"heat stress\"\n" +
       "Lists: \"All crops\", \"All animals\"\n\n" +
-      `I have data on ${CROPS.length} crops, ${Object.keys(LDB).length} animals, ${Object.keys(PRESERVATION).length} preservation methods, and ${Object.keys(VARIETIES).length > 0 ? Object.values(VARIETIES).flat().length : 0} varieties. All offline!`;
+      `I have data on ${rCR(data.region).length} crops, ${Object.keys(LDB).length} animals, ${Object.keys(PRESERVATION).length} preservation methods, and ${Object.keys(VARIETIES).length > 0 ? Object.values(VARIETIES).flat().length : 0} varieties. All offline!`;
   }
 
   // ── FALLBACK: Try to find any matching content ──
   // Search crop names, animal names, preservation names
-  const allNames = [...CROPS.map(c => ({name: c.name, type: "crop", emoji: c.emoji})),
+  const allNames = [...rCR(data.region).map(c => ({name: c.name, type: "crop", emoji: c.emoji})),
     ...Object.entries(LDB).map(([k, v]) => ({name: k, type: "animal", emoji: v.e})),
     ...Object.keys(PRESERVATION).map(k => ({name: k, type: "preservation", emoji: "🫙"}))];
 
@@ -5547,7 +6031,7 @@ function farmKnowledgeEngine(query, data) {
     return r;
   }
 
-  return `I didn't find a specific answer for "${query}" in my database.\n\nTry asking about:\n- A specific crop: "How to grow tomatoes"\n- An animal: "Chicken care"\n- Seasonal advice: "What to plant now"\n- Your farm: "My farm status"\n- Tasks: "What should I do today"\n\nI have ${CROPS.length} crops and ${Object.keys(LDB).length} animals in my offline knowledge base!`;
+  return `I didn't find a specific answer for "${query}" in my database.\n\nTry asking about:\n- A specific crop: "How to grow tomatoes"\n- An animal: "Chicken care"\n- Seasonal advice: "What to plant now"\n- Your farm: "My farm status"\n- Tasks: "What should I do today"\n\nI have ${rCR(data.region).length} crops and ${Object.keys(LDB).length} animals in my offline knowledge base!`;
 }
 
 // ── Build suggestion catalog from all database entries ──
@@ -5596,7 +6080,7 @@ const AI_SUGGESTIONS = (() => {
 function AIAssistant({data}) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([
-    {role:"assistant", content:`Hi! I'm your farm assistant. I know everything about the ${CROPS.length} crops and ${Object.keys(LDB).length} animals in your database — and I work offline!\n\nStart typing a crop or animal name and pick from the dropdown, or tap a quick prompt below.`}
+    {role:"assistant", content:`Hi! I'm your farm assistant. I know everything about the ${rCR(data.region).length} crops and ${Object.keys(LDB).length} animals in your database — and I work offline!\n\nStart typing a crop or animal name and pick from the dropdown, or tap a quick prompt below.`}
   ]);
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -5713,7 +6197,7 @@ function AIAssistant({data}) {
               <div style={{width:36,height:36,borderRadius:18,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🌾</div>
               <div>
                 <div style={{fontSize:15,fontWeight:700,color:"#fff",fontFamily:F.head}}>Farm Assistant</div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>Offline · {CROPS.length} crops · {Object.keys(LDB).length} animals</div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>Offline · {rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>
               </div>
               <button onClick={()=>setOpen(false)} style={{marginLeft:"auto",background:"rgba(255,255,255,.2)",border:"none",borderRadius:16,width:28,height:28,cursor:"pointer",color:"#fff",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
             </div>
