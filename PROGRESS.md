@@ -107,7 +107,7 @@
 - Pricing: Free 7-day trial, Basic $4.99/mo, Pro $9.99/mo, Lifetime $190
 
 ## Key Links
-- Live site: https://homestead-sigma.vercel.app
-- App: https://homestead-sigma.vercel.app/app
+- Live site: https://myterra-sigma.vercel.app
+- App: https://myterra-sigma.vercel.app/app
 - GitHub: homestead199323/homestead (private)
 - Vercel account: derviskanina-5360 (Google login)
