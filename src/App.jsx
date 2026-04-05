@@ -3038,7 +3038,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.orange,marginRight:5}}/>Harvest <strong>{ringData.readyCount}</strong></div>
               </div>
               <div style={{flex:1}}>
-                <h2 style={{fontFamily:F.head,fontSize:24,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>Your Homestead</h2>
+                <h2 style={{fontFamily:F.head,fontSize:24,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>MyTerra</h2>
                 <p style={{color:C.t2,fontSize:12,margin:"2px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
@@ -3484,7 +3484,7 @@ function Manuals() {
   const TABS=[{id:"crops",l:"🌱 Crops"},{id:"animals",l:"🐄 Animals"},{id:"preserving",l:"🫙 Preserving"},{id:"projects",l:"🔨 Projects"}];
   return (
     <div className="page-enter" style={{maxWidth:960}}>
-      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📖 Homestead Manuals</h2>
+      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📖 MyTerra Manuals</h2>
       <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>Everything you need to know — crops, animals, preservation, and DIY builds</p>
       <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{TABS.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setSel(null);setS("");}} style={{padding:"8px 20px",borderRadius:20,border:"none",background:tab===t.id?C.green:C.card,color:tab===t.id?"#fff":C.t2,fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:tab===t.id?"none":C.sh}}>{t.l}</button>)}</div>
 
@@ -4747,7 +4747,7 @@ function dataReducer(state, action) {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error("Homestead Error:", error, info); }
+  componentDidCatch(error, info) { console.error("MyTerra Error:", error, info); }
   render() {
     if (this.state.hasError) {
       return (
@@ -4765,7 +4765,7 @@ class ErrorBoundary extends React.Component {
                     const blob = new Blob([raw], { type: "application/json" });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
-                    a.download = `homestead-emergency-backup-${new Date().toISOString().slice(0,10)}.json`;
+                    a.download = `myterra-emergency-backup-${new Date().toISOString().slice(0,10)}.json`;
                     a.click();
                   }
                 } catch(e) { alert("Could not export: " + e.message); }
@@ -4942,7 +4942,7 @@ function AppInner() {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `homestead-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.download = `myterra-backup-${new Date().toISOString().slice(0,10)}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch(e) { console.warn("Export failed:", e); }
@@ -4992,7 +4992,7 @@ function AppInner() {
         <nav style={{width:220,minWidth:220,background:C.card,borderRight:`1px solid ${C.bdr}`,display:"flex",flexDirection:"column",padding:"0",position:isMob?"fixed":"relative",left:isMob?(mob?0:-240):0,top:0,bottom:0,zIndex:500,transition:"left .3s cubic-bezier(.25,.46,.45,.94)",boxShadow:isMob?C.shXL:"none"}}>
           {/* Premium brand header */}
           <div style={{padding:"24px 20px 20px",marginBottom:4,background:C.grdHero,borderRadius:"0 0 20px 0"}}>
-            <div style={{fontSize:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>🌾 Your Homestead</div>
+            <div style={{fontSize:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>🌾 MyTerra</div>
             <div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>
             {/* save indicator removed — saves silently */}
           </div>
@@ -5047,7 +5047,7 @@ function FeedbackSurvey({ setPage }) {
   const update = (key, val) => setAnswers(prev => ({ ...prev, [key]: val }));
 
   const handleSubmit = () => {
-    const subject = encodeURIComponent("Homestead App Feedback");
+    const subject = encodeURIComponent("MyTerra App Feedback");
     const body = encodeURIComponent(
       `Most used module: ${answers.module || "Not answered"}\n\n` +
       `Confusing in first 5 minutes: ${answers.confusion || "Not answered"}\n\n` +
@@ -5129,7 +5129,7 @@ function FeedbackPrompt({ onOpen, onDismiss }) {
         <div style={{fontSize:32,lineHeight:1}}>💬</div>
         <div style={{flex:1}}>
           <div style={{fontSize:16,fontWeight:700,color:C.text,fontFamily:F.head,marginBottom:4}}>How's it going?</div>
-          <p style={{fontSize:13,color:C.t2,lineHeight:1.5,margin:0}}>You've been using Homestead for a week! We'd love your feedback — it takes just 1 minute.</p>
+          <p style={{fontSize:13,color:C.t2,lineHeight:1.5,margin:0}}>You've been using MyTerra for a week! We'd love your feedback — it takes just 1 minute.</p>
           <div style={{display:"flex",gap:8,marginTop:12}}>
             <button onClick={onOpen} style={{padding:"8px 16px",background:C.grd,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:F.body}}>Give Feedback</button>
             <button onClick={onDismiss} style={{padding:"8px 16px",background:"transparent",color:C.t2,border:`1px solid ${C.bdr}`,borderRadius:10,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:F.body}}>Maybe Later</button>

@@ -1,6 +1,6 @@
 {
-  "name": "Homestead — Farm Management",
-  "short_name": "Homestead",
+  "name": "MyTerra — Farm Management",
+  "short_name": "MyTerra",
   "description": "Farm management app for beginner homesteaders — Mediterranean focus",
   "start_url": "/",
   "display": "standalone",
