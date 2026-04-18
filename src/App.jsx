@@ -2908,6 +2908,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const [selP,setSelP]=useState(null);
   const [form,setForm]=useState({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});
   const [cropSearch,setCropSearch]=useState("");
+  const [cropDropdownOpen,setCropDropdownOpen]=useState(false);
 
   // Auto-open add form when arriving from Seasonal Calendar with a specific crop
   useEffect(() => {
@@ -2941,7 +2942,7 @@ function Farming({data, setData, pageData, clearPageData}) {
     const p={id:uid(),crop:form.crop,variety:form.variety||"",name:displayName,plantDate:form.plantDate,harvestDate:autoH(),status:form.plantDate?"planted":"planned",zone:form.zone,varietyNote:v?.note||"",steps:c?c.steps.map(s=>({...s,done:false})):[],qty:_qty,measureType:_measure,plantCount:_plants,expectedYieldKg:_yieldKg};
     const nd={...data,garden:{plots:[...data.garden.plots,p]},log:[...data.log,{text:`🌱 Planted ${displayName}${_plants?` (${_plants} plants)`:""}`}]};
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:new Date().toISOString().slice(0,10),cat:"Seeds"}]};
-    setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setCropSearch("");setShowAdd(false);
+    setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setCropSearch("");setCropDropdownOpen(false);setShowAdd(false);
   };
   const del=id=>{setData({...data,garden:{plots:data.garden.plots.filter(p=>p.id!==id)}});setSelP(null);};
   const tog=(pid,si)=>{const plots=data.garden.plots.map(p=>{if(p.id===pid){const st=[...p.steps];st[si]={...st[si],done:!st[si].done};return{...p,steps:st};}return p;});setData({...data,garden:{plots}});};
@@ -3097,33 +3098,50 @@ function Farming({data, setData, pageData, clearPageData}) {
       )}
 
       {showAdd&&(
-        <Overlay title="🌱 Plant a Crop" onClose={()=>{setShowAdd(false);setCropSearch("");}}>
+        <Overlay title="🌱 Plant a Crop" onClose={()=>{setShowAdd(false);setCropSearch("");setCropDropdownOpen(false);}}>
           <div style={SX.mb12}>
             <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>Crop</label>
-            <input
-              type="text"
-              placeholder="Type a letter to jump (e.g. T for Tomato)…"
-              value={cropSearch}
-              onChange={function(e){setCropSearch(e.target.value);}}
-              style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box",marginBottom:6}}
-            />
-            <select
-              value={form.crop}
-              onChange={function(e){setForm({...form,crop:e.target.value,variety:""});}}
-              style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}
-            >
-              <option value="">{_cropPickerHasResults ? "Choose…" : "No crops match that search"}</option>
-              {_cropGroupsForPicker.map(function(g){
-                if (g.crops.length === 0) return null;
-                return (
-                  <optgroup key={g.label} label={g.label}>
-                    {g.crops.map(function(c){
-                      return <option key={c.name} value={c.name}>{c.emoji} {c.name}</option>;
-                    })}
-                  </optgroup>
-                );
-              })}
-            </select>
+            <div style={{position:"relative"}}>
+              <input
+                type="text"
+                placeholder={form.crop ? "" : "Type a letter (e.g. T) or tap to browse…"}
+                value={cropDropdownOpen ? cropSearch : (form.crop ? ((rCM(data.region).get(form.crop)?.emoji||"🌱")+" "+form.crop) : "")}
+                onFocus={function(){setCropDropdownOpen(true);setCropSearch("");}}
+                onChange={function(e){setCropSearch(e.target.value);setCropDropdownOpen(true);}}
+                onBlur={function(){setTimeout(function(){setCropDropdownOpen(false);},150);}}
+                style={{width:"100%",padding:"10px 14px",paddingRight:36,border:`1.5px solid ${cropDropdownOpen?C.green:C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}
+              />
+              <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:12,color:C.t2}}>{cropDropdownOpen?"▲":"▼"}</div>
+              {cropDropdownOpen && (
+                <div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:C.card,border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",maxHeight:320,overflowY:"auto",zIndex:10}}>
+                  {!_cropPickerHasResults && (
+                    <div style={{padding:"14px 16px",fontSize:13,color:C.t2,textAlign:"center"}}>No crops match "{cropSearch}"</div>
+                  )}
+                  {_cropGroupsForPicker.map(function(g){
+                    if (g.crops.length === 0) return null;
+                    return (
+                      <div key={g.label}>
+                        <div style={{padding:"6px 12px",fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",background:C.bg,position:"sticky",top:0,letterSpacing:"0.03em"}}>{g.label}</div>
+                        {g.crops.map(function(c){
+                          const isSel = c.name === form.crop;
+                          return (
+                            <div
+                              key={c.name}
+                              onMouseDown={function(e){e.preventDefault();setForm({...form,crop:c.name,variety:""});setCropSearch("");setCropDropdownOpen(false);}}
+                              style={{padding:"9px 14px",fontSize:14,cursor:"pointer",background:isSel?"#e8f5e9":"transparent",color:C.text,borderBottom:`1px solid ${C.bg}`}}
+                              onMouseEnter={function(e){e.currentTarget.style.background="#f0f7f4";}}
+                              onMouseLeave={function(e){e.currentTarget.style.background=isSel?"#e8f5e9":"transparent";}}
+                            >
+                              {c.emoji} {c.name}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
           {ci && VARIETIES[ci.name] && VARIETIES[ci.name].length > 0 && (
             <Sel label="Variety / Breed" value={form.variety} onChange={e=>setForm({...form,variety:e.target.value})} options={[{value:"",label:"— Any / General —"},...VARIETIES[ci.name].map(v=>({value:v.name,label:`${v.name} — ${v.note.slice(0,50)}`}))]}/>
@@ -3195,7 +3213,7 @@ function Farming({data, setData, pageData, clearPageData}) {
           <Inp label="Plant Date" type="date" value={form.plantDate} max={new Date().toISOString().slice(0,10)} onChange={e=>setForm({...form,plantDate:e.target.value})}/>
           {form.plantDate&&ci&&<div style={{fontSize:12,color:C.green,marginBottom:10}}>🧺 Harvest: {autoH()}</div>}
           <Inp label="Seed Cost (€)" type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
-          <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>{setShowAdd(false);setCropSearch("");}}>Cancel</Btn><Btn onClick={add} dis={!form.crop}>Plant</Btn></div>
+          <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>{setShowAdd(false);setCropSearch("");setCropDropdownOpen(false);}}>Cancel</Btn><Btn onClick={add} dis={!form.crop}>Plant</Btn></div>
         </Overlay>
       )}
     </div>
