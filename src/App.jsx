@@ -2894,28 +2894,38 @@ function Farming({data, setData, pageData, clearPageData}) {
   const sp=data.garden.plots.find(p=>p.id===selP);
   const spC=sp?rCM(data.region).get(sp.crop):null;
 
+  // Pre-computed values to avoid IIFEs in JSX (IIFEs crash the app)
+  const _active=data.garden.plots.filter(function(p){return p.status!=="harvested";});
+  const _totalPlants=_active.reduce(function(s,p){return s+(p.plantCount||0);},0);
+  const _totalArea=_active.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
+  const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
+  const _ready=_active.filter(function(p){return p.harvestDate&&new Date(p.harvestDate)<=new Date();}).length;
+  const _spZone=sp&&sp.zone?data.zones.find(function(z){return z.id===sp.zone;}):null;
+  const _spZoneStats=sp&&sp.zone?zoneSpace[sp.zone]:null;
+  const _spZoneMyArea=sp?plotAreaM2(sp):0;
+  const _spZoneFill=_spZoneStats?(_spZoneStats.pct>=0.95?C.red:_spZoneStats.pct>=0.7?C.orange:C.green):C.green;
+  const _spCompZonePlots=sp&&sp.zone?data.garden.plots.filter(function(p){return p.zone===sp.zone&&p.status!=="harvested"&&p.id!==sp.id;}).map(function(p){return p.crop;}):[];
+  const _spCompObj=sp?COMP[sp.crop]:null;
+  const _spCompGood=_spCompObj?_spCompZonePlots.filter(function(n){return _spCompObj.good.includes(n);}):[];
+  const _spCompBad=_spCompObj?_spCompZonePlots.filter(function(n){return _spCompObj.bad.includes(n);}):[];
+  const _showComp=sp&&sp.zone&&_spCompObj&&_spCompZonePlots.length>0&&(_spCompGood.length>0||_spCompBad.length>0);
+  const _formZoneObj=form.zone?vegZ.find(function(z){return z.id===form.zone;}):null;
+  const _formZoneStats=form.zone?zoneSpace[form.zone]:null;
+  const _formZoneFill=_formZoneStats?(_formZoneStats.pct>=0.95?C.red:_formZoneStats.pct>=0.7?C.orange:C.green):C.green;
+
   return (
     <div className="page-enter" style={{maxWidth:800}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
         <div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>🌱 Farming</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Track your crops from seed to harvest</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>
       </div>
-      {(()=>{
-        const active=data.garden.plots.filter(p=>p.status!=="harvested");
-        const totalPlants=active.reduce((s,p)=>s+(p.plantCount||0),0);
-        const totalArea=active.reduce((s,p)=>s+(p.measureType==="area"?+(p.qty||0):0),0);
-        const totalYield=active.reduce((s,p)=>s+(p.expectedYieldKg||0),0);
-        const ready=active.filter(p=>p.harvestDate&&new Date(p.harvestDate)<=new Date()).length;
-        return (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
-            <Stat label="Active Crops" value={active.length}/>
-            {totalPlants>0&&<Stat label="Total Plants" value={totalPlants} sub="across all beds"/>}
-            {totalArea>0&&<Stat label="Total Area" value={`${totalArea.toFixed(0)}m²`} sub="under cultivation"/>}
-            {totalYield>0&&<Stat label="Est. Yield" value={`${totalYield.toFixed(0)}kg`} sub="at harvest" color={C.green}/>}
-            <Stat label="Ready" value={ready} sub="to harvest" color={C.orange}/>
-          </div>
-        );
-      })()}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
+        <Stat label="Active Crops" value={_active.length}/>
+        {_totalPlants>0&&<Stat label="Total Plants" value={_totalPlants} sub="across all beds"/>}
+        {_totalArea>0&&<Stat label="Total Area" value={`${_totalArea.toFixed(0)}m²`} sub="under cultivation"/>}
+        {_totalYield>0&&<Stat label="Est. Yield" value={`${_totalYield.toFixed(0)}kg`} sub="at harvest" color={C.green}/>}
+        <Stat label="Ready" value={_ready} sub="to harvest" color={C.orange}/>
+      </div>
       {data.garden.plots.filter(p=>p.status!=="harvested").length===0?
         <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌱</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
       <div style={{display:"grid",gap:8}}>{data.garden.plots.filter(p=>p.status!=="harvested").map(p=>{
@@ -2960,60 +2970,48 @@ function Farming({data, setData, pageData, clearPageData}) {
               {sp.qty&&sp.measureType==="area"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}m²</div><div style={{fontSize:10,color:C.t2}}>bed size</div></Card>}
               {sp.qty&&sp.measureType==="plants"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}</div><div style={{fontSize:10,color:C.t2}}>plants</div></Card>}
               {sp.expectedYieldKg&&<Card style={{background:"#fff3e0",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{sp.expectedYieldKg}kg</div><div style={{fontSize:10,color:C.t2}}>at harvest</div></Card>}
-              {sp.plantCount&&(() => {const c2=rCM(data.region).get(sp.crop);const space=c2?.spacing;return space?<Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{space}cm</div><div style={{fontSize:10,color:C.t2}}>between plants</div></Card>:null;})()}
+              {sp.plantCount && spC && spC.spacing ? <Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{spC.spacing}cm</div><div style={{fontSize:10,color:C.t2}}>between plants</div></Card> : null}
             </div>
           )}
 
           {/* Zone space for this plot */}
-          {sp.zone && (() => {
-            const z = data.zones.find(z => z.id === sp.zone);
-            if (!z) return null;
-            const spStats = zoneSpace[z.id];
-            if (!spStats || spStats.totalM2 === 0) return null;
-            const myArea = plotAreaM2(sp);
-            const fillColor = spStats.pct >= 0.95 ? C.red : spStats.pct >= 0.7 ? C.orange : C.green;
-            return (
-              <Card style={{marginBottom:12, background: spStats.pct >= 0.95 ? "#fff5f5" : spStats.pct >= 0.7 ? "#fffde7" : "#f0faf0"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <div style={{fontSize:12,fontWeight:700,color:fillColor}}>
-                    {spStats.pct >= 0.95 ? "🔴 Zone Full" : spStats.pct >= 0.7 ? "🟡 Zone Getting Full" : "🟢 Zone Space"}
-                  </div>
-                  <div style={{fontSize:11,color:C.t2,fontFamily:F.mono}}>{z.name}</div>
+          {sp.zone && _spZone && _spZoneStats && _spZoneStats.totalM2 > 0 && (
+            <Card style={{marginBottom:12, background: _spZoneStats.pct >= 0.95 ? "#fff5f5" : _spZoneStats.pct >= 0.7 ? "#fffde7" : "#f0faf0"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <div style={{fontSize:12,fontWeight:700,color:_spZoneFill}}>
+                  {_spZoneStats.pct >= 0.95 ? "🔴 Zone Full" : _spZoneStats.pct >= 0.7 ? "🟡 Zone Getting Full" : "🟢 Zone Space"}
                 </div>
-                {/* Progress bar */}
-                <div style={{height:8,borderRadius:4,background:C.bdr,overflow:"hidden",marginBottom:6}}>
-                  <div style={{height:"100%",width:`${Math.min(100,spStats.pct*100).toFixed(0)}%`,background:fillColor,borderRadius:4,transition:"width .4s"}}/>
-                </div>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2}}>
-                  <span>Used: <strong style={{color:C.text}}>{spStats.usedM2}m²</strong></span>
-                  {myArea > 0 && <span>This crop: <strong style={{color:fillColor}}>{Math.round(myArea*10)/10}m²</strong></span>}
-                  <span>Free: <strong style={{color:fillColor}}>{spStats.freeM2}m²</strong> of {spStats.totalM2.toFixed(0)}m²</span>
-                </div>
-              </Card>
-            );
-          })()}
+                <div style={{fontSize:11,color:C.t2,fontFamily:F.mono}}>{_spZone.name}</div>
+              </div>
+              <div style={{height:8,borderRadius:4,background:C.bdr,overflow:"hidden",marginBottom:6}}>
+                <div style={{height:"100%",width:`${Math.min(100,_spZoneStats.pct*100).toFixed(0)}%`,background:_spZoneFill,borderRadius:4,transition:"width .4s"}}/>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2}}>
+                <span>Used: <strong style={{color:C.text}}>{_spZoneStats.usedM2}m²</strong></span>
+                {_spZoneMyArea > 0 && <span>This crop: <strong style={{color:_spZoneFill}}>{Math.round(_spZoneMyArea*10)/10}m²</strong></span>}
+                <span>Free: <strong style={{color:_spZoneFill}}>{_spZoneStats.freeM2}m²</strong> of {_spZoneStats.totalM2.toFixed(0)}m²</span>
+              </div>
+            </Card>
+          )}
 
           {/* Companion */}
-          {sp.zone && (() => {
-            const zp = data.garden.plots.filter(p => p.zone === sp.zone && p.status !== "harvested" && p.id !== sp.id).map(p => p.crop);
-            const co = COMP[sp.crop];
-            if (!co || zp.length === 0) return null;
-            const good = zp.filter(n => co.good.includes(n));
-            const bad = zp.filter(n => co.bad.includes(n));
-            return (good.length > 0 || bad.length > 0) ? (
-              <Card style={{marginBottom:12,background:bad.length>0?"#fff5f5":"#f0faf0"}}>
-                <div style={{fontSize:12,fontWeight:700,color:C.green}}>🌱 Companions in zone</div>
-                {good.length>0&&<div style={{fontSize:12,color:C.green,marginTop:4}}>✓ Good: {good.join(", ")}</div>}
-                {bad.length>0&&<div style={{fontSize:12,color:C.red,marginTop:4}}>✕ Bad: {bad.join(", ")}</div>}
-              </Card>
-            ) : null;
-          })()}
+          {_showComp && (
+            <Card style={{marginBottom:12,background:_spCompBad.length>0?"#fff5f5":"#f0faf0"}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.green}}>🌱 Companions in zone</div>
+              {_spCompGood.length>0&&<div style={{fontSize:12,color:C.green,marginTop:4}}>✓ Good: {_spCompGood.join(", ")}</div>}
+              {_spCompBad.length>0&&<div style={{fontSize:12,color:C.red,marginTop:4}}>✕ Bad: {_spCompBad.join(", ")}</div>}
+            </Card>
+          )}
           <WaterCard waterNote={spC.waterNote}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
             <Card><div style={{fontSize:11,color:C.t2,fontWeight:600}}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{sp.plantDate||"—"}</div></Card>
             <Card><div style={{fontSize:11,color:C.t2,fontWeight:600}}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{sp.harvestDate||"—"}</div></Card>
           </div>
-          {(()=>{const a=sp.crop;return a?<><Card style={{marginBottom:12,background:"#f0f7f4",border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{a.pH&&<Pill c="#6d4c41" bg="#efebe9">pH {a.pH}</Pill>}</div></Card>{a.fert&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{a.fert}</div></Card>}{a.pests?.length>0&&<Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{a.pests.slice(0,3).map((p,i)=><div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{p.n}</strong>{p.t&&<div style={{fontSize:11,color:C.t2}}>→ {p.t}</div>}</div>)}</Card>}</>:null})()}
+          {spC && <>
+            <Card style={{marginBottom:12,background:"#f0f7f4",border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{spC.pH&&<Pill c="#6d4c41" bg="#efebe9">pH {spC.pH}</Pill>}</div></Card>
+            {spC.fert&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{spC.fert}</div></Card>}
+            {spC.pests&&spC.pests.length>0&&<Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{spC.pests.slice(0,3).map(function(p,i){return <div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{p.n}</strong>{p.t&&<div style={{fontSize:11,color:C.t2}}>→ {p.t}</div>}</div>;})} </Card>}
+          </>}
           <StepChecklist steps={sp.steps} plantDate={sp.plantDate} onToggle={tog} plotId={sp.id}/>
           <StorageCard storage={spC.storage}/>
           <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(spC.name+" growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {spC.name} Growing Guide</a>
@@ -3044,24 +3042,17 @@ function Farming({data, setData, pageData, clearPageData}) {
                   return <option key={z.id} value={z.id}>{label}</option>;
                 })}
               </select>
-              {form.zone && (() => {
-                const z = vegZ.find(z=>z.id===form.zone);
-                if (!z) return null;
-                const sp = zoneSpace[z.id];
-                if (!sp || sp.totalM2 === 0) return null;
-                const fillColor = sp.pct>=0.95?C.red:sp.pct>=0.7?C.orange:C.green;
-                return (
-                  <div style={{marginTop:6}}>
-                    <div style={{height:4,borderRadius:2,background:C.bdr,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:`${Math.min(100,sp.pct*100).toFixed(0)}%`,background:fillColor,borderRadius:2}}/>
-                    </div>
-                    <div style={{fontSize:11,color:fillColor,marginTop:3,fontWeight:600}}>
-                      {sp.pct>=0.95?"⚠ Zone full — consider another zone or expand this zone"
-                        :`${sp.freeM2}m² available in this zone`}
-                    </div>
+              {form.zone && _formZoneObj && _formZoneStats && _formZoneStats.totalM2 > 0 && (
+                <div style={{marginTop:6}}>
+                  <div style={{height:4,borderRadius:2,background:C.bdr,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${Math.min(100,_formZoneStats.pct*100).toFixed(0)}%`,background:_formZoneFill,borderRadius:2}}/>
                   </div>
-                );
-              })()}
+                  <div style={{fontSize:11,color:_formZoneFill,marginTop:3,fontWeight:600}}>
+                    {_formZoneStats.pct>=0.95?"⚠ Zone full — consider another zone or expand this zone"
+                      :`${_formZoneStats.freeM2}m² available in this zone`}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -3975,15 +3966,15 @@ function Manuals({data}) {
         <Inp placeholder="Search crops..." value={s} onChange={e=>setS(e.target.value)}/>
         <div style={{display:"grid",gap:6,marginTop:12}}>{fil.map(c=><Card key={c.name} onClick={()=>setSel(c)} style={{borderLeft:`4px solid ${c.color}`}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:24}}>{c.emoji}</span><div style={{flex:1}}><strong>{c.name}</strong> <Pill>{c.cat}</Pill><div style={{fontSize:12,color:C.t2,marginTop:2}}>{c.sowIn} · {c.harvest} · {c.days}d</div></div><span style={{color:C.t3}}>›</span></div></Card>)}</div>
         {sel&&<Overlay title={`${sel.emoji} ${sel.name}`} onClose={()=>setSel(null)} wide>
-          {(()=>{const a=sel.name;return a?<div style={{background:"#f0f7f4",borderRadius:C.rs,padding:10,marginBottom:12,border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span></div></div>:null})()}
-          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}><Pill c="#fff" bg={sel.color}>{sel.cat}</Pill><Pill>☀ {sel.sun}</Pill><Pill>💧 {sel.waterFreq}</Pill>{(()=>{sel?.pH?<Pill c="#6d4c41" bg="#efebe9">pH {sel.pH}</Pill>:null})()}</div>
+          {sel && <div style={{background:"#f0f7f4",borderRadius:C.rs,padding:10,marginBottom:12,border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{sel.pH&&<Pill c="#6d4c41" bg="#efebe9">pH {sel.pH}</Pill>}</div></div>}
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}><Pill c="#fff" bg={sel.color}>{sel.cat}</Pill><Pill>☀ {sel.sun}</Pill><Pill>💧 {sel.waterFreq}</Pill>{sel?.pH ? <Pill c="#6d4c41" bg="#efebe9">pH {sel.pH}</Pill> : null}</div>
           <div style={{marginBottom:16}}><div style={{fontSize:11,fontFamily:F.mono,color:C.t2,marginBottom:4}}>CALENDAR</div><div style={{display:"flex",gap:2}}>{mn.map(m=>{const iS=sel.sowIn.toLowerCase().includes(m.toLowerCase());const iH=sel.harvest.toLowerCase().includes(m.toLowerCase());return <div key={m} style={{flex:1,textAlign:"center"}}><div style={{fontSize:8,color:C.t2,fontFamily:F.mono}}>{m}</div><div style={{height:14,borderRadius:3,background:iS&&iH?`linear-gradient(135deg,${C.green} 50%,${C.orange} 50%)`:iS?C.green:iH?C.orange:C.bdr,opacity:(iS||iH)?1:.25}}/></div>})}</div><div style={{display:"flex",gap:12,marginTop:4}}><span style={{fontSize:10,color:C.green}}>■ Sow</span><span style={{fontSize:10,color:C.orange}}>■ Harvest</span></div></div>
           {sel.regionNote && <Card style={{marginBottom:12,background:"linear-gradient(135deg,#e8f5e9,#f1f8e9)",border:"1.5px solid #a5d6a7"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>{curRegion ? curRegion.emoji + " " : "🌍 "}Regional Note — {curRegion ? curRegion.name : "Your Region"}</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5,color:C.text}}>{sel.regionNote}</div></Card>}
           {COMP[sel.name]&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🌱 Companions</div><div style={{fontSize:12,marginTop:4}}>✓ {COMP[sel.name].good.join(", ")||"—"}{COMP[sel.name].bad.length>0?<span style={{color:C.red}}> · ✕ {COMP[sel.name].bad.join(", ")}</span>:""}</div></Card>}
           <Card style={{marginBottom:12,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Water</div><div style={{fontSize:13,marginTop:4}}>{sel.waterNote}</div></Card>
           {sel.steps?.length>0&&<div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:700,color:C.green,marginBottom:8}}>Step-by-Step Guide</div>{sel.steps.map((s,i)=><Card key={i} style={{marginBottom:4,padding:10}}><div style={{display:"flex",justifyContent:"space-between"}}><strong style={{fontSize:13}}>{s.l}</strong><span style={{fontSize:10,color:C.t2,fontFamily:F.mono}}>Day {s.d}</span></div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{s.t}</div></Card>)}</div>}
-          {(()=>{sel?.fert?<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧪 Fertilizer</div><div style={{fontSize:12,marginTop:4,lineHeight:1.6}}>{a.fert}</div></Card>:null})()}
-          {(()=>{sel?.pests?.length>0?<Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Disease</div>{sel.pests.map((p,i)=><div key={i} style={{fontSize:12,marginTop:6}}><strong>{p.n}</strong>{p.t&&<div style={{fontSize:11,color:C.t2,marginTop:2}}>→ {p.t}</div>}</div>)}</Card>:null})()}
+          {sel?.fert && <Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧪 Fertilizer</div><div style={{fontSize:12,marginTop:4,lineHeight:1.6}}>{sel.fert}</div></Card>}
+          {sel?.pests&&sel.pests.length>0 && <Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Disease</div>{sel.pests.map(function(p,i){return <div key={i} style={{fontSize:12,marginTop:6}}><strong>{p.n}</strong>{p.t&&<div style={{fontSize:11,color:C.t2,marginTop:2}}>→ {p.t}</div>}</div>;})}</Card>}
           {sel.storage&&<Card style={{marginBottom:12,background:"#fffde7"}}><div style={{fontSize:12,fontWeight:700,color:"#f57f17"}}>📦 Storage</div><div style={{fontSize:13,marginTop:4}}>{sel.storage}</div></Card>}
           <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(sel.name+" growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {sel.name} Growing Guide</a>
         </Overlay>}
