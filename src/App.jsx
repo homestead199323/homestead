@@ -55,6 +55,44 @@ const C = {
 const F = { body: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", head: "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", mono: "'JetBrains Mono','SF Mono','Cascadia Code',monospace" };
 
 /* ═══════════════════════════════════════════
+   SHARED STYLE CONSTANTS
+   Extracted from repeated inline style objects to reduce per-render allocations.
+   Rule: if a pattern appears 4+ times, it belongs here.
+   ═══════════════════════════════════════════ */
+const SX = {
+  flex1: {flex:1},
+  mb12: {marginBottom:12},
+  mw800: {maxWidth:800},
+  overflowHidden: {overflow:"hidden"},
+  rowCenterG6: {display:"flex",alignItems:"center",gap:6},
+  rowCenterG10: {display:"flex",alignItems:"center",gap:10},
+  grid2: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8},
+  btnRowEnd: {display:"flex",gap:8,justifyContent:"flex-end"},
+  lblGreen: {fontSize:12,fontWeight:700,color:C.green},
+  t2_10: {fontSize:10,color:C.t2},
+  t2_11: {fontSize:11,color:C.t2},
+  t2_12: {fontSize:12,color:C.t2},
+  t2_12mt2: {fontSize:12,color:C.t2,marginTop:2},
+  t2_11mt4: {fontSize:11,color:C.t2,marginTop:4},
+  s13mt4: {fontSize:13,marginTop:4},
+  capHeader: {fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"},
+  capHeaderT2: {fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"},
+  headerH2: {fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800},
+  emptyIcon: {fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"},
+  s20: {fontSize:20},
+  s13: {fontSize:13},
+  s15Bold: {fontSize:15,fontWeight:700,color:C.text},
+  sectionHead: {fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head},
+  t2_11mt2: {fontSize:11,color:C.t2,marginTop:2},
+  t2_11b: {fontSize:11,color:C.t2,fontWeight:600},
+  t3_10mt2: {fontSize:10,color:C.t3,marginTop:2},
+  flex1min0: {flex:1,minWidth:0},
+  pageHead: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24},
+  pageSubHead: {color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500},
+  bodyText: {fontSize:13,lineHeight:1.65,color:C.text},
+};
+
+/* ═══════════════════════════════════════════
    ZONE TYPES
    ═══════════════════════════════════════════ */
 const ZT = [
@@ -124,6 +162,28 @@ const COMP = {
   Celeriac: { good: ["Leek","Tomato","Cabbage","Bean (Dry)"], bad: ["Potato","Carrot"] },
   Lentil: { good: ["Cucumber","Lettuce","Potato","Corn"], bad: ["Onion","Garlic"] },
   Chickpea: { good: ["Lettuce","Corn","Cucumber","Sunflower"], bad: ["Onion","Garlic","Fennel"] },
+  Parsley: { good: ["Tomato","Asparagus","Corn","Pepper (Sweet)","Rose"], bad: ["Mint","Lettuce"] },
+  Dill: { good: ["Cabbage","Cucumber","Lettuce","Onion","Broccoli"], bad: ["Tomato","Carrot","Fennel"] },
+  Thyme: { good: ["Cabbage","Strawberry","Tomato","Eggplant","Rosemary"], bad: [] },
+  Chamomile: { good: ["Cabbage","Onion","Cucumber","Basil","Mint"], bad: [] },
+  Olive: { good: ["Lavender","Rosemary","Sage","Oregano"], bad: ["Walnut"] },
+  Fig: { good: ["Rosemary","Mint","Strawberry","Oregano"], bad: ["Walnut"] },
+  Pomegranate: { good: ["Basil","Mint","Lavender","Rosemary"], bad: ["Walnut"] },
+  Peach: { good: ["Garlic","Onion","Basil","Strawberry","Tansy"], bad: ["Potato","Tomato","Raspberry","Walnut"] },
+  Apricot: { good: ["Basil","Rosemary","Tansy","Garlic"], bad: ["Tomato","Pepper (Sweet)","Walnut"] },
+  Almond: { good: ["Lavender","Oregano","Rosemary"], bad: ["Walnut"] },
+  Cherry: { good: ["Garlic","Lavender","Chamomile"], bad: ["Potato","Tomato","Walnut"] },
+  Plum: { good: ["Garlic","Basil","Tansy","Chamomile"], bad: ["Walnut","Raspberry"] },
+  Quince: { good: ["Garlic","Lavender","Oregano"], bad: ["Walnut"] },
+  Persimmon: { good: ["Garlic","Lavender","Oregano"], bad: ["Walnut"] },
+  Lemon: { good: ["Basil","Lavender","Oregano","Rosemary"], bad: ["Walnut"] },
+  Orange: { good: ["Basil","Lavender","Oregano","Rosemary"], bad: ["Walnut"] },
+  Grape: { good: ["Rosemary","Oregano","Basil","Mint","Chamomile"], bad: ["Cabbage","Radish","Walnut"] },
+  Raspberry: { good: ["Garlic","Tansy","Chamomile"], bad: ["Potato","Tomato","Blackberry","Walnut"] },
+  Walnut: { good: [], bad: ["Tomato","Potato","Apple","Peach","Plum","Cherry","Raspberry","Blackberry","Pepper (Sweet)","Eggplant"] },
+  Hazelnut: { good: ["Mint","Chamomile"], bad: [] },
+  Chestnut: { good: [], bad: [] },
+  Wheat: { good: ["Bean (Dry)","Pea","Broad Bean","Lentil","Chickpea"], bad: [] },
 };
 
 /* ═══════════════════════════════════════════
@@ -1395,10 +1455,10 @@ const PRESERVATION = {
     icon: "🧀",
     shelf: "Fresh: 1–2 weeks. Aged: months to years",
     difficulty: "Intermediate–Advanced",
-    ratio: "10L milk → approximately 1kg fresh cheese (yield varies by type). Rennet: 1/4 tsp liquid per 10L. Salt for brine: 200g per litre (20% brine).",
+    ratio: "10L milk → approximately 1kg fresh cheese (yield varies by type). Rennet: 1/4 tsp liquid per 10L. Brine for fresh eating: 70–80g salt per litre (7–8%). Brine for long-term traditional preservation: up to 200g per litre (20%) — saltier but stores months.",
     overview: "Cheese is simply milk with most of its moisture removed and controlled fermentation applied. Every cheese style — from fresh ricotta to aged parmesan — uses the same basic principles: acidify milk, add coagulant (rennet), cut and drain curds, salt, and optionally age. Cheese is one of the most efficient preservation methods: 10L of milk (perishable, days) becomes 1kg of cheese (shelf-stable, months or years).",
     what_you_need: "Large heavy pot. Thermometer (accuracy to 1°C). Cheesecloth/muslin. Colander. Cheese mold. Rennet (liquid or tablet). Cultures (optional for aged cheeses). Cheese salt (non-iodized).",
-    method: "FRESH WHITE CHEESE (Feta style): 1. Heat milk to exactly 32°C — no higher. 2. Add rennet: dissolve 1/4 tsp in 30ml cool water, add to milk, stir gently exactly 1 minute. 3. Cover and do NOT disturb for 45–60 minutes. 4. Test curd: insert knife at 45°, lift — clean break means it is ready. 5. Cut curd into 2cm cubes with long knife. Rest 10 minutes. 6. Raise temperature to 38°C over 20 minutes, stirring gently. 7. Ladle curds into cheesecloth-lined mold. Press gently 6–8 hours. 8. Cut into blocks. Brine in 20% salt solution for 24 hours. RICOTTA: Heat whey (leftover from cheese) to 85°C. Add 2 tbsp white vinegar. Stir once. Wait 10 minutes. Ladle floating curds into cheesecloth.",
+    method: "FRESH WHITE CHEESE (Feta style): 1. Heat milk to exactly 32°C — no higher. 2. Add rennet: dissolve 1/4 tsp in 30ml cool water, add to milk, stir gently exactly 1 minute. 3. Cover and do NOT disturb for 45–60 minutes. 4. Test curd: insert knife at 45°, lift — clean break means it is ready. 5. Cut curd into 2cm cubes with long knife. Rest 10 minutes. 6. Raise temperature to 38°C over 20 minutes, stirring gently. 7. Ladle curds into cheesecloth-lined mold. Press gently 6–8 hours. 8. Cut into blocks. For fresh eating: brine in 7–8% salt solution (70–80g/L) for 24 hours. For long-term preservation (months): use stronger 15–20% brine — cheese will be very salty and may need a quick rinse before eating. RICOTTA: Heat whey (leftover from cheese) to 85°C. Add 2 tbsp white vinegar. Stir once. Wait 10 minutes. Ladle floating curds into cheesecloth.",
     storage: "Fresh cheese: refrigerate in brine, 2–4 weeks. In 20% brine, refrigerated: 6–12 months (gets tangier). Semi-hard aged: wax-coat or vacuum seal, 3–6 months. Hard aged: cool cave conditions, months to years.",
     best_for: "Goat milk (tangier, crumblier, lower lactose). Sheep milk (richest, most complex). Cow milk (mildest, highest yield). Mixed milk (traditional in many cultures). Never use ultra-pasteurized (UHT) milk — rennet will not work.",
     troubleshooting: "Curd does not form = milk too hot (kills rennet) or UHT milk used. Rubbery texture = too much rennet or curd cut too fine. Too soft = not pressed enough time. Too acidic = culture too warm too long. Mold during aging = normal on rind (scrub with brine-dipped cloth) or problematic inside (discard).",
@@ -1719,21 +1779,21 @@ const Card = React.memo(function Card({children,onClick,active,style:s,p=true,cl
 });
 
 const Inp = React.memo(function Inp({label,...p}) {
-  return <div style={{marginBottom:12}}>
+  return <div style={SX.mb12}>
     {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
     <input {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box",...p.style}}/>
   </div>;
 });
 
 const Sel = React.memo(function Sel({label,options,...p}) {
-  return <div style={{marginBottom:12}}>
+  return <div style={SX.mb12}>
     {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
     <select {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}>{options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}</select>
   </div>;
 });
 
 const Txt = React.memo(function Txt({label,...p}) {
-  return <div style={{marginBottom:12}}>
+  return <div style={SX.mb12}>
     {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
     <textarea {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",resize:"vertical",minHeight:60,boxSizing:"border-box"}}/>
   </div>;
@@ -1759,7 +1819,7 @@ const Pill = React.memo(function Pill({children,c=C.green,bg=C.gp}) {
 });
 
 // Hover tooltip — shows a floating info card on mouse enter, hides on leave
-function Tooltip({children, content, width=220}) {
+const Tooltip = React.memo(function Tooltip({children, content, width=220}) {
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState({x:0, y:0});
   const ref = useRef(null);
@@ -1787,7 +1847,7 @@ function Tooltip({children, content, width=220}) {
       )}
     </div>
   );
-}
+});
 
 const Ring = React.memo(function Ring({pct,size=44,sw=3.5,color=C.green,children}) {
   const r=(size-sw)/2,ci=2*Math.PI*r,off=ci*(1-Math.min(1,pct));
@@ -1808,19 +1868,19 @@ const Stat = React.memo(function Stat({label,value,sub,color=C.green}) {
 const StepChecklist = React.memo(function StepChecklist({steps, plantDate, onToggle, plotId}) {
   if (!steps || steps.length === 0) return null;
   return (
-    <div style={{marginBottom:12}}>
+    <div style={SX.mb12}>
       <div style={{fontSize:13,fontWeight:700,color:C.green,marginBottom:8}}>Growing Steps</div>
       {steps.map((s, i) => {
         const sd = plantDate ? new Date(new Date(plantDate).getTime() + s.d * 864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
         return (
           <div key={i} onClick={e => {e.stopPropagation(); onToggle?.(plotId, i);}} style={{display:"flex",gap:10,padding:"10px 12px",background:s.done?"#f0faf0":C.card,border:`1px solid ${s.done?C.gm:C.bdr}`,borderRadius:C.rs,marginBottom:4,cursor:"pointer"}}>
             <div style={{width:22,height:22,borderRadius:22,border:`2px solid ${s.done?C.green:C.bdr}`,background:s.done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0}}>{s.done?"✓":""}</div>
-            <div style={{flex:1}}>
+            <div style={SX.flex1}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <strong style={{fontSize:13,textDecoration:s.done?"line-through":"none"}}>{s.l}</strong>
                 <span style={{fontSize:10,color:C.t2,fontFamily:F.mono}}>Day {s.d}{sd ? ` (${sd})` : ""}</span>
               </div>
-              <div style={{fontSize:12,color:C.t2,marginTop:2}}>{s.t}</div>
+              <div style={SX.t2_12mt2}>{s.t}</div>
             </div>
           </div>
         );
@@ -1831,12 +1891,12 @@ const StepChecklist = React.memo(function StepChecklist({steps, plantDate, onTog
 
 const WaterCard = React.memo(function WaterCard({waterNote}) {
   if (!waterNote) return null;
-  return <Card style={{marginBottom:12,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Watering</div><div style={{fontSize:13,marginTop:4}}>{waterNote}</div></Card>;
+  return <Card style={{marginBottom:12,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Watering</div><div style={SX.s13mt4}>{waterNote}</div></Card>;
 });
 
 const StorageCard = React.memo(function StorageCard({storage}) {
   if (!storage) return null;
-  return <Card style={{marginBottom:12,background:"#fffde7"}}><div style={{fontSize:12,fontWeight:700,color:"#f57f17"}}>📦 Storage</div><div style={{fontSize:13,marginTop:4}}>{storage}</div></Card>;
+  return <Card style={{marginBottom:12,background:"#fffde7"}}><div style={{fontSize:12,fontWeight:700,color:"#f57f17"}}>📦 Storage</div><div style={SX.s13mt4}>{storage}</div></Card>;
 });
 
 /* ═══════════════════════════════════════════
@@ -1849,7 +1909,7 @@ function buildTaskQueue(data) {
   data.garden.plots.forEach(p => {
     if (!p.plantDate || p.status === "harvested") return;
     const crop = rCM(data.region).get(p.crop);
-    if (!crop) return;
+    if (!crop || !crop.days) return;
     const dSince = Math.floor((now - new Date(p.plantDate)) / 864e5);
     const zone = data.zones.find(z => z.id === p.zone);
     const loc = zone ? zone.name : "Farm";
@@ -1907,9 +1967,9 @@ const TaskRow = React.memo(function TaskRow({t, showCheck=true, onToggleStep, on
   return (
     <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:t.pri<=1?"#fff5f5":t.pri===2?"#fffde7":"#f0f7ff",borderRadius:C.rs,marginBottom:4,borderLeft:`3px solid ${t.pri===0?C.red:t.pri===1?"#ff6b35":t.pri===2?C.orange:C.blue}`}}>
       <span style={{fontSize:16}}>{t.emoji}</span>
-      <div style={{flex:1,minWidth:0}}>
+      <div style={SX.flex1min0}>
         <div style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-        <div style={{fontSize:10,color:C.t2}}>📍 {t.loc}{t.daysOut>0?` · ${t.daysOut}d`:""}</div>
+        <div style={SX.t2_10}>📍 {t.loc}{t.daysOut>0?` · ${t.daysOut}d`:""}</div>
       </div>
       {showCheck && t.stepIdx!=null && <button onClick={()=>onToggleStep?.(t.plotId,t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0}}>✓</button>}
       {t.type==="harvest" && <button onClick={onGoToFarm} style={{background:C.orange,color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0}}>🧺</button>}
@@ -2004,9 +2064,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
 
         {/* Urgent tasks box */}
-        <Card p={false} style={{overflow:"hidden"}}>
+        <Card p={false} style={SX.overflowHidden}>
           <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bdr}`,background:"#fff5f5"}}>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={SX.rowCenterG6}>
               <span style={{fontSize:16}}>🔴</span>
               <div style={{fontSize:14,fontWeight:700,color:C.red}}>Urgent — Act Now</div>
               {urgent.length>0 && <span style={{marginLeft:"auto",background:C.red,color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10}}>{urgent.length}</span>}
@@ -2021,9 +2081,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
         </Card>
 
         {/* Non-urgent tasks box */}
-        <Card p={false} style={{overflow:"hidden"}}>
+        <Card p={false} style={SX.overflowHidden}>
           <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bdr}`,background:"#f0f7ff"}}>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={SX.rowCenterG6}>
               <span style={{fontSize:16}}>🔵</span>
               <div style={{fontSize:14,fontWeight:700,color:C.blue}}>Upcoming & Planned</div>
               {nonUrgent.length>0 && <span style={{marginLeft:"auto",background:C.blue,color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10}}>{nonUrgent.length}</span>}
@@ -2042,7 +2102,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
         <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`}}>
           <div style={{fontSize:16,fontWeight:700,fontFamily:F.head}}>⏱ By Due Date</div>
-          <div style={{fontSize:11,color:C.t2,marginTop:2}}>Next 30 days, time-sorted</div>
+          <div style={SX.t2_11mt2}>Next 30 days, time-sorted</div>
         </div>
         <div style={{padding:"10px 14px",overflowY:"auto",maxHeight:320}}>
           {byTime.length === 0
@@ -2054,9 +2114,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
                       <div style={{fontSize:12,fontWeight:700,color:t.daysOut===0?C.red:t.daysOut<=3?C.orange:C.blue,fontFamily:F.mono}}>{t.daysOut===0?"NOW":`${t.daysOut}d`}</div>
                       <div style={{fontSize:9,color:C.t2}}>{t.dueDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div>
                     </div>
-                    <div style={{flex:1,minWidth:0}}>
+                    <div style={SX.flex1min0}>
                       <div style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.emoji} {t.title}</div>
-                      <div style={{fontSize:10,color:C.t2}}>📍 {t.loc}</div>
+                      <div style={SX.t2_10}>📍 {t.loc}</div>
                     </div>
                     {t.stepIdx!=null && <button onClick={()=>togStep(t.plotId,t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:10,cursor:"pointer",flexShrink:0}}>✓</button>}
                   </div>
@@ -2067,7 +2127,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       </Card>
 
       {/* ── Row 3: Calendar — full width ── */}
-      <Card p={false} style={{overflow:"hidden"}}>
+      <Card p={false} style={SX.overflowHidden}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`}}>
           <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.t2,width:32,height:32}}>‹</button>
           <div style={{fontFamily:F.head,fontSize:17,fontWeight:700}}>{MN[viewMonth]} {viewYear}</div>
@@ -2122,7 +2182,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                   <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,color:C.text}}>
                     {isSelToday ? "📌 Today" : "📅"} {dayLabel}
                   </div>
-                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>
+                  <div style={SX.t2_11mt2}>
                     {selEvts.length === 0 ? "No tasks scheduled" : `${selEvts.length} task${selEvts.length>1?"s":""} scheduled`}
                   </div>
                 </div>
@@ -2133,8 +2193,8 @@ function TaskQueue({data, setData, setPage, tasks}) {
                 : <div style={{display:"flex",flexDirection:"column",gap:6}}>
                     {selEvts.map((evt,idx) => (
                       <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,borderLeft:`4px solid ${evt.type==="harvest"?C.orange:C.blue}`}}>
-                        <span style={{fontSize:20}}>{evt.emoji}</span>
-                        <div style={{flex:1,minWidth:0}}>
+                        <span style={SX.s20}>{evt.emoji}</span>
+                        <div style={SX.flex1min0}>
                           <div style={{fontSize:13,fontWeight:600,color:C.text}}>{evt.label}</div>
                           <div style={{fontSize:10,color:C.t2,marginTop:2}}>
                             {evt.type==="harvest" ? "🧺 Ready to harvest" : "📋 Growing step due"}
@@ -2215,7 +2275,7 @@ function Setup({data, setData}) {
     <div className="page-enter" style={{maxWidth:860}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>🗺 Farm Designer</h2>
+          <h2 style={SX.headerH2}>🗺 Farm Designer</h2>
           <p style={{color:C.t2,fontSize:13,margin:"4px 0",fontWeight:500}}>Drag zones to position · Enter real measurements in metres</p>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2230,7 +2290,7 @@ function Setup({data, setData}) {
           <span style={{fontSize:18}}>{curRegion ? curRegion.emoji : "🌍"}</span>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:C.green}}>Climate Region{curRegion ? `: ${curRegion.name}` : ""}</div>
-            <div style={{fontSize:11,color:C.t2}}>{curRegion ? curRegion.desc : "Type your city below to set your growing region"}</div>
+            <div style={SX.t2_11}>{curRegion ? curRegion.desc : "Type your city below to set your growing region"}</div>
           </div>
         </div>
         <div style={{display:"flex",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
@@ -2240,9 +2300,10 @@ function Setup({data, setData}) {
               onChange={function(e) {
                 const v = e.target.value;
                 setCityQuery(v);
+                if (v.length < 2) { setCityResults([]); setShowCityDropdown(false); return; }
                 const res = searchCity(v);
                 setCityResults(res);
-                setShowCityDropdown(res.length > 0 && v.length >= 2);
+                setShowCityDropdown(res.length > 0);
               }}
               onFocus={function() { if (cityResults.length > 0) setShowCityDropdown(true); }}
               onBlur={function() { setTimeout(function() { setShowCityDropdown(false); }, 200); }}
@@ -2262,7 +2323,7 @@ function Setup({data, setData}) {
                       onMouseOver={function(e) { e.currentTarget.style.background = C.gp; }}
                       onMouseOut={function(e) { e.currentTarget.style.background = "transparent"; }}>
                       <span style={{fontWeight:600}}>{c.city}, {c.country}</span>
-                      <span style={{fontSize:11,color:C.t2}}>{rInfo ? rInfo.emoji + " " + rInfo.name : c.region}</span>
+                      <span style={SX.t2_11}>{rInfo ? rInfo.emoji + " " + rInfo.name : c.region}</span>
                     </div>
                   );
                 })}
@@ -2287,19 +2348,19 @@ function Setup({data, setData}) {
       <Card style={{marginBottom:12,padding:"10px 16px"}}>
         <div style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontSize:12,fontWeight:700,color:C.t2}}>🗺 Total Farm Size:</span>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <label style={{fontSize:12,color:C.t2}}>Width</label>
+          <div style={SX.rowCenterG6}>
+            <label style={SX.t2_12}>Width</label>
             <input type="number" min="10" max="2000" value={farmW}
               onChange={e => { const v = +e.target.value||100; setFarmW(v); setData({...data, farmW:v}); }}
               style={{width:70,padding:"4px 8px",border:`1px solid ${C.bdr}`,borderRadius:6,fontSize:13,fontFamily:F.mono}}/>
-            <span style={{fontSize:12,color:C.t2}}>m</span>
+            <span style={SX.t2_12}>m</span>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <label style={{fontSize:12,color:C.t2}}>Height</label>
+          <div style={SX.rowCenterG6}>
+            <label style={SX.t2_12}>Height</label>
             <input type="number" min="10" max="2000" value={farmH}
               onChange={e => { const v = +e.target.value||60; setFarmH(v); setData({...data, farmH:v}); }}
               style={{width:70,padding:"4px 8px",border:`1px solid ${C.bdr}`,borderRadius:6,fontSize:13,fontFamily:F.mono}}/>
-            <span style={{fontSize:12,color:C.t2}}>m</span>
+            <span style={SX.t2_12}>m</span>
           </div>
           <span style={{fontSize:11,color:C.t3,fontFamily:F.mono}}>{farmW}m × {farmH}m = {(farmW*farmH).toLocaleString()} m²</span>
         </div>
@@ -2681,7 +2742,7 @@ function Setup({data, setData}) {
               <Btn v="ghost" sm onClick={()=>setSel(null)}>Done</Btn>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={SX.grid2}>
             <Inp label="Name" value={sz.name} onChange={e=>upZ(sz.id,{name:e.target.value})}/>
             <Sel label="Zone Type" value={sz.type} onChange={e=>upZ(sz.id,{type:e.target.value})} options={ZT.map(t=>({value:t.id,label:`${t.icon} ${t.label}`}))}/>
           </div>
@@ -2732,7 +2793,7 @@ function Setup({data, setData}) {
         {zones.map(z=>{const zt=ZT.find(t=>t.id===z.type);return(
           <Card key={z.id} onClick={()=>setSel(z.id)} active={sel===z.id} style={{borderLeft:`4px solid ${zt?.fill||"#ccc"}`}}>
             <div style={{fontSize:13,fontWeight:600}}>{zt?.icon} {z.name}</div>
-            <div style={{fontSize:11,color:C.t2}}>{zt?.label}</div>
+            <div style={SX.t2_11}>{zt?.label}</div>
             <div style={{fontSize:10,color:C.t3,fontFamily:F.mono,marginTop:2}}>{(z.wM||0).toFixed(0)}m × {(z.hM||0).toFixed(0)}m</div>
           </Card>
         );})}
@@ -2742,12 +2803,12 @@ function Setup({data, setData}) {
         <Overlay title="Add Zone" onClose={()=>setShowAdd(false)}>
           <Inp label="Zone Name" placeholder="Main Veggie Bed" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
           <Sel label="Type" value={form.type} onChange={e=>setForm({...form,type:e.target.value})} options={ZT.map(t=>({value:t.id,label:`${t.icon} ${t.label}`}))}/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={SX.grid2}>
             <Inp label="Width (metres)" type="number" min="1" value={form.wM} onChange={e=>setForm({...form,wM:e.target.value})}/>
             <Inp label="Height (metres)" type="number" min="1" value={form.hM} onChange={e=>setForm({...form,hM:e.target.value})}/>
           </div>
           <div style={{fontSize:12,color:C.t2,marginBottom:12}}>Zone will be placed at top-left — drag to reposition after adding.</div>
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <div style={SX.btnRowEnd}>
             <Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn>
             <Btn onClick={addZ} dis={!form.name}>Add Zone</Btn>
           </div>
@@ -2778,7 +2839,7 @@ function cropMeasureType(cropName, region) {
 // Auto-calculate plant count from area (m²) and crop spacing (cm)
 function plantsFromArea(cropName, areaSqm, region) {
   const crop = rCM(region).get(cropName);
-  if (!crop || !areaSqm) return null;
+  if (!crop || !areaSqm || !crop.spacing || crop.spacing <= 0) return null;
   const spacingM = crop.spacing / 100;
   return Math.round(areaSqm / (spacingM * spacingM));
 }
@@ -2846,6 +2907,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const [showAdd,setShowAdd]=useState(false);
   const [selP,setSelP]=useState(null);
   const [form,setForm]=useState({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});
+  const [cropSearch,setCropSearch]=useState("");
 
   // Auto-open add form when arriving from Seasonal Calendar with a specific crop
   useEffect(() => {
@@ -2873,13 +2935,13 @@ function Farming({data, setData, pageData, clearPageData}) {
     const v=form.variety?(VARIETIES[form.crop]||[]).find(vr=>vr.name===form.variety):null;
     const displayName=form.name||(form.variety?`${form.crop} (${form.variety})`:form.crop);
     const _measure = form.measureType || (c ? cropMeasureType(c.name, data.region) : "plants");
-    const _qty = +form.qty || null;
+    const _qty = (form.qty && +form.qty > 0) ? +form.qty : null;
     const _plants = _qty ? (_measure==="area" ? plantsFromArea(form.crop,_qty,data.region) : _qty) : null;
     const _yieldKg = _qty ? expectedYield(form.crop, _qty, _measure, v?.yld, data.region) : null;
     const p={id:uid(),crop:form.crop,variety:form.variety||"",name:displayName,plantDate:form.plantDate,harvestDate:autoH(),status:form.plantDate?"planted":"planned",zone:form.zone,varietyNote:v?.note||"",steps:c?c.steps.map(s=>({...s,done:false})):[],qty:_qty,measureType:_measure,plantCount:_plants,expectedYieldKg:_yieldKg};
     const nd={...data,garden:{plots:[...data.garden.plots,p]},log:[...data.log,{text:`🌱 Planted ${displayName}${_plants?` (${_plants} plants)`:""}`}]};
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:new Date().toISOString().slice(0,10),cat:"Seeds"}]};
-    setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setShowAdd(false);
+    setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setCropSearch("");setShowAdd(false);
   };
   const del=id=>{setData({...data,garden:{plots:data.garden.plots.filter(p=>p.id!==id)}});setSelP(null);};
   const tog=(pid,si)=>{const plots=data.garden.plots.map(p=>{if(p.id===pid){const st=[...p.steps];st[si]={...st[si],done:!st[si].done};return{...p,steps:st};}return p;});setData({...data,garden:{plots}});};
@@ -2913,10 +2975,25 @@ function Farming({data, setData, pageData, clearPageData}) {
   const _formZoneStats=form.zone?zoneSpace[form.zone]:null;
   const _formZoneFill=_formZoneStats?(_formZoneStats.pct>=0.95?C.red:_formZoneStats.pct>=0.7?C.orange:C.green):C.green;
 
+  // Crop picker: filter by search + group by type (Veggies/Fruits/Herbs/Grains)
+  const _cropSearchQ = cropSearch.trim().toLowerCase();
+  const _cropsForPicker = rCR(data.region).filter(function(c){
+    if (!_cropSearchQ) return true;
+    const n = c.name.toLowerCase();
+    return n.startsWith(_cropSearchQ) || n.includes(_cropSearchQ);
+  });
+  const _cropGroupsForPicker = [
+    {label:"🥬 Veggies",  crops: _cropsForPicker.filter(function(c){return c.cat === "Vegetable";})},
+    {label:"🍎 Fruits",   crops: _cropsForPicker.filter(function(c){return c.cat === "Fruit" || c.cat === "Fruit Tree" || c.cat === "Nut Tree";})},
+    {label:"🌿 Herbs",    crops: _cropsForPicker.filter(function(c){return c.cat === "Herb";})},
+    {label:"🌾 Grains",   crops: _cropsForPicker.filter(function(c){return c.cat === "Grain";})}
+  ];
+  const _cropPickerHasResults = _cropGroupsForPicker.some(function(g){return g.crops.length > 0;});
+
   return (
-    <div className="page-enter" style={{maxWidth:800}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-        <div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>🌱 Farming</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Track your crops from seed to harvest</p></div>
+    <div className="page-enter" style={SX.mw800}>
+      <div style={SX.pageHead}>
+        <div><h2 style={SX.headerH2}>🌱 Farming</h2><p style={SX.pageSubHead}>Track your crops from seed to harvest</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
@@ -2927,7 +3004,7 @@ function Farming({data, setData, pageData, clearPageData}) {
         <Stat label="Ready" value={_ready} sub="to harvest" color={C.orange}/>
       </div>
       {data.garden.plots.filter(p=>p.status!=="harvested").length===0?
-        <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌱</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
+        <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
       <div style={{display:"grid",gap:8}}>{data.garden.plots.filter(p=>p.status!=="harvested").map(p=>{
         const c=rCM(data.region).get(p.crop);
         const done=p.steps?p.steps.filter(s=>s.done).length:0;
@@ -2941,7 +3018,7 @@ function Farming({data, setData, pageData, clearPageData}) {
           <Card key={p.id} onClick={()=>setSelP(p.id)} style={isR?{boxShadow:`0 0 0 2px ${C.orange}`}:{}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <Ring pct={pct} color={isR?C.orange:C.green}>{c?.emoji||"🌱"}</Ring>
-              <div style={{flex:1}}>
+              <div style={SX.flex1}>
                 <div style={{fontSize:15,fontWeight:600}}>{p.name||p.crop}</div>
                 <div style={{fontSize:12,color:C.t2,marginTop:2,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {zone&&<span>📍 {zone.name}</span>}
@@ -2966,11 +3043,11 @@ function Farming({data, setData, pageData, clearPageData}) {
           {/* Quantity summary card */}
           {(sp.plantCount||sp.qty||sp.expectedYieldKg) && (
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:14}}>
-              {sp.plantCount&&<Card style={{background:"#e8f5e9",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{sp.plantCount}</div><div style={{fontSize:10,color:C.t2}}>estimated</div></Card>}
-              {sp.qty&&sp.measureType==="area"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}m²</div><div style={{fontSize:10,color:C.t2}}>bed size</div></Card>}
-              {sp.qty&&sp.measureType==="plants"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}</div><div style={{fontSize:10,color:C.t2}}>plants</div></Card>}
-              {sp.expectedYieldKg&&<Card style={{background:"#fff3e0",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{sp.expectedYieldKg}kg</div><div style={{fontSize:10,color:C.t2}}>at harvest</div></Card>}
-              {sp.plantCount && spC && spC.spacing ? <Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{spC.spacing}cm</div><div style={{fontSize:10,color:C.t2}}>between plants</div></Card> : null}
+              {sp.plantCount&&<Card style={{background:"#e8f5e9",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{sp.plantCount}</div><div style={SX.t2_10}>estimated</div></Card>}
+              {sp.qty&&sp.measureType==="area"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
+              {sp.qty&&sp.measureType==="plants"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}</div><div style={SX.t2_10}>plants</div></Card>}
+              {sp.expectedYieldKg&&<Card style={{background:"#fff3e0",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{sp.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
+              {sp.plantCount && spC && spC.spacing ? <Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{spC.spacing}cm</div><div style={SX.t2_10}>between plants</div></Card> : null}
             </div>
           )}
 
@@ -2997,38 +3074,64 @@ function Farming({data, setData, pageData, clearPageData}) {
           {/* Companion */}
           {_showComp && (
             <Card style={{marginBottom:12,background:_spCompBad.length>0?"#fff5f5":"#f0faf0"}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.green}}>🌱 Companions in zone</div>
+              <div style={SX.lblGreen}>🌱 Companions in zone</div>
               {_spCompGood.length>0&&<div style={{fontSize:12,color:C.green,marginTop:4}}>✓ Good: {_spCompGood.join(", ")}</div>}
               {_spCompBad.length>0&&<div style={{fontSize:12,color:C.red,marginTop:4}}>✕ Bad: {_spCompBad.join(", ")}</div>}
             </Card>
           )}
-          <WaterCard waterNote={spC.waterNote}/>
+          {spC && <WaterCard waterNote={spC.waterNote}/>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-            <Card><div style={{fontSize:11,color:C.t2,fontWeight:600}}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{sp.plantDate||"—"}</div></Card>
-            <Card><div style={{fontSize:11,color:C.t2,fontWeight:600}}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{sp.harvestDate||"—"}</div></Card>
+            <Card><div style={SX.t2_11b}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{sp.plantDate||"—"}</div></Card>
+            <Card><div style={SX.t2_11b}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{sp.harvestDate||"—"}</div></Card>
           </div>
           {spC && <>
             <Card style={{marginBottom:12,background:"#f0f7f4",border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{spC.pH&&<Pill c="#6d4c41" bg="#efebe9">pH {spC.pH}</Pill>}</div></Card>
-            {spC.fert&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{spC.fert}</div></Card>}
-            {spC.pests&&spC.pests.length>0&&<Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{spC.pests.slice(0,3).map(function(p,i){return <div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{p.n}</strong>{p.t&&<div style={{fontSize:11,color:C.t2}}>→ {p.t}</div>}</div>;})} </Card>}
+            {spC.fert&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={SX.lblGreen}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{spC.fert}</div></Card>}
+            {spC.pests&&spC.pests.length>0&&<Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{spC.pests.slice(0,3).map(function(p,i){return <div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{p.n}</strong>{p.t&&<div style={SX.t2_11}>→ {p.t}</div>}</div>;})} </Card>}
           </>}
           <StepChecklist steps={sp.steps} plantDate={sp.plantDate} onToggle={tog} plotId={sp.id}/>
-          <StorageCard storage={spC.storage}/>
-          <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(spC.name+" growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {spC.name} Growing Guide</a>
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="danger" sm onClick={()=>del(sp.id)}>Delete</Btn>{sp.status!=="harvested"&&sp.harvestDate&&new Date(sp.harvestDate)<=new Date()&&<Btn v="success" onClick={()=>harv(sp)}>🧺 Harvest</Btn>}</div>
+          {spC && <StorageCard storage={spC.storage}/>}
+          {spC && <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(spC.name+" growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {spC.name} Growing Guide</a>}
+          <div style={SX.btnRowEnd}><Btn v="danger" sm onClick={()=>del(sp.id)}>Delete</Btn>{sp.status!=="harvested"&&sp.harvestDate&&new Date(sp.harvestDate)<=new Date()&&<Btn v="success" onClick={()=>harv(sp)}>🧺 Harvest</Btn>}</div>
         </Overlay>
       )}
 
       {showAdd&&(
-        <Overlay title="🌱 Plant a Crop" onClose={()=>setShowAdd(false)}>
-          <Sel label="Crop" value={form.crop} onChange={e=>setForm({...form,crop:e.target.value,variety:""})} options={[{value:"",label:"Choose..."},...rCR(data.region).map(c=>({value:c.name,label:`${c.emoji} ${c.name} — ${c.cat}`}))]}/>
+        <Overlay title="🌱 Plant a Crop" onClose={()=>{setShowAdd(false);setCropSearch("");}}>
+          <div style={SX.mb12}>
+            <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>Crop</label>
+            <input
+              type="text"
+              placeholder="Type a letter to jump (e.g. T for Tomato)…"
+              value={cropSearch}
+              onChange={function(e){setCropSearch(e.target.value);}}
+              style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box",marginBottom:6}}
+            />
+            <select
+              value={form.crop}
+              onChange={function(e){setForm({...form,crop:e.target.value,variety:""});}}
+              style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}
+            >
+              <option value="">{_cropPickerHasResults ? "Choose…" : "No crops match that search"}</option>
+              {_cropGroupsForPicker.map(function(g){
+                if (g.crops.length === 0) return null;
+                return (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.crops.map(function(c){
+                      return <option key={c.name} value={c.name}>{c.emoji} {c.name}</option>;
+                    })}
+                  </optgroup>
+                );
+              })}
+            </select>
+          </div>
           {ci && VARIETIES[ci.name] && VARIETIES[ci.name].length > 0 && (
             <Sel label="Variety / Breed" value={form.variety} onChange={e=>setForm({...form,variety:e.target.value})} options={[{value:"",label:"— Any / General —"},...VARIETIES[ci.name].map(v=>({value:v.name,label:`${v.name} — ${v.note.slice(0,50)}`}))]}/>
           )}
-          {vi && <Card style={{marginBottom:10,background:"#e8f5e9",padding:12}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧬 {vi.name}</div><div style={{fontSize:12,marginTop:4}}>{vi.note}</div>{vi.days!==ci.days&&<div style={{fontSize:11,color:C.gl,marginTop:2}}>Adjusted harvest: ~{vi.days} days (vs {ci.days} general)</div>}</Card>}
-          {ci&&<Card style={{marginBottom:14,background:C.gp}}><div style={{fontSize:13}}>Harvest ~<strong>{effectiveDays}d</strong> · {ci.waterFreq} · {ci.sun} · {ci.spacing}cm</div>{COMP[ci.name]&&<div style={{fontSize:12,color:C.gl,marginTop:4}}>✓ Good with: {COMP[ci.name].good.join(", ")}{COMP[ci.name].bad.length>0?` · ✕ Bad: ${COMP[ci.name].bad.join(", ")}`:""}</div>}</Card>}
+          {vi && <Card style={{marginBottom:10,background:"#e8f5e9",padding:12}}><div style={SX.lblGreen}>🧬 {vi.name}</div><div style={{fontSize:12,marginTop:4}}>{vi.note}</div>{vi.days!==ci.days&&<div style={{fontSize:11,color:C.gl,marginTop:2}}>Adjusted harvest: ~{vi.days} days (vs {ci.days} general)</div>}</Card>}
+          {ci&&<Card style={{marginBottom:14,background:C.gp}}><div style={SX.s13}>Harvest ~<strong>{effectiveDays}d</strong> · {ci.waterFreq} · {ci.sun} · {ci.spacing}cm</div>{COMP[ci.name]&&<div style={{fontSize:12,color:C.gl,marginTop:4}}>✓ Good with: {COMP[ci.name].good.join(", ")}{COMP[ci.name].bad.length>0?` · ✕ Bad: ${COMP[ci.name].bad.join(", ")}`:""}</div>}</Card>}
           {vegZ.length>0&&(
-            <div style={{marginBottom:12}}>
+            <div style={SX.mb12}>
               <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>Zone</label>
               <select value={form.zone} onChange={e=>setForm({...form,zone:e.target.value})}
                 style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}>
@@ -3069,7 +3172,7 @@ function Farming({data, setData, pageData, clearPageData}) {
                   </button>
                 ))}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={SX.grid2}>
                 <div>
                   <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>
                     {activeMeasure==="area"?"Area (m²)":"Number of plants"}
@@ -3082,17 +3185,17 @@ function Farming({data, setData, pageData, clearPageData}) {
                 <div style={{display:"flex",flexDirection:"column",justifyContent:"flex-end",paddingBottom:2}}>
                   {plantsCalc!=null&&<div style={{fontSize:12,color:C.green,fontWeight:600}}>🌱 ~{plantsCalc} plants</div>}
                   {yieldCalc!=null&&<div style={{fontSize:12,color:C.orange,fontWeight:600}}>📦 ~{yieldCalc}kg yield</div>}
-                  {ci.spacing&&<div style={{fontSize:11,color:C.t2}}>Spacing: {ci.spacing}cm</div>}
+                  {ci.spacing&&<div style={SX.t2_11}>Spacing: {ci.spacing}cm</div>}
                 </div>
               </div>
             </div>
           )}
 
           <Inp label="Name (optional)" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
-          <Inp label="Plant Date" type="date" value={form.plantDate} onChange={e=>setForm({...form,plantDate:e.target.value})}/>
+          <Inp label="Plant Date" type="date" value={form.plantDate} max={new Date().toISOString().slice(0,10)} onChange={e=>setForm({...form,plantDate:e.target.value})}/>
           {form.plantDate&&ci&&<div style={{fontSize:12,color:C.green,marginBottom:10}}>🧺 Harvest: {autoH()}</div>}
           <Inp label="Seed Cost (€)" type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add} dis={!form.crop}>Plant</Btn></div>
+          <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>{setShowAdd(false);setCropSearch("");}}>Cancel</Btn><Btn onClick={add} dis={!form.crop}>Plant</Btn></div>
         </Overlay>
       )}
     </div>
@@ -3133,13 +3236,13 @@ function Livestock({data, setData}) {
   const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;const saDB=sa?LDB[sa.type]:null;
 
   return (
-    <div className="page-enter" style={{maxWidth:800}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>🐄 Livestock</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Manage your animals, collect produce, track care</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
+    <div className="page-enter" style={SX.mw800}>
+      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>🐄 Livestock</h2><p style={SX.pageSubHead}>Manage your animals, collect produce, track care</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
       <Stat label="Total" value={data.livestock.animals.reduce((s,a)=>s+a.count,0)}/>
-      <div style={{marginTop:16,display:"grid",gap:8}}>{data.livestock.animals.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🐄</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>No animals yet</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Add chickens, goats, or any livestock to track them</div></Card>:data.livestock.animals.map(a=>{const db=LDB[a.type];return (
+      <div style={{marginTop:16,display:"grid",gap:8}}>{data.livestock.animals.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🐄</div><div style={SX.s15Bold}>No animals yet</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Add chickens, goats, or any livestock to track them</div></Card>:data.livestock.animals.map(a=>{const db=LDB[a.type];return (
         <Card key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
           <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setSel(a.id)}>
-            <span style={{fontSize:28}}>{db?.e}</span><div><strong style={{fontSize:15}}>{a.name||a.type}</strong>{a.breed?<span style={{fontSize:12,color:C.t2}}> ({a.breed})</span>:null}<div style={{fontSize:12,color:C.t2}}>×{a.count} · Tap for guide</div></div>
+            <span style={{fontSize:28}}>{db?.e}</span><div><strong style={{fontSize:15}}>{a.name||a.type}</strong>{a.breed?<span style={SX.t2_12}> ({a.breed})</span>:null}<div style={SX.t2_12}>×{a.count} · Tap for guide</div></div>
           </div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {db?.prod.includes("Eggs")&&<Btn sm v="secondary" onClick={()=>{setShowCollect({animal:a,produce:"Eggs"});setCollectQty(String(Math.round(a.count*0.7)))}}>🥚 Collect Eggs</Btn>}
@@ -3159,7 +3262,7 @@ function Livestock({data, setData}) {
         </div>
         <Inp label={`Quantity (${showCollect.produce==="Eggs"?"eggs":"kg"})`} type="number" min="0" step={showCollect.produce==="Eggs"?"1":"0.1"} value={collectQty} onChange={e=>setCollectQty(e.target.value)} />
         <div style={{fontSize:12,color:C.t2,marginBottom:12}}>Suggested daily: ~{LDB[showCollect.animal.type]?.out[showCollect.produce]?.p||0} {LDB[showCollect.animal.type]?.out[showCollect.produce]?.u||""} per animal</div>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+        <div style={SX.btnRowEnd}>
           <Btn v="secondary" onClick={()=>setShowCollect(null)}>Cancel</Btn>
           <Btn v="success" onClick={()=>doCollect(showCollect.animal,showCollect.produce,+collectQty||0)}>Collect → Pantry</Btn>
         </div>
@@ -3168,10 +3271,10 @@ function Livestock({data, setData}) {
       {/* Care Guide */}
       {sa&&saDB&&<Overlay title={`${saDB.e} ${sa.name||sa.type} Care Guide`} onClose={()=>setSel(null)} wide>
         <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}><Pill>×{sa.count} head</Pill>{sa.breed&&<Pill c={C.blue} bg="#e3f2fd">{sa.breed}</Pill>}{saDB.prod.map(p=><Pill key={p} c={C.green} bg={C.gp}>{p}</Pill>)}</div>
-        {sa.breed && (() => { const bi = (BREEDS[sa.type]||[]).find(b => b.name === sa.breed); return bi ? <Card style={{marginBottom:8,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>🧬 Breed: {bi.name}</div><div style={{fontSize:13,marginTop:4}}>{bi.note}</div>{bi.eggs&&<div style={{fontSize:12,color:C.green,marginTop:2}}>Egg production: ~{bi.eggs} eggs/day per hen</div>}</Card> : null; })()}
-        {[{i:"🍽",t:"Feeding",v:saDB.feed,q:`${sa.type} ${sa.breed||""} feeding guide homestead`},{i:"🏠",t:"Housing",v:saDB.house,q:`${sa.type} housing coop barn build`},{i:"😴",t:"Sleeping",v:saDB.sleep,q:`${sa.type} sleeping arrangement farm`},{i:"💕",t:"Breeding",v:saDB.breed,q:`${sa.type} ${sa.breed||""} breeding guide`}].map(s=><Card key={s.t} style={{marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>{s.i} {s.t}</div><div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div></Card>)}
-        <Card style={{background:"#fce4ec",marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries & Treatment</div>{saDB.inj.map((j,i)=><div key={i} style={{marginTop:8}}><strong style={{fontSize:13}}>{j.n}</strong><div style={{fontSize:12,color:C.t2,marginTop:2}}>{j.t}</div></div>)}</Card>
-        <Card style={{marginBottom:8,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>📦 Produce & Storage</div>{Object.entries(saDB.out).map(([k,v])=><div key={k} style={{marginTop:6}}><strong style={{fontSize:12}}>{k}</strong>: ~{v.p} {v.u}<div style={{fontSize:11,color:C.t2}}>{v.s}</div></div>)}</Card>
+        {sa.breed && (() => { const bi = (BREEDS[sa.type]||[]).find(b => b.name === sa.breed); return bi ? <Card style={{marginBottom:8,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>🧬 Breed: {bi.name}</div><div style={SX.s13mt4}>{bi.note}</div>{bi.eggs&&<div style={{fontSize:12,color:C.green,marginTop:2}}>Egg production: ~{bi.eggs} eggs/day per hen</div>}</Card> : null; })()}
+        {[{i:"🍽",t:"Feeding",v:saDB.feed,q:`${sa.type} ${sa.breed||""} feeding guide homestead`},{i:"🏠",t:"Housing",v:saDB.house,q:`${sa.type} housing coop barn build`},{i:"😴",t:"Sleeping",v:saDB.sleep,q:`${sa.type} sleeping arrangement farm`},{i:"💕",t:"Breeding",v:saDB.breed,q:`${sa.type} ${sa.breed||""} breeding guide`}].map(s=><Card key={s.t} style={{marginBottom:8}}><div style={SX.lblGreen}>{s.i} {s.t}</div><div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div></Card>)}
+        <Card style={{background:"#fce4ec",marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries & Treatment</div>{saDB.inj.map((j,i)=><div key={i} style={{marginTop:8}}><strong style={SX.s13}>{j.n}</strong><div style={SX.t2_12mt2}>{j.t}</div></div>)}</Card>
+        <Card style={{marginBottom:8,background:"#e8f5e9"}}><div style={SX.lblGreen}>📦 Produce & Storage</div>{Object.entries(saDB.out).map(([k,v])=><div key={k} style={{marginTop:6}}><strong style={{fontSize:12}}>{k}</strong>: ~{v.p} {v.u}<div style={SX.t2_11}>{v.s}</div></div>)}</Card>
         <Btn v="danger" sm onClick={()=>del(sa.id)}>Remove</Btn>
       </Overlay>}
 
@@ -3179,7 +3282,7 @@ function Livestock({data, setData}) {
       {showK&&<Overlay title={`🔪 Process ${showK.name||showK.type}`} onClose={()=>setShowK(null)}>
         <Inp label={`Qty (max ${showK.count})`} type="number" min="1" max={showK.count} value={kQ} onChange={e=>setKQ(e.target.value)}/>
         {LDB[showK.type]?.out.Meat&&<div style={{fontSize:13,marginBottom:12}}>Estimated: <strong>{Math.round(LDB[showK.type].out.Meat.p*(+kQ||1)*10)/10}kg</strong> meat</div>}
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="secondary" onClick={()=>setShowK(null)}>Cancel</Btn><Btn v="danger" onClick={()=>kill(showK)}>Process</Btn></div>
+        <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowK(null)}>Cancel</Btn><Btn v="danger" onClick={()=>kill(showK)}>Process</Btn></div>
       </Overlay>}
 
       {/* Add Animal Modal — with breed dropdown */}
@@ -3188,13 +3291,13 @@ function Livestock({data, setData}) {
         {breedOptions.length > 0 && (
           <Sel label="Breed" value={form.breed} onChange={e=>setForm({...form,breed:e.target.value})} options={[{value:"",label:"— Select breed —"},...breedOptions.map(b=>({value:b.name,label:b.name}))]}/>
         )}
-        {selectedBreed && <Card style={{marginBottom:12,background:"#e8f5e9",padding:12}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧬 {selectedBreed.name}</div><div style={{fontSize:12,marginTop:4}}>{selectedBreed.note}</div></Card>}
+        {selectedBreed && <Card style={{marginBottom:12,background:"#e8f5e9",padding:12}}><div style={SX.lblGreen}>🧬 {selectedBreed.name}</div><div style={{fontSize:12,marginTop:4}}>{selectedBreed.note}</div></Card>}
         <Inp label="Name / Label" placeholder="e.g. Layer Flock A" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={SX.grid2}>
           <Inp label="Count" type="number" min="1" value={form.count} onChange={e=>setForm({...form,count:e.target.value})}/>
           <Inp label="Cost (€)" type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
         </div>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
+        <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
       </Overlay>}
     </div>
   );
@@ -3237,18 +3340,18 @@ function Pantry({data, setData}) {
   };
 
   return (
-    <div className="page-enter" style={{maxWidth:800}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>📦 Pantry</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Everything you've harvested and stored</p></div><Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Manual</Btn></div>
+    <div className="page-enter" style={SX.mw800}>
+      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>📦 Pantry</h2><p style={SX.pageSubHead}>Everything you've harvested and stored</p></div><Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Manual</Btn></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:16}}>
         <Stat label="Items" value={data.pantry.items.length}/><Stat label="kg" value={Math.round(data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0))}/>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>{cats.map(c=><button key={c} onClick={()=>setCat(c)} style={{padding:"6px 14px",borderRadius:20,border:"none",background:cat===c?C.green:C.card,color:cat===c?"#fff":C.t2,fontSize:12,fontWeight:600,cursor:"pointer",boxShadow:cat===c?"none":C.sh}}>{c}</button>)}</div>
-      {fil.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>📦</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Pantry is empty</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Harvest crops or collect produce to stock up</div></Card>:
+      {fil.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={SX.emptyIcon}>📦</div><div style={SX.s15Bold}>Pantry is empty</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Harvest crops or collect produce to stock up</div></Card>:
       <div style={{display:"grid",gap:6}}>{fil.map(item=>(
-        <Card key={item.id}><div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:20}}>{itemIcon(item)}</span>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><strong style={{fontSize:14}}>{item.name}</strong><Pill>{item.category}</Pill><span style={{fontSize:15,fontWeight:700}}>{item.qty} {item.unit}</span></div>
-          {item.storageNote&&<div style={{fontSize:11,color:C.t2,marginTop:2}}>💡 {item.storageNote.slice(0,80)}</div>}</div>
+        <Card key={item.id}><div style={SX.rowCenterG10}>
+          <span style={SX.s20}>{itemIcon(item)}</span>
+          <div style={SX.flex1}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><strong style={{fontSize:14}}>{item.name}</strong><Pill>{item.category}</Pill><span style={{fontSize:15,fontWeight:700}}>{item.qty} {item.unit}</span></div>
+          {item.storageNote&&<div style={SX.t2_11mt2}>💡 {item.storageNote.slice(0,80)}</div>}</div>
           <div style={{display:"flex",gap:4}}><Btn sm v="secondary" onClick={()=>{setShowEat(item);setEatQty(item.unit==="eggs"?"1":"0.5")}}>Eat</Btn><Btn sm v="ghost" onClick={()=>del(item.id)}>🗑</Btn></div>
         </div></Card>
       ))}</div>}
@@ -3270,7 +3373,7 @@ function Pantry({data, setData}) {
         <div style={{fontSize:13,color:C.t2,marginBottom:16}}>
           After: <strong style={{color:C.text}}>{Math.max(0,Math.round((showEat.qty-(+eatQty||0))*10)/10)} {showEat.unit}</strong> remaining in stock
         </div>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+        <div style={SX.btnRowEnd}>
           <Btn v="secondary" onClick={()=>setShowEat(null)}>Cancel</Btn>
           <Btn v="success" dis={!eatQty||+eatQty<=0||+eatQty>showEat.qty} onClick={()=>{eat(showEat,+eatQty);setShowEat(null)}}>Take {eatQty} {showEat.unit}</Btn>
         </div>
@@ -3280,7 +3383,7 @@ function Pantry({data, setData}) {
         <Inp label="Name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
         <Sel label="Category" options={["Fresh Produce","Meat","Eggs","Dairy","Preserved","Grain","Other"]} value={form.category} onChange={e=>setForm({...form,category:e.target.value})}/>
         <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}><Inp label="Qty" type="number" value={form.qty} onChange={e=>setForm({...form,qty:e.target.value})}/><Sel label="Unit" options={["kg","lbs","L","units","eggs","jars"]} value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})}/></div>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
+        <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
       </Overlay>}
     </div>
   );
@@ -3296,7 +3399,7 @@ function Financials({data, setData}) {
   const [chartM,setChartM]=useState(new Date().getMonth());
   const [form,setForm]=useState({type:"expense",amount:"",label:"",cat:"Seeds",date:new Date().toISOString().slice(0,10)});
   const items = data.costs?.items || [];
-  const add=()=>{if(!form.amount||!form.label)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:+form.amount}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:new Date().toISOString().slice(0,10)});setShowAdd(false);};
+  const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:new Date().toISOString().slice(0,10)});setShowAdd(false);};
   const del=id=>setData({...data,costs:{items:items.filter(i=>i.id!==id)}});
   const {exp,inc,net,catT}=useMemo(()=>{let e=0,r=0;const ct={};items.forEach(i=>{if(i.type==="expense"){e+=i.amount;ct[i.cat]=(ct[i.cat]||0)+i.amount;}else r+=i.amount;});return{exp:e,inc:r,net:r-e,catT:ct};},[items]);
   const mN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -3309,9 +3412,9 @@ function Financials({data, setData}) {
   const last5=items.slice(-5).reverse();
 
   return (
-    <div className="page-enter" style={{maxWidth:800}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-        <div><h2 style={{fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800}}>💰 Financials</h2><p style={{color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500}}>Income, expenses, and profitability</p></div>
+    <div className="page-enter" style={SX.mw800}>
+      <div style={SX.pageHead}>
+        <div><h2 style={SX.headerH2}>💰 Financials</h2><p style={SX.pageSubHead}>Income, expenses, and profitability</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Add Entry</Btn>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
@@ -3345,19 +3448,19 @@ function Financials({data, setData}) {
       <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,marginBottom:10}}>Recent Transactions</div>
       {last5.length===0?<Card style={{textAlign:"center",padding:32}}><div style={{color:C.t2}}>No transactions yet</div></Card>:
       <div style={{display:"grid",gap:6}}>{last5.map(i=>(
-        <Card key={i.id}><div style={{display:"flex",alignItems:"center",gap:10}}>
+        <Card key={i.id}><div style={SX.rowCenterG10}>
           <div style={{width:36,height:36,borderRadius:18,background:i.type==="expense"?"#fce4ec":"#e8f5e9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{i.type==="expense"?"📤":"📥"}</div>
-          <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600}}>{i.label}</div><div style={{fontSize:12,color:C.t2}}>{i.date} {" "} {i.cat}</div></div>
+          <div style={SX.flex1}><div style={{fontSize:14,fontWeight:600}}>{i.label}</div><div style={SX.t2_12}>{i.date} {" "} {i.cat}</div></div>
           <div style={{fontSize:16,fontWeight:700,color:i.type==="expense"?C.red:C.green,fontFamily:F.mono}}>{i.type==="expense"?"-":"+"}{E}{i.amount.toFixed(2)}</div>
           <Btn sm v="ghost" onClick={()=>del(i.id)}>🗑</Btn>
         </div></Card>
       ))}</div>}
       {showAdd&&<Overlay title="Add Entry" onClose={()=>setShowAdd(false)}>
-        <div style={{display:"flex",gap:8,marginBottom:14}}>{["expense","income"].map(t=><Card key={t} onClick={()=>setForm({...form,type:t})} active={form.type===t} style={{flex:1,textAlign:"center",cursor:"pointer"}}><div style={{fontSize:20}}>{t==="expense"?"📤":"📥"}</div><div style={{fontSize:13,fontWeight:600,marginTop:4}}>{t==="expense"?"Expense":"Income"}</div></Card>)}</div>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>{["expense","income"].map(t=><Card key={t} onClick={()=>setForm({...form,type:t})} active={form.type===t} style={{flex:1,textAlign:"center",cursor:"pointer"}}><div style={SX.s20}>{t==="expense"?"📤":"📥"}</div><div style={{fontSize:13,fontWeight:600,marginTop:4}}>{t==="expense"?"Expense":"Income"}</div></Card>)}</div>
         <Inp label="Amount" type="number" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
         <Inp label="Description" value={form.label} onChange={e=>setForm({...form,label:e.target.value})}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}><Sel label="Category" value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} options={["Seeds","Tools","Feed","Animals","Fuel","Infrastructure","Produce Sales","Other"]}/><Inp label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
+        <div style={SX.grid2}><Sel label="Category" value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} options={["Seeds","Tools","Feed","Animals","Fuel","Infrastructure","Produce Sales","Other"]}/><Inp label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
+        <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
       </Overlay>}
     </div>
   );
@@ -3513,7 +3616,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.blue,marginRight:5}}/>Growing <strong>{ringData.plantedCount}</strong></div>
                 <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.orange,marginRight:5}}/>Harvest <strong>{ringData.readyCount}</strong></div>
               </div>
-              <div style={{flex:1}}>
+              <div style={SX.flex1}>
                 <h2 style={{fontFamily:F.head,fontSize:24,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>MyTerra</h2>
                 <p style={{color:C.t2,fontSize:12,margin:"2px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
               </div>
@@ -3536,50 +3639,50 @@ function Dashboard({data, setData, setPage, tasks}) {
             {/* Info boxes — what a farmer reads first */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
               {/* TODAY'S WORK */}
-              <Card style={{padding:"14px 16px",background:_durgent>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:_durgent>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Today's Work</div>
+              <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:_durgent>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
+                <div style={SX.capHeader}>Today's Work</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_durgent>0?C.red:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
-                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                <div style={SX.t2_11mt4}>
                   {_durgent > 0 ? <span style={{color:C.red,fontWeight:700}}>{_durgent} urgent</span> : "tasks pending"}
                 </div>
-                <div style={{fontSize:10,color:C.t3,marginTop:2}}>
+                <div style={SX.t3_10mt2}>
                   <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:"#34c759",marginRight:4}}/>{ringData.doneSteps}/{ringData.totalSteps} done
                 </div>
               </Card>
 
               {/* CROPS */}
-              <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f5fbf0,#edf5e5)",border:"1px solid rgba(45,106,79,.08)"}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Crops</div>
+              <Card onClick={function(){setPage("farm");}} style={{padding:"14px 16px",background:"linear-gradient(135deg,#f5fbf0,#edf5e5)",border:"1px solid rgba(45,106,79,.08)"}}>
+                <div style={SX.capHeader}>Crops</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dap.length}</div>
-                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                <div style={SX.t2_11mt4}>
                   <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.blue,marginRight:4}}/>{ringData.plantedCount} growing
                 </div>
                 {_dready.length > 0 && (
                   <div style={{fontSize:10,color:C.orange,fontWeight:700,marginTop:2}}>🌾 {_dready.length} ready to harvest!</div>
                 )}
                 {_dready.length === 0 && _dfa > 0 && (
-                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>{_dfa.toFixed(0)}m² cultivated</div>
+                  <div style={SX.t3_10mt2}>{_dfa.toFixed(0)}m² cultivated</div>
                 )}
               </Card>
 
               {/* ANIMALS */}
-              <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#faf8f0,#f5f0e5)",border:"1px solid rgba(180,150,60,.08)"}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Animals</div>
+              <Card onClick={function(){setPage("live");}} style={{padding:"14px 16px",background:"linear-gradient(135deg,#faf8f0,#f5f0e5)",border:"1px solid rgba(180,150,60,.08)"}}>
+                <div style={SX.capHeader}>Animals</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dac}</div>
-                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                <div style={SX.t2_11mt4}>
                   {_dAnimalTypes.length === 0 ? "none yet" : _dAnimalTypes.slice(0,2).map(([t,c]) => `${c} ${t}`).join(", ")}
                 </div>
                 {data.livestock.animals.length > 2 && (
-                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>{Object.keys(data.livestock.animals.reduce((m,a)=>{m[a.type]=1;return m;},{})).length} types</div>
+                  <div style={SX.t3_10mt2}>{Object.keys(data.livestock.animals.reduce((m,a)=>{m[a.type]=1;return m;},{})).length} types</div>
                 )}
               </Card>
 
               {/* WHAT'S GROWING — crop categories */}
               <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Growing</div>
+                <div style={SX.capHeader}>Growing</div>
                 <>
                     <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dCropCats.length}</div>
-                    <div style={{fontSize:11,color:C.t2,marginTop:4}}>{_dCropCats.length === 1 ? "category" : "categories"}</div>
+                    <div style={SX.t2_11mt4}>{_dCropCats.length === 1 ? "category" : "categories"}</div>
                     <div style={{fontSize:10,color:C.t3,marginTop:3,lineHeight:1.6}}>
                       {_dCropCats.slice(0,3).map(function([cat,n]){return <div key={cat}>{_catIcons[cat]||"🌱"} {n} {cat}{n>1?"s":""}</div>;})}
                     </div>
@@ -3588,15 +3691,15 @@ function Dashboard({data, setData, setPage, tasks}) {
 
               {/* MONEY */}
               <Card style={{padding:"14px 16px",background:_dnet>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:_dnet>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Money</div>
+                <div style={SX.capHeader}>Money</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_dnet>=0?C.green:C.red,lineHeight:1,marginTop:4}}>€{_dnet.toFixed(0)}</div>
-                <div style={{fontSize:11,color:C.t2,marginTop:4}}>
+                <div style={SX.t2_11mt4}>
                   {inc > 0 && <span style={{color:C.green}}>+€{inc.toFixed(0)}</span>}
                   {inc > 0 && exp > 0 && " / "}
                   {exp > 0 && <span style={{color:C.red}}>-€{exp.toFixed(0)}</span>}
                   {inc === 0 && exp === 0 && "no transactions"}
                 </div>
-                <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pantry: {Math.round(totalKg)}kg stored</div>
+                <div style={SX.t3_10mt2}>Pantry: {Math.round(totalKg)}kg stored</div>
               </Card>
             </div>
       </div>
@@ -3653,7 +3756,7 @@ function Dashboard({data, setData, setPage, tasks}) {
           <div style={{display:"grid",gap:14,gridTemplateRows:"auto 1fr",alignContent:"start"}}>
 
             {/* Zone Inspector */}
-            <Card p={false} style={{overflow:"hidden"}}>
+            <Card p={false} style={SX.overflowHidden}>
               <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bdr}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{fontSize:14,fontWeight:800,fontFamily:F.head}}>
                   {azData ? `${azData.zt?.icon || ""} ${azData.zone.name}` : "Select a zone"}
@@ -3666,12 +3769,12 @@ function Dashboard({data, setData, setPage, tasks}) {
                   {/* Metrics row */}
                   <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:14}}>
                     <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:"#fff"}}>
-                      <div style={{fontSize:11,color:C.t2,fontWeight:600}}>Task Load</div>
+                      <div style={SX.t2_11b}>Task Load</div>
                       <div style={{fontSize:22,fontWeight:800,fontFamily:F.head}}>{azData.taskCount}</div>
                       {azData.urgentCount > 0 && <div style={{fontSize:10,color:C.red,fontWeight:600,marginTop:2}}>{azData.urgentCount} urgent</div>}
                     </div>
                     <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:"#fff"}}>
-                      <div style={{fontSize:11,color:C.t2,fontWeight:600}}>{azData.isAnimal ? "Animals" : "Est. Yield"}</div>
+                      <div style={SX.t2_11b}>{azData.isAnimal ? "Animals" : "Est. Yield"}</div>
                       <div style={{fontSize:22,fontWeight:800,fontFamily:F.head}}>
                         {azData.isAnimal ? azData.totalAnimals : `${azData.yieldEst.toFixed(0)}kg`}
                       </div>
@@ -3748,7 +3851,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 </div>
               ) : (
                 <div style={{padding:32,textAlign:"center",color:C.t2}}>
-                  <div style={{fontSize:13}}>Click a task or zone to inspect</div>
+                  <div style={SX.s13}>Click a task or zone to inspect</div>
                 </div>
               )}
             </Card>
@@ -3943,27 +4046,27 @@ function Manuals({data}) {
 
       {tab==="crops"&&<>
         <Inp placeholder="Search crops..." value={s} onChange={e=>setS(e.target.value)}/>
-        <div style={{display:"grid",gap:6,marginTop:12}}>{fil.map(c=><Card key={c.name} onClick={()=>setSel(c)} style={{borderLeft:`4px solid ${c.color}`}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:24}}>{c.emoji}</span><div style={{flex:1}}><strong>{c.name}</strong> <Pill>{c.cat}</Pill><div style={{fontSize:12,color:C.t2,marginTop:2}}>{c.sowIn} · {c.harvest} · {c.days}d</div></div><span style={{color:C.t3}}>›</span></div></Card>)}</div>
+        <div style={{display:"grid",gap:6,marginTop:12}}>{fil.map(c=><Card key={c.name} onClick={()=>setSel(c)} style={{borderLeft:`4px solid ${c.color}`}}><div style={SX.rowCenterG10}><span style={{fontSize:24}}>{c.emoji}</span><div style={SX.flex1}><strong>{c.name}</strong> <Pill>{c.cat}</Pill><div style={SX.t2_12mt2}>{c.sowIn} · {c.harvest} · {c.days}d</div></div><span style={{color:C.t3}}>›</span></div></Card>)}</div>
         {sel&&<Overlay title={`${sel.emoji} ${sel.name}`} onClose={()=>setSel(null)} wide>
           {sel && <div style={{background:"#f0f7f4",borderRadius:C.rs,padding:10,marginBottom:12,border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{sel.pH&&<Pill c="#6d4c41" bg="#efebe9">pH {sel.pH}</Pill>}</div></div>}
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}><Pill c="#fff" bg={sel.color}>{sel.cat}</Pill><Pill>☀ {sel.sun}</Pill><Pill>💧 {sel.waterFreq}</Pill>{sel?.pH ? <Pill c="#6d4c41" bg="#efebe9">pH {sel.pH}</Pill> : null}</div>
           <div style={{marginBottom:16}}><div style={{fontSize:11,fontFamily:F.mono,color:C.t2,marginBottom:4}}>CALENDAR</div><div style={{display:"flex",gap:2}}>{mn.map(m=>{const iS=sel.sowIn.toLowerCase().includes(m.toLowerCase());const iH=sel.harvest.toLowerCase().includes(m.toLowerCase());return <div key={m} style={{flex:1,textAlign:"center"}}><div style={{fontSize:8,color:C.t2,fontFamily:F.mono}}>{m}</div><div style={{height:14,borderRadius:3,background:iS&&iH?`linear-gradient(135deg,${C.green} 50%,${C.orange} 50%)`:iS?C.green:iH?C.orange:C.bdr,opacity:(iS||iH)?1:.25}}/></div>})}</div><div style={{display:"flex",gap:12,marginTop:4}}><span style={{fontSize:10,color:C.green}}>■ Sow</span><span style={{fontSize:10,color:C.orange}}>■ Harvest</span></div></div>
-          {sel.regionNote && <Card style={{marginBottom:12,background:"linear-gradient(135deg,#e8f5e9,#f1f8e9)",border:"1.5px solid #a5d6a7"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>{curRegion ? curRegion.emoji + " " : "🌍 "}Regional Note — {curRegion ? curRegion.name : "Your Region"}</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5,color:C.text}}>{sel.regionNote}</div></Card>}
-          {COMP[sel.name]&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🌱 Companions</div><div style={{fontSize:12,marginTop:4}}>✓ {COMP[sel.name].good.join(", ")||"—"}{COMP[sel.name].bad.length>0?<span style={{color:C.red}}> · ✕ {COMP[sel.name].bad.join(", ")}</span>:""}</div></Card>}
-          <Card style={{marginBottom:12,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Water</div><div style={{fontSize:13,marginTop:4}}>{sel.waterNote}</div></Card>
-          {sel.steps?.length>0&&<div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:700,color:C.green,marginBottom:8}}>Step-by-Step Guide</div>{sel.steps.map((s,i)=><Card key={i} style={{marginBottom:4,padding:10}}><div style={{display:"flex",justifyContent:"space-between"}}><strong style={{fontSize:13}}>{s.l}</strong><span style={{fontSize:10,color:C.t2,fontFamily:F.mono}}>Day {s.d}</span></div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{s.t}</div></Card>)}</div>}
-          {sel?.fert && <Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>🧪 Fertilizer</div><div style={{fontSize:12,marginTop:4,lineHeight:1.6}}>{sel.fert}</div></Card>}
-          {sel?.pests&&sel.pests.length>0 && <Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Disease</div>{sel.pests.map(function(p,i){return <div key={i} style={{fontSize:12,marginTop:6}}><strong>{p.n}</strong>{p.t&&<div style={{fontSize:11,color:C.t2,marginTop:2}}>→ {p.t}</div>}</div>;})}</Card>}
-          {sel.storage&&<Card style={{marginBottom:12,background:"#fffde7"}}><div style={{fontSize:12,fontWeight:700,color:"#f57f17"}}>📦 Storage</div><div style={{fontSize:13,marginTop:4}}>{sel.storage}</div></Card>}
+          {sel.regionNote && <Card style={{marginBottom:12,background:"linear-gradient(135deg,#e8f5e9,#f1f8e9)",border:"1.5px solid #a5d6a7"}}><div style={SX.lblGreen}>{curRegion ? curRegion.emoji + " " : "🌍 "}Regional Note — {curRegion ? curRegion.name : "Your Region"}</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5,color:C.text}}>{sel.regionNote}</div></Card>}
+          {COMP[sel.name]&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={SX.lblGreen}>🌱 Companions</div><div style={{fontSize:12,marginTop:4}}>✓ {COMP[sel.name].good.join(", ")||"—"}{COMP[sel.name].bad.length>0?<span style={{color:C.red}}> · ✕ {COMP[sel.name].bad.join(", ")}</span>:""}</div></Card>}
+          <Card style={{marginBottom:12,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Water</div><div style={SX.s13mt4}>{sel.waterNote}</div></Card>
+          {sel.steps?.length>0&&<div style={SX.mb12}><div style={{fontSize:12,fontWeight:700,color:C.green,marginBottom:8}}>Step-by-Step Guide</div>{sel.steps.map((s,i)=><Card key={i} style={{marginBottom:4,padding:10}}><div style={{display:"flex",justifyContent:"space-between"}}><strong style={SX.s13}>{s.l}</strong><span style={{fontSize:10,color:C.t2,fontFamily:F.mono}}>Day {s.d}</span></div><div style={SX.t2_12mt2}>{s.t}</div></Card>)}</div>}
+          {sel?.fert && <Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={SX.lblGreen}>🧪 Fertilizer</div><div style={{fontSize:12,marginTop:4,lineHeight:1.6}}>{sel.fert}</div></Card>}
+          {sel?.pests&&sel.pests.length>0 && <Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Disease</div>{sel.pests.map(function(p,i){return <div key={i} style={{fontSize:12,marginTop:6}}><strong>{p.n}</strong>{p.t&&<div style={SX.t2_11mt2}>→ {p.t}</div>}</div>;})}</Card>}
+          {sel.storage&&<Card style={{marginBottom:12,background:"#fffde7"}}><div style={{fontSize:12,fontWeight:700,color:"#f57f17"}}>📦 Storage</div><div style={SX.s13mt4}>{sel.storage}</div></Card>}
           <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(sel.name+" growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {sel.name} Growing Guide</a>
         </Overlay>}
       </>}
 
       {tab==="animals"&&<>
-        <div style={{display:"grid",gap:8}}>{Object.entries(LDB).map(([n,db])=><Card key={n} onClick={()=>setSel({...db,name:n})} style={{cursor:"pointer"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:28}}>{db.e}</span><div style={{flex:1}}><strong style={{fontSize:15}}>{n}</strong><div style={{fontSize:12,color:C.t2}}>Produces: {db.prod.join(", ")}</div></div><span style={{color:C.t3}}>›</span></div></Card>)}</div>
+        <div style={{display:"grid",gap:8}}>{Object.entries(LDB).map(([n,db])=><Card key={n} onClick={()=>setSel({...db,name:n})} style={{cursor:"pointer"}}><div style={SX.rowCenterG10}><span style={{fontSize:28}}>{db.e}</span><div style={SX.flex1}><strong style={{fontSize:15}}>{n}</strong><div style={SX.t2_12}>Produces: {db.prod.join(", ")}</div></div><span style={{color:C.t3}}>›</span></div></Card>)}</div>
         {sel?.feed&&<Overlay title={`${sel.e} ${sel.name}`} onClose={()=>setSel(null)} wide>
-          {[{i:"🍽",t:"Feeding",v:sel.feed},{i:"🏠",t:"Housing",v:sel.house},{i:"😴",t:"Sleep",v:sel.sleep},{i:"💕",t:"Breeding",v:sel.breed}].map(s=><Card key={s.t} style={{marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.green}}>{s.i} {s.t}</div><div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div></Card>)}
-          <Card style={{background:"#fce4ec",marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries</div>{sel.inj.map((j,i)=><div key={i} style={{marginTop:6}}><strong>{j.n}</strong><div style={{fontSize:12,color:C.t2}}>{j.t}</div></div>)}</Card>
+          {[{i:"🍽",t:"Feeding",v:sel.feed},{i:"🏠",t:"Housing",v:sel.house},{i:"😴",t:"Sleep",v:sel.sleep},{i:"💕",t:"Breeding",v:sel.breed}].map(s=><Card key={s.t} style={{marginBottom:8}}><div style={SX.lblGreen}>{s.i} {s.t}</div><div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div></Card>)}
+          <Card style={{background:"#fce4ec",marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries</div>{sel.inj.map((j,i)=><div key={i} style={{marginTop:6}}><strong>{j.n}</strong><div style={SX.t2_12}>{j.t}</div></div>)}</Card>
           {LIVESTOCK_CALENDAR[sel.name]&&<Card style={{marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.blue,marginBottom:8}}>📅 Monthly Calendar</div>{Object.entries(LIVESTOCK_CALENDAR[sel.name]).map(([m,t])=><div key={m} style={{display:"flex",gap:8,padding:"6px 0",borderBottom:"1px solid #f0f0f0"}}><span style={{fontSize:11,fontWeight:700,color:C.green,width:28,flexShrink:0,fontFamily:F.mono}}>{m}</span><span style={{fontSize:11,color:C.t2,lineHeight:1.4}}>{t}</span></div>)}</Card>}
         </Overlay>}
       </>}
@@ -4005,7 +4108,7 @@ function Preserving({embedded}) {
   const InfoBlock = ({ label, color, bg, children }) => (
     <div style={{ background: bg || "#f5f5f5", borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: color || C.green, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
-      <div style={{ fontSize: 13, lineHeight: 1.65, color: C.text }}>{children}</div>
+      <div style={SX.bodyText}>{children}</div>
     </div>
   );
 
@@ -4153,7 +4256,7 @@ function Preserving({embedded}) {
             {sel.tip && (
               <div style={{ background: "#f0f7f4", border: `1px solid ${C.gm}`, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 4 }}>💡 PRO TIP</div>
-                <div style={{ fontSize: 13, lineHeight: 1.65, color: C.text }}>{sel.tip}</div>
+                <div style={SX.bodyText}>{sel.tip}</div>
               </div>
             )}
 
@@ -4250,12 +4353,12 @@ function SeasonalCalendar({data, setPage}) {
     <Card style={{marginBottom:6, borderLeft:`4px solid ${c.color}`, opacity: c.planted ? 0.65 : 1}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <span style={{fontSize:28}}>{c.emoji}</span>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <div style={SX.flex1}>
+          <div style={SX.rowCenterG6}>
             <span style={{fontSize:15,fontWeight:600}}>{c.name}</span>
             {c.planted && <Pill c={C.blue} bg="#e3f2fd">Already planted</Pill>}
           </div>
-          <div style={{fontSize:12,color:C.t2,marginTop:2}}>{c.cat} · {c.days}d to harvest · {c.spacing}cm spacing</div>
+          <div style={SX.t2_12mt2}>{c.cat} · {c.days}d to harvest · {c.spacing}cm spacing</div>
           <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
             <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:c.diff.bg,color:c.diff.c,fontWeight:600}}>{c.diff.e} {c.diff.l}</span>
             <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:"#e3f2fd",color:C.blue,fontWeight:600}}>☀ {c.sun}</span>
@@ -4268,7 +4371,7 @@ function SeasonalCalendar({data, setPage}) {
   );
 
   return (
-    <div className="page-enter" style={{maxWidth:800}}>
+    <div className="page-enter" style={SX.mw800}>
       <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>🗓 Seasonal Calendar</h2>
       <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>What to plant and harvest each month — tailored to your farm</p>
 
@@ -4319,7 +4422,7 @@ function SeasonalCalendar({data, setPage}) {
 
       {/* Crop list */}
       {filtered.length === 0
-        ? <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={{fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌾</div><div style={{fontSize:15,fontWeight:700,color:C.text}}>Quiet month</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Nothing to {filter} in {MN_FULL[month]} — try a different filter</div></Card>
+        ? <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={SX.emptyIcon}>🌾</div><div style={SX.s15Bold}>Quiet month</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Nothing to {filter} in {MN_FULL[month]} — try a different filter</div></Card>
         : filtered.map(c => <CropRow key={c.name + c.action} c={c}/>)
       }
 
@@ -4329,11 +4432,11 @@ function SeasonalCalendar({data, setPage}) {
           <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,marginBottom:10}}>🔧 Maintenance Due This Month</div>
           {results.maintain.map((c, i) => (
             <Card key={i} style={{marginBottom:6,borderLeft:`3px solid ${C.blue}`}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:20}}>{c.emoji}</span>
-                <div style={{flex:1}}>
+              <div style={SX.rowCenterG10}>
+                <span style={SX.s20}>{c.emoji}</span>
+                <div style={SX.flex1}>
                   <div style={{fontSize:14,fontWeight:600}}>{c.plot.name || c.name}</div>
-                  {c.pendingSteps.map((s,j) => <div key={j} style={{fontSize:12,color:C.t2,marginTop:2}}>→ {s.l}: {s.t}</div>)}
+                  {c.pendingSteps.map((s,j) => <div key={j} style={SX.t2_12mt2}>→ {s.l}: {s.t}</div>)}
                 </div>
               </div>
             </Card>
@@ -5076,7 +5179,7 @@ function Projects({embedded}) {
   const InfoBlock = ({ label, color, bg, children }) => (
     <div style={{ background: bg || "#f5f5f5", borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: color || C.green, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
-      <div style={{ fontSize: 13, lineHeight: 1.65, color: C.text }}>{children}</div>
+      <div style={SX.bodyText}>{children}</div>
     </div>
   );
 
@@ -5163,7 +5266,7 @@ function Projects({embedded}) {
             {sel.tip && (
               <div style={{ background: "#f0f7f4", border: `1px solid ${C.gm}`, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 4 }}>💡 PRO TIP</div>
-                <div style={{ fontSize: 13, lineHeight: 1.65, color: C.text }}>{sel.tip}</div>
+                <div style={SX.bodyText}>{sel.tip}</div>
               </div>
             )}
           </Overlay>
@@ -5256,10 +5359,10 @@ function migrateZones(data) {
 
 function migrateGamify(data) {
   if (data.gamify) return data;
-  // Bootstrap gamification state from existing data
-  const totalHarvests = data.garden.plots.filter(p => p.status === "harvested").length;
-  const totalPlants = data.garden.plots.length;
-  const totalLogEntries = data.log.length;
+  // Bootstrap gamification state from existing data (defensive against corrupted localStorage)
+  const totalHarvests = (data.garden?.plots || []).filter(p => p.status === "harvested").length;
+  const totalPlants = (data.garden?.plots || []).length;
+  const totalLogEntries = (data.log || []).length;
   return {
     ...data,
     gamify: {
@@ -5278,9 +5381,9 @@ function updateGamify(data) {
   const today = new Date().toISOString().slice(0,10);
   let streak = g.streak;
   let bestStreak = g.bestStreak;
-  const totalLogEntries = data.log.length;
-  const totalHarvests = data.garden.plots.filter(p => p.status === "harvested").length;
-  const totalPlants = data.garden.plots.length;
+  const totalLogEntries = (data.log || []).length;
+  const totalHarvests = (data.garden?.plots || []).filter(p => p.status === "harvested").length;
+  const totalPlants = (data.garden?.plots || []).length;
 
   // Update streak
   if (g.lastActiveDate !== today) {
@@ -5408,6 +5511,10 @@ function AppInner() {
     reader.onload = (e) => {
       try {
         const d = JSON.parse(e.target.result);
+        // Defensive: reject backup files with prototype-pollution payloads
+        if (d && typeof d === "object" && ("__proto__" in d || "constructor" in d || "prototype" in d)) {
+          throw new Error("Backup file contains reserved keys and cannot be imported safely.");
+        }
         const merged = migrateGamify(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}}));
         setData(merged);
       } catch(err) { alert("Invalid backup file: " + err.message); }
@@ -5459,7 +5566,7 @@ function AppInner() {
             </button>
           ))}
           </div>
-          <div style={{flex:1}}/>
+          <div style={SX.flex1}/>
           {/* Backup controls */}
           <div style={{padding:"10px 14px",borderTop:`1px solid ${C.bdr}`,margin:"0 10px"}}>
             <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Download farm data as JSON backup">
@@ -5479,7 +5586,7 @@ function AppInner() {
           {pg()}
         </main>
       </div>
-      {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { localStorage.setItem("hfm_feedback_dismissed", "true"); } catch(e) {} }}/>}
+      {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { localStorage.setItem("hfm_feedback_dismissed", "true"); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <AIAssistant data={data} setData={setData}/>
     </>
   );
@@ -5534,7 +5641,7 @@ function FeedbackSurvey({ setPage }) {
 
       {/* Q1: Most used module */}
       <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
-        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>1. Which module do you use the most?</div>
+        <div style={SX.sectionHead}>1. Which module do you use the most?</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
           {modules.map(m => (
             <button key={m} onClick={() => update("module", m)} style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${answers.module === m ? C.green : C.bdr}`,background:answers.module === m ? C.gp : C.bg,color:answers.module === m ? C.green : C.t2,fontSize:13,fontWeight:answers.module === m ? 600 : 500,cursor:"pointer",fontFamily:F.body,transition:"all .2s"}}>{m}</button>
@@ -5544,19 +5651,19 @@ function FeedbackSurvey({ setPage }) {
 
       {/* Q2: Confusion */}
       <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
-        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>2. What confused you in the first 5 minutes?</div>
+        <div style={SX.sectionHead}>2. What confused you in the first 5 minutes?</div>
         <textarea value={answers.confusion} onChange={e => update("confusion", e.target.value)} placeholder="e.g. I didn't know where to start, the layout was unclear..." rows={3} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:12,fontSize:13,fontFamily:F.body,resize:"vertical",outline:"none",background:C.bg,boxSizing:"border-box"}}/>
       </div>
 
       {/* Q3: Missing feature */}
       <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
-        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>3. What feature is missing that you'd really want?</div>
+        <div style={SX.sectionHead}>3. What feature is missing that you'd really want?</div>
         <textarea value={answers.missing} onChange={e => update("missing", e.target.value)} placeholder="e.g. Weather integration, community forum, export to PDF..." rows={3} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:12,fontSize:13,fontFamily:F.body,resize:"vertical",outline:"none",background:C.bg,boxSizing:"border-box"}}/>
       </div>
 
       {/* Q4: Willingness to pay */}
       <div style={{background:C.card,borderRadius:C.r,padding:24,marginBottom:16,boxShadow:C.sh,border:`1px solid ${C.bdr}`}}>
-        <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12,fontFamily:F.head}}>4. Would you pay for this app?</div>
+        <div style={SX.sectionHead}>4. Would you pay for this app?</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
           {["No, must be free","Maybe, if it had more features","Yes, $4.99/mo sounds fair","Yes, I'd pay $9.99/mo for a pro version"].map(opt => (
             <button key={opt} onClick={() => update("pay", opt)} style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${answers.pay === opt ? C.green : C.bdr}`,background:answers.pay === opt ? C.gp : C.bg,color:answers.pay === opt ? C.green : C.t2,fontSize:13,fontWeight:answers.pay === opt ? 600 : 500,cursor:"pointer",fontFamily:F.body,transition:"all .2s",textAlign:"left"}}>{opt}</button>
@@ -5581,7 +5688,7 @@ function FeedbackPrompt({ onOpen, onDismiss }) {
     <div style={{position:"fixed",bottom:92,left:"50%",transform:"translateX(-50%)",zIndex:1800,background:C.card,borderRadius:20,boxShadow:"0 12px 48px rgba(0,0,0,.18)",padding:"20px 24px",maxWidth:360,width:"calc(100% - 32px)",border:`1px solid ${C.bdr}`,animation:"fadeUp .4s ease both"}}>
       <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
         <div style={{fontSize:32,lineHeight:1}}>💬</div>
-        <div style={{flex:1}}>
+        <div style={SX.flex1}>
           <div style={{fontSize:16,fontWeight:700,color:C.text,fontFamily:F.head,marginBottom:4}}>How's it going?</div>
           <p style={{fontSize:13,color:C.t2,lineHeight:1.5,margin:0}}>You've been using MyTerra for a week! We'd love your feedback — it takes just 1 minute.</p>
           <div style={{display:"flex",gap:8,marginTop:12}}>
@@ -6163,7 +6270,7 @@ function AIAssistant({data}) {
         }}>
           {/* Header */}
           <div style={{background:C.grdHero,padding:"14px 18px",flexShrink:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={SX.rowCenterG10}>
               <div style={{width:36,height:36,borderRadius:18,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🌾</div>
               <div>
                 <div style={{fontSize:15,fontWeight:700,color:"#fff",fontFamily:F.head}}>Farm Assistant</div>
@@ -6225,7 +6332,7 @@ function AIAssistant({data}) {
                     }}
                   >
                     <span style={{fontSize:18,flexShrink:0}}>{s.e}</span>
-                    <div style={{flex:1,minWidth:0}}>
+                    <div style={SX.flex1min0}>
                       <div style={{fontSize:13,fontWeight:600,color:C.text,fontFamily:F.body,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.q}</div>
                       <div style={{fontSize:10,color:C.t3,fontFamily:F.body}}>{s.cat}</div>
                     </div>

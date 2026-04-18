@@ -1,7 +1,7 @@
 # Homestead Launch — Progress Tracker
 # Last updated: 2026-03-31
 
-## Current Phase: 3 — Landing Page + Feedback Loop (8/11 done)
+## Current Phase: 3 — Landing Page + Feedback Loop (9/11 done)
 ## Note: Phases were done out of order (1→2→5→3). That's fine — the app needed polish before showing it to people.
 
 ---
@@ -37,7 +37,7 @@
 - [x] Farm Layout Designer — draggable/resizable crop patches with % zone coverage
 - [x] Seasonal crop planting popup fix
 - [x] Removed "Saved" flash indicator (autosaves quietly)
-## Phase 3: Landing Page + Feedback Loop — IN PROGRESS (7/11 done)
+## Phase 3: Landing Page + Feedback Loop — IN PROGRESS (9/11 done)
 - [x] Build landing page (custom HTML with real Playwright screenshots of all 7 features)
 - [x] Write landing page copy (hero, features, pricing, stats bar, CTA)
 - [x] Deploy landing page as site front door (root URL = landing, /app = React app)
@@ -46,7 +46,7 @@
 - [x] Create feedback survey (4 questions: most-used module, first 5 min confusion, missing feature, willingness to pay)
 - [x] Add in-app feedback prompt (triggers after 7 days of use)
 - [x] Set up analytics (Umami Cloud free tier — 100K events/month)
-- [ ] Announce on X/Twitter
+- [x] Announce on X/Twitter (4-tweet founder story thread posted 2026-04-05)
 - [ ] Share in Facebook Groups (3-5 homesteading/permaculture/Mediterranean gardening groups)
 - [ ] Submit to ProductHunt (schedule for a Tuesday)
 
