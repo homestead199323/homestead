@@ -2764,8 +2764,8 @@ function Setup({data, setData}) {
    CROP QUANTITY HELPERS
    ═══════════════════════════════════════════ */
 // How this crop is best measured
-function cropMeasureType(cropName) {
-  const crop = rCM(data.region).get(cropName);
+function cropMeasureType(cropName, region) {
+  const crop = rCM(region).get(cropName);
   if (!crop) return "plants";
   if (["Olive","Grape","Fig","Pomegranate","Peach","Plum","Cherry","Apricot",
        "Walnut","Almond","Chestnut","Quince","Persimmon","Lemon","Orange",
@@ -2776,8 +2776,8 @@ function cropMeasureType(cropName) {
 }
 
 // Auto-calculate plant count from area (m²) and crop spacing (cm)
-function plantsFromArea(cropName, areaSqm) {
-  const crop = rCM(data.region).get(cropName);
+function plantsFromArea(cropName, areaSqm, region) {
+  const crop = rCM(region).get(cropName);
   if (!crop || !areaSqm) return null;
   const spacingM = crop.spacing / 100;
   return Math.round(areaSqm / (spacingM * spacingM));
@@ -2787,8 +2787,8 @@ function plantsFromArea(cropName, areaSqm) {
 // Area mode: convert m² to plant count via spacing, then multiply.
 // Plants mode: direct multiply.
 // varietyYld overrides base crop yld when a specific variety is selected.
-function expectedYield(cropName, quantity, measureType, varietyYld) {
-  const crop = rCM(data.region).get(cropName);
+function expectedYield(cropName, quantity, measureType, varietyYld, region) {
+  const crop = rCM(region).get(cropName);
   if (!crop || !quantity) return null;
   const yldPerPlant = varietyYld || crop.yld || 3;
   let plants;
@@ -2812,11 +2812,11 @@ function zoneAreaM2(zone, farmW, farmH) {
 }
 
 // Area consumed by a single plot in m²
-function plotAreaM2(plot) {
+function plotAreaM2(plot, region) {
   if (!plot || plot.status === "harvested") return 0;
   if (plot.measureType === "area" && plot.qty) return +plot.qty;
   if (plot.plantCount) {
-    const crop = rCM(data.region).get(plot.crop);
+    const crop = rCM(region).get(plot.crop);
     if (crop) {
       const spacingM = crop.spacing / 100;
       return plot.plantCount * spacingM * spacingM;
@@ -2826,19 +2826,19 @@ function plotAreaM2(plot) {
 }
 
 // Returns {totalM2, usedM2, freeM2, pct} for a zone
-function zoneSpaceStats(zone, plots, farmW, farmH) {
+function zoneSpaceStats(zone, plots, farmW, farmH, region) {
   const totalM2 = zoneAreaM2(zone, farmW, farmH);
   const activePlots = plots.filter(p => p.zone === zone.id && p.status !== "harvested");
-  const usedM2 = activePlots.reduce((s, p) => s + plotAreaM2(p), 0);
+  const usedM2 = activePlots.reduce((s, p) => s + plotAreaM2(p, region), 0);
   const freeM2 = Math.max(0, totalM2 - usedM2);
   const pct = totalM2 > 0 ? Math.min(1, usedM2 / totalM2) : 0;
   return { totalM2, usedM2: Math.round(usedM2 * 10) / 10, freeM2: Math.round(freeM2 * 10) / 10, pct };
 }
 
 // Memoizable: builds stats for ALL zones in one pass
-function buildZoneSpaceMap(zones, plots, farmW, farmH) {
+function buildZoneSpaceMap(zones, plots, farmW, farmH, region) {
   const map = {};
-  zones.forEach(z => { map[z.id] = zoneSpaceStats(z, plots, farmW, farmH); });
+  zones.forEach(z => { map[z.id] = zoneSpaceStats(z, plots, farmW, farmH, region); });
   return map;
 }
 
@@ -2859,23 +2859,23 @@ function Farming({data, setData, pageData, clearPageData}) {
   const vi=ci && form.variety ? (VARIETIES[ci.name]||[]).find(v=>v.name===form.variety) : null;
   const effectiveDays = vi?.days || ci?.days || 0;
   const effectiveYld = vi?.yld || ci?.yld || 3;
-  const autoMeasure = ci ? cropMeasureType(ci.name) : "plants";
+  const autoMeasure = ci ? cropMeasureType(ci.name, data.region) : "plants";
   const activeMeasure = form.measureType || autoMeasure;
-  const plantsCalc = activeMeasure==="area" ? plantsFromArea(ci?.name, +form.qty||0) : null;
-  const yieldCalc = ci && form.qty ? expectedYield(ci.name, +form.qty||0, activeMeasure, vi?.yld) : null;
+  const plantsCalc = activeMeasure==="area" ? plantsFromArea(ci?.name, +form.qty||0, data.region) : null;
+  const yieldCalc = ci && form.qty ? expectedYield(ci.name, +form.qty||0, activeMeasure, vi?.yld, data.region) : null;
   const autoH=()=>form.plantDate&&ci?new Date(new Date(form.plantDate).getTime()+effectiveDays*864e5).toISOString().slice(0,10):"";
   const vegZ=data.zones.filter(z=>["veg","orchard","herbs","greenhouse"].includes(z.type));
-  const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60), [data.zones, data.garden.plots, data.farmW, data.farmH]);
+  const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region), [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]);
 
   const add=()=>{
     if(!form.crop)return;
     const c=rCM(data.region).get(form.crop);
     const v=form.variety?(VARIETIES[form.crop]||[]).find(vr=>vr.name===form.variety):null;
     const displayName=form.name||(form.variety?`${form.crop} (${form.variety})`:form.crop);
-    const _measure = form.measureType || (c ? cropMeasureType(c.name) : "plants");
+    const _measure = form.measureType || (c ? cropMeasureType(c.name, data.region) : "plants");
     const _qty = +form.qty || null;
-    const _plants = _qty ? (_measure==="area" ? plantsFromArea(form.crop,_qty) : _qty) : null;
-    const _yieldKg = _qty ? expectedYield(form.crop, _qty, _measure, v?.yld) : null;
+    const _plants = _qty ? (_measure==="area" ? plantsFromArea(form.crop,_qty,data.region) : _qty) : null;
+    const _yieldKg = _qty ? expectedYield(form.crop, _qty, _measure, v?.yld, data.region) : null;
     const p={id:uid(),crop:form.crop,variety:form.variety||"",name:displayName,plantDate:form.plantDate,harvestDate:autoH(),status:form.plantDate?"planted":"planned",zone:form.zone,varietyNote:v?.note||"",steps:c?c.steps.map(s=>({...s,done:false})):[],qty:_qty,measureType:_measure,plantCount:_plants,expectedYieldKg:_yieldKg};
     const nd={...data,garden:{plots:[...data.garden.plots,p]},log:[...data.log,{text:`🌱 Planted ${displayName}${_plants?` (${_plants} plants)`:""}`}]};
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:new Date().toISOString().slice(0,10),cat:"Seeds"}]};
@@ -2902,7 +2902,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const _ready=_active.filter(function(p){return p.harvestDate&&new Date(p.harvestDate)<=new Date();}).length;
   const _spZone=sp&&sp.zone?data.zones.find(function(z){return z.id===sp.zone;}):null;
   const _spZoneStats=sp&&sp.zone?zoneSpace[sp.zone]:null;
-  const _spZoneMyArea=sp?plotAreaM2(sp):0;
+  const _spZoneMyArea=sp?plotAreaM2(sp,data.region):0;
   const _spZoneFill=_spZoneStats?(_spZoneStats.pct>=0.95?C.red:_spZoneStats.pct>=0.7?C.orange:C.green):C.green;
   const _spCompZonePlots=sp&&sp.zone?data.garden.plots.filter(function(p){return p.zone===sp.zone&&p.status!=="harvested"&&p.id!==sp.id;}).map(function(p){return p.crop;}):[];
   const _spCompObj=sp?COMP[sp.crop]:null;
@@ -3376,7 +3376,7 @@ function Dashboard({data, setData, setPage, tasks}) {
   const totalKg=data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0);
   const costs=data.costs?.items||[];
   const {exp,inc}=useMemo(()=>{let e=0,r=0;costs.forEach(i=>i.type==="expense"?e+=i.amount:r+=i.amount);return{exp:e,inc:r};},[costs]);
-  const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60), [data.zones, data.garden.plots, data.farmW, data.farmH]);
+  const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region), [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]);
 
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
@@ -3478,25 +3478,29 @@ function Dashboard({data, setData, setPage, tasks}) {
   // All three rings closed?
   const allRingsClosed = ringData.taskPct >= 1 && ringData.growPct >= 1 && ringData.harvestPct >= 1;
 
+  // Pre-computed vars to avoid IIFEs in JSX render
+  const _dap = data.garden.plots.filter(function(p){return p.status!=="harvested";});
+  const _dfp = _dap.reduce(function(s,p){return s+(p.plantCount||0);},0);
+  const _dfa = _dap.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
+  const _dfy = _dap.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
+  const _dac = data.livestock.animals.reduce(function(s,a){return s+a.count;},0);
+  const _durgent = enrichedTasks.filter(function(t){return t.pri<=1;}).length;
+  const _dready = _dap.filter(function(p){
+    if(!p.plantDate)return false;
+    const crop=rCM(data.region).get(p.crop);
+    if(!crop)return false;
+    return(Date.now()-new Date(p.plantDate).getTime())>=crop.days*864e5;
+  });
+  const _dnet = inc - exp;
+  const _dAnimalTypes=(function(){const t={};data.livestock.animals.forEach(function(a){t[a.type]=(t[a.type]||0)+a.count;});return Object.entries(t).sort(function(a,b){return b[1]-a[1];});})();
+  const _dCropCats=(function(){const cats={};_dap.forEach(function(p){const cr=rCM(data.region).get(p.crop);if(cr)cats[cr.cat]=(cats[cr.cat]||0)+1;});return Object.entries(cats).sort(function(a,b){return b[1]-a[1];});})();
+  const _catIcons={Fruit:"🍅",Vegetable:"🥬",Herb:"🌿",Legume:"🫘",Root:"🥕",Grain:"🌾",Flower:"🌻",Brassica:"🥦",Perennial:"🫐",Tuber:"🥔"};
+  const _miniColorMap=(function(){const m=new Map();let i=0;data.garden.plots.forEach(function(p){if(p.status!=="harvested"&&!m.has(p.crop)){m.set(p.crop,CROP_COLORS[i%CROP_COLORS.length]);i++;}});return m;})();
+
   return (
     <div className="page-enter" style={{maxWidth:1100}}>
       {/* ── Morning Dashboard Header ── */}
-      {(()=>{
-        const ap2 = data.garden.plots.filter(p=>p.status!=="harvested");
-        const fp = ap2.reduce((s,p)=>s+(p.plantCount||0),0);
-        const fa = ap2.reduce((s,p)=>s+(p.measureType==="area"?+(p.qty||0):0),0);
-        const fy = ap2.reduce((s,p)=>s+(p.expectedYieldKg||0),0);
-        const ac2 = data.livestock.animals.reduce((s,a)=>s+a.count,0);
-        const urgentTasks = enrichedTasks.filter(t=>t.pri<=1).length;
-        const readyToHarvest = ap2.filter(p => {
-          if (!p.plantDate) return false;
-          const crop = rCM(data.region).get(p.crop);
-          if (!crop) return false;
-          return (Date.now() - new Date(p.plantDate).getTime()) >= crop.days * 864e5;
-        });
-        const netVal = inc - exp;
-        return (
-          <div style={{marginBottom:20}}>
+      <div style={{marginBottom:20}}>
             {/* Top row: Rings + Title + Date */}
             <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
               <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
@@ -3532,11 +3536,11 @@ function Dashboard({data, setData, setPage, tasks}) {
             {/* Info boxes — what a farmer reads first */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
               {/* TODAY'S WORK */}
-              <Card style={{padding:"14px 16px",background:urgentTasks>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:urgentTasks>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
+              <Card style={{padding:"14px 16px",background:_durgent>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:_durgent>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Today's Work</div>
-                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:urgentTasks>0?C.red:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_durgent>0?C.red:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
                 <div style={{fontSize:11,color:C.t2,marginTop:4}}>
-                  {urgentTasks > 0 ? <span style={{color:C.red,fontWeight:700}}>{urgentTasks} urgent</span> : "tasks pending"}
+                  {_durgent > 0 ? <span style={{color:C.red,fontWeight:700}}>{_durgent} urgent</span> : "tasks pending"}
                 </div>
                 <div style={{fontSize:10,color:C.t3,marginTop:2}}>
                   <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:"#34c759",marginRight:4}}/>{ringData.doneSteps}/{ringData.totalSteps} done
@@ -3546,30 +3550,24 @@ function Dashboard({data, setData, setPage, tasks}) {
               {/* CROPS */}
               <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f5fbf0,#edf5e5)",border:"1px solid rgba(45,106,79,.08)"}}>
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Crops</div>
-                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{ap2.length}</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dap.length}</div>
                 <div style={{fontSize:11,color:C.t2,marginTop:4}}>
                   <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.blue,marginRight:4}}/>{ringData.plantedCount} growing
                 </div>
-                {readyToHarvest.length > 0 && (
-                  <div style={{fontSize:10,color:C.orange,fontWeight:700,marginTop:2}}>🌾 {readyToHarvest.length} ready to harvest!</div>
+                {_dready.length > 0 && (
+                  <div style={{fontSize:10,color:C.orange,fontWeight:700,marginTop:2}}>🌾 {_dready.length} ready to harvest!</div>
                 )}
-                {readyToHarvest.length === 0 && fa > 0 && (
-                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>{fa.toFixed(0)}m² cultivated</div>
+                {_dready.length === 0 && _dfa > 0 && (
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>{_dfa.toFixed(0)}m² cultivated</div>
                 )}
               </Card>
 
               {/* ANIMALS */}
               <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#faf8f0,#f5f0e5)",border:"1px solid rgba(180,150,60,.08)"}}>
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Animals</div>
-                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{ac2}</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dac}</div>
                 <div style={{fontSize:11,color:C.t2,marginTop:4}}>
-                  {(()=>{
-                    const types = {};
-                    data.livestock.animals.forEach(a => { types[a.type] = (types[a.type]||0) + a.count; });
-                    const entries = Object.entries(types).sort((a,b) => b[1]-a[1]);
-                    if (entries.length === 0) return "none yet";
-                    return entries.slice(0,2).map(([t,c]) => `${c} ${t}`).join(", ");
-                  })()}
+                  {_dAnimalTypes.length === 0 ? "none yet" : _dAnimalTypes.slice(0,2).map(([t,c]) => `${c} ${t}`).join(", ")}
                 </div>
                 {data.livestock.animals.length > 2 && (
                   <div style={{fontSize:10,color:C.t3,marginTop:2}}>{Object.keys(data.livestock.animals.reduce((m,a)=>{m[a.type]=1;return m;},{})).length} types</div>
@@ -3579,25 +3577,19 @@ function Dashboard({data, setData, setPage, tasks}) {
               {/* WHAT'S GROWING — crop categories */}
               <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Growing</div>
-                {(()=>{
-                  const cats = {};
-                  ap2.forEach(p => { const cr = rCM(data.region).get(p.crop); if(cr) cats[cr.cat] = (cats[cr.cat]||0)+1; });
-                  const entries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-                  const catIcons = {Fruit:"🍅",Vegetable:"🥬",Herb:"🌿",Legume:"🫘",Root:"🥕",Grain:"🌾",Flower:"🌻",Brassica:"🥦",Perennial:"🫐",Tuber:"🥔"};
-                  return <>
-                    <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{entries.length}</div>
-                    <div style={{fontSize:11,color:C.t2,marginTop:4}}>{entries.length === 1 ? "category" : "categories"}</div>
+                <>
+                    <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dCropCats.length}</div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:4}}>{_dCropCats.length === 1 ? "category" : "categories"}</div>
                     <div style={{fontSize:10,color:C.t3,marginTop:3,lineHeight:1.6}}>
-                      {entries.slice(0,3).map(([cat,n]) => <div key={cat}>{catIcons[cat]||"🌱"} {n} {cat}{n>1?"s":""}</div>)}
+                      {_dCropCats.slice(0,3).map(function([cat,n]){return <div key={cat}>{_catIcons[cat]||"🌱"} {n} {cat}{n>1?"s":""}</div>;})}
                     </div>
-                  </>;
-                })()}
+                  </>
               </Card>
 
               {/* MONEY */}
-              <Card style={{padding:"14px 16px",background:netVal>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:netVal>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
+              <Card style={{padding:"14px 16px",background:_dnet>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:_dnet>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
                 <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"}}>Money</div>
-                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:netVal>=0?C.green:C.red,lineHeight:1,marginTop:4}}>€{netVal.toFixed(0)}</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_dnet>=0?C.green:C.red,lineHeight:1,marginTop:4}}>€{_dnet.toFixed(0)}</div>
                 <div style={{fontSize:11,color:C.t2,marginTop:4}}>
                   {inc > 0 && <span style={{color:C.green}}>+€{inc.toFixed(0)}</span>}
                   {inc > 0 && exp > 0 && " / "}
@@ -3607,9 +3599,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pantry: {Math.round(totalKg)}kg stored</div>
               </Card>
             </div>
-          </div>
-        );
-      })()}
+      </div>
 
       {/* ── Main two-column: Task Pipeline + Zone Inspector ── */}
       <div style={{display:"grid",gridTemplateColumns: data.zones.length > 0 && wide ? "1.05fr 1.25fr" : "1fr",gap:16,marginBottom:20}}>
@@ -3668,10 +3658,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 <div style={{fontSize:14,fontWeight:800,fontFamily:F.head}}>
                   {azData ? `${azData.zt?.icon || ""} ${azData.zone.name}` : "Select a zone"}
                 </div>
-                {azData && (()=>{
-                  const ss = statusStyle(azData.status);
-                  return <span style={{fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:20,background:ss.bg,color:ss.color}}>{azData.status}</span>;
-                })()}
+                {azData && <span style={{fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:20,background:statusStyle(azData.status).bg,color:statusStyle(azData.status).color}}>{azData.status}</span>}
               </div>
 
               {azData ? (
@@ -3880,25 +3867,17 @@ function Dashboard({data, setData, setPage, tasks}) {
               <button onClick={()=>setPage("setup")} style={{position:"absolute",top:6,right:8,background:"rgba(255,255,255,.85)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:600,color:C.green,cursor:"pointer"}}>Edit Map</button>
             </div>
             {/* Crop color legend */}
-            {(()=>{
-              const MINI_CC = CROP_COLORS.slice(0, 8);
-              const legendMap = new Map(); let li=0;
-              data.garden.plots.filter(p=>p.status!=="harvested").forEach(p=>{
-                if(!legendMap.has(p.crop)){legendMap.set(p.crop,MINI_CC[li%MINI_CC.length]);li++;}
-              });
-              if(legendMap.size===0) return null;
-              return (
-                <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"6px 0 0",alignItems:"center"}}>
+            {_miniColorMap.size > 0 && (
+              <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"6px 0 0",alignItems:"center"}}>
                   <span style={{fontSize:10,fontWeight:700,color:C.t2}}>Crops:</span>
-                  {[...legendMap.entries()].map(([name,cc])=>(
+                  {[..._miniColorMap.entries()].map(function([name,cc]){return (
                     <div key={name} style={{display:"flex",alignItems:"center",gap:3}}>
                       <div style={{width:8,height:8,borderRadius:2,background:`rgba(${cc.r},${cc.g},${cc.b},.55)`,boxShadow:`0 0 4px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
                       <span style={{fontSize:10,color:C.t1}}>{name}</span>
                     </div>
-                  ))}
-                </div>
-              );
-            })()}
+                  );})})
+              </div>
+            )}
           </div>
         )}
       </div>
