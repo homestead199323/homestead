@@ -1282,6 +1282,11 @@ const LDB = {
   Horse:{e:"🐴",prod:["Draft","Riding","Manure"],feed:"Hay 10-15kg/day. Grain 2-4kg if working. Pasture when available. Salt block. Fresh water 30-50L/day (60-80L in Med summer heat).",house:"Stable 3.5×3.5m minimum or run-in shelter. 0.5-1ha pasture per horse.",sleep:"Standing (doze) or lying (deep sleep). Straw or shavings bedding.",inj:[{n:"Colic",t:"EMERGENCY. Walk horse. No rolling. Vet immediately. Remove feed. Caused by sand ingestion, sudden feed change."},{n:"Laminitis",t:"Restrict pasture. Cold hosing. Vet. Triggered by rich spring grass."}],breed:"11 month gestation. 1 foal/year. Stallion:mares 1:15-20. Foals wean at 5-6 months.",out:{Draft:{p:1,u:"animal",s:"Plowing, harrowing, logging, cart. Haflinger and Fjord for small farms."},Manure:{p:20,u:"kg/day",s:"Compost 6 months before use. High carbon."}}},
 };
 
+// Species classification for task generation
+const POULTRY_SPECIES = new Set(["Chicken","Duck","Turkey","Goose","Quail","Guinea Fowl"]);
+const HOOFED_SPECIES  = new Set(["Goat","Sheep","Cow","Pig","Donkey","Horse"]);
+const GRAZER_SPECIES  = new Set(["Goat","Sheep","Cow","Donkey","Horse"]);
+
 /* ═══════════════════════════════════════════
    CROP KNOWLEDGE DATABASE
    ═══════════════════════════════════════════ */
@@ -1947,6 +1952,57 @@ function buildTaskQueue(data) {
     }
   });
 
+  // ─── Animal tasks (daily + periodic, staggered by ID hash) ───
+  const dayNum = Math.floor(now.getTime() / 864e5);
+  const curMonth = now.getMonth() + 1; // 1-12
+  const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
+  const animalLoc = animalZone ? animalZone.name : "Farm";
+
+  (data.livestock?.animals || []).forEach(a => {
+    const db = LDB[a.type];
+    if (!db) return;
+    const e = db.e;
+    const label = a.name ? `${a.name} (${a.type})` : (a.count > 1 ? `${a.type} ×${a.count}` : a.type);
+    let hash = 0;
+    for (let i = 0; i < a.id.length; i++) hash = (hash * 31 + a.id.charCodeAt(i)) >>> 0;
+
+    if (a.type !== "Bee") {
+      // Daily: feed + water (always today)
+      tasks.push({ pri: 1, type: "feed",  emoji: e,    title: `Feed ${label}`,  desc: db.feed, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ pri: 1, type: "water", emoji: "💧", title: `Water ${label}`, desc: `Fresh water — refill and clean trough.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+    // Daily: egg collection (poultry only)
+    if (POULTRY_SPECIES.has(a.type)) {
+      const eggNote = db.out?.Eggs?.s || "";
+      tasks.push({ pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+    // Weekly: housing cleaning (non-bee)
+    if (a.type !== "Bee" && (dayNum + hash) % 7 === 0) {
+      tasks.push({ pri: 2, type: "clean", emoji: "🧹", title: `Clean housing — ${label}`, desc: `Remove soiled bedding, refresh straw, check for damp.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+    // Weekly: health check (offset 3d so it doesn't collide with cleaning)
+    if (a.type !== "Bee" && (dayNum + hash + 3) % 7 === 0) {
+      const commonIssue = db.inj?.[0]?.n || "injury or parasites";
+      tasks.push({ pri: 2, type: "health", emoji: "🩺", title: `Health check — ${label}`, desc: `Inspect body condition, eyes, coat. Watch for: ${commonIssue}.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+    // Bi-weekly: hoof check (hoofed species)
+    if (HOOFED_SPECIES.has(a.type) && (dayNum + hash) % 14 === 0) {
+      tasks.push({ pri: 2, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, desc: `Trim overgrowth, check for rot, stones, cracks.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+    // 21d: paddock rotation (grazers)
+    if (GRAZER_SPECIES.has(a.type) && (dayNum + hash) % 21 === 0) {
+      tasks.push({ pri: 2, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`, desc: `Move to fresh pasture. Rest current section 21+ days to break parasite cycle.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+    // Monthly: full bedding change (non-bee)
+    if (a.type !== "Bee" && (dayNum + hash) % 30 === 0) {
+      tasks.push({ pri: 2, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`, desc: `Strip everything, disinfect surfaces, fresh straw or shavings.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+    // 10d: hive inspection (bees, March–September only)
+    if (a.type === "Bee" && curMonth >= 3 && curMonth <= 9 && (dayNum + hash) % 10 === 0) {
+      tasks.push({ pri: 2, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, desc: `Check brood pattern, honey stores, queen presence. Look for varroa mites.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+    }
+  });
+
   tasks.sort((a, b) => a.pri - b.pri || a.daysOut - b.daysOut);
   return tasks;
 }
@@ -2029,6 +2085,61 @@ function TaskQueue({data, setData, setPage, tasks}) {
           timeline.push({daysOut: Math.max(0,sLeft), dueDate: sDate, type:"step", emoji:crop.emoji, title:`${p.name||p.crop}: ${s.l}`, loc, plotId:p.id, stepIdx:i});
         }
       });
+    });
+
+    // ─── Animal periodic tasks projected forward ───
+    const today0 = Math.floor(now.getTime() / 864e5);
+    const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
+    const aLoc = animalZone ? animalZone.name : "Farm";
+
+    (data.livestock?.animals || []).forEach(a => {
+      const db = LDB[a.type];
+      if (!db) return;
+      const e = db.e;
+      const label = a.name ? `${a.name} (${a.type})` : (a.count > 1 ? `${a.type} ×${a.count}` : a.type);
+      let hash = 0;
+      for (let i = 0; i < a.id.length; i++) hash = (hash * 31 + a.id.charCodeAt(i)) >>> 0;
+
+      // Which periodic task definitions apply to this species
+      const periodics = [];
+      if (a.type !== "Bee") {
+        periodics.push({period: 7,  offset: 0, type: "clean",   emoji: "🧹", title: `Clean housing — ${label}`});
+        periodics.push({period: 7,  offset: 3, type: "health",  emoji: "🩺", title: `Health check — ${label}`});
+        periodics.push({period: 30, offset: 0, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`});
+      }
+      if (HOOFED_SPECIES.has(a.type)) {
+        periodics.push({period: 14, offset: 0, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`});
+      }
+      if (GRAZER_SPECIES.has(a.type)) {
+        periodics.push({period: 21, offset: 0, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`});
+      }
+      const isBee = a.type === "Bee";
+
+      // Project each periodic task into the 60-day window
+      periodics.forEach(pt => {
+        for (let d = 0; d <= 60; d++) {
+          if ((today0 + d + hash + pt.offset) % pt.period !== 0) continue;
+          const dueDate = new Date(now.getTime() + d * 864e5);
+          const key = dueDate.toISOString().slice(0,10);
+          if (!evts[key]) evts[key] = [];
+          evts[key].push({type: pt.type, emoji: pt.emoji, label: pt.title});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: aLoc, animalId: a.id});
+        }
+      });
+
+      // Bee hive inspections — 10d cycle, only during Mar–Sep
+      if (isBee) {
+        for (let d = 0; d <= 60; d++) {
+          const due = new Date(now.getTime() + d * 864e5);
+          const m = due.getMonth() + 1;
+          if (m < 3 || m > 9) continue;
+          if ((today0 + d + hash) % 10 !== 0) continue;
+          const key = due.toISOString().slice(0,10);
+          if (!evts[key]) evts[key] = [];
+          evts[key].push({type: "hive", emoji: "🐝", label: `Hive inspection — ${label}`});
+          if (d <= 30) timeline.push({daysOut: d, dueDate: due, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, loc: aLoc, animalId: a.id});
+        }
+      }
     });
 
     timeline.sort((a,b) => a.daysOut - b.daysOut);
