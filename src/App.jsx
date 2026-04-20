@@ -5436,12 +5436,19 @@ function updateGamify(data) {
 
 function AppInner() {
   // Lazy initializer — loads data synchronously, no loading flash
+  // Wrapped in try-catch: if localStorage is corrupt or migration throws, fall back to DEF
+  // instead of crashing the reducer with undefined state.
   const initData = () => {
-    const d = DB.load();
-    let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
-    initial = migrateZones(initial);
-    initial = migrateGamify(initial);
-    return initial;
+    try {
+      const d = DB.load();
+      let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
+      initial = migrateZones(initial);
+      initial = migrateGamify(initial);
+      return initial;
+    } catch (e) {
+      console.error("initData failed, falling back to DEF:", e);
+      return DEF;
+    }
   };
 
   const [page,setPageRaw]=useState(() => {
@@ -5541,13 +5548,21 @@ function AppInner() {
   }, [setData]);
 
   // Auto-redirect to setup ONLY on very first visit
+  // Defensive null guards: do nothing if data or data.zones is missing.
   useEffect(()=>{
+    if(!data || !Array.isArray(data.zones)) return;
     if(!data.setupDone && data.zones.length===0) setPageRaw("setup");
-  },[data.setupDone, data.zones.length]);
+  },[data?.setupDone, data?.zones?.length]);
 
   // Compute tasks ONCE — passed down to Dashboard + TaskQueue
-  const tasks = useMemo(() => buildTaskQueue(data), [data]);
+  // Null guard: if data hasn't initialized yet, return empty tasks rather than crashing buildTaskQueue.
+  const tasks = useMemo(() => data ? buildTaskQueue(data) : [], [data]);
   const taskCount = useMemo(() => tasks.filter(t => t.pri <= 2).length, [tasks]);
+
+  // Loading fallback — if reducer somehow returns null, render a safe placeholder instead of crashing pg()
+  if (!data) {
+    return <div style={{padding:40,textAlign:"center",color:C.t2,fontFamily:F.body}}>Loading…</div>;
+  }
 
   const pg = () => {
     switch(page) {
