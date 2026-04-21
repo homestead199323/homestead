@@ -34,6 +34,31 @@ const DB = {
 };
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+// Local-time YYYY-MM-DD key. Replaces .toISOString().slice(0,10) which is UTC
+// and can be off by one day in non-UTC timezones (e.g. Albania UTC+1/+2).
+const toLocalDateKey = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+// Append a task key to today's completions list (no-op if already present).
+// Returns a new data object — does NOT mutate.
+const markTaskDone = (data, taskKey) => {
+  if (!taskKey) return data;
+  const todayKey = toLocalDateKey(new Date());
+  const existing = (data.completions && data.completions[todayKey]) || [];
+  if (existing.includes(taskKey)) return data;
+  return {
+    ...data,
+    completions: {
+      ...(data.completions || {}),
+      [todayKey]: [...existing, taskKey],
+    },
+  };
+};
+
 
 /* ═══════════════════════════════════════════
    THEME
@@ -1732,6 +1757,9 @@ const LIVESTOCK_CALENDAR = {
    DEFAULT STATE
    ═══════════════════════════════════════════ */
 const DEF = {zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,region:"mediterranean",city:"",
+  // Daily task completions — keyed by local YYYY-MM-DD, value is array of task keys
+  // completed on that day. Auto-pruned to last 30 days on migration.
+  completions: {},
   // Gamification state
   gamify: {
     streak: 0,               // Current consecutive-day streak
@@ -1909,6 +1937,8 @@ const StorageCard = React.memo(function StorageCard({storage}) {
    ═══════════════════════════════════════════ */
 function buildTaskQueue(data) {
   const now = new Date(); now.setHours(0,0,0,0);
+  const todayKey = toLocalDateKey(now);
+  const doneToday = new Set((data.completions && data.completions[todayKey]) || []);
   const tasks = [];
 
   data.garden.plots.forEach(p => {
@@ -1922,17 +1952,17 @@ function buildTaskQueue(data) {
 
     // Harvest ready
     if (dSince >= crop.days) {
-      tasks.push({ pri: 0, type: "harvest", emoji: crop.emoji, title: `Harvest ${p.name || p.crop}`, desc: `Ready! Est. yield available.`, loc, plotId: p.id, daysOut: 0 });
+      tasks.push({ key: `plot-${p.id}-harvest`, pri: 0, type: "harvest", emoji: crop.emoji, title: `Harvest ${p.name || p.crop}`, desc: `Ready! Est. yield available.`, loc, plotId: p.id, daysOut: 0 });
     }
 
-    // Steps due
+    // Steps due — tracked via p.steps[i].done (persistent), NOT completions map
     if (p.steps) p.steps.forEach((s, i) => {
       if (s.done) return;
       const due = dSince - s.d;
       if (due >= 0 && due <= 3) {
-        tasks.push({ pri: 1, type: "step", emoji: crop.emoji, title: `${p.name || p.crop}: ${s.l}`, desc: s.t, loc, plotId: p.id, stepIdx: i, daysOut: 0 });
+        tasks.push({ key: `plot-${p.id}-step-${i}`, pri: 1, type: "step", emoji: crop.emoji, title: `${p.name || p.crop}: ${s.l}`, desc: s.t, loc, plotId: p.id, stepIdx: i, daysOut: 0 });
       } else if (due >= -3 && due < 0) {
-        tasks.push({ pri: 3, type: "upcoming", emoji: crop.emoji, title: `${p.name || p.crop}: ${s.l}`, desc: s.t, loc, plotId: p.id, stepIdx: i, daysOut: Math.abs(due) });
+        tasks.push({ key: `plot-${p.id}-step-${i}`, pri: 3, type: "upcoming", emoji: crop.emoji, title: `${p.name || p.crop}: ${s.l}`, desc: s.t, loc, plotId: p.id, stepIdx: i, daysOut: Math.abs(due) });
       }
     });
 
@@ -1940,15 +1970,15 @@ function buildTaskQueue(data) {
     if (crop.waterFreq) {
       const m = crop.waterFreq.match(/(\d+)/);
       if (m && dSince > 0 && dSince % parseInt(m[1]) === 0) {
-        tasks.push({ pri: 2, type: "water", emoji: "💧", title: `Water ${p.name || p.crop}`, desc: crop.waterNote, loc, plotId: p.id, daysOut: 0 });
+        tasks.push({ key: `plot-${p.id}-water`, pri: 2, type: "water", emoji: "💧", title: `Water ${p.name || p.crop}`, desc: crop.waterNote, loc, plotId: p.id, daysOut: 0 });
       }
     }
 
-    // Harvest forecast (upcoming)
+    // Harvest forecast (upcoming) — info-only, no Done button
     if (dLeft > 0 && dLeft <= 14) {
       const hDate = new Date(new Date(p.plantDate).getTime() + crop.days * 864e5);
       const estYld = p.expectedYieldKg || crop.yld || 3;
-      tasks.push({ pri: 4, type: "forecast", emoji: "📅", title: `${p.name || p.crop} harvest in ${dLeft}d`, desc: `Expected: ${hDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}. ~${estYld}kg yield.`, loc, plotId: p.id, daysOut: dLeft });
+      tasks.push({ key: `plot-${p.id}-forecast`, pri: 4, type: "forecast", emoji: "📅", title: `${p.name || p.crop} harvest in ${dLeft}d`, desc: `Expected: ${hDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}. ~${estYld}kg yield.`, loc, plotId: p.id, daysOut: dLeft });
     }
   });
 
@@ -1968,43 +1998,51 @@ function buildTaskQueue(data) {
 
     if (a.type !== "Bee") {
       // Daily: feed + water (always today)
-      tasks.push({ pri: 1, type: "feed",  emoji: e,    title: `Feed ${label}`,  desc: db.feed, loc: animalLoc, animalId: a.id, daysOut: 0 });
-      tasks.push({ pri: 1, type: "water", emoji: "💧", title: `Water ${label}`, desc: `Fresh water — refill and clean trough.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-feed`,  pri: 1, type: "feed",  emoji: e,    title: `Feed ${label}`,  desc: db.feed, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-water`, pri: 1, type: "water", emoji: "💧", title: `Water ${label}`, desc: `Fresh water — refill and clean trough.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
     // Daily: egg collection (poultry only)
     if (POULTRY_SPECIES.has(a.type)) {
       const eggNote = db.out?.Eggs?.s || "";
-      tasks.push({ pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-eggs`, pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
     // Weekly: housing cleaning (non-bee)
     if (a.type !== "Bee" && (dayNum + hash) % 7 === 0) {
-      tasks.push({ pri: 2, type: "clean", emoji: "🧹", title: `Clean housing — ${label}`, desc: `Remove soiled bedding, refresh straw, check for damp.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-clean`, pri: 2, type: "clean", emoji: "🧹", title: `Clean housing — ${label}`, desc: `Remove soiled bedding, refresh straw, check for damp.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
     // Weekly: health check (offset 3d so it doesn't collide with cleaning)
     if (a.type !== "Bee" && (dayNum + hash + 3) % 7 === 0) {
       const commonIssue = db.inj?.[0]?.n || "injury or parasites";
-      tasks.push({ pri: 2, type: "health", emoji: "🩺", title: `Health check — ${label}`, desc: `Inspect body condition, eyes, coat. Watch for: ${commonIssue}.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-health`, pri: 2, type: "health", emoji: "🩺", title: `Health check — ${label}`, desc: `Inspect body condition, eyes, coat. Watch for: ${commonIssue}.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
     // Bi-weekly: hoof check (hoofed species)
     if (HOOFED_SPECIES.has(a.type) && (dayNum + hash) % 14 === 0) {
-      tasks.push({ pri: 2, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, desc: `Trim overgrowth, check for rot, stones, cracks.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-hoof`, pri: 2, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, desc: `Trim overgrowth, check for rot, stones, cracks.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
     // 21d: paddock rotation (grazers)
     if (GRAZER_SPECIES.has(a.type) && (dayNum + hash) % 21 === 0) {
-      tasks.push({ pri: 2, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`, desc: `Move to fresh pasture. Rest current section 21+ days to break parasite cycle.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-paddock`, pri: 2, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`, desc: `Move to fresh pasture. Rest current section 21+ days to break parasite cycle.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
     // Monthly: full bedding change (non-bee)
     if (a.type !== "Bee" && (dayNum + hash) % 30 === 0) {
-      tasks.push({ pri: 2, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`, desc: `Strip everything, disinfect surfaces, fresh straw or shavings.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-bedding`, pri: 2, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`, desc: `Strip everything, disinfect surfaces, fresh straw or shavings.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
     // 10d: hive inspection (bees, March–September only)
     if (a.type === "Bee" && curMonth >= 3 && curMonth <= 9 && (dayNum + hash) % 10 === 0) {
-      tasks.push({ pri: 2, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, desc: `Check brood pattern, honey stores, queen presence. Look for varroa mites.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-hive`, pri: 2, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, desc: `Check brood pattern, honey stores, queen presence. Look for varroa mites.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
   });
 
-  tasks.sort((a, b) => a.pri - b.pri || a.daysOut - b.daysOut);
-  return tasks;
+  // Filter out tasks that have been marked done today via the completions map.
+  // Step tasks are filtered by p.steps[i].done above (persistent), not here.
+  // Forecast tasks are info-only, no Done button exposed.
+  const filtered = tasks.filter(t => {
+    if (t.type === "step" || t.type === "upcoming" || t.type === "forecast") return true;
+    return !doneToday.has(t.key);
+  });
+
+  filtered.sort((a, b) => a.pri - b.pri || a.daysOut - b.daysOut);
+  return filtered;
 }
 
 /* ═══════════════════════════════════════════
@@ -2017,18 +2055,236 @@ function buildTaskQueue(data) {
 
 
 /* ═══════════════════════════════════════════
+   PLOT OVERLAY — shared popup used from Farming, TaskQueue, Dashboard
+   ═══════════════════════════════════════════ */
+function PlotOverlay({plot, data, setData, onClose}) {
+  const crop = rCM(data.region).get(plot.crop);
+  const zone = plot.zone ? data.zones.find(z => z.id === plot.zone) : null;
+  const zoneSpace = useMemo(
+    () => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region),
+    [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]
+  );
+  const zoneStats = plot.zone ? zoneSpace[plot.zone] : null;
+  const zoneMyArea = plotAreaM2(plot, data.region);
+  const zoneFill = zoneStats ? (zoneStats.pct >= 0.95 ? C.red : zoneStats.pct >= 0.7 ? C.orange : C.green) : C.green;
+
+  const compZonePlots = plot.zone
+    ? data.garden.plots.filter(p => p.zone === plot.zone && p.status !== "harvested" && p.id !== plot.id).map(p => p.crop)
+    : [];
+  const compObj = COMP[plot.crop];
+  const compGood = compObj ? compZonePlots.filter(n => compObj.good.includes(n)) : [];
+  const compBad  = compObj ? compZonePlots.filter(n => compObj.bad.includes(n)) : [];
+  const showComp = plot.zone && compObj && compZonePlots.length > 0 && (compGood.length > 0 || compBad.length > 0);
+
+  const togStep = (pid, si) => {
+    const plots = data.garden.plots.map(p => {
+      if (p.id === pid) { const st = [...p.steps]; st[si] = {...st[si], done: !st[si].done}; return {...p, steps: st}; }
+      return p;
+    });
+    setData({...data, garden: {plots}});
+  };
+  const del = id => {
+    setData({...data, garden: {plots: data.garden.plots.filter(p => p.id !== id)}});
+    onClose();
+  };
+  const harv = (p) => {
+    const c = rCM(data.region).get(p.crop);
+    const qty = p.expectedYieldKg || (p.plantCount && c ? p.plantCount * (c.yld || 3) : c?.cat === "Herb" ? 0.5 : c?.cat === "Grain" ? 5 : c?.yld || 3);
+    const item = {id: uid(), name: p.crop, category: "Fresh Produce", qty, unit: "kg", source: "farm", addedDate: toLocalDateKey(new Date()), storageNote: c?.storage || ""};
+    setData({
+      ...data,
+      garden: {plots: data.garden.plots.map(x => x.id === p.id ? {...x, status: "harvested"} : x)},
+      pantry: {items: [...data.pantry.items, item]},
+      log: [...data.log, {text: `🧺 Harvested ${qty}kg ${p.crop}`}],
+    });
+    onClose();
+  };
+
+  if (!crop) {
+    return (
+      <Overlay title={`${plot.name || plot.crop}`} onClose={onClose} wide>
+        <div style={{padding:"24px 12px",color:C.t2,fontSize:13}}>Crop data not found for this plot.</div>
+      </Overlay>
+    );
+  }
+
+  return (
+    <Overlay title={`${crop.emoji} ${plot.name || plot.crop}`} onClose={onClose} wide>
+      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+        <Pill>{plot.status}</Pill>
+        <Pill>☀ {crop.sun}</Pill>
+        <Pill>💧 {crop.waterFreq}</Pill>
+        {zone && <Pill c={C.blue} bg="#e3f2fd">📍 {zone.name}</Pill>}
+      </div>
+
+      {(plot.plantCount || plot.qty || plot.expectedYieldKg) && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:14}}>
+          {plot.plantCount && <Card style={{background:"#e8f5e9",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{plot.plantCount}</div><div style={SX.t2_10}>estimated</div></Card>}
+          {plot.qty && plot.measureType === "area" && <Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
+          {plot.qty && plot.measureType === "plants" && <Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}</div><div style={SX.t2_10}>plants</div></Card>}
+          {plot.expectedYieldKg && <Card style={{background:"#fff3e0",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{plot.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
+          {plot.plantCount && crop.spacing ? <Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{crop.spacing}cm</div><div style={SX.t2_10}>between plants</div></Card> : null}
+        </div>
+      )}
+
+      {plot.zone && zone && zoneStats && zoneStats.totalM2 > 0 && (
+        <Card style={{marginBottom:12, background: zoneStats.pct >= 0.95 ? "#fff5f5" : zoneStats.pct >= 0.7 ? "#fffde7" : "#f0faf0"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:12,fontWeight:700,color:zoneFill}}>
+              {zoneStats.pct >= 0.95 ? "🔴 Zone Full" : zoneStats.pct >= 0.7 ? "🟡 Zone Getting Full" : "🟢 Zone Space"}
+            </div>
+            <div style={{fontSize:11,color:C.t2,fontFamily:F.mono}}>{zone.name}</div>
+          </div>
+          <div style={{height:8,borderRadius:4,background:C.bdr,overflow:"hidden",marginBottom:6}}>
+            <div style={{height:"100%",width:`${Math.min(100,zoneStats.pct*100).toFixed(0)}%`,background:zoneFill,borderRadius:4,transition:"width .4s"}}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2}}>
+            <span>Used: <strong style={{color:C.text}}>{zoneStats.usedM2}m²</strong></span>
+            {zoneMyArea > 0 && <span>This crop: <strong style={{color:zoneFill}}>{Math.round(zoneMyArea*10)/10}m²</strong></span>}
+            <span>Free: <strong style={{color:zoneFill}}>{zoneStats.freeM2}m²</strong> of {zoneStats.totalM2.toFixed(0)}m²</span>
+          </div>
+        </Card>
+      )}
+
+      {showComp && (
+        <Card style={{marginBottom:12,background:compBad.length > 0 ? "#fff5f5" : "#f0faf0"}}>
+          <div style={SX.lblGreen}>🌱 Companions in zone</div>
+          {compGood.length > 0 && <div style={{fontSize:12,color:C.green,marginTop:4}}>✓ Good: {compGood.join(", ")}</div>}
+          {compBad.length  > 0 && <div style={{fontSize:12,color:C.red,marginTop:4}}>✕ Bad: {compBad.join(", ")}</div>}
+        </Card>
+      )}
+
+      <WaterCard waterNote={crop.waterNote}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+        <Card><div style={SX.t2_11b}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{plot.plantDate || "—"}</div></Card>
+        <Card><div style={SX.t2_11b}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{plot.harvestDate || "—"}</div></Card>
+      </div>
+
+      <Card style={{marginBottom:12,background:"#f0f7f4",border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{crop.pH && <Pill c="#6d4c41" bg="#efebe9">pH {crop.pH}</Pill>}</div></Card>
+      {crop.fert && <Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={SX.lblGreen}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{crop.fert}</div></Card>}
+      {crop.pests && crop.pests.length > 0 && <Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{crop.pests.slice(0,3).map(function(pst,i){return <div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{pst.n}</strong>{pst.t && <div style={SX.t2_11}>→ {pst.t}</div>}</div>;})}</Card>}
+
+      <StepChecklist steps={plot.steps} plantDate={plot.plantDate} onToggle={togStep} plotId={plot.id}/>
+      <StorageCard storage={crop.storage}/>
+      <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(crop.name + " growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {crop.name} Growing Guide</a>
+
+      <div style={SX.btnRowEnd}>
+        <Btn v="danger" sm onClick={()=>del(plot.id)}>Delete</Btn>
+        {plot.status !== "harvested" && plot.harvestDate && new Date(plot.harvestDate) <= new Date() && <Btn v="success" onClick={()=>harv(plot)}>🧺 Harvest</Btn>}
+      </div>
+    </Overlay>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ANIMAL OVERLAY — shared popup used from Livestock, TaskQueue, Dashboard
+   ═══════════════════════════════════════════ */
+function AnimalOverlay({animal, data, setData, onClose}) {
+  const db = LDB[animal.type];
+  if (!db) {
+    return (
+      <Overlay title={`${animal.name || animal.type}`} onClose={onClose} wide>
+        <div style={{padding:"24px 12px",color:C.t2,fontSize:13}}>No livestock data for this species.</div>
+      </Overlay>
+    );
+  }
+  const del = id => {
+    setData({...data, livestock: {animals: data.livestock.animals.filter(a => a.id !== id)}});
+    onClose();
+  };
+  const breedInfo = animal.breed ? (BREEDS[animal.type] || []).find(b => b.name === animal.breed) : null;
+
+  return (
+    <Overlay title={`${db.e} ${animal.name || animal.type} Care Guide`} onClose={onClose} wide>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        <Pill>×{animal.count} head</Pill>
+        {animal.breed && <Pill c={C.blue} bg="#e3f2fd">{animal.breed}</Pill>}
+        {db.prod.map(p => <Pill key={p} c={C.green} bg={C.gp}>{p}</Pill>)}
+      </div>
+      {breedInfo && (
+        <Card style={{marginBottom:8,background:"#e3f2fd"}}>
+          <div style={{fontSize:12,fontWeight:700,color:C.blue}}>🧬 Breed: {breedInfo.name}</div>
+          <div style={SX.s13mt4}>{breedInfo.note}</div>
+          {breedInfo.eggs && <div style={{fontSize:12,color:C.green,marginTop:2}}>Egg production: ~{breedInfo.eggs} eggs/day per hen</div>}
+        </Card>
+      )}
+      {[
+        {i:"🍽",t:"Feeding",v:db.feed},
+        {i:"🏠",t:"Housing",v:db.house},
+        {i:"😴",t:"Sleeping",v:db.sleep},
+        {i:"💕",t:"Breeding",v:db.breed},
+      ].map(s => (
+        <Card key={s.t} style={{marginBottom:8}}>
+          <div style={SX.lblGreen}>{s.i} {s.t}</div>
+          <div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div>
+        </Card>
+      ))}
+      <Card style={{background:"#fce4ec",marginBottom:8}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries & Treatment</div>
+        {db.inj.map((j,i) => (
+          <div key={i} style={{marginTop:8}}>
+            <strong style={SX.s13}>{j.n}</strong>
+            <div style={SX.t2_12mt2}>{j.t}</div>
+          </div>
+        ))}
+      </Card>
+      <Card style={{marginBottom:8,background:"#e8f5e9"}}>
+        <div style={SX.lblGreen}>📦 Produce & Storage</div>
+        {Object.entries(db.out).map(([k,v]) => (
+          <div key={k} style={{marginTop:6}}>
+            <strong style={{fontSize:12}}>{k}</strong>: ~{v.p} {v.u}
+            <div style={SX.t2_11}>{v.s}</div>
+          </div>
+        ))}
+      </Card>
+      <Btn v="danger" sm onClick={()=>del(animal.id)}>Remove</Btn>
+    </Overlay>
+  );
+}
+
+/* ═══════════════════════════════════════════
    TASK ROW — extracted outside TaskQueue to prevent remount on every render
    ═══════════════════════════════════════════ */
-const TaskRow = React.memo(function TaskRow({t, showCheck=true, onToggleStep, onGoToFarm}) {
+const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone, onGoToFarm}) {
+  const borderC = t.pri === 0 ? C.red : t.pri === 1 ? "#ff6b35" : t.pri === 2 ? C.orange : C.blue;
+  const bg = t.pri === 0 ? "#fff5f5" : t.pri === 1 ? "#fffaf0" : t.pri === 2 ? "#fffde7" : "#f0f7ff";
+  const clickable = !!(t.plotId || t.animalId);
+  const dateLabel = t.dueDate
+    ? (t.daysOut === 0 ? "Today" : t.dueDate.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))
+    : (t.daysOut === 0 ? "Today" : t.daysOut > 0 ? `In ${t.daysOut}d` : null);
+  const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
   return (
-    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:t.pri<=1?"#fff5f5":t.pri===2?"#fffde7":"#f0f7ff",borderRadius:C.rs,marginBottom:4,borderLeft:`3px solid ${t.pri===0?C.red:t.pri===1?"#ff6b35":t.pri===2?C.orange:C.blue}`}}>
-      <span style={{fontSize:16}}>{t.emoji}</span>
-      <div style={SX.flex1min0}>
-        <div style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-        <div style={SX.t2_10}>📍 {t.loc}{t.daysOut>0?` · ${t.daysOut}d`:""}</div>
+    <div
+      onClick={clickable && onOpen ? onOpen : undefined}
+      style={{
+        display:"flex",alignItems:"center",gap:12,
+        padding:"12px 14px",
+        background:bg,borderRadius:C.rs,
+        marginBottom:6,
+        borderLeft:`4px solid ${borderC}`,
+        cursor:clickable && onOpen ? "pointer" : "default",
+        transition:"all .15s",
+      }}
+    >
+      <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{t.emoji}</span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4}}>{t.title}</div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
+          <span>📍 {t.loc}</span>
+          {dateLabel && <span style={{color:t.daysOut === 0 ? C.red : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
+        </div>
       </div>
-      {showCheck && t.stepIdx!=null && <button onClick={()=>onToggleStep?.(t.plotId,t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0}}>✓</button>}
-      {t.type==="harvest" && <button onClick={onGoToFarm} style={{background:C.orange,color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0}}>🧺</button>}
+      <div style={{display:"flex",gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+        {t.stepIdx != null && onToggleStep && (
+          <button onClick={()=>onToggleStep(t.plotId, t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
+        )}
+        {canMarkDone && onMarkDone && (
+          <button onClick={()=>onMarkDone(t.key)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
+        )}
+        {t.type === "harvest" && onGoToFarm && (
+          <button onClick={onGoToFarm} style={{background:C.orange,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🧺 Harvest</button>
+        )}
+      </div>
     </div>
   );
 });
@@ -2040,6 +2296,8 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD" or null
+  const [openPlotId, setOpenPlotId] = useState(null);
+  const [openAnimalId, setOpenAnimalId] = useState(null);
 
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
@@ -2049,12 +2307,23 @@ function TaskQueue({data, setData, setPage, tasks}) {
     setData({...data, garden: {plots}});
   };
 
+  const markDone = (key) => setData(markTaskDone(data, key));
+
+  const openTask = (t) => {
+    if (t.plotId) setOpenPlotId(t.plotId);
+    else if (t.animalId) setOpenAnimalId(t.animalId);
+  };
+
+  const openPlot = openPlotId ? data.garden.plots.find(p => p.id === openPlotId) : null;
+  const openAnimal = openAnimalId ? (data.livestock?.animals || []).find(a => a.id === openAnimalId) : null;
+
   // ── CONSOLIDATED: compute calendar events AND by-time list in ONE pass over plots ──
   const { calendarEvents, byTime } = useMemo(() => {
     const evts = {};
     const timeline = [];
     const now = new Date(); now.setHours(0,0,0,0);
-    const nowMs = now.getTime();
+    const todayKey = toLocalDateKey(now);
+    const doneToday = new Set((data.completions && data.completions[todayKey]) || []);
 
     data.garden.plots.forEach(p => {
       if (!p.plantDate || p.status === "harvested") return;
@@ -2065,29 +2334,29 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
       // Harvest date
       const hDate = new Date(plantMs + crop.days * 864e5);
-      const hKey = hDate.toISOString().slice(0,10);
+      const hKey = toLocalDateKey(hDate);
       if (!evts[hKey]) evts[hKey] = [];
-      evts[hKey].push({type:"harvest", emoji:crop.emoji, label:`Harvest ${p.name||p.crop}`});
+      evts[hKey].push({type:"harvest", emoji:crop.emoji, label:`Harvest ${p.name||p.crop}`, plotId:p.id, key:`plot-${p.id}-harvest`});
       const dLeft = Math.ceil((hDate - now) / 864e5);
       if (dLeft >= 0 && dLeft <= 60) {
-        timeline.push({daysOut: dLeft, dueDate: hDate, type:"harvest", emoji:crop.emoji, title:`Harvest ${p.name||p.crop}`, loc});
+        timeline.push({daysOut: dLeft, dueDate: hDate, type:"harvest", emoji:crop.emoji, title:`Harvest ${p.name||p.crop}`, loc, plotId:p.id, key:`plot-${p.id}-harvest`});
       }
 
       // Step dates
       if (p.steps) p.steps.forEach((s, i) => {
         if (s.done) return;
         const sDate = new Date(plantMs + s.d * 864e5);
-        const sKey = sDate.toISOString().slice(0,10);
+        const sKey = toLocalDateKey(sDate);
         if (!evts[sKey]) evts[sKey] = [];
-        evts[sKey].push({type:"step", emoji:crop.emoji, label:`${p.name||p.crop}: ${s.l}`});
+        evts[sKey].push({type:"step", emoji:crop.emoji, label:`${p.name||p.crop}: ${s.l}`, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
         const sLeft = Math.ceil((sDate - now) / 864e5);
         if (sLeft >= -1 && sLeft <= 30) {
-          timeline.push({daysOut: Math.max(0,sLeft), dueDate: sDate, type:"step", emoji:crop.emoji, title:`${p.name||p.crop}: ${s.l}`, loc, plotId:p.id, stepIdx:i});
+          timeline.push({daysOut: Math.max(0,sLeft), dueDate: sDate, type:"step", emoji:crop.emoji, title:`${p.name||p.crop}: ${s.l}`, loc, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
         }
       });
     });
 
-    // ─── Animal periodic tasks projected forward ───
+    // ─── Animal tasks projected forward (daily + periodic) ───
     const today0 = Math.floor(now.getTime() / 864e5);
     const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
     const aLoc = animalZone ? animalZone.name : "Farm";
@@ -2100,18 +2369,38 @@ function TaskQueue({data, setData, setPage, tasks}) {
       let hash = 0;
       for (let i = 0; i < a.id.length; i++) hash = (hash * 31 + a.id.charCodeAt(i)) >>> 0;
 
-      // Which periodic task definitions apply to this species
+      // Daily tasks — every day in the window
+      const dailies = [];
+      if (a.type !== "Bee") {
+        dailies.push({type: "feed",  emoji: e,    title: `Feed ${label}`,     keySuffix: "feed"});
+        dailies.push({type: "water", emoji: "💧", title: `Water ${label}`,    keySuffix: "water"});
+      }
+      if (POULTRY_SPECIES.has(a.type)) {
+        dailies.push({type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, keySuffix: "eggs"});
+      }
+      dailies.forEach(dt => {
+        for (let d = 0; d <= 60; d++) {
+          const dueDate = new Date(now.getTime() + d * 864e5);
+          const key = toLocalDateKey(dueDate);
+          const taskKey = `animal-${a.id}-${dt.keySuffix}`;
+          if (!evts[key]) evts[key] = [];
+          evts[key].push({type: dt.type, emoji: dt.emoji, label: dt.title, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: aLoc, animalId: a.id, key: taskKey});
+        }
+      });
+
+      // Periodic task definitions
       const periodics = [];
       if (a.type !== "Bee") {
-        periodics.push({period: 7,  offset: 0, type: "clean",   emoji: "🧹", title: `Clean housing — ${label}`});
-        periodics.push({period: 7,  offset: 3, type: "health",  emoji: "🩺", title: `Health check — ${label}`});
-        periodics.push({period: 30, offset: 0, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`});
+        periodics.push({period: 7,  offset: 0, type: "clean",   emoji: "🧹", title: `Clean housing — ${label}`,      keySuffix: "clean"});
+        periodics.push({period: 7,  offset: 3, type: "health",  emoji: "🩺", title: `Health check — ${label}`,       keySuffix: "health"});
+        periodics.push({period: 30, offset: 0, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`, keySuffix: "bedding"});
       }
       if (HOOFED_SPECIES.has(a.type)) {
-        periodics.push({period: 14, offset: 0, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`});
+        periodics.push({period: 14, offset: 0, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, keySuffix: "hoof"});
       }
       if (GRAZER_SPECIES.has(a.type)) {
-        periodics.push({period: 21, offset: 0, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`});
+        periodics.push({period: 21, offset: 0, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`, keySuffix: "paddock"});
       }
       const isBee = a.type === "Bee";
 
@@ -2120,10 +2409,11 @@ function TaskQueue({data, setData, setPage, tasks}) {
         for (let d = 0; d <= 60; d++) {
           if ((today0 + d + hash + pt.offset) % pt.period !== 0) continue;
           const dueDate = new Date(now.getTime() + d * 864e5);
-          const key = dueDate.toISOString().slice(0,10);
+          const key = toLocalDateKey(dueDate);
+          const taskKey = `animal-${a.id}-${pt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
-          evts[key].push({type: pt.type, emoji: pt.emoji, label: pt.title});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: aLoc, animalId: a.id});
+          evts[key].push({type: pt.type, emoji: pt.emoji, label: pt.title, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: aLoc, animalId: a.id, key: taskKey});
         }
       });
 
@@ -2134,16 +2424,24 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const m = due.getMonth() + 1;
           if (m < 3 || m > 9) continue;
           if ((today0 + d + hash) % 10 !== 0) continue;
-          const key = due.toISOString().slice(0,10);
+          const key = toLocalDateKey(due);
+          const taskKey = `animal-${a.id}-hive`;
           if (!evts[key]) evts[key] = [];
-          evts[key].push({type: "hive", emoji: "🐝", label: `Hive inspection — ${label}`});
-          if (d <= 30) timeline.push({daysOut: d, dueDate: due, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, loc: aLoc, animalId: a.id});
+          evts[key].push({type: "hive", emoji: "🐝", label: `Hive inspection — ${label}`, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate: due, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
         }
       }
     });
 
-    timeline.sort((a,b) => a.daysOut - b.daysOut);
-    return { calendarEvents: evts, byTime: timeline };
+    // Hide today's completed tasks from both calendar (today only) and timeline (today only)
+    Object.keys(evts).forEach(k => {
+      if (k !== todayKey) return;
+      evts[k] = evts[k].filter(ev => !ev.key || !doneToday.has(ev.key));
+    });
+    const filteredTimeline = timeline.filter(t => !(t.daysOut === 0 && t.key && doneToday.has(t.key)));
+
+    filteredTimeline.sort((a,b) => a.daysOut - b.daysOut);
+    return { calendarEvents: evts, byTime: filteredTimeline };
   }, [data]);
 
   const urgent = tasks.filter(t => t.pri <= 1);
@@ -2162,7 +2460,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const todayStr = today.toISOString().slice(0,10);
+  const todayStr = toLocalDateKey(today);
 
   const goToFarm = useCallback(() => setPage("farm"), [setPage]);
 
@@ -2186,7 +2484,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           <div style={{padding:"10px",overflowY:"auto",maxHeight:260}}>
             {urgent.length === 0
               ? <div style={{textAlign:"center",padding:24,color:C.t2,fontSize:12}}>✨ All clear!</div>
-              : urgent.map((t,i) => <TaskRow key={i} t={t} onToggleStep={togStep} onGoToFarm={goToFarm}/>)
+              : urgent.map((t,i) => <TaskRow key={t.key||i} t={t} onOpen={()=>openTask(t)} onToggleStep={togStep} onMarkDone={markDone} onGoToFarm={goToFarm}/>)
             }
           </div>
         </Card>
@@ -2203,7 +2501,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           <div style={{padding:"10px",overflowY:"auto",maxHeight:260}}>
             {nonUrgent.length === 0
               ? <div style={{textAlign:"center",padding:24,color:C.t2,fontSize:12}}>Nothing upcoming</div>
-              : nonUrgent.map((t,i) => <TaskRow key={i} t={t} onToggleStep={togStep} onGoToFarm={goToFarm}/>)
+              : nonUrgent.map((t,i) => <TaskRow key={t.key||i} t={t} onOpen={()=>openTask(t)} onToggleStep={togStep} onMarkDone={markDone} onGoToFarm={goToFarm}/>)
             }
           </div>
         </Card>
@@ -2220,17 +2518,14 @@ function TaskQueue({data, setData, setPage, tasks}) {
             ? <div style={{textAlign:"center",padding:24,color:C.t2,fontSize:12}}>No upcoming tasks</div>
             : <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                 {byTime.slice(0,20).map((t,i) => (
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:t.daysOut===0?"#fff5f5":t.daysOut<=3?"#fffde7":"#f8fafb",borderRadius:C.rs,border:`1px solid ${C.bdr}`}}>
-                    <div style={{flexShrink:0,textAlign:"center",width:38}}>
-                      <div style={{fontSize:12,fontWeight:700,color:t.daysOut===0?C.red:t.daysOut<=3?C.orange:C.blue,fontFamily:F.mono}}>{t.daysOut===0?"NOW":`${t.daysOut}d`}</div>
-                      <div style={{fontSize:9,color:C.t2}}>{t.dueDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div>
-                    </div>
-                    <div style={SX.flex1min0}>
-                      <div style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.emoji} {t.title}</div>
-                      <div style={SX.t2_10}>📍 {t.loc}</div>
-                    </div>
-                    {t.stepIdx!=null && <button onClick={()=>togStep(t.plotId,t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:10,cursor:"pointer",flexShrink:0}}>✓</button>}
-                  </div>
+                  <TaskRow
+                    key={t.key || i}
+                    t={t}
+                    onOpen={()=>openTask(t)}
+                    onToggleStep={togStep}
+                    onMarkDone={markDone}
+                    onGoToFarm={goToFarm}
+                  />
                 ))}
               </div>
           }
@@ -2302,26 +2597,46 @@ function TaskQueue({data, setData, setPage, tasks}) {
               {selEvts.length === 0
                 ? <div style={{textAlign:"center",padding:"20px 0",color:C.t2,fontSize:12}}>🌱 Nothing to do — enjoy the day!</div>
                 : <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {selEvts.map((evt,idx) => (
-                      <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,borderLeft:`4px solid ${evt.type==="harvest"?C.orange:C.blue}`}}>
-                        <span style={SX.s20}>{evt.emoji}</span>
-                        <div style={SX.flex1min0}>
-                          <div style={{fontSize:13,fontWeight:600,color:C.text}}>{evt.label}</div>
-                          <div style={{fontSize:10,color:C.t2,marginTop:2}}>
-                            {evt.type==="harvest" ? "🧺 Ready to harvest" : "📋 Growing step due"}
-                          </div>
-                        </div>
-                        <div style={{flexShrink:0,padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:700,color:"#fff",background:evt.type==="harvest"?C.orange:C.blue}}>
-                          {evt.type==="harvest"?"Harvest":"Step"}
-                        </div>
-                      </div>
-                    ))}
+                    {selEvts.map((evt,idx) => {
+                      // Synthesize a task-shape object so we can reuse TaskRow
+                      const loc = evt.plotId
+                        ? (data.zones.find(z => z.id === (data.garden.plots.find(p => p.id === evt.plotId)?.zone))?.name || "Farm")
+                        : (data.zones.find(z => ["barn","pasture"].includes(z.type))?.name || "Farm");
+                      const pri = evt.type === "harvest" ? 0 : evt.type === "step" ? 1 : evt.type === "feed" || evt.type === "water" || evt.type === "eggs" ? 1 : 2;
+                      const daysOut = Math.max(0, Math.ceil((selDateObj - today) / 864e5));
+                      const tAsTask = {
+                        key: evt.key,
+                        pri,
+                        type: evt.type,
+                        emoji: evt.emoji,
+                        title: evt.label,
+                        loc,
+                        plotId: evt.plotId,
+                        animalId: evt.animalId,
+                        stepIdx: evt.stepIdx,
+                        daysOut,
+                        dueDate: selDateObj,
+                      };
+                      return (
+                        <TaskRow
+                          key={evt.key || idx}
+                          t={tAsTask}
+                          onOpen={()=>openTask(tAsTask)}
+                          onToggleStep={togStep}
+                          onMarkDone={isSelToday ? markDone : undefined}
+                          onGoToFarm={goToFarm}
+                        />
+                      );
+                    })}
                   </div>
               }
             </div>
           );
         })()}
       </Card>
+
+      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)}/>}
+      {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
     </div>
   );
 }
@@ -3055,18 +3370,8 @@ function Farming({data, setData, pageData, clearPageData}) {
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:new Date().toISOString().slice(0,10),cat:"Seeds"}]};
     setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setCropSearch("");setCropDropdownOpen(false);setShowAdd(false);
   };
-  const del=id=>{setData({...data,garden:{plots:data.garden.plots.filter(p=>p.id!==id)}});setSelP(null);};
-  const tog=(pid,si)=>{const plots=data.garden.plots.map(p=>{if(p.id===pid){const st=[...p.steps];st[si]={...st[si],done:!st[si].done};return{...p,steps:st};}return p;});setData({...data,garden:{plots}});};
-  const harv=(plot)=>{
-    const c=rCM(data.region).get(plot.crop);
-    // Use stored expectedYieldKg (plants * per-plant yield), fall back to single-plant yield
-    const qty = plot.expectedYieldKg || (plot.plantCount && c ? plot.plantCount * (c.yld||3) : c?.cat==="Herb"?0.5:c?.cat==="Grain"?5:c?.yld||3);
-    const item={id:uid(),name:plot.crop,category:"Fresh Produce",qty,unit:"kg",source:"farm",addedDate:new Date().toISOString().slice(0,10),storageNote:c?.storage||""};
-    setData({...data,garden:{plots:data.garden.plots.map(p=>p.id===plot.id?{...p,status:"harvested"}:p)},pantry:{items:[...data.pantry.items,item]},log:[...data.log,{text:`🧺 Harvested ${qty}kg ${plot.crop}`}]});
-    setSelP(null);
-  };
+  // tog/del/harv moved into PlotOverlay component — no longer needed here
   const sp=data.garden.plots.find(p=>p.id===selP);
-  const spC=sp?rCM(data.region).get(sp.crop):null;
 
   // Pre-computed values to avoid IIFEs in JSX (IIFEs crash the app)
   const _active=data.garden.plots.filter(function(p){return p.status!=="harvested";});
@@ -3074,15 +3379,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const _totalArea=_active.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
   const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
   const _ready=_active.filter(function(p){return p.harvestDate&&new Date(p.harvestDate)<=new Date();}).length;
-  const _spZone=sp&&sp.zone?data.zones.find(function(z){return z.id===sp.zone;}):null;
-  const _spZoneStats=sp&&sp.zone?zoneSpace[sp.zone]:null;
-  const _spZoneMyArea=sp?plotAreaM2(sp,data.region):0;
-  const _spZoneFill=_spZoneStats?(_spZoneStats.pct>=0.95?C.red:_spZoneStats.pct>=0.7?C.orange:C.green):C.green;
-  const _spCompZonePlots=sp&&sp.zone?data.garden.plots.filter(function(p){return p.zone===sp.zone&&p.status!=="harvested"&&p.id!==sp.id;}).map(function(p){return p.crop;}):[];
-  const _spCompObj=sp?COMP[sp.crop]:null;
-  const _spCompGood=_spCompObj?_spCompZonePlots.filter(function(n){return _spCompObj.good.includes(n);}):[];
-  const _spCompBad=_spCompObj?_spCompZonePlots.filter(function(n){return _spCompObj.bad.includes(n);}):[];
-  const _showComp=sp&&sp.zone&&_spCompObj&&_spCompZonePlots.length>0&&(_spCompGood.length>0||_spCompBad.length>0);
+  // Plot overlay now computes its own zone / companion / card state — removed unused locals
   const _formZoneObj=form.zone?vegZ.find(function(z){return z.id===form.zone;}):null;
   const _formZoneStats=form.zone?zoneSpace[form.zone]:null;
   const _formZoneFill=_formZoneStats?(_formZoneStats.pct>=0.95?C.red:_formZoneStats.pct>=0.7?C.orange:C.green):C.green;
@@ -3149,64 +3446,7 @@ function Farming({data, setData, pageData, clearPageData}) {
         );
       })}</div>}
 
-      {sp&&spC&&(
-        <Overlay title={`${spC.emoji} ${sp.name||sp.crop}`} onClose={()=>setSelP(null)} wide>
-          <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}><Pill>{sp.status}</Pill><Pill>☀ {spC.sun}</Pill><Pill>💧 {spC.waterFreq}</Pill>{sp.zone&&<Pill c={C.blue} bg="#e3f2fd">📍 {data.zones.find(z=>z.id===sp.zone)?.name}</Pill>}</div>
-          {/* Quantity summary card */}
-          {(sp.plantCount||sp.qty||sp.expectedYieldKg) && (
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:14}}>
-              {sp.plantCount&&<Card style={{background:"#e8f5e9",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{sp.plantCount}</div><div style={SX.t2_10}>estimated</div></Card>}
-              {sp.qty&&sp.measureType==="area"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
-              {sp.qty&&sp.measureType==="plants"&&<Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{sp.qty}</div><div style={SX.t2_10}>plants</div></Card>}
-              {sp.expectedYieldKg&&<Card style={{background:"#fff3e0",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{sp.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
-              {sp.plantCount && spC && spC.spacing ? <Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{spC.spacing}cm</div><div style={SX.t2_10}>between plants</div></Card> : null}
-            </div>
-          )}
-
-          {/* Zone space for this plot */}
-          {sp.zone && _spZone && _spZoneStats && _spZoneStats.totalM2 > 0 && (
-            <Card style={{marginBottom:12, background: _spZoneStats.pct >= 0.95 ? "#fff5f5" : _spZoneStats.pct >= 0.7 ? "#fffde7" : "#f0faf0"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                <div style={{fontSize:12,fontWeight:700,color:_spZoneFill}}>
-                  {_spZoneStats.pct >= 0.95 ? "🔴 Zone Full" : _spZoneStats.pct >= 0.7 ? "🟡 Zone Getting Full" : "🟢 Zone Space"}
-                </div>
-                <div style={{fontSize:11,color:C.t2,fontFamily:F.mono}}>{_spZone.name}</div>
-              </div>
-              <div style={{height:8,borderRadius:4,background:C.bdr,overflow:"hidden",marginBottom:6}}>
-                <div style={{height:"100%",width:`${Math.min(100,_spZoneStats.pct*100).toFixed(0)}%`,background:_spZoneFill,borderRadius:4,transition:"width .4s"}}/>
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2}}>
-                <span>Used: <strong style={{color:C.text}}>{_spZoneStats.usedM2}m²</strong></span>
-                {_spZoneMyArea > 0 && <span>This crop: <strong style={{color:_spZoneFill}}>{Math.round(_spZoneMyArea*10)/10}m²</strong></span>}
-                <span>Free: <strong style={{color:_spZoneFill}}>{_spZoneStats.freeM2}m²</strong> of {_spZoneStats.totalM2.toFixed(0)}m²</span>
-              </div>
-            </Card>
-          )}
-
-          {/* Companion */}
-          {_showComp && (
-            <Card style={{marginBottom:12,background:_spCompBad.length>0?"#fff5f5":"#f0faf0"}}>
-              <div style={SX.lblGreen}>🌱 Companions in zone</div>
-              {_spCompGood.length>0&&<div style={{fontSize:12,color:C.green,marginTop:4}}>✓ Good: {_spCompGood.join(", ")}</div>}
-              {_spCompBad.length>0&&<div style={{fontSize:12,color:C.red,marginTop:4}}>✕ Bad: {_spCompBad.join(", ")}</div>}
-            </Card>
-          )}
-          {spC && <WaterCard waterNote={spC.waterNote}/>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-            <Card><div style={SX.t2_11b}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{sp.plantDate||"—"}</div></Card>
-            <Card><div style={SX.t2_11b}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{sp.harvestDate||"—"}</div></Card>
-          </div>
-          {spC && <>
-            <Card style={{marginBottom:12,background:"#f0f7f4",border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{spC.pH&&<Pill c="#6d4c41" bg="#efebe9">pH {spC.pH}</Pill>}</div></Card>
-            {spC.fert&&<Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={SX.lblGreen}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{spC.fert}</div></Card>}
-            {spC.pests&&spC.pests.length>0&&<Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{spC.pests.slice(0,3).map(function(p,i){return <div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{p.n}</strong>{p.t&&<div style={SX.t2_11}>→ {p.t}</div>}</div>;})} </Card>}
-          </>}
-          <StepChecklist steps={sp.steps} plantDate={sp.plantDate} onToggle={tog} plotId={sp.id}/>
-          {spC && <StorageCard storage={spC.storage}/>}
-          {spC && <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(spC.name+" growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {spC.name} Growing Guide</a>}
-          <div style={SX.btnRowEnd}><Btn v="danger" sm onClick={()=>del(sp.id)}>Delete</Btn>{sp.status!=="harvested"&&sp.harvestDate&&new Date(sp.harvestDate)<=new Date()&&<Btn v="success" onClick={()=>harv(sp)}>🧺 Harvest</Btn>}</div>
-        </Overlay>
-      )}
+      {sp && <PlotOverlay plot={sp} data={data} setData={setData} onClose={()=>setSelP(null)}/>}
 
       {showAdd&&(
         <Overlay title="🌱 Plant a Crop" onClose={()=>{setShowAdd(false);setCropSearch("");setCropDropdownOpen(false);}}>
@@ -3348,7 +3588,7 @@ function Livestock({data, setData}) {
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:new Date().toISOString().slice(0,10),cat:"Animals"}]};
     setData(nd);setForm({name:"",type:"Chicken",breed:"",count:"1",cost:""});setShowAdd(false);
   };
-  const del=id=>{setData({...data,livestock:{animals:data.livestock.animals.filter(a=>a.id!==id)}});setSel(null);};
+  // del moved into AnimalOverlay component — no longer needed here
 
   const doCollect=(animal, produce, qty)=>{
     const db=LDB[animal.type];if(!db)return;
@@ -3362,7 +3602,7 @@ function Livestock({data, setData}) {
   };
 
   const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...data,livestock:{animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:{items:[...data.pantry.items,{id:uid(),name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",addedDate:new Date().toISOString().slice(0,10),storageNote:mp.s}]},log:[...data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`}]});setShowK(null);};
-  const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;const saDB=sa?LDB[sa.type]:null;
+  const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;
 
   return (
     <div className="page-enter" style={SX.mw800}>
@@ -3398,14 +3638,7 @@ function Livestock({data, setData}) {
       </Overlay>}
 
       {/* Care Guide */}
-      {sa&&saDB&&<Overlay title={`${saDB.e} ${sa.name||sa.type} Care Guide`} onClose={()=>setSel(null)} wide>
-        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}><Pill>×{sa.count} head</Pill>{sa.breed&&<Pill c={C.blue} bg="#e3f2fd">{sa.breed}</Pill>}{saDB.prod.map(p=><Pill key={p} c={C.green} bg={C.gp}>{p}</Pill>)}</div>
-        {sa.breed && (() => { const bi = (BREEDS[sa.type]||[]).find(b => b.name === sa.breed); return bi ? <Card style={{marginBottom:8,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>🧬 Breed: {bi.name}</div><div style={SX.s13mt4}>{bi.note}</div>{bi.eggs&&<div style={{fontSize:12,color:C.green,marginTop:2}}>Egg production: ~{bi.eggs} eggs/day per hen</div>}</Card> : null; })()}
-        {[{i:"🍽",t:"Feeding",v:saDB.feed,q:`${sa.type} ${sa.breed||""} feeding guide homestead`},{i:"🏠",t:"Housing",v:saDB.house,q:`${sa.type} housing coop barn build`},{i:"😴",t:"Sleeping",v:saDB.sleep,q:`${sa.type} sleeping arrangement farm`},{i:"💕",t:"Breeding",v:saDB.breed,q:`${sa.type} ${sa.breed||""} breeding guide`}].map(s=><Card key={s.t} style={{marginBottom:8}}><div style={SX.lblGreen}>{s.i} {s.t}</div><div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div></Card>)}
-        <Card style={{background:"#fce4ec",marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries & Treatment</div>{saDB.inj.map((j,i)=><div key={i} style={{marginTop:8}}><strong style={SX.s13}>{j.n}</strong><div style={SX.t2_12mt2}>{j.t}</div></div>)}</Card>
-        <Card style={{marginBottom:8,background:"#e8f5e9"}}><div style={SX.lblGreen}>📦 Produce & Storage</div>{Object.entries(saDB.out).map(([k,v])=><div key={k} style={{marginTop:6}}><strong style={{fontSize:12}}>{k}</strong>: ~{v.p} {v.u}<div style={SX.t2_11}>{v.s}</div></div>)}</Card>
-        <Btn v="danger" sm onClick={()=>del(sa.id)}>Remove</Btn>
-      </Overlay>}
+      {sa && <AnimalOverlay animal={sa} data={data} setData={setData} onClose={()=>setSel(null)}/>}
 
       {/* Process/Kill Modal */}
       {showK&&<Overlay title={`🔪 Process ${showK.name||showK.type}`} onClose={()=>setShowK(null)}>
@@ -3603,8 +3836,9 @@ function Dashboard({data, setData, setPage, tasks}) {
   const [zoomedZone,setZoomedZone]=useState(null);
   const [expCrop,setExpCrop]=useState(null);
   const [expAnimal,setExpAnimal]=useState(null);
-  const [wide,setWide]=useState(typeof window!=="undefined"&&window.innerWidth>=800);
-  useEffect(()=>{const h=()=>setWide(window.innerWidth>=800);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  const [openPlotId,setOpenPlotId]=useState(null);
+  const [openAnimalId,setOpenAnimalId]=useState(null);
+  const [wide,setWide]=useState(typeof window!=="undefined"&&window.innerWidth>=800);  useEffect(()=>{const h=()=>setWide(window.innerWidth>=800);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const totalKg=data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0);
   const costs=data.costs?.items||[];
   const {exp,inc}=useMemo(()=>{let e=0,r=0;costs.forEach(i=>i.type==="expense"?e+=i.amount:r+=i.amount);return{exp:e,inc:r};},[costs]);
@@ -3729,6 +3963,10 @@ function Dashboard({data, setData, setPage, tasks}) {
   const _catIcons={Fruit:"🍅",Vegetable:"🥬",Herb:"🌿",Legume:"🫘",Root:"🥕",Grain:"🌾",Flower:"🌻",Brassica:"🥦",Perennial:"🫐",Tuber:"🥔"};
   const _miniColorMap=(function(){const m=new Map();let i=0;data.garden.plots.forEach(function(p){if(p.status!=="harvested"&&!m.has(p.crop)){m.set(p.crop,CROP_COLORS[i%CROP_COLORS.length]);i++;}});return m;})();
 
+  // Overlay lookups — pre-computed to avoid IIFEs in JSX render path
+  const openPlot = openPlotId ? data.garden.plots.find(x => x.id === openPlotId) : null;
+  const openAnimal = openAnimalId ? (data.livestock?.animals || []).find(x => x.id === openAnimalId) : null;
+
   return (
     <div className="page-enter" style={{maxWidth:1100}}>
       {/* ── Morning Dashboard Header ── */}
@@ -3851,15 +4089,21 @@ function Dashboard({data, setData, setPage, tasks}) {
               </div>
             ) : enrichedTasks.slice(0, 12).map((t, i) => {
               const isActive = t.zoneId === activeZone;
+              const canOpen = !!(t.plotId || t.animalId);
+              const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
               return (
-                <div key={i}
-                  onClick={() => { if (t.zoneId) setSelZone(t.zoneId); }}
+                <div key={t.key || i}
+                  onClick={() => {
+                    if (t.zoneId) setSelZone(t.zoneId);
+                    if (t.plotId) setOpenPlotId(t.plotId);
+                    else if (t.animalId) setOpenAnimalId(t.animalId);
+                  }}
                   style={{
                     display:"grid",gridTemplateColumns:"auto 1fr auto",gap:10,alignItems:"center",
                     padding:"10px 12px",marginBottom:4,
                     border:`1px solid ${isActive ? C.gm : C.bdr}`,
                     borderRadius:12,background:isActive ? "#f0faf0" : "#fcfdfb",
-                    cursor:t.zoneId?"pointer":"default",
+                    cursor: canOpen ? "pointer" : (t.zoneId?"pointer":"default"),
                     transition:"all .15s"
                   }}>
                   <span style={{width:9,height:9,borderRadius:"50%",background:priColor(t.pri),flexShrink:0}}/>
@@ -3869,7 +4113,8 @@ function Dashboard({data, setData, setPage, tasks}) {
                   </div>
                   <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
                     {t.stepIdx != null && <button onClick={e=>{e.stopPropagation();togStep(t.plotId,t.stepIdx);}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
-                    {t.type==="harvest" && <button onClick={e=>{e.stopPropagation();setPage("farm");}} style={{background:C.orange,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Harvest</button>}
+                    {canMarkDone && <button onClick={e=>{e.stopPropagation();setData(markTaskDone(data,t.key));}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
+                    {t.type==="harvest" && <button onClick={e=>{e.stopPropagation();if(t.plotId)setOpenPlotId(t.plotId);else setPage("farm");}} style={{background:C.orange,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Harvest</button>}
                     <span style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:20,background:priBg(t.pri),color:priColor(t.pri),whiteSpace:"nowrap"}}>
                       {t.zoneId ? (data.zones.find(z=>z.id===t.zoneId)?.name?.split(" ").map(w=>w[0]).join("").slice(0,3) || "—") : "Farm"}
                     </span>
@@ -4152,6 +4397,8 @@ function Dashboard({data, setData, setPage, tasks}) {
           })}
         </div>
       </div>
+      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)}/>}
+      {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
     </div>
   );
 }
@@ -5499,9 +5746,21 @@ function migrateGamify(data) {
       totalHarvests,
       totalPlants,
       totalLogEntries,
-      lastActiveDate: totalLogEntries > 0 ? new Date().toISOString().slice(0,10) : null,
+      lastActiveDate: totalLogEntries > 0 ? toLocalDateKey(new Date()) : null,
     }
   };
+}
+
+// Ensure data.completions exists and prune entries older than 30 days to keep
+// localStorage small. Safe to call on every load.
+function migrateCompletions(data) {
+  const out = data.completions ? {...data.completions} : {};
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30); cutoff.setHours(0,0,0,0);
+  Object.keys(out).forEach(k => {
+    const d = new Date(k + "T00:00:00");
+    if (isNaN(d.getTime()) || d < cutoff) delete out[k];
+  });
+  return {...data, completions: out};
 }
 
 // Update streak + badge state after any data change that includes a log entry
@@ -5555,6 +5814,7 @@ function AppInner() {
       let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
       initial = migrateZones(initial);
       initial = migrateGamify(initial);
+      initial = migrateCompletions(initial);
       return initial;
     } catch (e) {
       console.error("initData failed, falling back to DEF:", e);
@@ -5651,7 +5911,7 @@ function AppInner() {
         if (d && typeof d === "object" && ("__proto__" in d || "constructor" in d || "prototype" in d)) {
           throw new Error("Backup file contains reserved keys and cannot be imported safely.");
         }
-        const merged = migrateGamify(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}}));
+        const merged = migrateCompletions(migrateGamify(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}})));
         setData(merged);
       } catch(err) { alert("Invalid backup file: " + err.message); }
     };
