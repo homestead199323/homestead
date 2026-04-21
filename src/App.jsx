@@ -1970,7 +1970,7 @@ function buildTaskQueue(data) {
     if (crop.waterFreq) {
       const m = crop.waterFreq.match(/(\d+)/);
       if (m && dSince > 0 && dSince % parseInt(m[1]) === 0) {
-        tasks.push({ key: `plot-${p.id}-water`, pri: 2, type: "water", emoji: "💧", title: `Water ${p.name || p.crop}`, desc: crop.waterNote, loc, plotId: p.id, daysOut: 0 });
+        tasks.push({ key: `plot-${p.id}-water`, pri: 2, type: "water", emoji: "💧", title: `Water ${p.name || p.crop}`, desc: crop.waterNote, loc, plotId: p.id, daysOut: 0, routine: true });
       }
     }
 
@@ -1998,13 +1998,13 @@ function buildTaskQueue(data) {
 
     if (a.type !== "Bee") {
       // Daily: feed + water (always today)
-      tasks.push({ key: `animal-${a.id}-feed`,  pri: 1, type: "feed",  emoji: e,    title: `Feed ${label}`,  desc: db.feed, loc: animalLoc, animalId: a.id, daysOut: 0 });
-      tasks.push({ key: `animal-${a.id}-water`, pri: 1, type: "water", emoji: "💧", title: `Water ${label}`, desc: `Fresh water — refill and clean trough.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-feed`,  pri: 1, type: "feed",  emoji: e,    title: `Feed ${label}`,  desc: db.feed, loc: animalLoc, animalId: a.id, daysOut: 0, routine: true });
+      tasks.push({ key: `animal-${a.id}-water`, pri: 1, type: "water", emoji: "💧", title: `Water ${label}`, desc: `Fresh water — refill and clean trough.`, loc: animalLoc, animalId: a.id, daysOut: 0, routine: true });
     }
     // Daily: egg collection (poultry only)
     if (POULTRY_SPECIES.has(a.type)) {
       const eggNote = db.out?.Eggs?.s || "";
-      tasks.push({ key: `animal-${a.id}-eggs`, pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, animalId: a.id, daysOut: 0 });
+      tasks.push({ key: `animal-${a.id}-eggs`, pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, animalId: a.id, daysOut: 0, routine: true });
     }
     // Weekly: housing cleaning (non-bee)
     if (a.type !== "Bee" && (dayNum + hash) % 7 === 0) {
@@ -2299,7 +2299,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const [openPlotId, setOpenPlotId] = useState(null);
   const [openAnimalId, setOpenAnimalId] = useState(null);
   const [doneCollapsed, setDoneCollapsed] = useState(true);
-  const [weekCollapsed, setWeekCollapsed] = useState(true);
+  const [weekCollapsed, setWeekCollapsed] = useState(false);
 
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
@@ -2386,8 +2386,8 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const key = toLocalDateKey(dueDate);
           const taskKey = `animal-${a.id}-${dt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
-          evts[key].push({type: dt.type, emoji: dt.emoji, label: dt.title, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: aLoc, animalId: a.id, key: taskKey});
+          evts[key].push({type: dt.type, emoji: dt.emoji, label: dt.title, animalId: a.id, key: taskKey, routine: true});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: aLoc, animalId: a.id, key: taskKey, routine: true});
         }
       });
 
@@ -2450,16 +2450,28 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const todayStr = toLocalDateKey(new Date());
   const doneTodayKeys = new Set((data.completions && data.completions[todayStr]) || []);
 
-  // "Attention" = genuinely critical: harvest ready, overdue steps, steps due today, overdue watering
-  // Everything else today = routine (daily feed/water/eggs, regular watering, step work tomorrow-ish)
-  const todayTasks = tasks.filter(t => t.daysOut === 0 || t.type === "harvest" || t.type === "step");
-  const attentionTasks = todayTasks.filter(t =>
-    t.type === "harvest" ||                          // harvest ready → always attention
-    (t.type === "step" && t.daysOut === 0)           // growing step due today → attention
-  );
-  const routineTasks = todayTasks.filter(t => !attentionTasks.includes(t));
+  // ─── Two-bucket model ───
+  // ROUTINE: plot water, animal feed/water/eggs. Daily ritual. Grouped by location.
+  //          Never appears in attention banner, coming-up, or calendar.
+  // IMPORTANT: everything else. Harvests, growing steps (pinch, transplant, fertilize, prune),
+  //            weekly+ animal care (clean, health, hoof, paddock, bedding, hive inspection).
+  //            Drives the attention banner, "Coming Up This Week", and calendar.
+  const routineTasks = tasks.filter(t => t.routine === true);
+  const importantTasks = tasks.filter(t => t.routine !== true);
 
-  // Group routine by location
+  // Attention = important tasks due today or overdue (step with negative due, harvest ready)
+  // For steps, an "upcoming" row has daysOut > 0 (was computed from due-days-in-future, not overdue).
+  // buildTaskQueue uses pri: 1 for "step" (due 0..3 days back, i.e. overdue or today)
+  //                  pri: 3 for "upcoming" (will-be-due in 1..3 days)
+  //                  pri: 0 for "harvest" (ready)
+  //                  pri: 2 for periodic animal (due today — hash-based, already pruned to today)
+  const attentionTasks = importantTasks.filter(t =>
+    t.type === "harvest" ||            // harvest ready
+    t.type === "step" ||               // growing step due today or overdue
+    (t.daysOut === 0 && !["upcoming","forecast"].includes(t.type))  // periodic animal care due today
+  );
+
+  // Group routine by location (for the daily walking lists)
   const routineByLoc = {};
   routineTasks.forEach(t => {
     const key = t.loc || "Farm";
@@ -2476,8 +2488,8 @@ function TaskQueue({data, setData, setPage, tasks}) {
     return zt?.icon || "📍";
   };
 
-  // This Week = byTime items tomorrow..+7 that aren't already in today's section
-  const thisWeek = byTime.filter(t => t.daysOut >= 1 && t.daysOut <= 7);
+  // Coming up this week = important tasks, tomorrow..+7, excluding routine
+  const thisWeek = byTime.filter(t => t.daysOut >= 1 && t.daysOut <= 7 && t.routine !== true);
 
   // Done today: reconstruct from completion keys by parsing each key and finding the referenced
   // plot or animal in data. We don't read today's calendar events because they're already
@@ -2561,33 +2573,20 @@ function TaskQueue({data, setData, setPage, tasks}) {
       <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>Today's work first, then the week, then the month</p>
 
       {/* ── Section 1: TODAY — attention banner + location-grouped routine + done-today ── */}
-      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
-        <div style={{padding:"14px 18px 12px",borderBottom:`1px solid ${C.bdr}`,background:"linear-gradient(180deg, #f0faf0, #fff)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:17,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.02em"}}>
-              ☀️ Today
+      {/* ── Section 1: NEEDS ATTENTION — harvests, steps, periodic animal care ── */}
+      {attentionTasks.length > 0 && (
+        <Card p={false} style={{overflow:"hidden",marginBottom:16,border:`1px solid #fecaca`}}>
+          <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`,background:"#fff5f5"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:18}}>⚠️</span>
+                <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.red,letterSpacing:"-0.01em"}}>Needs Attention</div>
+              </div>
+              <span style={{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:12}}>{attentionTasks.length}</span>
             </div>
-            <div style={{fontSize:12,color:C.t2,fontFamily:F.mono,fontWeight:600}}>
-              {new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
-            </div>
+            <div style={{fontSize:12,color:C.t2,marginTop:3}}>Do these today — miss the window and plants bolt, fail, or spoil</div>
           </div>
-          <div style={{fontSize:12,color:C.t2,marginTop:2}}>
-            {todayTasks.length === 0
-              ? "Nothing to do — enjoy the day 🌱"
-              : attentionTasks.length > 0
-                ? `${attentionTasks.length} needs attention · ${routineTasks.length} routine`
-                : `${routineTasks.length} routine task${routineTasks.length === 1 ? "" : "s"}`
-            }
-          </div>
-        </div>
-
-        {/* Attention banner — harvests ready + today-due steps */}
-        {attentionTasks.length > 0 && (
-          <div style={{padding:"12px 14px",background:"#fff5f5",borderBottom:`1px solid ${C.bdr}`}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-              <span style={{fontSize:14}}>⚠️</span>
-              <div style={{fontSize:12,fontWeight:700,color:C.red,letterSpacing:"0.02em"}}>NEEDS ATTENTION</div>
-            </div>
+          <div style={{padding:"12px 14px"}}>
             {attentionTasks.map((t,i) => (
               <TaskRow
                 key={t.key || `att-${i}`}
@@ -2599,10 +2598,62 @@ function TaskQueue({data, setData, setPage, tasks}) {
               />
             ))}
           </div>
-        )}
+        </Card>
+      )}
 
-        {/* Routine, grouped by location */}
-        {routineLocations.length > 0 && (
+      {/* ── Section 2: COMING UP THIS WEEK — important only, next 7 days, expanded by default ── */}
+      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
+        <button
+          onClick={()=>setWeekCollapsed(v=>!v)}
+          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#f0f7ff",border:"none",cursor:"pointer",borderBottom: weekCollapsed ? "none" : `1px solid ${C.bdr}`}}
+        >
+          <div style={{textAlign:"left"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:16}}>📋</span>
+              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Coming Up This Week</div>
+            </div>
+            <div style={{fontSize:12,color:C.t2,marginTop:3}}>
+              {thisWeek.length === 0 ? "Nothing important in the next 7 days" : `${thisWeek.length} important task${thisWeek.length === 1 ? "" : "s"} · next 7 days`}
+            </div>
+          </div>
+          <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{weekCollapsed ? "Show ▾" : "Hide ▴"}</span>
+        </button>
+        {!weekCollapsed && thisWeek.length > 0 && (
+          <div style={{padding:"12px 14px"}}>
+            {thisWeek.map((t,i) => (
+              <TaskRow
+                key={t.key || `week-${i}`}
+                t={t}
+                onOpen={()=>openTask(t)}
+                onToggleStep={togStep}
+                onMarkDone={markDone}
+                onGoToFarm={goToFarm}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Section 3: DAILY ROUTINE — grouped by location, same every day ── */}
+      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
+        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`,background:"linear-gradient(180deg, #f0faf0, #fff)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:18}}>☀️</span>
+              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Daily Routine</div>
+            </div>
+            <div style={{fontSize:12,color:C.t2,fontFamily:F.mono,fontWeight:600}}>
+              {new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
+            </div>
+          </div>
+          <div style={{fontSize:12,color:C.t2,marginTop:3}}>
+            {routineTasks.length === 0
+              ? "No routine tasks set up yet"
+              : `${routineTasks.length} task${routineTasks.length === 1 ? "" : "s"} · your daily walk`}
+          </div>
+        </div>
+
+        {routineLocations.length > 0 ? (
           <div style={{padding:"14px"}}>
             {routineLocations.map(loc => (
               <div key={loc} style={{marginBottom:14}}>
@@ -2626,73 +2677,41 @@ function TaskQueue({data, setData, setPage, tasks}) {
               </div>
             ))}
           </div>
-        )}
-
-        {todayTasks.length === 0 && (
-          <div style={{textAlign:"center",padding:"36px 20px",color:C.t2,fontSize:13}}>
-            ✨ All clear for today
+        ) : (
+          <div style={{textAlign:"center",padding:"28px 20px",color:C.t2,fontSize:13}}>
+            ✨ All routine done for today
           </div>
         )}
+      </Card>
 
-        {/* Done today — collapsible */}
-        {doneTodayList.length > 0 && (
-          <div style={{borderTop:`1px solid ${C.bdr}`,background:"#fafcfa"}}>
-            <button
-              onClick={()=>setDoneCollapsed(v=>!v)}
-              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,fontWeight:700,color:C.green,letterSpacing:"0.02em"}}
-            >
-              <span>✓ Done today · {doneTodayList.length}</span>
-              <span style={{fontSize:11,color:C.t2,fontWeight:500}}>{doneCollapsed ? "Show" : "Hide"} ▾</span>
-            </button>
-            {!doneCollapsed && (
-              <div style={{padding:"0 14px 12px"}}>
-                {doneTodayList.map((d,i) => (
-                  <div key={d.key || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
-                    <span style={{fontSize:20,flexShrink:0}}>{d.emoji}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:C.t2,textDecoration:"line-through"}}>{d.title}</div>
-                      <div style={{fontSize:11,color:C.t2,marginTop:2}}>📍 {d.loc}</div>
-                    </div>
-                    <button onClick={()=>undoDone(d.key)} style={{background:"none",border:`1px solid ${C.bdr}`,color:C.t2,borderRadius:6,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>Undo</button>
+      {/* ── Done today — collapsible, stands on its own ── */}
+      {doneTodayList.length > 0 && (
+        <Card p={false} style={{overflow:"hidden",marginBottom:16,background:"#fafcfa"}}>
+          <button
+            onClick={()=>setDoneCollapsed(v=>!v)}
+            style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:C.green,letterSpacing:"0.02em"}}
+          >
+            <span>✓ Done today · {doneTodayList.length}</span>
+            <span style={{fontSize:11,color:C.t2,fontWeight:500,fontFamily:F.mono}}>{doneCollapsed ? "Show ▾" : "Hide ▴"}</span>
+          </button>
+          {!doneCollapsed && (
+            <div style={{padding:"0 14px 14px"}}>
+              {doneTodayList.map((d,i) => (
+                <div key={d.key || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
+                  <span style={{fontSize:20,flexShrink:0}}>{d.emoji}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:C.t2,textDecoration:"line-through"}}>{d.title}</div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:2}}>📍 {d.loc}</div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
-
-      {/* ── Section 2: THIS WEEK — next 7 days, collapsible ── */}
-      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
-        <button
-          onClick={()=>setWeekCollapsed(v=>!v)}
-          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"none",border:"none",cursor:"pointer",borderBottom: weekCollapsed ? "none" : `1px solid ${C.bdr}`}}
-        >
-          <div>
-            <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,color:C.text,textAlign:"left"}}>📅 This Week</div>
-            <div style={{fontSize:11,color:C.t2,marginTop:2,textAlign:"left"}}>
-              {thisWeek.length === 0 ? "Nothing scheduled" : `${thisWeek.length} task${thisWeek.length === 1 ? "" : "s"} · next 7 days`}
+                  <button onClick={()=>undoDone(d.key)} style={{background:"none",border:`1px solid ${C.bdr}`,color:C.t2,borderRadius:6,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>Undo</button>
+                </div>
+              ))}
             </div>
-          </div>
-          <span style={{fontSize:12,color:C.t2,fontWeight:600}}>{weekCollapsed ? "Show ▾" : "Hide ▴"}</span>
-        </button>
-        {!weekCollapsed && thisWeek.length > 0 && (
-          <div style={{padding:"10px 14px 14px"}}>
-            {thisWeek.map((t,i) => (
-              <TaskRow
-                key={t.key || `week-${i}`}
-                t={t}
-                onOpen={()=>openTask(t)}
-                onToggleStep={togStep}
-                onMarkDone={markDone}
-                onGoToFarm={goToFarm}
-              />
-            ))}
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
+      )}
 
-      {/* ── Section 3: Calendar — full width ── */}
+      {/* ── Section 4: Calendar — full width ── */}
       <Card p={false} style={SX.overflowHidden}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`}}>
           <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.t2,width:32,height:32}}>‹</button>
@@ -2706,7 +2725,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           {cells.map((d,i) => {
             if (!d) return <div key={i}/>;
             const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-            const evts = calendarEvents[dateStr] || [];
+            const evts = (calendarEvents[dateStr] || []).filter(ev => ev.routine !== true);
             const isToday = dateStr === todayStr;
             const isSel = dateStr === selectedDate;
             const hasHarvest = evts.some(e=>e.type==="harvest");
@@ -2737,7 +2756,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
         {/* ── Selected Day Task List ── */}
         {selectedDate && (() => {
-          const selEvts = calendarEvents[selectedDate] || [];
+          const selEvts = (calendarEvents[selectedDate] || []).filter(ev => ev.routine !== true);
           const selDateObj = new Date(selectedDate + "T00:00:00");
           const dayLabel = selDateObj.toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
           const isSelToday = selectedDate === todayStr;
