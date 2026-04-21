@@ -2299,7 +2299,8 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const [openPlotId, setOpenPlotId] = useState(null);
   const [openAnimalId, setOpenAnimalId] = useState(null);
   const [doneCollapsed, setDoneCollapsed] = useState(true);
-  const [weekCollapsed, setWeekCollapsed] = useState(false);
+  const [farmWeekCollapsed, setFarmWeekCollapsed] = useState(true);
+  const [animalsWeekCollapsed, setAnimalsWeekCollapsed] = useState(true);
 
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
@@ -2490,6 +2491,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
   // Coming up this week = important tasks, tomorrow..+7, excluding routine
   const thisWeek = byTime.filter(t => t.daysOut >= 1 && t.daysOut <= 7 && t.routine !== true);
+  // Split coming-up into Farm (plots — harvests, growing steps) vs Animals (periodic care)
+  const thisWeekFarm    = thisWeek.filter(t => !!t.plotId);
+  const thisWeekAnimals = thisWeek.filter(t => !!t.animalId);
 
   // Done today: reconstruct from completion keys by parsing each key and finding the referenced
   // plot or animal in data. We don't read today's calendar events because they're already
@@ -2601,36 +2605,77 @@ function TaskQueue({data, setData, setPage, tasks}) {
         </Card>
       )}
 
-      {/* ── Section 2: COMING UP THIS WEEK — important only, next 7 days, expanded by default ── */}
-      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
+      {/* ── Section 2a: COMING UP — FARM (plot harvests + growing steps, next 7 days) ── */}
+      <Card p={false} style={{overflow:"hidden",marginBottom:12}}>
         <button
-          onClick={()=>setWeekCollapsed(v=>!v)}
-          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#f0f7ff",border:"none",cursor:"pointer",borderBottom: weekCollapsed ? "none" : `1px solid ${C.bdr}`}}
+          onClick={()=>setFarmWeekCollapsed(v=>!v)}
+          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#f0faf0",border:"none",cursor:"pointer",borderBottom: farmWeekCollapsed ? "none" : `1px solid ${C.bdr}`}}
         >
           <div style={{textAlign:"left"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:16}}>📋</span>
-              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Coming Up This Week</div>
+              <span style={{fontSize:16}}>🌱</span>
+              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Farm — This Week</div>
             </div>
             <div style={{fontSize:12,color:C.t2,marginTop:3}}>
-              {thisWeek.length === 0 ? "Nothing important in the next 7 days" : `${thisWeek.length} important task${thisWeek.length === 1 ? "" : "s"} · next 7 days`}
+              {thisWeekFarm.length === 0 ? "Nothing this week" : `${thisWeekFarm.length} task${thisWeekFarm.length === 1 ? "" : "s"} · harvests, transplants, pinching, pruning`}
             </div>
           </div>
-          <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{weekCollapsed ? "Show ▾" : "Hide ▴"}</span>
+          <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{farmWeekCollapsed ? "Show ▾" : "Hide ▴"}</span>
         </button>
-        {!weekCollapsed && thisWeek.length > 0 && (
-          <div style={{padding:"12px 14px"}}>
-            {thisWeek.map((t,i) => (
-              <TaskRow
-                key={t.key || `week-${i}`}
-                t={t}
-                onOpen={()=>openTask(t)}
-                onToggleStep={togStep}
-                onMarkDone={markDone}
-                onGoToFarm={goToFarm}
-              />
-            ))}
+        {!farmWeekCollapsed && (
+          thisWeekFarm.length > 0 ? (
+            <div style={{padding:"12px 14px"}}>
+              {thisWeekFarm.map((t,i) => (
+                <TaskRow
+                  key={t.key || `farm-${i}`}
+                  t={t}
+                  onOpen={()=>openTask(t)}
+                  onToggleStep={togStep}
+                  onMarkDone={markDone}
+                  onGoToFarm={goToFarm}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{textAlign:"center",padding:"20px 16px",color:C.t2,fontSize:12}}>🌱 Nothing growing step or harvest in the next 7 days</div>
+          )
+        )}
+      </Card>
+
+      {/* ── Section 2b: COMING UP — ANIMALS (weekly+ periodic care, next 7 days) ── */}
+      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
+        <button
+          onClick={()=>setAnimalsWeekCollapsed(v=>!v)}
+          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#fff7eb",border:"none",cursor:"pointer",borderBottom: animalsWeekCollapsed ? "none" : `1px solid ${C.bdr}`}}
+        >
+          <div style={{textAlign:"left"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:16}}>🐄</span>
+              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Animals — This Week</div>
+            </div>
+            <div style={{fontSize:12,color:C.t2,marginTop:3}}>
+              {thisWeekAnimals.length === 0 ? "Nothing this week" : `${thisWeekAnimals.length} task${thisWeekAnimals.length === 1 ? "" : "s"} · cleaning, health, bedding, paddock rotation`}
+            </div>
           </div>
+          <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{animalsWeekCollapsed ? "Show ▾" : "Hide ▴"}</span>
+        </button>
+        {!animalsWeekCollapsed && (
+          thisWeekAnimals.length > 0 ? (
+            <div style={{padding:"12px 14px"}}>
+              {thisWeekAnimals.map((t,i) => (
+                <TaskRow
+                  key={t.key || `animals-${i}`}
+                  t={t}
+                  onOpen={()=>openTask(t)}
+                  onToggleStep={togStep}
+                  onMarkDone={markDone}
+                  onGoToFarm={goToFarm}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{textAlign:"center",padding:"20px 16px",color:C.t2,fontSize:12}}>🐄 No scheduled animal care this week</div>
+          )
         )}
       </Card>
 
