@@ -2298,6 +2298,8 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD" or null
   const [openPlotId, setOpenPlotId] = useState(null);
   const [openAnimalId, setOpenAnimalId] = useState(null);
+  const [doneCollapsed, setDoneCollapsed] = useState(true);
+  const [weekCollapsed, setWeekCollapsed] = useState(true);
 
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
@@ -2444,8 +2446,97 @@ function TaskQueue({data, setData, setPage, tasks}) {
     return { calendarEvents: evts, byTime: filteredTimeline };
   }, [data]);
 
-  const urgent = tasks.filter(t => t.pri <= 1);
-  const nonUrgent = tasks.filter(t => t.pri >= 2);
+  // ─── Group today's tasks by location (Option D: location-batched with attention banner) ───
+  const todayStr = toLocalDateKey(new Date());
+  const doneTodayKeys = new Set((data.completions && data.completions[todayStr]) || []);
+
+  // "Attention" = genuinely critical: harvest ready, overdue steps, steps due today, overdue watering
+  // Everything else today = routine (daily feed/water/eggs, regular watering, step work tomorrow-ish)
+  const todayTasks = tasks.filter(t => t.daysOut === 0 || t.type === "harvest" || t.type === "step");
+  const attentionTasks = todayTasks.filter(t =>
+    t.type === "harvest" ||                          // harvest ready → always attention
+    (t.type === "step" && t.daysOut === 0)           // growing step due today → attention
+  );
+  const routineTasks = todayTasks.filter(t => !attentionTasks.includes(t));
+
+  // Group routine by location
+  const routineByLoc = {};
+  routineTasks.forEach(t => {
+    const key = t.loc || "Farm";
+    if (!routineByLoc[key]) routineByLoc[key] = [];
+    routineByLoc[key].push(t);
+  });
+  const routineLocations = Object.keys(routineByLoc).sort();
+
+  // Pick a location icon based on zone type; falls back to 📍
+  const locIcon = (locName) => {
+    const z = data.zones.find(zn => zn.name === locName);
+    if (!z) return "📍";
+    const zt = ZT_MAP.get(z.type);
+    return zt?.icon || "📍";
+  };
+
+  // This Week = byTime items tomorrow..+7 that aren't already in today's section
+  const thisWeek = byTime.filter(t => t.daysOut >= 1 && t.daysOut <= 7);
+
+  // Done today: reconstruct from completion keys by parsing each key and finding the referenced
+  // plot or animal in data. We don't read today's calendar events because they're already
+  // filtered (completed items are hidden from evts).
+  const doneTodayList = [];
+  const seenKeys = new Set();
+  doneTodayKeys.forEach(k => {
+    if (seenKeys.has(k)) return;
+    seenKeys.add(k);
+    // Try to find a matching task-shape from any source (tasks array won't have it since filtered)
+    // Parse the key to reconstruct a minimal display shape
+    // keys look like: plot-{id}-{type} or animal-{id}-{type}
+    const [kind, id, ...rest] = k.split("-");
+    const typeSuffix = rest.join("-");
+    if (kind === "plot") {
+      const p = data.garden.plots.find(x => x.id === id);
+      if (!p) return;
+      const crop = rCM(data.region).get(p.crop);
+      const zone = data.zones.find(z => z.id === p.zone);
+      const loc = zone ? zone.name : "Farm";
+      let title = `${p.name || p.crop}`;
+      let emoji = crop?.emoji || "🌱";
+      if (typeSuffix === "harvest") title = `Harvest ${p.name || p.crop}`;
+      else if (typeSuffix === "water") { title = `Water ${p.name || p.crop}`; emoji = "💧"; }
+      doneTodayList.push({ key: k, emoji, title, loc });
+    } else if (kind === "animal") {
+      const a = (data.livestock?.animals || []).find(x => x.id === id);
+      if (!a) return;
+      const db = LDB[a.type];
+      const label = a.name ? `${a.name} (${a.type})` : (a.count > 1 ? `${a.type} ×${a.count}` : a.type);
+      const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
+      const loc = animalZone ? animalZone.name : "Farm";
+      let emoji = db?.e || "🐾";
+      let title = label;
+      if (typeSuffix === "feed")      title = `Feed ${label}`;
+      else if (typeSuffix === "water"){ title = `Water ${label}`; emoji = "💧"; }
+      else if (typeSuffix === "eggs") { title = `Collect eggs — ${label}`; emoji = "🥚"; }
+      else if (typeSuffix === "clean"){ title = `Clean housing — ${label}`; emoji = "🧹"; }
+      else if (typeSuffix === "health"){title = `Health check — ${label}`; emoji = "🩺"; }
+      else if (typeSuffix === "hoof") { title = `Hoof check — ${label}`; emoji = "🦶"; }
+      else if (typeSuffix === "paddock"){title = `Rotate paddock — ${label}`; emoji = "🔄"; }
+      else if (typeSuffix === "bedding"){title = `Full bedding change — ${label}`; emoji = "🛏️"; }
+      else if (typeSuffix === "hive") { title = `Hive inspection — ${label}`; emoji = "🐝"; }
+      doneTodayList.push({ key: k, emoji, title, loc });
+    }
+  });
+
+  // Un-mark helper: remove a key from today's completions (lets user undo a done tick)
+  const undoDone = (key) => {
+    const existing = (data.completions && data.completions[todayStr]) || [];
+    if (!existing.includes(key)) return;
+    setData({
+      ...data,
+      completions: {
+        ...(data.completions || {}),
+        [todayStr]: existing.filter(k => k !== key),
+      },
+    });
+  };
 
   const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -2460,66 +2551,71 @@ function TaskQueue({data, setData, setPage, tasks}) {
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const todayStr = toLocalDateKey(today);
+  // todayStr already computed at top of function (for completions); reused for calendar grid below
 
   const goToFarm = useCallback(() => setPage("farm"), [setPage]);
 
   return (
     <div className="page-enter" style={{maxWidth:1100}}>
       <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📋 Task Calendar</h2>
-      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>All upcoming farm tasks, sorted by urgency and time</p>
+      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>Today's work first, then the week, then the month</p>
 
-      {/* ── Row 1: Urgent + Upcoming side by side ── */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-
-        {/* Urgent tasks box */}
-        <Card p={false} style={SX.overflowHidden}>
-          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bdr}`,background:"#fff5f5"}}>
-            <div style={SX.rowCenterG6}>
-              <span style={{fontSize:16}}>🔴</span>
-              <div style={{fontSize:14,fontWeight:700,color:C.red}}>Urgent — Act Now</div>
-              {urgent.length>0 && <span style={{marginLeft:"auto",background:C.red,color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10}}>{urgent.length}</span>}
-            </div>
-          </div>
-          <div style={{padding:"10px",overflowY:"auto",maxHeight:260}}>
-            {urgent.length === 0
-              ? <div style={{textAlign:"center",padding:24,color:C.t2,fontSize:12}}>✨ All clear!</div>
-              : urgent.map((t,i) => <TaskRow key={t.key||i} t={t} onOpen={()=>openTask(t)} onToggleStep={togStep} onMarkDone={markDone} onGoToFarm={goToFarm}/>)
-            }
-          </div>
-        </Card>
-
-        {/* Non-urgent tasks box */}
-        <Card p={false} style={SX.overflowHidden}>
-          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bdr}`,background:"#f0f7ff"}}>
-            <div style={SX.rowCenterG6}>
-              <span style={{fontSize:16}}>🔵</span>
-              <div style={{fontSize:14,fontWeight:700,color:C.blue}}>Upcoming & Planned</div>
-              {nonUrgent.length>0 && <span style={{marginLeft:"auto",background:C.blue,color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:10}}>{nonUrgent.length}</span>}
-            </div>
-          </div>
-          <div style={{padding:"10px",overflowY:"auto",maxHeight:260}}>
-            {nonUrgent.length === 0
-              ? <div style={{textAlign:"center",padding:24,color:C.t2,fontSize:12}}>Nothing upcoming</div>
-              : nonUrgent.map((t,i) => <TaskRow key={t.key||i} t={t} onOpen={()=>openTask(t)} onToggleStep={togStep} onMarkDone={markDone} onGoToFarm={goToFarm}/>)
-            }
-          </div>
-        </Card>
-      </div>
-
-      {/* ── Row 2: By Due Date — full width ── */}
+      {/* ── Section 1: TODAY — attention banner + location-grouped routine + done-today ── */}
       <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
-        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`}}>
-          <div style={{fontSize:16,fontWeight:700,fontFamily:F.head}}>⏱ By Due Date</div>
-          <div style={SX.t2_11mt2}>Next 30 days, time-sorted</div>
+        <div style={{padding:"14px 18px 12px",borderBottom:`1px solid ${C.bdr}`,background:"linear-gradient(180deg, #f0faf0, #fff)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:17,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.02em"}}>
+              ☀️ Today
+            </div>
+            <div style={{fontSize:12,color:C.t2,fontFamily:F.mono,fontWeight:600}}>
+              {new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
+            </div>
+          </div>
+          <div style={{fontSize:12,color:C.t2,marginTop:2}}>
+            {todayTasks.length === 0
+              ? "Nothing to do — enjoy the day 🌱"
+              : attentionTasks.length > 0
+                ? `${attentionTasks.length} needs attention · ${routineTasks.length} routine`
+                : `${routineTasks.length} routine task${routineTasks.length === 1 ? "" : "s"}`
+            }
+          </div>
         </div>
-        <div style={{padding:"10px 14px",overflowY:"auto",maxHeight:320}}>
-          {byTime.length === 0
-            ? <div style={{textAlign:"center",padding:24,color:C.t2,fontSize:12}}>No upcoming tasks</div>
-            : <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                {byTime.slice(0,20).map((t,i) => (
+
+        {/* Attention banner — harvests ready + today-due steps */}
+        {attentionTasks.length > 0 && (
+          <div style={{padding:"12px 14px",background:"#fff5f5",borderBottom:`1px solid ${C.bdr}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+              <span style={{fontSize:14}}>⚠️</span>
+              <div style={{fontSize:12,fontWeight:700,color:C.red,letterSpacing:"0.02em"}}>NEEDS ATTENTION</div>
+            </div>
+            {attentionTasks.map((t,i) => (
+              <TaskRow
+                key={t.key || `att-${i}`}
+                t={t}
+                onOpen={()=>openTask(t)}
+                onToggleStep={togStep}
+                onMarkDone={markDone}
+                onGoToFarm={goToFarm}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Routine, grouped by location */}
+        {routineLocations.length > 0 && (
+          <div style={{padding:"14px"}}>
+            {routineLocations.map(loc => (
+              <div key={loc} style={{marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingLeft:2}}>
+                  <span style={{fontSize:16}}>{locIcon(loc)}</span>
+                  <div style={{fontSize:12,fontWeight:700,color:C.text,textTransform:"uppercase",letterSpacing:"0.04em"}}>At the {loc}</div>
+                  <div style={{marginLeft:"auto",fontSize:11,color:C.t2,fontWeight:600,fontFamily:F.mono}}>
+                    {routineByLoc[loc].length}
+                  </div>
+                </div>
+                {routineByLoc[loc].map((t,i) => (
                   <TaskRow
-                    key={t.key || i}
+                    key={t.key || `${loc}-${i}`}
                     t={t}
                     onOpen={()=>openTask(t)}
                     onToggleStep={togStep}
@@ -2528,11 +2624,75 @@ function TaskQueue({data, setData, setPage, tasks}) {
                   />
                 ))}
               </div>
-          }
-        </div>
+            ))}
+          </div>
+        )}
+
+        {todayTasks.length === 0 && (
+          <div style={{textAlign:"center",padding:"36px 20px",color:C.t2,fontSize:13}}>
+            ✨ All clear for today
+          </div>
+        )}
+
+        {/* Done today — collapsible */}
+        {doneTodayList.length > 0 && (
+          <div style={{borderTop:`1px solid ${C.bdr}`,background:"#fafcfa"}}>
+            <button
+              onClick={()=>setDoneCollapsed(v=>!v)}
+              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 16px",background:"none",border:"none",cursor:"pointer",fontSize:12,fontWeight:700,color:C.green,letterSpacing:"0.02em"}}
+            >
+              <span>✓ Done today · {doneTodayList.length}</span>
+              <span style={{fontSize:11,color:C.t2,fontWeight:500}}>{doneCollapsed ? "Show" : "Hide"} ▾</span>
+            </button>
+            {!doneCollapsed && (
+              <div style={{padding:"0 14px 12px"}}>
+                {doneTodayList.map((d,i) => (
+                  <div key={d.key || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
+                    <span style={{fontSize:20,flexShrink:0}}>{d.emoji}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:C.t2,textDecoration:"line-through"}}>{d.title}</div>
+                      <div style={{fontSize:11,color:C.t2,marginTop:2}}>📍 {d.loc}</div>
+                    </div>
+                    <button onClick={()=>undoDone(d.key)} style={{background:"none",border:`1px solid ${C.bdr}`,color:C.t2,borderRadius:6,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>Undo</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
-      {/* ── Row 3: Calendar — full width ── */}
+      {/* ── Section 2: THIS WEEK — next 7 days, collapsible ── */}
+      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
+        <button
+          onClick={()=>setWeekCollapsed(v=>!v)}
+          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"none",border:"none",cursor:"pointer",borderBottom: weekCollapsed ? "none" : `1px solid ${C.bdr}`}}
+        >
+          <div>
+            <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,color:C.text,textAlign:"left"}}>📅 This Week</div>
+            <div style={{fontSize:11,color:C.t2,marginTop:2,textAlign:"left"}}>
+              {thisWeek.length === 0 ? "Nothing scheduled" : `${thisWeek.length} task${thisWeek.length === 1 ? "" : "s"} · next 7 days`}
+            </div>
+          </div>
+          <span style={{fontSize:12,color:C.t2,fontWeight:600}}>{weekCollapsed ? "Show ▾" : "Hide ▴"}</span>
+        </button>
+        {!weekCollapsed && thisWeek.length > 0 && (
+          <div style={{padding:"10px 14px 14px"}}>
+            {thisWeek.map((t,i) => (
+              <TaskRow
+                key={t.key || `week-${i}`}
+                t={t}
+                onOpen={()=>openTask(t)}
+                onToggleStep={togStep}
+                onMarkDone={markDone}
+                onGoToFarm={goToFarm}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Section 3: Calendar — full width ── */}
       <Card p={false} style={SX.overflowHidden}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`}}>
           <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.t2,width:32,height:32}}>‹</button>
