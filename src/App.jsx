@@ -1312,6 +1312,20 @@ const POULTRY_SPECIES = new Set(["Chicken","Duck","Turkey","Goose","Quail","Guin
 const HOOFED_SPECIES  = new Set(["Goat","Sheep","Cow","Pig","Donkey","Horse"]);
 const GRAZER_SPECIES  = new Set(["Goat","Sheep","Cow","Donkey","Horse"]);
 
+// Pluralize species names with head count prefix. Used in grouped task titles.
+// "Feed 1 Chicken" / "Feed 2 Chickens" / "Feed 3 Sheep" / "Feed 5 Geese"
+const ANIMAL_PLURALS = {
+  Chicken: "Chickens", Goat: "Goats", Sheep: "Sheep", Cow: "Cows",
+  Pig: "Pigs", Rabbit: "Rabbits", Duck: "Ducks", Turkey: "Turkeys",
+  Goose: "Geese", Quail: "Quails", "Guinea Fowl": "Guinea Fowl",
+  Donkey: "Donkeys", Horse: "Horses", Bee: "Bees",
+};
+function animalPlural(type, count) {
+  if (count <= 1) return `1 ${type}`;
+  const plural = ANIMAL_PLURALS[type] || (type + "s");
+  return `${count} ${plural}`;
+}
+
 /* ═══════════════════════════════════════════
    CROP KNOWLEDGE DATABASE
    ═══════════════════════════════════════════ */
@@ -1982,53 +1996,80 @@ function buildTaskQueue(data) {
     }
   });
 
-  // ─── Animal tasks (daily + periodic, staggered by ID hash) ───
+  // ─── Animal tasks ───
+  // Species-grouped: feed, water, eggs, clean, bedding, paddock (one task per species)
+  // Per-animal:      health, hoof, hive inspection (one task per individual)
   const dayNum = Math.floor(now.getTime() / 864e5);
   const curMonth = now.getMonth() + 1; // 1-12
   const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
   const animalLoc = animalZone ? animalZone.name : "Farm";
 
+  // Build species summary: count, total head, first animal-id (stable hash seed), db ref
+  const speciesMap = new Map();
+  (data.livestock?.animals || []).forEach(a => {
+    const db = LDB[a.type];
+    if (!db) return;
+    if (!speciesMap.has(a.type)) {
+      speciesMap.set(a.type, { type: a.type, db, groupCount: 0, headCount: 0, firstId: a.id });
+    }
+    const s = speciesMap.get(a.type);
+    s.groupCount += 1;
+    s.headCount += (a.count || 1);
+  });
+
+  // Hash a string deterministically (used for species-level stagger)
+  const hashStr = (str) => {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  };
+
+  // Species-grouped tasks
+  speciesMap.forEach(s => {
+    const { type, db, headCount } = s;
+    const e = db.e;
+    const speciesLabel = animalPlural(type, headCount);
+    const sHash = hashStr(type);
+
+    if (type !== "Bee") {
+      tasks.push({ key: `species-${type}-feed`,  pri: 1, type: "feed",  emoji: e,    title: `Feed ${speciesLabel}`,  desc: db.feed, loc: animalLoc, speciesType: type, headCount, daysOut: 0, routine: true });
+      tasks.push({ key: `species-${type}-water`, pri: 1, type: "water", emoji: "💧", title: `Water ${speciesLabel}`, desc: `Fresh water — refill and clean trough.`, loc: animalLoc, speciesType: type, headCount, daysOut: 0, routine: true });
+    }
+    if (POULTRY_SPECIES.has(type)) {
+      const eggNote = db.out?.Eggs?.s || "";
+      tasks.push({ key: `species-${type}-eggs`, pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${speciesLabel}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, speciesType: type, headCount, daysOut: 0, routine: true });
+    }
+    if (type !== "Bee" && (dayNum + sHash) % 7 === 0) {
+      tasks.push({ key: `species-${type}-clean`, pri: 2, type: "clean", emoji: "🧹", title: `Clean housing — ${speciesLabel}`, desc: `Remove soiled bedding, refresh straw, check for damp.`, loc: animalLoc, speciesType: type, headCount, daysOut: 0 });
+    }
+    if (type !== "Bee" && (dayNum + sHash) % 30 === 0) {
+      tasks.push({ key: `species-${type}-bedding`, pri: 2, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${speciesLabel}`, desc: `Strip everything, disinfect surfaces, fresh straw or shavings.`, loc: animalLoc, speciesType: type, headCount, daysOut: 0 });
+    }
+    if (GRAZER_SPECIES.has(type) && (dayNum + sHash) % 21 === 0) {
+      tasks.push({ key: `species-${type}-paddock`, pri: 2, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${speciesLabel}`, desc: `Move to fresh pasture. Rest current section 21+ days to break parasite cycle.`, loc: animalLoc, speciesType: type, headCount, daysOut: 0 });
+    }
+  });
+
+  // Per-animal tasks (health, hoof, hive)
   (data.livestock?.animals || []).forEach(a => {
     const db = LDB[a.type];
     if (!db) return;
     const e = db.e;
-    const label = a.name ? `${a.name} (${a.type})` : (a.count > 1 ? `${a.type} ×${a.count}` : a.type);
-    let hash = 0;
-    for (let i = 0; i < a.id.length; i++) hash = (hash * 31 + a.id.charCodeAt(i)) >>> 0;
+    // For per-animal tasks: use the animal's own name if given, else "Chicken #3"
+    const label = a.name ? `${a.name} (${a.type})` : a.type;
+    const aHash = hashStr(a.id);
 
-    if (a.type !== "Bee") {
-      // Daily: feed + water (always today)
-      tasks.push({ key: `animal-${a.id}-feed`,  pri: 1, type: "feed",  emoji: e,    title: `Feed ${label}`,  desc: db.feed, loc: animalLoc, animalId: a.id, daysOut: 0, routine: true });
-      tasks.push({ key: `animal-${a.id}-water`, pri: 1, type: "water", emoji: "💧", title: `Water ${label}`, desc: `Fresh water — refill and clean trough.`, loc: animalLoc, animalId: a.id, daysOut: 0, routine: true });
-    }
-    // Daily: egg collection (poultry only)
-    if (POULTRY_SPECIES.has(a.type)) {
-      const eggNote = db.out?.Eggs?.s || "";
-      tasks.push({ key: `animal-${a.id}-eggs`, pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, animalId: a.id, daysOut: 0, routine: true });
-    }
-    // Weekly: housing cleaning (non-bee)
-    if (a.type !== "Bee" && (dayNum + hash) % 7 === 0) {
-      tasks.push({ key: `animal-${a.id}-clean`, pri: 2, type: "clean", emoji: "🧹", title: `Clean housing — ${label}`, desc: `Remove soiled bedding, refresh straw, check for damp.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
-    }
-    // Weekly: health check (offset 3d so it doesn't collide with cleaning)
-    if (a.type !== "Bee" && (dayNum + hash + 3) % 7 === 0) {
+    // Weekly: health check (per animal, offset 3d from cleaning cycle)
+    if (a.type !== "Bee" && (dayNum + aHash + 3) % 7 === 0) {
       const commonIssue = db.inj?.[0]?.n || "injury or parasites";
       tasks.push({ key: `animal-${a.id}-health`, pri: 2, type: "health", emoji: "🩺", title: `Health check — ${label}`, desc: `Inspect body condition, eyes, coat. Watch for: ${commonIssue}.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
-    // Bi-weekly: hoof check (hoofed species)
-    if (HOOFED_SPECIES.has(a.type) && (dayNum + hash) % 14 === 0) {
+    // Bi-weekly: hoof check (per animal, hoofed species only)
+    if (HOOFED_SPECIES.has(a.type) && (dayNum + aHash) % 14 === 0) {
       tasks.push({ key: `animal-${a.id}-hoof`, pri: 2, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, desc: `Trim overgrowth, check for rot, stones, cracks.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
-    // 21d: paddock rotation (grazers)
-    if (GRAZER_SPECIES.has(a.type) && (dayNum + hash) % 21 === 0) {
-      tasks.push({ key: `animal-${a.id}-paddock`, pri: 2, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`, desc: `Move to fresh pasture. Rest current section 21+ days to break parasite cycle.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
-    }
-    // Monthly: full bedding change (non-bee)
-    if (a.type !== "Bee" && (dayNum + hash) % 30 === 0) {
-      tasks.push({ key: `animal-${a.id}-bedding`, pri: 2, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`, desc: `Strip everything, disinfect surfaces, fresh straw or shavings.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
-    }
-    // 10d: hive inspection (bees, March–September only)
-    if (a.type === "Bee" && curMonth >= 3 && curMonth <= 9 && (dayNum + hash) % 10 === 0) {
+    // 10d: hive inspection (per hive, March–September only)
+    if (a.type === "Bee" && curMonth >= 3 && curMonth <= 9 && (dayNum + aHash) % 10 === 0) {
       tasks.push({ key: `animal-${a.id}-hive`, pri: 2, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, desc: `Check brood pattern, honey stores, queen presence. Look for varroa mites.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
   });
@@ -2359,74 +2400,116 @@ function TaskQueue({data, setData, setPage, tasks}) {
       });
     });
 
-    // ─── Animal tasks projected forward (daily + periodic) ───
+    // ─── Animal tasks projected forward (species-grouped + per-animal) ───
     const today0 = Math.floor(now.getTime() / 864e5);
     const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
     const aLoc = animalZone ? animalZone.name : "Farm";
 
+    // Hash helper (local — matches buildTaskQueue)
+    const hashStr2 = (str) => {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      return h;
+    };
+
+    // Build species summary for grouped projections
+    const speciesMap2 = new Map();
     (data.livestock?.animals || []).forEach(a => {
       const db = LDB[a.type];
       if (!db) return;
-      const e = db.e;
-      const label = a.name ? `${a.name} (${a.type})` : (a.count > 1 ? `${a.type} ×${a.count}` : a.type);
-      let hash = 0;
-      for (let i = 0; i < a.id.length; i++) hash = (hash * 31 + a.id.charCodeAt(i)) >>> 0;
+      if (!speciesMap2.has(a.type)) speciesMap2.set(a.type, { type: a.type, db, headCount: 0 });
+      speciesMap2.get(a.type).headCount += (a.count || 1);
+    });
 
-      // Daily tasks — every day in the window
+    // Species-grouped tasks (feed/water/eggs/clean/bedding/paddock)
+    speciesMap2.forEach(s => {
+      const { type, db, headCount } = s;
+      const e = db.e;
+      const speciesLabel = animalPlural(type, headCount);
+      const sHash = hashStr2(type);
+
+      // Daily tasks
       const dailies = [];
-      if (a.type !== "Bee") {
-        dailies.push({type: "feed",  emoji: e,    title: `Feed ${label}`,     keySuffix: "feed"});
-        dailies.push({type: "water", emoji: "💧", title: `Water ${label}`,    keySuffix: "water"});
+      if (type !== "Bee") {
+        dailies.push({type: "feed",  emoji: e,    title: `Feed ${speciesLabel}`,  keySuffix: "feed"});
+        dailies.push({type: "water", emoji: "💧", title: `Water ${speciesLabel}`, keySuffix: "water"});
       }
-      if (POULTRY_SPECIES.has(a.type)) {
-        dailies.push({type: "eggs", emoji: "🥚", title: `Collect eggs — ${label}`, keySuffix: "eggs"});
+      if (POULTRY_SPECIES.has(type)) {
+        dailies.push({type: "eggs", emoji: "🥚", title: `Collect eggs — ${speciesLabel}`, keySuffix: "eggs"});
       }
       dailies.forEach(dt => {
         for (let d = 0; d <= 60; d++) {
           const dueDate = new Date(now.getTime() + d * 864e5);
           const key = toLocalDateKey(dueDate);
-          const taskKey = `animal-${a.id}-${dt.keySuffix}`;
+          const taskKey = `species-${type}-${dt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
-          evts[key].push({type: dt.type, emoji: dt.emoji, label: dt.title, animalId: a.id, key: taskKey, routine: true});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: aLoc, animalId: a.id, key: taskKey, routine: true});
+          evts[key].push({type: dt.type, emoji: dt.emoji, label: dt.title, speciesType: type, key: taskKey, routine: true});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: aLoc, speciesType: type, key: taskKey, routine: true});
         }
       });
 
-      // Periodic task definitions
+      // Periodic species-grouped tasks
       const periodics = [];
-      if (a.type !== "Bee") {
-        periodics.push({period: 7,  offset: 0, type: "clean",   emoji: "🧹", title: `Clean housing — ${label}`,      keySuffix: "clean"});
-        periodics.push({period: 7,  offset: 3, type: "health",  emoji: "🩺", title: `Health check — ${label}`,       keySuffix: "health"});
-        periodics.push({period: 30, offset: 0, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${label}`, keySuffix: "bedding"});
+      if (type !== "Bee") {
+        periodics.push({period: 7,  offset: 0, type: "clean",   emoji: "🧹", title: `Clean housing — ${speciesLabel}`,      keySuffix: "clean"});
+        periodics.push({period: 30, offset: 0, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${speciesLabel}`, keySuffix: "bedding"});
       }
-      if (HOOFED_SPECIES.has(a.type)) {
-        periodics.push({period: 14, offset: 0, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, keySuffix: "hoof"});
+      if (GRAZER_SPECIES.has(type)) {
+        periodics.push({period: 21, offset: 0, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${speciesLabel}`, keySuffix: "paddock"});
       }
-      if (GRAZER_SPECIES.has(a.type)) {
-        periodics.push({period: 21, offset: 0, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${label}`, keySuffix: "paddock"});
-      }
-      const isBee = a.type === "Bee";
-
-      // Project each periodic task into the 60-day window
       periodics.forEach(pt => {
         for (let d = 0; d <= 60; d++) {
-          if ((today0 + d + hash + pt.offset) % pt.period !== 0) continue;
+          if ((today0 + d + sHash + pt.offset) % pt.period !== 0) continue;
           const dueDate = new Date(now.getTime() + d * 864e5);
           const key = toLocalDateKey(dueDate);
-          const taskKey = `animal-${a.id}-${pt.keySuffix}`;
+          const taskKey = `species-${type}-${pt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
-          evts[key].push({type: pt.type, emoji: pt.emoji, label: pt.title, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: aLoc, animalId: a.id, key: taskKey});
+          evts[key].push({type: pt.type, emoji: pt.emoji, label: pt.title, speciesType: type, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: aLoc, speciesType: type, key: taskKey});
         }
       });
+    });
 
-      // Bee hive inspections — 10d cycle, only during Mar–Sep
-      if (isBee) {
+    // Per-animal tasks (health, hoof, hive) — genuinely per-individual
+    (data.livestock?.animals || []).forEach(a => {
+      const db = LDB[a.type];
+      if (!db) return;
+      const label = a.name ? `${a.name} (${a.type})` : a.type;
+      const aHash = hashStr2(a.id);
+
+      // Weekly health check (per animal)
+      if (a.type !== "Bee") {
+        for (let d = 0; d <= 60; d++) {
+          if ((today0 + d + aHash + 3) % 7 !== 0) continue;
+          const dueDate = new Date(now.getTime() + d * 864e5);
+          const key = toLocalDateKey(dueDate);
+          const taskKey = `animal-${a.id}-health`;
+          if (!evts[key]) evts[key] = [];
+          evts[key].push({type: "health", emoji: "🩺", label: `Health check — ${label}`, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "health", emoji: "🩺", title: `Health check — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
+        }
+      }
+
+      // Bi-weekly hoof check (per hoofed animal)
+      if (HOOFED_SPECIES.has(a.type)) {
+        for (let d = 0; d <= 60; d++) {
+          if ((today0 + d + aHash) % 14 !== 0) continue;
+          const dueDate = new Date(now.getTime() + d * 864e5);
+          const key = toLocalDateKey(dueDate);
+          const taskKey = `animal-${a.id}-hoof`;
+          if (!evts[key]) evts[key] = [];
+          evts[key].push({type: "hoof", emoji: "🦶", label: `Hoof check — ${label}`, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
+        }
+      }
+
+      // Bee hive inspections — 10d cycle, Mar–Sep only, per hive
+      if (a.type === "Bee") {
         for (let d = 0; d <= 60; d++) {
           const due = new Date(now.getTime() + d * 864e5);
           const m = due.getMonth() + 1;
           if (m < 3 || m > 9) continue;
-          if ((today0 + d + hash) % 10 !== 0) continue;
+          if ((today0 + d + aHash) % 10 !== 0) continue;
           const key = toLocalDateKey(due);
           const taskKey = `animal-${a.id}-hive`;
           if (!evts[key]) evts[key] = [];
@@ -2505,7 +2588,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
     seenKeys.add(k);
     // Try to find a matching task-shape from any source (tasks array won't have it since filtered)
     // Parse the key to reconstruct a minimal display shape
-    // keys look like: plot-{id}-{type} or animal-{id}-{type}
+    // keys look like: plot-{id}-{type}, animal-{id}-{type}, or species-{Type}-{type}
     const [kind, id, ...rest] = k.split("-");
     const typeSuffix = rest.join("-");
     if (kind === "plot") {
@@ -2519,23 +2602,37 @@ function TaskQueue({data, setData, setPage, tasks}) {
       if (typeSuffix === "harvest") title = `Harvest ${p.name || p.crop}`;
       else if (typeSuffix === "water") { title = `Water ${p.name || p.crop}`; emoji = "💧"; }
       doneTodayList.push({ key: k, emoji, title, loc });
+    } else if (kind === "species") {
+      // Grouped species task — id is the species type name (e.g. "Chicken")
+      const speciesType = id;
+      const animals = (data.livestock?.animals || []).filter(x => x.type === speciesType);
+      if (animals.length === 0) return;
+      const headCount = animals.reduce((sum, x) => sum + (x.count || 1), 0);
+      const db = LDB[speciesType];
+      const speciesLabel = animalPlural(speciesType, headCount);
+      const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
+      const loc = animalZone ? animalZone.name : "Farm";
+      let emoji = db?.e || "🐾";
+      let title = speciesLabel;
+      if (typeSuffix === "feed")       title = `Feed ${speciesLabel}`;
+      else if (typeSuffix === "water"){ title = `Water ${speciesLabel}`; emoji = "💧"; }
+      else if (typeSuffix === "eggs") { title = `Collect eggs — ${speciesLabel}`; emoji = "🥚"; }
+      else if (typeSuffix === "clean"){ title = `Clean housing — ${speciesLabel}`; emoji = "🧹"; }
+      else if (typeSuffix === "bedding"){title = `Full bedding change — ${speciesLabel}`; emoji = "🛏️"; }
+      else if (typeSuffix === "paddock"){title = `Rotate paddock — ${speciesLabel}`; emoji = "🔄"; }
+      doneTodayList.push({ key: k, emoji, title, loc });
     } else if (kind === "animal") {
       const a = (data.livestock?.animals || []).find(x => x.id === id);
       if (!a) return;
       const db = LDB[a.type];
-      const label = a.name ? `${a.name} (${a.type})` : (a.count > 1 ? `${a.type} ×${a.count}` : a.type);
+      // Per-animal keys are now only health/hoof/hive — use animal's individual label
+      const label = a.name ? `${a.name} (${a.type})` : a.type;
       const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
       const loc = animalZone ? animalZone.name : "Farm";
       let emoji = db?.e || "🐾";
       let title = label;
-      if (typeSuffix === "feed")      title = `Feed ${label}`;
-      else if (typeSuffix === "water"){ title = `Water ${label}`; emoji = "💧"; }
-      else if (typeSuffix === "eggs") { title = `Collect eggs — ${label}`; emoji = "🥚"; }
-      else if (typeSuffix === "clean"){ title = `Clean housing — ${label}`; emoji = "🧹"; }
-      else if (typeSuffix === "health"){title = `Health check — ${label}`; emoji = "🩺"; }
+      if (typeSuffix === "health"){title = `Health check — ${label}`; emoji = "🩺"; }
       else if (typeSuffix === "hoof") { title = `Hoof check — ${label}`; emoji = "🦶"; }
-      else if (typeSuffix === "paddock"){title = `Rotate paddock — ${label}`; emoji = "🔄"; }
-      else if (typeSuffix === "bedding"){title = `Full bedding change — ${label}`; emoji = "🛏️"; }
       else if (typeSuffix === "hive") { title = `Hive inspection — ${label}`; emoji = "🐝"; }
       doneTodayList.push({ key: k, emoji, title, loc });
     }
