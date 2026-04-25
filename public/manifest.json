@@ -2,7 +2,7 @@
   "name": "MyTerra — Farm Management",
   "short_name": "MyTerra",
   "description": "Farm management app for beginner homesteaders — Mediterranean focus",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#f5f5f7",
   "theme_color": "#2E7D32",

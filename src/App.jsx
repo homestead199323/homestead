@@ -33,6 +33,8 @@ const DB = {
   }
 };
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+// Append an entry to the activity log, capped at 200 entries to prevent localStorage overflow.
+const appendLog = (logArr, entry) => [...(logArr || []), entry].slice(-200);
 
 // Local-time YYYY-MM-DD key. Replaces .toISOString().slice(0,10) which is UTC
 // and can be off by one day in non-UTC timezones (e.g. Albania UTC+1/+2).
@@ -1770,7 +1772,7 @@ const LIVESTOCK_CALENDAR = {
 /* ═══════════════════════════════════════════
    DEFAULT STATE
    ═══════════════════════════════════════════ */
-const DEF = {zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,region:"mediterranean",city:"",
+const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,region:"mediterranean",city:"",
   // Daily task completions — keyed by local YYYY-MM-DD, value is array of task keys
   // completed on that day. Auto-pruned to last 30 days on migration.
   completions: {},
@@ -2136,7 +2138,7 @@ function PlotOverlay({plot, data, setData, onClose}) {
       ...data,
       garden: {plots: data.garden.plots.map(x => x.id === p.id ? {...x, status: "harvested"} : x)},
       pantry: {items: [...data.pantry.items, item]},
-      log: [...data.log, {text: `🧺 Harvested ${qty}kg ${p.crop}`}],
+      log: appendLog(data.log, {text: `🧺 Harvested ${qty}kg ${p.crop}`}),
     });
     onClose();
   };
@@ -3687,7 +3689,7 @@ function Farming({data, setData, pageData, clearPageData}) {
     const _plants = _qty ? (_measure==="area" ? plantsFromArea(form.crop,_qty,data.region) : _qty) : null;
     const _yieldKg = _qty ? expectedYield(form.crop, _qty, _measure, v?.yld, data.region) : null;
     const p={id:uid(),crop:form.crop,variety:form.variety||"",name:displayName,plantDate:form.plantDate,harvestDate:autoH(),status:form.plantDate?"planted":"planned",zone:form.zone,varietyNote:v?.note||"",steps:c?c.steps.map(s=>({...s,done:false})):[],qty:_qty,measureType:_measure,plantCount:_plants,expectedYieldKg:_yieldKg};
-    const nd={...data,garden:{plots:[...data.garden.plots,p]},log:[...data.log,{text:`🌱 Planted ${displayName}${_plants?` (${_plants} plants)`:""}`}]};
+    const nd={...data,garden:{plots:[...data.garden.plots,p]},log:appendLog(data.log,{text:`🌱 Planted ${displayName}${_plants?` (${_plants} plants)`:""}`})};
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:new Date().toISOString().slice(0,10),cat:"Seeds"}]};
     setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setCropSearch("");setCropDropdownOpen(false);setShowAdd(false);
   };
@@ -3905,7 +3907,7 @@ function Livestock({data, setData}) {
   const selectedBreed = breedOptions.find(b => b.name === form.breed);
 
   const add=()=>{
-    const nd={...data,livestock:{animals:[...data.livestock.animals,{...form,id:uid(),count:+form.count||1}]},log:[...data.log,{text:`🐄 Added ${form.count} ${form.type}${form.breed?` (${form.breed})`:""}`}]};
+    const nd={...data,livestock:{animals:[...data.livestock.animals,{...form,id:uid(),count:+form.count||1}]},log:appendLog(data.log,{text:`🐄 Added ${form.count} ${form.type}${form.breed?` (${form.breed})`:""}`})};
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:new Date().toISOString().slice(0,10),cat:"Animals"}]};
     setData(nd);setForm({name:"",type:"Chicken",breed:"",count:"1",cost:""});setShowAdd(false);
   };
@@ -3917,12 +3919,12 @@ function Livestock({data, setData}) {
     const finalQty = qty > 0 ? qty : Math.round(p.p*animal.count*10)/10;
     setData({...data,
       pantry:{items:[...data.pantry.items,{id:uid(),name:`${animal.type} ${produce}`,category:produce==="Eggs"?"Eggs":produce==="Meat"?"Meat":"Dairy",qty:finalQty,unit:produce==="Eggs"?"eggs":"kg",source:"livestock",addedDate:new Date().toISOString().slice(0,10),storageNote:p.s}]},
-      log:[...data.log,{text:`Collected ${finalQty} ${produce==="Eggs"?"eggs":produce.toLowerCase()} from ${animal.name||animal.type}`}]
+      log:appendLog(data.log,{text:`Collected ${finalQty} ${produce==="Eggs"?"eggs":produce.toLowerCase()} from ${animal.name||animal.type}`})
     });
     setShowCollect(null);setCollectQty("");
   };
 
-  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...data,livestock:{animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:{items:[...data.pantry.items,{id:uid(),name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",addedDate:new Date().toISOString().slice(0,10),storageNote:mp.s}]},log:[...data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`}]});setShowK(null);};
+  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...data,livestock:{animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:{items:[...data.pantry.items,{id:uid(),name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",addedDate:new Date().toISOString().slice(0,10),storageNote:mp.s}]},log:appendLog(data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`})});setShowK(null);};
   const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;
 
   return (
@@ -3995,7 +3997,7 @@ function Pantry({data, setData}) {
   const [form,setForm]=useState({name:"",category:"Other",qty:"",unit:"kg"});
   const add=()=>{if(!form.name)return;setData({...data,pantry:{items:[...data.pantry.items,{...form,id:uid(),qty:+form.qty||0,source:"manual",addedDate:new Date().toISOString().slice(0,10)}]}});setForm({name:"",category:"Other",qty:"",unit:"kg"});setShowAdd(false);};
   const del=id=>setData({...data,pantry:{items:data.pantry.items.filter(i=>i.id!==id)}});
-  const eat=(item,q)=>{setData({...data,pantry:{items:data.pantry.items.map(i=>i.id===item.id?(i.qty-q<=0?null:{...i,qty:Math.round((i.qty-q)*10)/10}):i).filter(Boolean)},log:[...data.log,{text:`Ate ${q}${item.unit} ${item.name}`}]});};
+  const eat=(item,q)=>{setData({...data,pantry:{items:data.pantry.items.map(i=>i.id===item.id?(i.qty-q<=0?null:{...i,qty:Math.round((i.qty-q)*10)/10}):i).filter(Boolean)},log:appendLog(data.log,{text:`Ate ${q}${item.unit} ${item.name}`})});};
   const cats=["All","Fresh Produce","Meat","Eggs","Dairy","Preserved","Grain","Other"];
   const fil=cat==="All"?data.pantry.items:data.pantry.items.filter(i=>i.category===cat);
   const itemIcon = (item) => {
@@ -6133,6 +6135,7 @@ function AppInner() {
     try {
       const d = DB.load();
       let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
+      if (!initial.schemaVersion) initial = {...initial, schemaVersion: 7};
       initial = migrateZones(initial);
       initial = migrateGamify(initial);
       initial = migrateCompletions(initial);
@@ -6328,7 +6331,7 @@ function FeedbackSurvey({ setPage }) {
   const [answers, setAnswers] = useState({ module: "", confusion: "", missing: "", pay: "" });
   const [submitted, setSubmitted] = useState(false);
 
-  const modules = ["Dashboard","Tasks","Farm Layout","Farming","Seasonal Calendar","Livestock","Pantry","Financials","Manuals","AI Assistant"];
+  const modules = ["Dashboard","Tasks","Farm Layout","Farming","Seasonal Calendar","Livestock","Pantry","Financials","Manuals","Smart offline farm assistant"];
 
   const update = (key, val) => setAnswers(prev => ({ ...prev, [key]: val }));
 
