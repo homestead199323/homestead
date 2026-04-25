@@ -1957,12 +1957,15 @@ function buildTaskQueue(data) {
   const doneToday = new Set((data.completions && data.completions[todayKey]) || []);
   const tasks = [];
 
+  // O(1) zone lookup — built once per call instead of linear .find per plot
+  const zoneById = new Map((data.zones || []).map(z => [z.id, z]));
+
   data.garden.plots.forEach(p => {
     if (!p.plantDate || p.status === "harvested") return;
     const crop = rCM(data.region).get(p.crop);
     if (!crop || !crop.days) return;
     const dSince = Math.floor((now - new Date(p.plantDate)) / 864e5);
-    const zone = data.zones.find(z => z.id === p.zone);
+    const zone = zoneById.get(p.zone);
     const loc = zone ? zone.name : "Farm";
     const dLeft = crop.days - dSince;
 
@@ -2363,6 +2366,11 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const openPlot = openPlotId ? data.garden.plots.find(p => p.id === openPlotId) : null;
   const openAnimal = openAnimalId ? (data.livestock?.animals || []).find(a => a.id === openAnimalId) : null;
 
+  // O(1) zone lookups — used inside memoized calendarEvents/byTime + render path
+  const zoneById = useMemo(() => new Map((data.zones || []).map(z => [z.id, z])), [data.zones]);
+  const animalZone = useMemo(() => (data.zones || []).find(z => ["barn","pasture"].includes(z.type)) || null, [data.zones]);
+  const animalLocName = animalZone ? animalZone.name : "Farm";
+
   // ── CONSOLIDATED: compute calendar events AND by-time list in ONE pass over plots ──
   const { calendarEvents, byTime } = useMemo(() => {
     const evts = {};
@@ -2376,7 +2384,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       const crop = rCM(data.region).get(p.crop);
       if (!crop) return;
       const plantMs = new Date(p.plantDate).getTime();
-      const loc = data.zones.find(z => z.id === p.zone)?.name || "Farm";
+      const loc = zoneById.get(p.zone)?.name || "Farm";
 
       // Harvest date
       const hDate = new Date(plantMs + crop.days * 864e5);
@@ -2404,8 +2412,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
     // ─── Animal tasks projected forward (species-grouped + per-animal) ───
     const today0 = Math.floor(now.getTime() / 864e5);
-    const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
-    const aLoc = animalZone ? animalZone.name : "Farm";
+    const aLoc = animalLocName;
 
     // Hash helper (local — matches buildTaskQueue)
     const hashStr2 = (str) => {
@@ -2612,8 +2619,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       const headCount = animals.reduce((sum, x) => sum + (x.count || 1), 0);
       const db = LDB[speciesType];
       const speciesLabel = animalPlural(speciesType, headCount);
-      const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
-      const loc = animalZone ? animalZone.name : "Farm";
+      const loc = animalLocName;
       let emoji = db?.e || "🐾";
       let title = speciesLabel;
       if (typeSuffix === "feed")       title = `Feed ${speciesLabel}`;
@@ -2629,8 +2635,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       const db = LDB[a.type];
       // Per-animal keys are now only health/hoof/hive — use animal's individual label
       const label = a.name ? `${a.name} (${a.type})` : a.type;
-      const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
-      const loc = animalZone ? animalZone.name : "Farm";
+      const loc = animalLocName;
       let emoji = db?.e || "🐾";
       let title = label;
       if (typeSuffix === "health"){title = `Health check — ${label}`; emoji = "🩺"; }
