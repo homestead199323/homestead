@@ -4162,9 +4162,6 @@ function Financials({data, setData}) {
    ═══════════════════════════════════════════ */
 function Dashboard({data, setData, setPage, tasks}) {
   const [selZone,setSelZone]=useState(null);
-  const [zoomedZone,setZoomedZone]=useState(null);
-  const [expCrop,setExpCrop]=useState(null);
-  const [expAnimal,setExpAnimal]=useState(null);
   const [openPlotId,setOpenPlotId]=useState(null);
   const [openAnimalId,setOpenAnimalId]=useState(null);
   const [wide,setWide]=useState(typeof window!=="undefined"&&window.innerWidth>=800);  useEffect(()=>{const h=()=>setWide(window.innerWidth>=800);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
@@ -4922,7 +4919,7 @@ function Preserving({embedded}) {
               <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".04em" }}>
                 👨‍🍳 Step-by-Step Method
               </div>
-              {sel.method.split(/(?=\d+\. |SUN DRYING:|DEHYDRATOR:|OVEN:|BLANCHING:|FRESH WHITE|RICOTTA:|EQUILIBRIUM|COLD SMOKING|REST:|WINE:|VINEGAR:|POTATOES:|CARROTS|ONIONS|CABBAGE:|SQUASH|APPLES:|SAFE ITEMS|UNSAFE)/).map((step, i) => (
+              {sel.method.split(/(?=\d+\. |SUN DRYING:|DEHYDRATOR:|OVEN:|BLANCHING:|FRESH WHITE|RICOTTA:|EQUILIBRIUM|COLD SMOKING|REST:|WINE:|VINEGAR:|POTATOES:|CARROTS|ONIONS|CABBAGE:|SQUASH|APPLES:|SAFE ITEMS|UNSAFE)/).map((step, i) => (
                 step.trim() ? (
                   <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.bdr}` }}>
                     <div style={{ flex: 1, fontSize: 13, lineHeight: 1.65, color: C.text }}>{step.trim()}</div>
@@ -6095,7 +6092,7 @@ function migrateCompletions(data) {
 // Update streak + badge state after any data change that includes a log entry
 function updateGamify(data) {
   const g = data.gamify || DEF.gamify;
-  const today = new Date().toISOString().slice(0,10);
+  const today = toLocalDateKey(new Date());
   let streak = g.streak;
   let bestStreak = g.bestStreak;
   const totalLogEntries = (data.log || []).length;
@@ -6106,7 +6103,7 @@ function updateGamify(data) {
   if (g.lastActiveDate !== today) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toISOString().slice(0,10);
+    const yStr = toLocalDateKey(yesterday);
     if (g.lastActiveDate === yStr) {
       streak = streak + 1; // consecutive day
     } else if (g.lastActiveDate && g.lastActiveDate < yStr) {
@@ -6159,7 +6156,6 @@ function AppInner() {
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
   const [mob,setMob]=useState(false);
   const [isMob,setIsMob]=useState(typeof window !== "undefined" ? window.innerWidth < 700 : false);
-  const [saveStatus,setSaveStatus]=useState("");
   const [isOffline,setIsOffline]=useState(typeof navigator !== "undefined" && !navigator.onLine);
   const [showFeedbackPrompt,setShowFeedbackPrompt]=useState(false);
 
@@ -6238,7 +6234,11 @@ function AppInner() {
       try {
         const d = JSON.parse(e.target.result);
         // Defensive: reject backup files with prototype-pollution payloads
-        if (d && typeof d === "object" && ("__proto__" in d || "constructor" in d || "prototype" in d)) {
+        if (d && typeof d === "object" && (
+          Object.prototype.hasOwnProperty.call(d, "__proto__") ||
+          Object.prototype.hasOwnProperty.call(d, "constructor") ||
+          Object.prototype.hasOwnProperty.call(d, "prototype")
+        )) {
           throw new Error("Backup file contains reserved keys and cannot be imported safely.");
         }
         const merged = migrateCompletions(migrateGamify(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}})));
@@ -6846,10 +6846,10 @@ function farmKnowledgeEngine(query, data) {
 }
 
 // ── Build suggestion catalog from all database entries ──
-const AI_SUGGESTIONS = (() => {
+function buildAISuggestions(region) {
   const s = [];
-  // Crop suggestions — each crop gets multiple query variants
-  CROPS.forEach(c => {
+  // Crop suggestions — region-filtered: crops with _na for this region are excluded.
+  rCR(region).forEach(c => {
     s.push({e:c.emoji, q:`How to grow ${c.name}`, cat:"Crop Guide", keys:[c.name.toLowerCase(),"grow","plant","guide"]});
     s.push({e:c.emoji, q:`${c.name} pests & diseases`, cat:"Pest Help", keys:[c.name.toLowerCase(),"pest","disease","bug"]});
     s.push({e:c.emoji, q:`${c.name} watering guide`, cat:"Watering", keys:[c.name.toLowerCase(),"water","irrigat"]});
@@ -6886,7 +6886,7 @@ const AI_SUGGESTIONS = (() => {
   s.push({e:"🐾", q:"List all animals", cat:"Lists", keys:["list","all animal","animal list"]});
   s.push({e:"❓", q:"What can you help with?", cat:"Help", keys:["help","what can","feature"]});
   return s;
-})();
+}
 
 function AIAssistant({data}) {
   const [open, setOpen] = useState(false);
@@ -6894,7 +6894,7 @@ function AIAssistant({data}) {
     {role:"assistant", content:`Hi! I'm your farm assistant. I know everything about the ${rCR(data.region).length} crops and ${Object.keys(LDB).length} animals in your database — and I work offline!\n\nStart typing a crop or animal name and pick from the dropdown, or tap a quick prompt below.`}
   ]);
   const [input, setInput] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsHidden, setSuggestionsHidden] = useState(false);
   const [selIdx, setSelIdx] = useState(-1);
   const scrollRef = useRef(null);
   const sugRef = useRef(null);
@@ -6903,18 +6903,20 @@ function AIAssistant({data}) {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, open]);
 
-  // Filter suggestions as user types
-  useEffect(() => {
+  // Score suggestions during render — derived, no setState-in-effect cascade.
+  // The dropdown can be dismissed (Escape, Tab, send) via suggestionsHidden;
+  // typing again sets suggestionsHidden=false in onChange and the dropdown
+  // reappears against the next input value.
+  // Region-scoped suggestion catalog — recomputed only when the user changes region.
+  const aiCatalog = useMemo(() => buildAISuggestions(data.region), [data.region]);
+  const scoredSuggestions = useMemo(() => {
     const q = input.trim().toLowerCase();
-    if (q.length < 2) { setSuggestions([]); setSelIdx(-1); return; }
+    if (q.length < 2) return [];
     const words = q.split(/\s+/);
-    const scored = AI_SUGGESTIONS.map(s => {
+    const scored = aiCatalog.map(s => {
       let score = 0;
-      // Exact name match at start of any key
       if (s.keys.some(k => k.startsWith(q))) score += 10;
-      // Partial match on any key
       else if (s.keys.some(k => k.includes(q))) score += 6;
-      // Word-level matches
       else {
         words.forEach(w => {
           if (w.length < 2) return;
@@ -6925,22 +6927,21 @@ function AIAssistant({data}) {
       }
       return {...s, score};
     }).filter(s => s.score > 0).sort((a,b) => b.score - a.score);
-    // Deduplicate by query text, keep top 8
     const seen = new Set();
     const unique = [];
     for (const s of scored) {
       if (!seen.has(s.q) && unique.length < 8) { seen.add(s.q); unique.push(s); }
     }
-    setSuggestions(unique);
-    setSelIdx(-1);
-  }, [input]);
+    return unique;
+  }, [input, aiCatalog]);
+  const suggestions = suggestionsHidden ? [] : scoredSuggestions;
 
   const sendQuery = (text) => {
     if (!text.trim()) return;
     const reply = farmKnowledgeEngine(text, data);
     setMsgs(prev => [...prev, {role:"user", content: text}, {role:"assistant", content: reply}]);
     setInput("");
-    setSuggestions([]);
+    setSuggestionsHidden(true);
     setSelIdx(-1);
   };
 
@@ -6951,8 +6952,8 @@ function AIAssistant({data}) {
       if (e.key === "ArrowDown") { e.preventDefault(); setSelIdx(i => Math.min(i + 1, suggestions.length - 1)); return; }
       if (e.key === "ArrowUp") { e.preventDefault(); setSelIdx(i => Math.max(i - 1, -1)); return; }
       if (e.key === "Enter" && !e.shiftKey && selIdx >= 0) { e.preventDefault(); sendQuery(suggestions[selIdx].q); return; }
-      if (e.key === "Tab" && selIdx >= 0) { e.preventDefault(); setInput(suggestions[selIdx].q); setSuggestions([]); return; }
-      if (e.key === "Escape") { setSuggestions([]); setSelIdx(-1); return; }
+      if (e.key === "Tab" && selIdx >= 0) { e.preventDefault(); setInput(suggestions[selIdx].q); setSuggestionsHidden(true); return; }
+      if (e.key === "Escape") { setSuggestionsHidden(true); setSelIdx(-1); return; }
     }
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
@@ -7078,7 +7079,7 @@ function AIAssistant({data}) {
             <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
               <textarea
                 value={input}
-                onChange={e=>setInput(e.target.value)}
+                onChange={e=>{setInput(e.target.value); setSuggestionsHidden(false); setSelIdx(-1);}}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a crop or animal name..."
                 rows={1}

@@ -1,8 +1,13 @@
-const CACHE_NAME = 'homestead-v1';
+// CACHE_NAME contains a build-time placeholder that is replaced with a unique
+// build ID by scripts/inject-build-id.js in the postbuild step.
+// In dev (vite serve), the literal '__BUILD_ID__' stays — that's intentional
+// and stable across reloads.
+const CACHE_NAME = 'myterra-__BUILD_ID__';
 const ASSETS = [
   '/',
-  '/index.html',
+  '/app.html',
   '/manifest.json',
+  '/favicon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
 ];

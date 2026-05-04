@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "mv dist/index.html dist/app.html && mv dist/landing.html dist/index.html",
+    "postbuild": "mv dist/index.html dist/app.html && mv dist/landing.html dist/index.html && node scripts/inject-build-id.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
