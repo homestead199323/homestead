@@ -2368,6 +2368,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
   // O(1) zone lookups — used inside memoized calendarEvents/byTime + render path
   const zoneById = useMemo(() => new Map((data.zones || []).map(z => [z.id, z])), [data.zones]);
+  const zoneByName = useMemo(() => new Map((data.zones || []).map(z => [z.name, z])), [data.zones]);
   const animalZone = useMemo(() => (data.zones || []).find(z => ["barn","pasture"].includes(z.type)) || null, [data.zones]);
   const animalLocName = animalZone ? animalZone.name : "Farm";
 
@@ -2575,7 +2576,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
   // Pick a location icon based on zone type; falls back to 📍
   const locIcon = (locName) => {
-    const z = data.zones.find(zn => zn.name === locName);
+    const z = zoneByName.get(locName);
     if (!z) return "📍";
     const zt = ZT_MAP.get(z.type);
     return zt?.icon || "📍";
