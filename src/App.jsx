@@ -303,18 +303,18 @@ const VARIETIES = {
     {name:"Marconi",days:80,note:"Long Italian. Very sweet red. Thin skin. Frying pepper.",yld:3},
   ],
   Potato: [
-    {name:"Yukon Gold",days:90,note:"Yellow flesh. Buttery. All-purpose. Early-mid season.",yld:2},
-    {name:"Russet",days:110,note:"Classic baking potato. High starch. Good storage.",yld:2.5},
-    {name:"Kennebec",days:100,note:"High yield. Disease resistant. Good chips/fries.",yld:3},
-    {name:"Red Pontiac",days:90,note:"Red skin. Waxy. Great boiled/roasted. Mid season.",yld:2},
-    {name:"Fingerling",days:90,note:"Small, elongated. Gourmet. Roast whole.",yld:1.5},
+    {name:"Maris Piper",days:100,note:"UK standard. Floury. The chip potato. Excellent roast, mash, chips.",yld:2.5},
+    {name:"Charlotte",days:85,note:"Waxy salad potato. Very popular in UK/France. Excellent boiled or roasted.",yld:2.2},
+    {name:"King Edward",days:100,note:"Floury. Large. Heritage UK variety. Classic roasting potato. Red-tinged skin.",yld:2.2},
+    {name:"Desiree",days:90,note:"Pink skin. Floury. Excellent all-round. Drought-tolerant. Very reliable in WE.",yld:2.3},
+    {name:"Rooster",days:100,note:"Irish/UK standard. Red skin. High yield. Excellent baker and chipper.",yld:2.5},
   ],
   Onion: [
-    {name:"Yellow Spanish",days:110,note:"Large, mild. Good storage. All-purpose.",yld:0.2},
-    {name:"Red Tropea",days:100,note:"Italian red. Sweet. Beautiful in salads.",yld:0.15},
-    {name:"White Sweet",days:95,note:"Mild. Best raw. Shorter storage.",yld:0.15},
-    {name:"Cipollini",days:90,note:"Flat Italian. Very sweet caramelized.",yld:0.1},
-    {name:"Shallot",days:90,note:"Gourmet. Multiplies from 1 bulb. Milder.",yld:0.08},
+    {name:"Stuttgarter Riesen",days:100,note:"German/European standard. Round, flat-topped. Excellent storage. Very reliable.",yld:0.2},
+    {name:"Red Baron",days:105,note:"Red-skinned. Mild. Good raw in salads. Stores well. UK popular.",yld:0.18},
+    {name:"Sturon",days:105,note:"Round, golden. Strong flavour. Very good keeper. EU commercial standard.",yld:0.2},
+    {name:"Radar",days:240,note:"Overwintering Japanese type. Sow Aug, harvest June. Very popular in UK.",yld:0.15},
+    {name:"Shallot (Banana)",days:90,note:"Long French shallot. Gourmet. Multiplies from single bulb. Milder.",yld:0.08},
   ],
   Cabbage: [
     {name:"Copenhagen Market",days:85,note:"Round, dense heads. 1.5-2kg. Classic.",yld:2},
@@ -324,11 +324,11 @@ const VARIETIES = {
     {name:"Pointed/Hispi",days:65,note:"Cone-shaped. Very early. Sweet, tender.",yld:1},
   ],
   Cucumber: [
-    {name:"Marketmore",days:55,note:"Classic slicing. Dark green. Disease-resistant.",yld:4},
-    {name:"Pickling/Gherkin",days:50,note:"Small. Perfect for pickles. Very productive.",yld:5},
-    {name:"Lemon",days:60,note:"Round, yellow. Mild. Unique. Prolific.",yld:3},
-    {name:"Persian/Mini",days:50,note:"Thin skin. Seedless. No peeling needed.",yld:3},
-    {name:"Armenian",days:55,note:"Long, ribbed. Heat-tolerant. Actually a melon.",yld:4},
+    {name:"Carmen F1",days:55,note:"Greenhouse variety. Long, smooth. Excellent yield. UK/NL tunnel standard.",yld:4},
+    {name:"Flamingo F1",days:55,note:"Greenhouse. All-female. Very productive. Good disease resistance. WE tunnel.",yld:4},
+    {name:"Marketmore",days:60,note:"Outdoor ridge type. Dark green. Disease-resistant. Reliable in WE warm spots.",yld:3},
+    {name:"Cornichon de Bourbonne",days:50,note:"Small gherkin. Perfect for pickling. French heritage. Good outdoor in WE.",yld:5},
+    {name:"Burpless Tasty Green",days:55,note:"Outdoor/tunnel. Mild flavour. No bitterness. Popular UK home garden.",yld:3.5},
   ],
   Lettuce: [
     {name:"Butterhead",days:45,note:"Soft, buttery leaves. Loose head. Mild.",yld:0.3},
@@ -394,11 +394,11 @@ const VARIETIES = {
     {name:"Crown Prince",days:100,note:"Blue-grey skin. Dense orange flesh. Excellent storage.",yld:6},
   ],
   Corn: [
-    {name:"Golden Bantam",days:78,note:"Open-pollinated sweet corn. Classic flavor. Seed-saveable.",yld:0.3},
-    {name:"Incredible",days:85,note:"Supersweet hybrid. Large ears. Popular.",yld:0.4},
-    {name:"Peaches and Cream",days:83,note:"Bi-colour. Sweet and tender. Very popular.",yld:0.35},
-    {name:"Glass Gem",days:110,note:"Multi-colored ornamental/flour corn. Stunning. Decorative.",yld:0.2},
-    {name:"Heritage Flour Corn",days:80,note:"Traditional open-pollinated flour corn. Great for cornbread.",yld:0.3},
+    {name:"Earlibird",days:68,note:"Very early maturity. Essential for short WE summers. Reliable.",yld:0.25},
+    {name:"Sundance",days:72,note:"Early-season. Sweet. Developed for UK conditions. Reliable.",yld:0.28},
+    {name:"Swift",days:70,note:"Very early. Open-pollinated. Good in WE cool summers.",yld:0.25},
+    {name:"Golden Bantam",days:78,note:"Open-pollinated classic. Seed-saveable. Good flavour for WE home garden.",yld:0.3},
+    {name:"Incredible",days:85,note:"Supersweet hybrid. Large ears. Best in warmest WE summers or polytunnel.",yld:0.4},
   ],
   Leek: [
     {name:"Musselburgh",days:120,note:"Hardy Scotch variety. Thick stems. Very cold-tolerant.",yld:0.3},
@@ -436,11 +436,11 @@ const VARIETIES = {
     {name:"Koroneiki",days:365,note:"Highest oil content of all varieties (~27%). Greek.",yld:22},
   ],
   Grape: [
-    {name:"Cabernet Sauvignon",days:365,note:"Classic red wine grape. Full-bodied. Worldwide.",yld:7},
-    {name:"Merlot",days:365,note:"Soft, round red. Early ripening. Versatile.",yld:8},
-    {name:"Chardonnay",days:365,note:"Premium white wine. Adapts to many climates.",yld:8},
-    {name:"Muscat/Moscato",days:365,note:"Sweet aromatic table + wine grape. Very popular.",yld:9},
-    {name:"Thompson Seedless",days:365,note:"Top table grape. Large seedless. Fresh or raisins.",yld:12},
+    {name:"Solaris",days:365,note:"German white. Extremely disease-resistant. Good for UK/NW Europe vineyards.",yld:7},
+    {name:"Regent",days:365,note:"German red. Disease-resistant. Good colour. Reliable in WE cool climate.",yld:6},
+    {name:"Boskoop Glory",days:365,note:"UK outdoor table grape. Reliable. Purple-black. South-facing wall.",yld:6},
+    {name:"Seyval Blanc",days:365,note:"French-American hybrid. Cold-hardy. Crisp white wine grape for WE.",yld:7},
+    {name:"Pinot Gris",days:365,note:"Cool-climate premium white. Good in UK/NL/BE wine conditions.",yld:6},
   ],
   Broccoli: [
     {name:"Calabrese",days:65,note:"Classic green head. Med origin. Good side-shoot production after main cut.",yld:0.5},
@@ -487,6 +487,207 @@ const VARIETIES = {
     {name:"Castelluccio",days:95,note:"Italian PDO lentil. Small, brown-green. Earthy. Premium.",yld:0.1},
   ],
 };
+
+const VAR_RO = {
+  // MEDITERRANEAN
+  mediterranean: {
+  "Potato": [
+    {name:"Spunta",days:85,note:"Dutch origin, dominant in Med markets. Yellow flesh. High yield. Versatile.",yld:2.5},
+    {name:"Agria",days:95,note:"German/Med standard. Floury. Excellent chips and fries. Very popular.",yld:2.5},
+    {name:"Monalisa",days:90,note:"Smooth waxy skin. Long shelf life. French market standard.",yld:2.2},
+    {name:"Nicola",days:85,note:"Small, waxy. Excellent boiled or salad. Very common across S. Europe.",yld:2},
+    {name:"Ditta",days:90,note:"Fingerling type. Waxy. Gourmet. Premium market in Med countries.",yld:1.8},
+  ],
+  "Tomato": [
+    {name:"San Marzano DOP",days:78,note:"True paste tomato. Low moisture. Best for sauce and canning. Italian PDO classic.",yld:5},
+    {name:"Cuore di Bue",days:85,note:"Ox heart. Huge, meaty, low-seed. Exceptional fresh. Med favourite.",yld:4},
+    {name:"Ciliegino",days:65,note:"Small cherry type. Very sweet. Heavy producer. Traditional Med.",yld:6},
+    {name:"Costoluto Fiorentino",days:80,note:"Ribbed Florentine. Meaty, complex flavor. Classic Med market tomato.",yld:4},
+    {name:"Roma",days:75,note:"Plum type. All-ripen-at-once. Excellent canning. Med standard.",yld:5},
+  ],
+  "Onion": [
+    {name:"Red Tropea",days:100,note:"Italian red. Very sweet. Beautiful in salads and on pizza. Med premium.",yld:0.15},
+    {name:"Bianca di Maggio",days:90,note:"White Italian spring onion. Mild. Classic Med kitchen crop.",yld:0.12},
+    {name:"Borrettane",days:95,note:"Flat cipollini type. Sweet caramelised. Very traditional Med.",yld:0.1},
+    {name:"Yellow Grano",days:100,note:"Large. Long-day type. Good storage in dry Med conditions.",yld:0.2},
+    {name:"Shallot",days:90,note:"Gourmet multiplier. Milder than onion. Widely used in Med cooking.",yld:0.08},
+  ],
+  "Grape": [
+    {name:"Sangiovese",days:365,note:"Italy's most planted red. Backbone of Chianti. Medium body, high acid.",yld:7},
+    {name:"Primitivo",days:365,note:"Puglia native. Rich, jammy reds. Early ripener. Thrives in Med heat.",yld:8},
+    {name:"Moscato Bianco",days:365,note:"Aromatic sweet white. Classic Med dessert wine and table grape.",yld:9},
+    {name:"Trebbiano",days:365,note:"Most planted white in Med. Neutral. Good for grappa and white wine.",yld:10},
+    {name:"Nero d'Avola",days:365,note:"Sicilian red. Full body. Deep colour. Exceptional in heat.",yld:7},
+  ],
+  "Strawberry": [
+    {name:"Camarosa",days:90,note:"Commercial Med standard. High yield. Firm fruit. Long harvest window.",yld:0.6},
+    {name:"Sabrina",days:90,note:"Italian bred. Very large. Good shelf life. Popular in Med markets.",yld:0.55},
+    {name:"Elsanta",days:90,note:"European commercial standard. Firm. Good flavour. Widely grown Med.",yld:0.5},
+    {name:"Albion",days:90,note:"Everbearing. Large sweet fruit. Day-neutral — good for long Med season.",yld:0.5},
+    {name:"Mara des Bois",days:90,note:"Intense wild strawberry flavour. French alpine cross. Lower yield but premium.",yld:0.3},
+  ],
+  "Eggplant": [
+    {name:"Black Beauty",days:75,note:"Classic large dark. Heavy yielder. Standard throughout Med.",yld:4},
+    {name:"Listada de Gandia",days:80,note:"Striped purple-white. Sweet. Beautiful. Grilling and moussaka.",yld:3},
+    {name:"Rosa Bianca",days:85,note:"Italian heirloom. Violet-white. Creamy, mild flavor. Best Med variety.",yld:3},
+    {name:"Rotonda Bianca Sfumata",days:75,note:"Round white. Perfect stuffed. Classic Sicilian type.",yld:3.5},
+    {name:"Violetta di Firenze",days:80,note:"Large ribbed purple-white. Tender skin. Florentine classic.",yld:3},
+  ],
+  "Pepper (Sweet)": [
+    {name:"Corno di Toro",days:80,note:"Italian bull horn. Very sweet. Perfect for roasting and grilling.",yld:4},
+    {name:"Kapia",days:85,note:"Thick-walled. Ideal for roasting and spread. Balkans/Med standard.",yld:4},
+    {name:"Quadrato d'Asti",days:80,note:"Classic square bell. Thick walls. Green to red. Italian market standard.",yld:3},
+    {name:"Marconi",days:80,note:"Long Italian. Very sweet red. Thin skin. Frying pepper.",yld:3},
+    {name:"Banana Pepper",days:70,note:"Mild, yellow. Pickles beautifully. Widely grown in Med.",yld:3},
+  ],
+  "Corn": [
+    {name:"Starlite",days:70,note:"Very early. Sweet. Good in shorter warm seasons.",yld:0.3},
+    {name:"Earlibird",days:68,note:"Early-season sweet corn. Good sugars even in marginal heat.",yld:0.28},
+    {name:"Golden Bantam",days:78,note:"Open-pollinated classic. Seed-saveable. Traditional Med field corn base.",yld:0.3},
+    {name:"Peaches and Cream",days:83,note:"Bi-colour. Sweet and tender. Popular in Med home gardens.",yld:0.35},
+  ],
+  },
+  // NORTHERN EUROPE
+  northern_europe: {
+  "Potato": [
+    {name:"Agria",days:95,note:"Dominant in DE/Scandi. Floury. Excellent chips, mash, and baking.",yld:2.5},
+    {name:"Bintje",days:90,note:"Dutch classic. High starch. The chip potato of northern Europe.",yld:2.5},
+    {name:"Linda",days:85,note:"German waxy. Long shelf life. Versatile all-round variety.",yld:2.2},
+    {name:"Eersteling",days:70,note:"Very early Dutch variety. Waxy. Best eaten fresh boiled.",yld:1.8},
+    {name:"Bamberger Hornchen",days:95,note:"German fingerling heritage. Waxy. Gourmet. Premium northern markets.",yld:1.5},
+  ],
+  "Tomato": [
+    {name:"Koralik",days:55,note:"Cold-tolerant outdoor cherry. Russian origin. Reliable in cool short seasons.",yld:3},
+    {name:"Fantasio F1",days:60,note:"Greenhouse cherry. Excellent in NE tunnels. Very productive.",yld:4},
+    {name:"Tigerella",days:65,note:"Red-striped. Good flavour for NE conditions. Outdoor or greenhouse.",yld:3},
+    {name:"Harzfeuer",days:65,note:"German bred for cool climate. Outdoor. Disease-tolerant. Reliable.",yld:3.5},
+    {name:"Glacier",days:55,note:"Very early. Cold-tolerant. Small fruit. Open field possible in NE.",yld:2.5},
+  ],
+  "Strawberry": [
+    {name:"Polka",days:90,note:"Dutch bred. Excellent flavour. Good in continental NE climate.",yld:0.5},
+    {name:"Sonata",days:90,note:"High yield. Good disease resistance. Popular in DE/NL markets.",yld:0.55},
+    {name:"Symphony",days:90,note:"Scottish bred. Good slug and botrytis resistance. Northern climate specialist.",yld:0.5},
+    {name:"Honeoye",days:90,note:"Very early. Cold-hardy. Reliable yield in short NE seasons.",yld:0.5},
+    {name:"Senga Sengana",days:90,note:"Traditional NE jam berry. Very fragrant. Classic in DE/Scandi.",yld:0.4},
+  ],
+  "Raspberry": [
+    {name:"Glen Ample",days:365,note:"Summer-fruiting. High yield. Good disease resistance. Cold-hardy.",yld:0.6},
+    {name:"Glen Moy",days:365,note:"Early-season. Spine-free. Excellent flavour. Good for NE cold winters.",yld:0.5},
+    {name:"Tulameen",days:365,note:"Late-season. Very large fruit. Good cold-hardiness. Popular in DE/Scandi.",yld:0.7},
+    {name:"Autumn Bliss",days:365,note:"Autumn-fruiting. Very reliable in NE. Easy to manage — cut all canes down.",yld:0.5},
+    {name:"Schonemann",days:365,note:"German bred. Very cold-hardy. Summer variety. Popular in continental NE.",yld:0.5},
+  ],
+  "Grape": [
+    {name:"Solaris",days:365,note:"German bred white. Extremely disease-resistant. Good for NE cool vineyards.",yld:7},
+    {name:"Regent",days:365,note:"German bred red. Disease-resistant. Good colour. Reliable in cooler NE.",yld:6},
+    {name:"Seyval Blanc",days:365,note:"French-American hybrid. Cold-hardy. Crisp white wine grape for NE.",yld:7},
+    {name:"Pinot Gris",days:365,note:"Cool-climate premium white. Good in NE vineyard conditions.",yld:6},
+    {name:"Rondo",days:365,note:"Cold-hardy red hybrid. Very disease-resistant. Popular in NE home vineyards.",yld:6},
+  ],
+  "Corn": [
+    {name:"Earlibird",days:68,note:"Very early maturity. Essential for short NE seasons.",yld:0.25},
+    {name:"Minipop",days:65,note:"Baby corn. Pick before pollination. Reliable in cool NE.",yld:0.2},
+    {name:"Lark",days:72,note:"Early. Good sugars. Bred for cooler northern conditions.",yld:0.28},
+    {name:"Sweet Nugget",days:70,note:"Early-season. Good cold germination. NE climate adapted.",yld:0.25},
+  ],
+  },
+  // US WARM
+  us_warm: {
+  "Potato": [
+    {name:"Kennebec",days:100,note:"High yield. Disease-resistant. All-round. Reliable in SE heat.",yld:3},
+    {name:"Yukon Gold",days:90,note:"Buttery yellow flesh. Best in warm dry areas. Classic.",yld:2},
+    {name:"Red LaSoda",days:85,note:"Southern US standard. Waxy. High heat tolerance. Heavy yielder.",yld:2.5},
+    {name:"Russet Burbank",days:110,note:"Classic baking potato. Dominant in western warm US regions.",yld:2.5},
+    {name:"Pontiac",days:90,note:"Red skin. Warm-climate reliable. Waxy. Heavy yielder.",yld:2},
+  ],
+  "Tomato": [
+    {name:"Celebrity",days:70,note:"VFN resistant. Disease-tolerant. Reliable in hot humid US South.",yld:4},
+    {name:"Better Boy",days:72,note:"Classic US slicing tomato. Large. High yield. Tolerates heat.",yld:4.5},
+    {name:"Cherokee Purple",days:80,note:"Heirloom. Purple-brown. Complex flavour. Popular in warm US gardens.",yld:3.5},
+    {name:"Mortgage Lifter",days:85,note:"Huge heritage. Very meaty. Good disease tolerance. Warm climate classic.",yld:4},
+    {name:"Sun Gold",days:57,note:"Orange cherry. Exceptionally sweet. Very prolific in US heat.",yld:5},
+  ],
+  "Strawberry": [
+    {name:"Chandler",days:90,note:"California standard. Large, firm, good flavour. Warm climate specialist.",yld:0.6},
+    {name:"Camarosa",days:90,note:"California bred. Very high yield. Firm. Good in warm SE conditions.",yld:0.65},
+    {name:"Sweet Charlie",days:90,note:"Early-season. Sweet. Good in SE heat and humidity.",yld:0.55},
+    {name:"Albion",days:90,note:"Everbearing. Day-neutral. Large sweet fruit. Good in long US warm season.",yld:0.5},
+    {name:"Strawberry Festival",days:90,note:"SE US specialist. Firm, large, good colour. Florida bred.",yld:0.6},
+  ],
+  "Corn": [
+    {name:"Silver Queen",days:92,note:"Classic US white sweet corn. Exceptional flavour. High heat tolerance.",yld:0.4},
+    {name:"Bodacious",days:75,note:"Yellow. Sweet. Heat-tolerant. Popular across US warm regions.",yld:0.4},
+    {name:"Incredible",days:85,note:"Large ears. Supersweet hybrid. Good in long warm US season.",yld:0.45},
+    {name:"Peaches and Cream",days:83,note:"Bi-colour. Sweet and tender. Very popular in warm US home gardens.",yld:0.35},
+    {name:"Ambrosia",days:75,note:"Bi-colour. Very sweet. Disease-resistant. Warm season favourite.",yld:0.4},
+  ],
+  "Raspberry": [
+    {name:"Dorman Red",days:365,note:"South US standard. Heat-tolerant. Summer-fruiting.",yld:0.5},
+    {name:"Tulameen",days:365,note:"Large fruit. Good in Pacific NW warm areas. Excellent flavour.",yld:0.7},
+    {name:"Heritage",days:365,note:"Autumn-fruiting. Very productive. Reliable in warm US conditions.",yld:0.5},
+    {name:"Caroline",days:365,note:"Autumn-fruiting. Very large fruit. Good disease resistance.",yld:0.6},
+  ],
+  "Grape": [
+    {name:"Muscadine",days:365,note:"Native SE US. Heat and humidity resistant. Bronze or black. Very tough.",yld:8},
+    {name:"Concord",days:365,note:"Classic NE/Midwest. Juice and jelly grape. Tolerates warm US summers.",yld:7},
+    {name:"Cabernet Sauvignon",days:365,note:"Full-bodied red. Excellent in CA and warm coastal regions.",yld:7},
+    {name:"Chardonnay",days:365,note:"Premium white. CA and warm coastal US standard.",yld:8},
+    {name:"Thompson Seedless",days:365,note:"Table grape. Seedless. Raisins. Dominant in CA. Needs heat.",yld:12},
+  ],
+  },
+  // US COLD
+  us_cold: {
+  "Potato": [
+    {name:"Kennebec",days:100,note:"Disease-resistant. Short-season reliable. Classic cold-climate all-rounder.",yld:3},
+    {name:"Norland",days:70,note:"Very early red. Short season. Cold-hardy. NE/Midwest standard.",yld:2},
+    {name:"Yukon Gold",days:90,note:"Adapts well to short cold seasons. Buttery yellow. Good all-round.",yld:2},
+    {name:"All Blue",days:90,note:"Heritage. Blue flesh and skin. Stores well through hard winters.",yld:1.8},
+    {name:"Russet Norkotah",days:100,note:"Cold-tolerant. Baking type. Common in northern states.",yld:2.3},
+  ],
+  "Tomato": [
+    {name:"Early Girl",days:52,note:"Very early. Reliable in short cold seasons. Classic NE small tomato.",yld:3},
+    {name:"Stupice",days:52,note:"Czech heirloom. Very cold-tolerant. Small red. Excellent for short seasons.",yld:3},
+    {name:"Glacier",days:55,note:"Coldest-tolerant outdoor tomato. Small but reliable. Pacific NW/NE.",yld:2.5},
+    {name:"Black Krim",days:69,note:"Heirloom. Complex flavour. Good in short US cold seasons.",yld:3},
+    {name:"Jetstar",days:72,note:"VF resistant. Good flavour. Reliable mid-season for NE/Midwest.",yld:4},
+  ],
+  "Corn": [
+    {name:"Earlivee",days:63,note:"Very earliest sweet corn. Short-season specialist. Cold germination.",yld:0.25},
+    {name:"Seneca Horizon",days:65,note:"Early-season. Good sugars. Cold-climate reliable. NE standard.",yld:0.28},
+    {name:"Golden Bantam",days:78,note:"Open-pollinated. Seed-saveable. Classic flavour. Short-season viable.",yld:0.3},
+    {name:"Peaches and Cream",days:83,note:"Bi-colour. Popular in warm weeks of cold season.",yld:0.3},
+  ],
+  "Strawberry": [
+    {name:"Honeoye",days:90,note:"Very early. Cold-hardy. High yield in short NE seasons. Reliable.",yld:0.5},
+    {name:"Earliglow",days:90,note:"Very early. Excellent flavour. Cold-hardy. Classic NE strawberry.",yld:0.45},
+    {name:"Cavendish",days:90,note:"Mid-season. Large. Good cold-hardiness. East Canada standard.",yld:0.5},
+    {name:"Kent",days:90,note:"Late-season. Large berry. Very cold-hardy. Popular in NE/Canada.",yld:0.55},
+    {name:"Fort Laramie",days:90,note:"Everbearing. Extremely cold-hardy. Good for harsh winter regions.",yld:0.4},
+  ],
+  "Raspberry": [
+    {name:"Boyne",days:365,note:"Very cold-hardy. Summer-fruiting. Prairie provinces standard.",yld:0.5},
+    {name:"Killarney",days:365,note:"Cold-hardy. Summer. Good in NE and Canada.",yld:0.5},
+    {name:"Encore",days:365,note:"Late summer. Good cold-hardiness. Large fruit. NE standard.",yld:0.55},
+    {name:"Heritage",days:365,note:"Autumn-fruiting. Very productive in northern US short summers.",yld:0.5},
+    {name:"Nova",days:365,note:"Very cold-hardy. Summer. Resistant to phytophthora root rot. Canada standard.",yld:0.5},
+  ],
+  "Grape": [
+    {name:"Concord",days:365,note:"Cold-hardy native. Classic juice and jelly grape. Survives harsh winters.",yld:7},
+    {name:"Frontenac",days:365,note:"Very cold-hardy red hybrid. Down to -35C. Minnesota bred. Wine and juice.",yld:6},
+    {name:"Marquette",days:365,note:"Cold-hardy red. Good wine quality. Minnesota bred. Disease-resistant.",yld:6},
+    {name:"Brianna",days:365,note:"White. Very cold-hardy. Good in WI/MN/northern plains.",yld:6},
+    {name:"Niagara",days:365,note:"White table/juice grape. Cold-hardy. Classic NE US.",yld:7},
+  ],
+  },
+};
+
+function getRegionalVarieties(cropName, region) {
+  const r = region || "western_europe";
+  if (r === "western_europe") return VARIETIES[cropName] || [];
+  const rov = VAR_RO[r];
+  if (rov && rov[cropName]) return rov[cropName];
+  return VARIETIES[cropName] || [];
+}
 
 
 const CROPS = [
@@ -1084,24 +1285,24 @@ const RO = {
 
   // ── MEDITERRANEAN (S. Europe, Albania, Greece, Spain, S. Italy, Portugal) ──
   mediterranean: {
-    "Tomato":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:75,yld:5,waterNote:"Deep water at base. Reduce as fruit colors.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Long warm season — direct transplant from late Mar. Many varieties thrive outdoors. Watch for tuta absoluta and sun-scald in mid-summer."},
-    "Pepper (Sweet)":{sowIn:"Feb-Mar",harvest:"Jul-Oct",days:80,yld:3,waterNote:"Consistent moisture, mulch in heat.",regionNote:"Direct outdoor in warm spots. Long fruiting season Jul-Oct."},
-    "Potato":{sowIn:"Mar-Apr",harvest:"Jun-Aug",yld:2,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest."},
+    "Tomato":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:75,yld:5,waterNote:"Deep water at base. Reduce as fruit colors.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Long warm season — direct transplant from late Mar. Many varieties thrive outdoors. Watch for tuta absoluta and sun-scald in mid-summer.",pests:[{n:"Tuta absoluta (tomato leaf miner — #1 Med threat)",t:"Tuta absoluta: pheromone traps, Bt spray weekly, remove infested growing tips, fine netting on vents"},{n:"Spider mites (Tetranychus urticae)",t:"Spider mites: mist undersides daily in heat, neem oil, predatory mite Phytoseiulus persimilis"},{n:"Whitefly (Bemisia tabaci — silverleaf)",t:"Whitefly: yellow sticky traps, neem, Encarsia formosa — more aggressive than WE biotype"},{n:"Late blight (Phytophthora)",t:"Late blight: copper spray in humid spring/autumn, avoid overhead watering"}]},
+    "Pepper (Sweet)":{sowIn:"Feb-Mar",harvest:"Jul-Oct",days:80,yld:3,waterNote:"Consistent moisture, mulch in heat.",regionNote:"Direct outdoor in warm spots. Long fruiting season Jul-Oct.",pests:[{n:"Spider mites",t:"Spider mites: mist undersides, neem oil, predatory mites — much worse in Med heat"},{n:"Aphids (CMV vector)",t:"Aphids: soap spray, lacewings — transmit cucumber mosaic virus"},{n:"Bacterial spot (Xanthomonas)",t:"Bacterial spot: copper spray preventive, avoid overhead water"},{n:"Sunscald",t:"Sunscald: shade cloth mid-summer, maintain good leaf canopy over fruit"}]},
+    "Potato":{sowIn:"Mar-Apr",harvest:"Jun-Aug",yld:2,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest.",pests:[{n:"Late blight (Phytophthora)",t:"Late blight: copper spray in wet spring periods, destroy infected haulms immediately"},{n:"Scab (Streptomyces)",t:"Scab: keep soil pH below 6.0, water regularly during tuber set — worse in dry Med soils"},{n:"Wireworm",t:"Wireworm: trap with buried potato halves, rotate, avoid following grass"}]},
     "Onion":{sowIn:"Jan-Feb, Sep-Oct",harvest:"Jun-Aug",waterNote:"Regular during bulbing. Stop when tops fall."},
     "Garlic":{waterFreq:"Every 5-7 days",waterNote:"Moderate. Stop 2-3wk pre-harvest.",steps:[{d:0,l:"Plant cloves",t:"Pointed up, 5cm deep."},{d:14,l:"Mulch 10cm",t:"Straw for winter."},{d:120,l:"Spring feed",t:"Nitrogen. Remove scapes."},{d:200,l:"Stop water",t:"Lower leaves browning."},{d:240,l:"Harvest",t:"Dig when 5-6 leaves brown. Cure 3-4wk."}],storage:"6-8 months cured.",regionNote:"Both hardneck and softneck varieties viable. Active irrigation through dry spring; stop well before harvest."},
     "Cabbage":{sowIn:"Feb-Mar, Aug-Sep",harvest:"Jun-Jul, Nov-Feb",yld:2,waterNote:"Consistent for tight heads. Heavy feeder."},
     "Bean (Dry)":{sowIn:"Apr-May",harvest:"Aug-Sep",days:95,waterNote:"More during flowering."},
-    "Zucchini":{sowIn:"Apr-May",harvest:"Jun-Oct",days:50,yld:6,waterNote:"Heavy drinker. Base water only."},
+    "Zucchini":{sowIn:"Apr-May",harvest:"Jun-Oct",days:50,yld:6,waterNote:"Heavy drinker. Base water only.",pests:[{n:"Powdery mildew",t:"Powdery mildew: milk spray 1:9, baking soda 5g/L, airflow — earlier onset in Med heat"},{n:"Aphids (mosaic virus vector)",t:"Aphids: soap spray — remove infected plants fast; aphids spread CMV rapidly in heat"},{n:"Spider mites",t:"Spider mites: mist undersides, neem — hot dry Med summers amplify populations"}]},
     "Carrot":{sowIn:"Feb-Apr, Sep-Oct",harvest:"May-Jul, Dec-Feb",days:70,waterNote:"Even moisture."},
     "Spinach":{sowIn:"Feb-Apr, Sep-Nov",harvest:"Mar-Jun, Nov-Feb",waterNote:"Keep moist. Bolts in heat."},
-    "Cucumber":{sowIn:"Apr-May",harvest:"Jun-Sep",days:55,yld:4,waterNote:"Constant moisture or bitter."},
+    "Cucumber":{sowIn:"Apr-May",harvest:"Jun-Sep",days:55,yld:4,waterNote:"Constant moisture or bitter.",pests:[{n:"Spider mites (#1 in Med heat)",t:"Spider mites: mist undersides, neem, Phytoseiulus persimilis predatory mites"},{n:"Powdery mildew",t:"Powdery mildew: milk spray, airflow, resistant varieties — begins earlier than in WE"},{n:"Whitefly",t:"Whitefly: yellow sticky traps, neem — worse than in WE polytunnels"}]},
     "Lettuce":{sowIn:"Mar-Apr, Sep-Nov",harvest:"Apr-Jun, Nov-Mar",waterNote:"Consistently moist."},
     "Pumpkin":{sowIn:"Apr-May",harvest:"Sep-Nov",days:100,yld:8,waterNote:"Deep weekly. Less at maturity."},
     "Beetroot":{sowIn:"Mar-May, Aug-Sep",harvest:"Jun-Aug, Oct-Dec",days:60,waterNote:"Even moisture."},
     "Broad Bean":{sowIn:"Oct-Nov",harvest:"Apr-Jun",days:160,waterNote:"More at flowering."},
     "Leek":{sowIn:"Jan-Mar",harvest:"Oct-Mar",yld:0.3,waterNote:"Hill soil to blanch."},
     "Olive":{sowIn:"Nov-Mar",harvest:"Oct-Dec",spacing:600,yld:25,waterFreq:"Monthly",waterNote:"Very drought-tolerant.",fert:"Mature trees: NPK 15-5-15 in late winter. Foliar boron spray at flowering. Young trees: balanced 10-10-10.",steps:[{d:0,l:"Plant",t:"South-facing, drained."},{d:30,l:"Establish",t:"Weekly water 2 years."}],regionNote:"Native crop. Outdoor commercial-quality production. Watch for olive fly Aug-Oct (kaolin clay or McPhail traps best defense)."},
-    "Grape":{yld:8,waterNote:"Reduce near harvest.",regionNote:"Native vine. Wine and table both excellent."},
+    "Grape":{yld:8,waterNote:"Reduce near harvest.",regionNote:"Native vine. Wine and table both excellent.",pests:[{n:"Powdery mildew (Oidium — #1 in dry Med)",t:"Oidium: sulfur spray every 10-14d from bud break, good airflow, leaf removal around clusters"},{n:"Downy mildew (Peronospora)",t:"Downy mildew: Bordeaux mixture preventive in spring, avoid overhead water"},{n:"Grape berry moth (Lobesia botrana)",t:"Grape berry moth: pheromone traps, Bt spray at hatch — 2-3 generations per Med summer"}]},
     "Fig":{harvest:"Jun-Oct",yld:15,waterNote:"Drought-tolerant.",storage:"Sun-dry months. Jam.",regionNote:"Reliable outdoor cropping. Two crops per year (breba + main) in warm areas."},
     "Pomegranate":{sowIn:"Nov-Mar",spacing:400,yld:15,waterFreq:"Every 7-14 days",waterNote:"Drought-tolerant.",fert:"Light feeder. NPK 10-10-10 in spring. Tolerates poor soil.",regionNote:"Reliable outdoor production. Drought-tolerant once established."},
     "Basil":{sowIn:"Apr-May",harvest:"Jun-Oct",days:30,yld:0.3,waterNote:"Moist, not waterlogged."},
@@ -1112,10 +1313,10 @@ const RO = {
     "Lavender":{sowIn:"Feb-Mar",harvest:"Jun-Aug",waterNote:"Excellent drainage required."},
     "Wheat":{harvest:"Jun-Jul",days:210,waterNote:"Rain-fed winter."},
     "Pepper (Hot)":{sowIn:"Feb-Mar",harvest:"Jul-Nov",days:85,yld:1.5,waterNote:"Less water = hotter peppers."},
-    "Eggplant":{sowIn:"Feb-Mar",harvest:"Jul-Oct",days:75,yld:4,waterNote:"Loves heat. Consistent deep water."},
-    "Watermelon":{sowIn:"Apr-May",harvest:"Jul-Sep",days:85,yld:8,waterNote:"Heavy water growing. Stop at ripening.",regionNote:"Long warm summer ideal. Heavy water during fruit swell."},
+    "Eggplant":{sowIn:"Feb-Mar",harvest:"Jul-Oct",days:75,yld:4,waterNote:"Loves heat. Consistent deep water.",pests:[{n:"Spider mites (#1 in Med heat)",t:"Spider mites: mist undersides daily, neem oil, predatory mites — far worse than in WE greenhouse"},{n:"Whitefly",t:"Whitefly: yellow traps, neem, Encarsia — warm season amplifies populations"},{n:"Aphids",t:"Aphids: soap spray, reflective mulch deters"}]},
+    "Watermelon":{sowIn:"Apr-May",harvest:"Jul-Sep",days:85,yld:8,waterNote:"Heavy water growing. Stop at ripening.",regionNote:"Long warm summer ideal. Heavy water during fruit swell.",pests:[{n:"Root-knot nematode (Meloidogyne)",t:"Nematode: resistant/grafted seedlings, marigold interplant, rotate 5+ years — worse in warm sandy Med soils"},{n:"Fusarium wilt",t:"Fusarium: grafted seedlings most effective; rotate 5+ years — Med sandy soils amplify"},{n:"Whitefly (virus vector)",t:"Whitefly: yellow traps, neem — vectors Cucurbit yellow stunting disorder in Med"}]},
     "Melon":{sowIn:"Apr-May",harvest:"Jul-Sep",days:80,yld:4,waterNote:"Reduce water near harvest for sweetness."},
-    "Corn":{sowIn:"Apr-May",harvest:"Jul-Sep",days:80,yld:0.3,waterNote:"Critical during tasseling."},
+    "Corn":{sowIn:"Apr-May",harvest:"Jul-Sep",days:80,yld:0.3,waterNote:"Critical during tasseling.",pests:[{n:"Corn stalk borer (Sesamia nonagrioides — Med-specific)",t:"Sesamia: Bt injected into whorl, destroy crop residue after harvest — Mediterranean pest absent from WE"},{n:"Corn earworm (Helicoverpa armigera)",t:"Corn earworm: Bt spray at silking, mineral oil on silk tips"},{n:"Aphids",t:"Aphids: tolerate low levels; soap spray if heavy"}]},
     "Okra":{harvest:"Jul-Oct",days:60,yld:2,waterFreq:"Every 3 days",waterNote:"Drought-tolerant. Deep infrequent.",regionNote:"Heat-loving. Direct sow once soil warm. Pick young."},
     "Radish":{sowIn:"Feb-May, Sep-Nov",harvest:"Mar-Jun, Oct-Dec",waterNote:"Quick. Even moisture."},
     "Turnip":{sowIn:"Mar-Apr, Aug-Oct",harvest:"May-Jun, Oct-Dec",waterNote:"Cool season. Bolts in heat."},
@@ -1124,12 +1325,12 @@ const RO = {
     "Kale":{sowIn:"Mar-Apr, Aug-Sep",harvest:"May-Jun, Oct-Mar",waterNote:"Cold-hardy. Sweeter after frost."},
     "Asparagus":{sowIn:"Feb-Mar",harvest:"Apr-Jun (yr 3+)",waterNote:"Perennial. Establish well."},
     "Pea":{sowIn:"Feb-Mar, Oct-Nov",harvest:"May-Jun",days:60,waterNote:"Cool season. More at flowering."},
-    "Strawberry":{sowIn:"Sep-Oct, Feb-Mar",harvest:"May-Jul",waterNote:"Consistent moisture. Straw mulch."},
+    "Strawberry":{sowIn:"Sep-Oct, Feb-Mar",harvest:"May-Jul",waterNote:"Consistent moisture. Straw mulch.",pests:[{n:"Spider mites (two-spotted — #1 in Med)",t:"Spider mites: mist undersides, predatory mites, neem — severe in hot dry Med summers"},{n:"Botrytis (grey mold)",t:"Botrytis: straw mulch under fruit, spacing, remove infected fruit — mainly in humid spring"},{n:"Aphids",t:"Aphids: soap spray — transmit strawberry virus"}]},
     "Raspberry":{harvest:"Jun-Jul, Sep-Oct",waterNote:"Post and wire support."},
-    "Peach":{harvest:"Jun-Aug",yld:20,waterNote:"Deep water. Less near harvest."},
-    "Plum":{harvest:"Jul-Sep",yld:20,waterNote:"Moderate water."},
-    "Cherry":{harvest:"May-Jun",yld:15,waterNote:"Moderate. Net against birds."},
-    "Apricot":{harvest:"Jun-Jul",yld:15,waterNote:"Drought-tolerant once established."},
+    "Peach":{harvest:"Jun-Aug",yld:20,waterNote:"Deep water. Less near harvest.",pests:[{n:"Mediterranean fruit fly (Ceratitis capitata — #1)",t:"Ceratitis: mass trapping with protein bait, kaolin clay spray, early harvest — no equivalent in WE"},{n:"Brown rot (Monilinia)",t:"Brown rot: copper spray at flowering, remove mummies — accelerated in Med humidity spikes"},{n:"Peach leaf curl",t:"Peach leaf curl: copper spray after leaf fall and late winter — preventive only"}]},
+    "Plum":{harvest:"Jul-Sep",yld:20,waterNote:"Moderate water.",pests:[{n:"Mediterranean fruit fly (Ceratitis capitata)",t:"Ceratitis: protein bait traps, kaolin spray, early harvest — major threat absent from WE"},{n:"Plum moth",t:"Plum moth: pheromone traps, pick up fallen fruit — similar to WE but earlier season"},{n:"Brown rot (Monilinia)",t:"Brown rot: remove mummies, copper spray, thin fruit"}]},
+    "Cherry":{harvest:"May-Jun",yld:15,waterNote:"Moderate. Net against birds.",pests:[{n:"Mediterranean fruit fly (Ceratitis — #1 in Med vs cherry fly in WE)",t:"Ceratitis: protein bait traps, early harvest — replaces WE cherry fly as dominant fruit pest"},{n:"Bacterial canker",t:"Bacterial canker: prune in dry summer only, copper spray in autumn"},{n:"Birds",t:"Birds: full netting is the only reliable solution"}]},
+    "Apricot":{harvest:"Jun-Jul",yld:15,waterNote:"Drought-tolerant once established.",pests:[{n:"Mediterranean fruit fly (Ceratitis capitata)",t:"Ceratitis: protein bait traps, kaolin spray, net early varieties — not present in WE"},{n:"Brown rot (Monilinia)",t:"Brown rot: copper spray at bud break, thin fruit, remove mummies"},{n:"Shot hole disease (Stigmina)",t:"Shot hole: copper spray in autumn, open canopy pruning — worse in Med wet winters"}]},
     "Walnut":{waterNote:"Deep roots. Very drought-tolerant."},
     "Almond":{sowIn:"Nov-Feb",harvest:"Aug-Sep",spacing:550,yld:10,waterFreq:"Every 7-14 days",waterNote:"Drought-tolerant.",fert:"NPK 10-10-10 in spring. Light feeder. Drought-tolerant.",regionNote:"Native nut tree. Flowers Feb — frost can damage. Drought-tolerant."},
     "Chestnut":{harvest:"Oct-Nov",waterNote:"Deep roots. Rain-fed once established."},
@@ -1158,15 +1359,15 @@ const RO = {
 
   // ── NORTHERN EUROPE (Germany, Scandinavia, Baltics, Poland, Czechia) ──
   northern_europe: {
-    "Tomato":{sowIn:"Apr-May",harvest:"Jul-Sep",yld:3,waterNote:"Greenhouse essential. Choose cold-tolerant varieties.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Greenhouse or polytunnel required. Varieties: Sungold, Moneymaker, Sub Arctic Plenty for outdoors."},
+    "Tomato":{sowIn:"Apr-May",harvest:"Jul-Sep",yld:3,waterNote:"Greenhouse essential. Choose cold-tolerant varieties.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Greenhouse or polytunnel required. Varieties: Sungold, Moneymaker, Sub Arctic Plenty for outdoors.",pests:[{n:"Late blight (Phytophthora — #1 in cool wet NE summers)",t:"Late blight: copper spray every 10-14d from July, grow under cover, no overhead watering — more severe than WE"},{n:"Whitefly (in greenhouses/polytunnels)",t:"Whitefly: Encarsia formosa biological control, yellow sticky traps"},{n:"Botrytis (grey mold)",t:"Botrytis: ventilate, remove dead leaves, space plants — cool humid NE amplifies risk"}]},
     "Pepper (Sweet)":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:100,yld:1.5,waterNote:"Consistent moisture, mulch in heat.",regionNote:"Greenhouse only. Start very early indoors under grow lights."},
-    "Potato":{sowIn:"Apr-May",harvest:"Jul-Sep",yld:2,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest.",regionNote:"Wait until soil 8°C+. Excellent crop. Early varieties from April, maincrop May."},
-    "Onion":{sowIn:"Mar-Apr, Aug-Sep",harvest:"Aug-Sep",days:115,waterNote:"Regular during bulbing. Stop when tops fall.",regionNote:"Sets easier than seed. Stuttgarter Riesen and Red Baron popular. Plant sets early spring."},
+    "Potato":{sowIn:"Apr-May",harvest:"Jul-Sep",yld:2,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest.",regionNote:"Wait until soil 8°C+. Excellent crop. Early varieties from April, maincrop May.",pests:[{n:"Late blight (Phytophthora — severe in cool wet NE)",t:"Late blight: copper hydroxide spray preventive from late June, destroy haulms at first sign, resistant varieties (Sarpo Mira)"},{n:"Colorado beetle (continental Europe)",t:"Colorado beetle: hand-pick adults and egg masses daily, Bt var. tenebrionis — less in UK, more in DE/PL/Scandi/Baltics"},{n:"Wireworm",t:"Wireworm: trap with buried potato halves, rotate — especially after grassland"},{n:"Scab",t:"Scab: keep pH below 6.0 — acidic NE soils can help but inconsistent"}]},
+    "Onion":{sowIn:"Mar-Apr, Aug-Sep",harvest:"Aug-Sep",days:115,waterNote:"Regular during bulbing. Stop when tops fall.",regionNote:"Sets easier than seed. Stuttgarter Riesen and Red Baron popular. Plant sets early spring.",pests:[{n:"Onion fly (Delia antiqua)",t:"Onion fly: companion plant with carrot, fleece from sowing"},{n:"Downy mildew",t:"Downy mildew: copper spray, spacing — amplified in cool wet NE conditions"},{n:"Botrytis neck rot (storage)",t:"Botrytis neck rot: cure thoroughly 3-4wk before storage — worse in humid NE"}]},
     "Garlic":{sowIn:"Sep-Oct",harvest:"Jul-Aug",days:250,waterFreq:"Every 5-7 days",waterNote:"Moderate. Stop 2-3wk pre-harvest.",steps:[{d:0,l:"Plant cloves",t:"Pointed up, 5cm deep."},{d:14,l:"Mulch 10cm",t:"Straw for winter."},{d:120,l:"Spring feed",t:"Nitrogen. Remove scapes."},{d:200,l:"Stop water",t:"Lower leaves browning."},{d:240,l:"Harvest",t:"Dig when 5-6 leaves brown. Cure 3-4wk."}],storage:"6-8 months cured.",regionNote:"Plant autumn. Hardneck varieties essential — need cold period. Very reliable."},
-    "Cabbage":{sowIn:"Mar-May, Jul",harvest:"Jul-Nov",days:95,yld:2,waterNote:"Consistent for tight heads. Heavy feeder.",regionNote:"Good crop for cold climates. Winter varieties store well. Sauerkraut tradition."},
+    "Cabbage":{sowIn:"Mar-May, Jul",harvest:"Jul-Nov",days:95,yld:2,waterNote:"Consistent for tight heads. Heavy feeder.",regionNote:"Good crop for cold climates. Winter varieties store well. Sauerkraut tradition.",pests:[{n:"Flea beetle (Phyllotreta — severe in cold dry NE spring)",t:"Flea beetle: fleece immediately after transplant until established — worse in NE than WE due to cold dry springs"},{n:"Club root (worse in acidic NE soils)",t:"Club root: lime heavily to pH 7.2+, rotate 7+ years, resistant varieties — NE soils often pH 5.5-6"},{n:"Cabbage white butterfly",t:"Cabbage white: fine mesh netting whole season, Bt spray"},{n:"Mealy cabbage aphid",t:"Mealy aphid: grey-blue colonies under leaves, soap spray + hose blast"}]},
     "Bean (Dry)":{harvest:"Sep",days:105,waterNote:"More during flowering.",regionNote:"Short season. Choose fast-maturing bush types. Soil must be warm."},
     "Zucchini":{yld:4,waterNote:"Heavy drinker. Base water only.",regionNote:"Start indoors May, plant out after last frost. Very productive."},
-    "Carrot":{sowIn:"Apr-Jun",harvest:"Jul-Oct",days:80,waterNote:"Even moisture.",regionNote:"Good crop. Nantes types do well. Sow when soil workable. Store in sand."},
+    "Carrot":{sowIn:"Apr-Jun",harvest:"Jul-Oct",days:80,waterNote:"Even moisture.",regionNote:"Good crop. Nantes types do well. Sow when soil workable. Store in sand.",pests:[{n:"Carrot fly (Psila rosae)",t:"Carrot fly: 60cm fleece/physical barrier, companion with onion, late sow (Jul) misses peak flight"},{n:"Alternaria leaf blight",t:"Alternaria: rotate, remove infected tops, copper spray — humid NE amplifies this fungal issue"}]},
     "Spinach":{sowIn:"Mar-May, Aug-Sep",harvest:"May-Jun, Sep-Nov",waterNote:"Keep moist. Bolts in heat.",regionNote:"Cool climate suits spinach perfectly. Slow to bolt. Great for spring and autumn."},
     "Cucumber":{harvest:"Jul-Aug",days:65,yld:2.5,waterNote:"Constant moisture or bitter.",regionNote:"Greenhouse varieties only. Outdoor very unreliable. Start indoors."},
     "Lettuce":{sowIn:"Apr-Aug",waterNote:"Consistently moist.",regionNote:"Good crop. Less bolting risk. Succession sow from April."},
@@ -1195,11 +1396,11 @@ const RO = {
     "Turnip":{sowIn:"Apr-May, Jul-Aug",harvest:"Jun-Jul, Sep-Nov",days:55,waterNote:"Cool season. Bolts in heat.",regionNote:"Good cool-climate crop. Fast growing. Traditional storage vegetable."},
     "Celery":{sowIn:"Mar-Apr",harvest:"Aug-Oct",days:130,waterNote:"Needs constant moisture. Very thirsty.",regionNote:"Start indoors very early. Needs long season. Celeriac easier alternative."},
     "Swiss Chard":{sowIn:"Apr-Jun",harvest:"Jun-Oct",waterNote:"Heat AND cold tolerant.",regionNote:"Hardy. Good through light frosts. Bright Lights variety for colour."},
-    "Kale":{sowIn:"Apr-Jun, Jul-Aug",harvest:"Jun-Jul, Sep-Mar",yld:0.6,waterNote:"Cold-hardy. Sweeter after frost.",regionNote:"Thrives in cold. Sweeter after hard frost. Essential winter green."},
+    "Kale":{sowIn:"Apr-Jun, Jul-Aug",harvest:"Jun-Jul, Sep-Mar",yld:0.6,waterNote:"Cold-hardy. Sweeter after frost.",regionNote:"Thrives in cold. Sweeter after hard frost. Essential winter green.",pests:[{n:"Flea beetle (#1 for kale in NE)",t:"Flea beetle: fleece from sowing to establishment — severe in NE cold spring, worse than WE"},{n:"Cabbage white butterfly",t:"Cabbage white: netting"},{n:"Club root",t:"Club root: lime, rotate — less than heading brassicas but still present"}]},
     "Asparagus":{sowIn:"Apr",harvest:"May-Jun (yr 3+)",waterNote:"Perennial. Establish well.",regionNote:"Hardy perennial. Plant crowns in spring. Needs well-drained bed."},
     "Pea":{sowIn:"Mar-May",harvest:"Jun-Jul",days:65,waterNote:"Cool season. More at flowering.",regionNote:"Good cool-climate crop. Support with sticks or netting."},
-    "Strawberry":{sowIn:"Aug-Sep, Mar-Apr",harvest:"Jun-Jul",days:130,yld:0.3,waterNote:"Consistent moisture. Straw mulch.",regionNote:"Reliable. Mulch for winter protection. Everbearing types extend season."},
-    "Raspberry":{harvest:"Jun-Jul, Sep",waterNote:"Post and wire support.",regionNote:"Excellent. Very cold hardy. Summer and autumn varieties."},
+    "Strawberry":{sowIn:"Aug-Sep, Mar-Apr",harvest:"Jun-Jul",days:130,yld:0.3,waterNote:"Consistent moisture. Straw mulch.",regionNote:"Reliable. Mulch for winter protection. Everbearing types extend season.",pests:[{n:"Vine weevil (Otiorhynchus — #1 in NE/continental)",t:"Vine weevil: nematode drench (Steinernema kraussei) in Aug-Sep — white larvae destroy roots; more severe in NE than WE"},{n:"Botrytis (grey mold)",t:"Botrytis: straw mulch, spacing, remove affected fruit — cool humid NE amplifies"},{n:"Aphids",t:"Aphids: soap spray"}]},
+    "Raspberry":{harvest:"Jun-Jul, Sep",waterNote:"Post and wire support.",regionNote:"Excellent. Very cold hardy. Summer and autumn varieties.",pests:[{n:"Raspberry beetle",t:"Raspberry beetle: shake onto white cloth morning, Bt at first pink fruit"},{n:"Cane blight (Didymella)",t:"Cane blight: remove fruited canes to ground immediately, thin for airflow — cool damp NE winters amplify"},{n:"Botrytis",t:"Botrytis: spacing, airflow, harvest promptly — cool humid NE conditions promote"}]},
     "Peach":{_na:true,regionNote:"Not reliably hardy. Late frosts kill blossoms. Trained against heated wall possible."},
     "Plum":{waterNote:"Moderate water.",regionNote:"Hardy. Choose local varieties. Good crop in continental climate."},
     "Cherry":{harvest:"Jun-Jul",waterNote:"Moderate. Net against birds.",regionNote:"Hardy. Good crop. Sour cherries (Morello) very cold tolerant. Net birds."},
@@ -1216,9 +1417,9 @@ const RO = {
     "Thyme":{sowIn:"May",harvest:"Jun-Sep",days:95,waterNote:"Very drought-tolerant. Poor soil = more flavor.",regionNote:"Hardy once established. Must have drainage. Winter mulch helps."},
     "Parsley":{sowIn:"Apr-Jun",harvest:"Jun-Oct",days:80,waterNote:"Moderate moisture.",regionNote:"Reliable. Slow to germinate. Hamburg parsley (root) also useful."},
     "Dill":{sowIn:"May-Jun",harvest:"Jul-Aug",days:45,waterNote:"Moderate. Bolts in heat.",regionNote:"Direct sow after frost. Short season. Important in Baltic/Nordic cooking."},
-    "Broccoli":{sowIn:"Apr-May, Jul",harvest:"Jun-Jul, Sep-Nov",days:75,waterNote:"Consistent moisture. Drought causes bolting.",regionNote:"Good cool-climate crop. Calabrese for summer, purple sprouting overwinters."},
-    "Cauliflower":{sowIn:"Apr-May",harvest:"Jul-Oct",days:90,waterNote:"Most demanding brassica. Inconsistent water = tiny heads.",regionNote:"Challenging in short season. Start early indoors."},
-    "Brussels Sprouts":{sowIn:"Mar-Apr",harvest:"Oct-Jan",days:120,waterNote:"Long season crop. Steady moisture. Better after frost.",storage:"Fresh 2-3wk on stalk in cold. Blanch+freeze. Roast and eat fresh — Med winters perfect for this crop.",regionNote:"Excellent after hard frost. Perfect cold-climate crop."},
+    "Broccoli":{sowIn:"Apr-May, Jul",harvest:"Jun-Jul, Sep-Nov",days:75,waterNote:"Consistent moisture. Drought causes bolting.",regionNote:"Good cool-climate crop. Calabrese for summer, purple sprouting overwinters.",pests:[{n:"Flea beetle",t:"Flea beetle: fleece cover from transplant — very severe in cold NE spring"},{n:"Club root",t:"Club root: lime to pH 7.2+, rotate 7+ years"},{n:"Cabbage white butterfly",t:"Cabbage white: netting from transplant"}]},
+    "Cauliflower":{sowIn:"Apr-May",harvest:"Jul-Oct",days:90,waterNote:"Most demanding brassica. Inconsistent water = tiny heads.",regionNote:"Challenging in short season. Start early indoors.",pests:[{n:"Flea beetle",t:"Flea beetle: fleece cover from transplant — worse in NE cold spring than WE"},{n:"Club root",t:"Club root: lime heavily, long rotation — amplified in acidic NE soils"},{n:"Downy mildew",t:"Downy mildew: spacing, copper spray — humid NE autumns amplify"}]},
+    "Brussels Sprouts":{sowIn:"Mar-Apr",harvest:"Oct-Jan",days:120,waterNote:"Long season crop. Steady moisture. Better after frost.",storage:"Fresh 2-3wk on stalk in cold. Blanch+freeze. Roast and eat fresh — Med winters perfect for this crop.",regionNote:"Excellent after hard frost. Perfect cold-climate crop.",pests:[{n:"Flea beetle",t:"Flea beetle: fleece protection from transplant — severe in NE spring"},{n:"Club root",t:"Club root: lime, long rotation — acidic NE soils amplify severity"},{n:"Mealy cabbage aphid",t:"Mealy aphid: soap spray, hose blast — coats sprout buttons in late season"}]},
     "Sweet Potato":{_na:true,regionNote:"Season too short. Not enough heat units."},
     "Celeriac":{sowIn:"Feb-Mar",harvest:"Oct-Nov",days:160,waterNote:"Extremely thirsty. Mulch heavily. Never let dry out.",regionNote:"Start very early indoors. Long season. Mulch. Traditional German vegetable."},
     "Sunflower":{sowIn:"May",harvest:"Sep-Oct",days:85,waterNote:"Deep roots = drought-tolerant once established. Heavy water at flowering.",regionNote:"Reliable. Direct sow after last frost. Choose appropriate height."},
@@ -1232,24 +1433,24 @@ const RO = {
 
   // ── SOUTHERN & WESTERN US (CA, TX, FL, AZ, GA, Pacific NW lowlands, coastal BC) ──
   us_warm: {
-    "Tomato":{harvest:"Jun-Oct",days:75,yld:5.5,waterNote:"Deep water at base. Mulch heavily in heat. Afternoon shade helps in Deep South.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Start indoors 6-8wk before last frost. Determinate varieties for brutal summers. Heat-set varieties for South."},
-    "Pepper (Sweet)":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:80,yld:4,waterNote:"Consistent moisture, mulch in heat.",regionNote:"Thrives in heat. Direct sun. Long season gives heavy yields."},
-    "Potato":{sowIn:"Jan-Mar",harvest:"May-Jul",days:90,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest.",regionNote:"Plant early — potatoes dislike hot summers. Yukon Gold, Red Pontiac do well."},
+    "Tomato":{harvest:"Jun-Oct",days:75,yld:5.5,waterNote:"Deep water at base. Mulch heavily in heat. Afternoon shade helps in Deep South.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Start indoors 6-8wk before last frost. Determinate varieties for brutal summers. Heat-set varieties for South.",pests:[{n:"Tomato hornworm (Manduca — #1)",t:"Hornworm: hand-pick (large, easy to spot), Bt spray, parasitic wasp — not present in WE or Med"},{n:"Root-knot nematode (Meloidogyne)",t:"Nematode: resistant varieties (marked VFN), marigold interplant, soil solarization"},{n:"Southern blight (Sclerotium rolfsii)",t:"Southern blight: bury crop debris, avoid mulch touching stem, rotate 3yr — warm-soil fungal disease absent from WE"},{n:"Silverleaf whitefly",t:"Whitefly: yellow traps, neem, reflective mulch — more aggressive US strain than WE"}]},
+    "Pepper (Sweet)":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:80,yld:4,waterNote:"Consistent moisture, mulch in heat.",regionNote:"Thrives in heat. Direct sun. Long season gives heavy yields.",pests:[{n:"Pepper weevil (Anthonomus eugenii — SE US)",t:"Pepper weevil: hand-pick, crop rotation, destroy infested fruit — not present in WE or Med"},{n:"Phytophthora blight (P. capsici)",t:"Phytophthora blight: excellent drainage, avoid overhead water, copper spray — serious in warm wet US soils"},{n:"Aphids",t:"Aphids: soap spray, reflective mulch"}]},
+    "Potato":{sowIn:"Jan-Mar",harvest:"May-Jul",days:90,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest.",regionNote:"Plant early — potatoes dislike hot summers. Yukon Gold, Red Pontiac do well.",pests:[{n:"Colorado beetle (#1 in US — more established than WE)",t:"Colorado beetle: hand-pick adults and egg masses daily, Bt var. tenebrionis, rotate ESSENTIAL"},{n:"Root-knot nematode",t:"Nematode: resistant varieties, marigold interplant — warm US soils amplify"},{n:"Late blight",t:"Late blight: copper spray, resistant varieties (Kennebec) — present in humid SE"}]},
     "Onion":{sowIn:"Oct-Jan",harvest:"Apr-Jun",days:100,waterNote:"Regular during bulbing. Stop when tops fall.",regionNote:"Short-day varieties for the South (Texas Super Sweet, Yellow Granex). Plant autumn/winter."},
     "Garlic":{harvest:"May-Jun",days:200,waterFreq:"Every 5-7 days",waterNote:"Moderate. Stop 2-3wk pre-harvest.",steps:[{d:0,l:"Plant cloves",t:"Pointed up, 5cm deep."},{d:14,l:"Mulch 10cm",t:"Straw for winter."},{d:120,l:"Spring feed",t:"Nitrogen. Remove scapes."},{d:200,l:"Stop water",t:"Lower leaves browning."},{d:240,l:"Harvest",t:"Dig when 5-6 leaves brown. Cure 3-4wk."}],storage:"6-8 months cured.",regionNote:"Softneck varieties for warm climates (California Early, Inchelium Red). Plant in fall."},
-    "Cabbage":{sowIn:"Sep-Feb",harvest:"Dec-Apr",days:85,yld:2,waterNote:"Consistent for tight heads. Heavy feeder.",regionNote:"Cool-season crop — plant for winter harvest in warm zones. Bolts in summer heat."},
-    "Bean (Dry)":{sowIn:"Mar-May",harvest:"Jul-Sep",days:90,waterNote:"More during flowering.",regionNote:"Long season great for pole beans. Can do spring and fall crops."},
-    "Zucchini":{sowIn:"Mar-Apr",harvest:"May-Sep",days:48,yld:7,waterNote:"Heavy drinker. Base water only.",regionNote:"Very productive. Squash vine borer is #1 enemy. Succession plant."},
+    "Cabbage":{sowIn:"Sep-Feb",harvest:"Dec-Apr",days:85,yld:2,waterNote:"Consistent for tight heads. Heavy feeder.",regionNote:"Cool-season crop — plant for winter harvest in warm zones. Bolts in summer heat.",pests:[{n:"Harlequin bug (Murgantia histrionica — southern US)",t:"Harlequin bug: hand-pick eggs (red-banded clusters), mustard trap crop — absent from WE and Med"},{n:"Cabbage looper (Trichoplusia ni)",t:"Cabbage looper: Bt spray, hand-pick — different species but same treatment as WE cabbage white"},{n:"Imported cabbageworm",t:"Imported cabbageworm: fine mesh netting, Bt spray"}]},
+    "Bean (Dry)":{sowIn:"Mar-May",harvest:"Jul-Sep",days:90,waterNote:"More during flowering.",regionNote:"Long season great for pole beans. Can do spring and fall crops.",pests:[{n:"Mexican bean beetle (Epilachna varivestis)",t:"Mexican bean beetle: hand-pick yellow egg clusters on leaf undersides, Bt — not present in WE"},{n:"Bean leaf beetle",t:"Bean leaf beetle: row covers early season — US pest absent from WE"},{n:"White mold (Sclerotinia)",t:"White mold: spacing, avoid overhead water, rotate 3yr"}]},
+    "Zucchini":{sowIn:"Mar-Apr",harvest:"May-Sep",days:48,yld:7,waterNote:"Heavy drinker. Base water only.",regionNote:"Very productive. Squash vine borer is #1 enemy. Succession plant.",pests:[{n:"Squash vine borer (Melittia cucurbitae — #1 US)",t:"Squash vine borer: row covers until flowering, wrap stem in foil, inject Bt into stem — absent from WE and Med"},{n:"Striped cucumber beetle (bacterial wilt vector)",t:"Striped cucumber beetle: row covers until flowering, kaolin clay — not present in WE"},{n:"Powdery mildew",t:"Powdery mildew: milk spray, airflow, resistant varieties"}]},
     "Carrot":{sowIn:"Sep-Feb",harvest:"Dec-Apr",days:70,waterNote:"Even moisture.",regionNote:"Cool-season crop in the South. Plant in fall. Heat causes bitter woody roots."},
     "Spinach":{sowIn:"Sep-Feb",harvest:"Nov-Apr",waterNote:"Keep moist. Bolts in heat.",regionNote:"Winter crop in warm zones. Bolts immediately in spring heat. Malabar spinach for summer."},
-    "Cucumber":{sowIn:"Mar-May",harvest:"May-Sep",days:55,yld:5,waterNote:"Constant moisture or bitter.",regionNote:"Loves heat. Very productive. Watch for cucumber beetles. Trellis to save space."},
+    "Cucumber":{sowIn:"Mar-May",harvest:"May-Sep",days:55,yld:5,waterNote:"Constant moisture or bitter.",regionNote:"Loves heat. Very productive. Watch for cucumber beetles. Trellis to save space.",pests:[{n:"Striped cucumber beetle (#1 — bacterial wilt vector)",t:"Striped cucumber beetle: row covers until flowering, kaolin clay — not present in WE"},{n:"Squash vine borer",t:"Squash vine borer: row covers, wrap stem — absent from WE"},{n:"Powdery mildew",t:"Powdery mildew: resistant varieties, milk spray"}]},
     "Lettuce":{sowIn:"Sep-Mar",harvest:"Nov-Apr",days:40,waterNote:"Consistently moist.",regionNote:"Winter crop. Bolts fast in heat. Shade cloth extends season."},
-    "Pumpkin":{sowIn:"Jun-Jul",harvest:"Oct-Nov",days:95,yld:10,waterNote:"Deep weekly. Less at maturity.",regionNote:"Plant after worst summer heat passes. Long season. Squash bugs main pest."},
+    "Pumpkin":{sowIn:"Jun-Jul",harvest:"Oct-Nov",days:95,yld:10,waterNote:"Deep weekly. Less at maturity.",regionNote:"Plant after worst summer heat passes. Long season. Squash bugs main pest.",pests:[{n:"Squash vine borer (#1)",t:"Squash vine borer: row covers until pollination, wrap stem, Bt injection — absent from WE/Med"},{n:"Striped cucumber beetle",t:"Striped cucumber beetle: row covers, kaolin clay, hand-pick"},{n:"Powdery mildew",t:"Powdery mildew: resistant varieties, milk spray, airflow"}]},
     "Beetroot":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:55,waterNote:"Even moisture.",regionNote:"Cool-season crop. Plant fall through winter."},
     "Broad Bean":{sowIn:"Oct-Dec",harvest:"Mar-May",days:140,waterNote:"More at flowering.",regionNote:"Winter crop in the South. Plant in autumn. Not heat tolerant."},
     "Leek":{sowIn:"Sep-Nov",harvest:"Jan-Apr",days:120,yld:0.3,waterNote:"Hill soil to blanch.",regionNote:"Cool-season crop. Plant in fall for winter/spring harvest."},
     "Olive":{sowIn:"Nov-Mar",harvest:"Oct-Dec",spacing:600,yld:20,waterFreq:"Monthly",waterNote:"Very drought-tolerant.",fert:"Mature trees: NPK 15-5-15 in late winter. Foliar boron spray at flowering. Young trees: balanced 10-10-10.",steps:[{d:0,l:"Plant",t:"South-facing, drained."},{d:30,l:"Establish",t:"Weekly water 2 years."}],regionNote:"California excellent for olives. Texas and parts of South work. Need winter chill."},
-    "Grape":{harvest:"Jul-Sep",yld:10,waterNote:"Reduce near harvest.",regionNote:"Muscadine grapes native to Southeast. Vinifera in California. Excellent crop."},
+    "Grape":{harvest:"Jul-Sep",yld:10,waterNote:"Reduce near harvest.",regionNote:"Muscadine grapes native to Southeast. Vinifera in California. Excellent crop.",pests:[{n:"Japanese beetle (#1 on grapes in US)",t:"Japanese beetle: hand-pick morning, neem, milky spore soil — not present in WE"},{n:"Black rot (Guignardia bidwellii)",t:"Black rot: copper spray preventive from bud break — serious US warm-climate disease"},{n:"Pierce's disease (south only)",t:"Pierce's disease: resistant varieties in SE — bacterial, spread by sharpshooter leafhopper, fatal to vine"}]},
     "Fig":{harvest:"Jun-Oct",yld:20,waterNote:"Drought-tolerant.",storage:"Sun-dry months. Jam.",regionNote:"Thrives. Brown Turkey hardy. Two crops possible (breba + main). Easy care."},
     "Pomegranate":{sowIn:"Nov-Mar",spacing:400,yld:18,waterFreq:"Every 7-14 days",waterNote:"Drought-tolerant.",fert:"Light feeder. NPK 10-10-10 in spring. Tolerates poor soil.",regionNote:"Excellent in hot dry areas. Wonderful Red is popular. Very drought tolerant."},
     "Basil":{sowIn:"Mar-May",harvest:"May-Oct",days:28,yld:0.4,waterNote:"Moist, not waterlogged.",regionNote:"Thrives in heat. Long season. Succession sow. Pinch flowers."},
@@ -1260,10 +1461,10 @@ const RO = {
     "Lavender":{sowIn:"Feb-Mar",harvest:"May-Jul",days:85,waterNote:"Excellent drainage required.",regionNote:"Excellent in dry heat. Spanish and French types for hottest areas. English for cooler zones."},
     "Wheat":{harvest:"May-Jun",days:200,waterNote:"Rain-fed winter.",regionNote:"Winter wheat. Plant in fall. Harvest late spring before summer heat."},
     "Pepper (Hot)":{sowIn:"Feb-Mar",harvest:"Jun-Nov",days:80,yld:2,waterNote:"Less water = hotter peppers.",regionNote:"Paradise for hot peppers. Long hot season = maximum heat. Carolina Reaper territory."},
-    "Eggplant":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:70,yld:5,waterNote:"Loves heat. Consistent deep water.",regionNote:"Loves heat. Very productive with long season. Black Beauty, Ichiban popular."},
+    "Eggplant":{sowIn:"Feb-Mar",harvest:"Jun-Oct",days:70,yld:5,waterNote:"Loves heat. Consistent deep water.",regionNote:"Loves heat. Very productive with long season. Black Beauty, Ichiban popular.",pests:[{n:"Flea beetle (#1 in warm US)",t:"Flea beetle: row cover until established, kaolin clay — more severe in warm US than in WE or Med"},{n:"Colorado beetle",t:"Colorado beetle: hand-pick, Bt var. tenebrionis"},{n:"Spider mites",t:"Spider mites: mist undersides, neem — hot summers amplify"}]},
     "Watermelon":{sowIn:"Mar-Apr",harvest:"Jul-Sep",days:80,yld:10,waterNote:"Heavy water growing. Stop at ripening.",regionNote:"Excellent. Crimson Sweet, Sugar Baby popular. Long hot season perfect."},
     "Melon":{sowIn:"Mar-Apr",harvest:"Jul-Sep",days:75,yld:5,waterNote:"Reduce water near harvest for sweetness.",regionNote:"Thrives. Cantaloupe and honeydew do great. Black plastic mulch."},
-    "Corn":{sowIn:"Mar-May",harvest:"Jun-Aug",days:75,yld:0.35,waterNote:"Critical during tasseling.",regionNote:"Excellent. Silver Queen, Peaches and Cream popular. Blocks not rows."},
+    "Corn":{sowIn:"Mar-May",harvest:"Jun-Aug",days:75,yld:0.35,waterNote:"Critical during tasseling.",regionNote:"Excellent. Silver Queen, Peaches and Cream popular. Blocks not rows.",pests:[{n:"Southern corn rootworm (Diabrotica undecimpunctata)",t:"Rootworm: rotate (never follow corn), Bt in soil — southern states; absent from WE"},{n:"Corn earworm (Helicoverpa zea — #1 in US warm)",t:"Corn earworm: Bt at silking, mineral oil on silk tips — far more severe than WE"},{n:"Japanese beetle",t:"Japanese beetle: hand-pick morning, neem, milky spore soil treatment — not present in WE"}]},
     "Okra":{sowIn:"Apr-Jun",harvest:"Jun-Oct",days:55,yld:3,waterFreq:"Every 3 days",waterNote:"Drought-tolerant. Deep infrequent.",regionNote:"Southern staple. Loves heat. Clemson Spineless popular. Pick every 2 days."},
     "Radish":{sowIn:"Sep-Mar",harvest:"Oct-Apr",days:25,waterNote:"Quick. Even moisture.",regionNote:"Cool-season. Plant fall through spring. Fast and easy."},
     "Turnip":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:45,waterNote:"Cool season. Bolts in heat.",regionNote:"Cool-season crop. Plant in fall. Southern tradition: turnip greens."},
@@ -1272,9 +1473,9 @@ const RO = {
     "Kale":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:55,yld:0.6,waterNote:"Cold-hardy. Sweeter after frost.",regionNote:"Cool-season. Sweeter after light frost. Lacinato/Dinosaur kale heat tolerant."},
     "Asparagus":{sowIn:"Jan-Feb",harvest:"Mar-May (yr 3+)",waterNote:"Perennial. Establish well.",regionNote:"Plant crowns in late winter. Excellent long-term investment. Jersey series."},
     "Pea":{sowIn:"Oct-Feb",harvest:"Mar-May",days:55,waterNote:"Cool season. More at flowering.",regionNote:"Cool-season only. Plant fall/winter. Snow peas and sugar snap popular."},
-    "Strawberry":{sowIn:"Sep-Nov",harvest:"Mar-May",days:110,yld:0.45,waterNote:"Consistent moisture. Straw mulch.",regionNote:"Plant in fall. Day-neutral varieties for extended harvest. Chandler popular."},
-    "Raspberry":{sowIn:"Nov-Feb",harvest:"May-Jun, Sep-Oct",waterNote:"Post and wire support.",regionNote:"Heritage and Caroline for warm zones. Need some chill hours."},
-    "Peach":{harvest:"May-Jul",yld:25,waterNote:"Deep water. Less near harvest.",regionNote:"Excellent. Choose low-chill varieties for Deep South (400-600 hrs). Georgia, Carolinas ideal."},
+    "Strawberry":{sowIn:"Sep-Nov",harvest:"Mar-May",days:110,yld:0.45,waterNote:"Consistent moisture. Straw mulch.",regionNote:"Plant in fall. Day-neutral varieties for extended harvest. Chandler popular.",pests:[{n:"Root-knot nematode",t:"Nematode: resistant varieties, marigold interplant, solarize — warm US soil amplifies"},{n:"Anthracnose (Colletotrichum)",t:"Anthracnose: avoid overhead water, copper spray — warm humid disease absent from WE"},{n:"Spider mites",t:"Spider mites: mist undersides, predatory mites — worse in warm US summers"}]},
+    "Raspberry":{sowIn:"Nov-Feb",harvest:"May-Jun, Sep-Oct",waterNote:"Post and wire support.",regionNote:"Heritage and Caroline for warm zones. Need some chill hours.",pests:[{n:"Spotted wing Drosophila (Drosophila suzukii — #1)",t:"SWD: fine mesh covers on ripening fruit, ACV traps, early morning harvest — severe US pest"},{n:"Japanese beetle",t:"Japanese beetle: hand-pick morning, neem spray"},{n:"Cane blight",t:"Cane blight: remove fruited canes immediately, thin for airflow"}]},
+    "Peach":{harvest:"May-Jul",yld:25,waterNote:"Deep water. Less near harvest.",regionNote:"Excellent. Choose low-chill varieties for Deep South (400-600 hrs). Georgia, Carolinas ideal.",pests:[{n:"Peach twig borer (Anarsia lineatella)",t:"Peach twig borer: Bt spray at petal fall and again 3wk later — more severe in US than WE"},{n:"Oriental fruit moth",t:"Oriental fruit moth: pheromone traps, Bt spray"},{n:"Brown rot (Monilinia — very severe in SE humidity)",t:"Brown rot: copper spray at flowering, thin fruit, remove mummies — far worse in humid SE than WE"},{n:"Japanese beetle",t:"Japanese beetle: hand-pick morning, neem — not present in WE"}]},
     "Plum":{harvest:"Jun-Aug",yld:20,waterNote:"Moderate water.",regionNote:"Santa Rosa, Methley popular. Japanese types for warmest zones."},
     "Cherry":{harvest:"May-Jun",yld:15,waterNote:"Moderate. Net against birds.",regionNote:"Sweet cherries need chill hours. Marginal in Deep South. Pacific NW ideal."},
     "Apricot":{harvest:"May-Jun",yld:15,waterNote:"Drought-tolerant once established.",regionNote:"Good in California, Texas. Early blooming = frost risk. Blenheim popular."},
@@ -1290,7 +1491,7 @@ const RO = {
     "Thyme":{harvest:"Year-round",days:85,waterNote:"Very drought-tolerant. Poor soil = more flavor.",regionNote:"Evergreen in warm zones. Drought tolerant. Creeping thyme for paths."},
     "Parsley":{sowIn:"Sep-Mar",harvest:"Nov-May",days:65,waterNote:"Moderate moisture.",regionNote:"Cool-season herb. Plant in fall. Italian flat-leaf most popular."},
     "Dill":{sowIn:"Sep-Mar",harvest:"Nov-May",days:38,waterNote:"Moderate. Bolts in heat.",regionNote:"Cool-season. Plant fall through spring. Bolts in summer heat."},
-    "Broccoli":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:65,yld:0.6,waterNote:"Consistent moisture. Drought causes bolting.",regionNote:"Cool-season. Fall/winter crop. Waltham 29 popular. Side shoots extend harvest."},
+    "Broccoli":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:65,yld:0.6,waterNote:"Consistent moisture. Drought causes bolting.",regionNote:"Cool-season. Fall/winter crop. Waltham 29 popular. Side shoots extend harvest.",pests:[{n:"Cabbage looper",t:"Cabbage looper: Bt spray, netting — prevalent in warm US seasons"},{n:"Harlequin bug (south)",t:"Harlequin bug: hand-pick eggs, mustard trap crop"},{n:"Root-knot nematode",t:"Nematode: rotate, marigold interplant — warm US soils"}]},
     "Cauliflower":{sowIn:"Sep-Feb",harvest:"Nov-Apr",days:75,waterNote:"Most demanding brassica. Inconsistent water = tiny heads.",regionNote:"Cool-season. Less fussy in mild winter conditions."},
     "Brussels Sprouts":{sowIn:"Aug-Sep",harvest:"Nov-Feb",days:110,waterNote:"Long season crop. Steady moisture. Better after frost.",storage:"Fresh 2-3wk on stalk in cold. Blanch+freeze. Roast and eat fresh — Med winters perfect for this crop.",regionNote:"Fall planting for winter harvest. Better after frost. Long season needed."},
     "Sweet Potato":{sowIn:"Apr-Jun",days:100,yld:3,waterNote:"Drought-tolerant once established. Reduce water 3wk before harvest.",steps:[{d:-21,l:"Start slips",t:"Submerge half a tuber in water. Sprouts in 3wk. Twist off slips when 15cm."},{d:0,l:"Plant slips",t:"Bury 2/3 of slip in mound. Soil must be 18°C+. Full sun. Med summers perfect."},{d:21,l:"Mulch",t:"Black plastic or straw. Weed-free zone around vines."},{d:80,l:"Reduce water",t:"Dry soil = sweeter tubers. Stop watering 3wk before harvest."},{d:110,l:"Harvest",t:"Before first cold night. Cure at 28-30°C for 10 days (Med sun works). Then cool storage."}],regionNote:"Southern staple. Plant slips after soil warm. Beauregard #1 variety. Very easy."},
@@ -1306,24 +1507,24 @@ const RO = {
 
   // ── NORTHERN US & CANADA (NY, MA, IL, MN, CO, most of Canada) ──
   us_cold: {
-    "Tomato":{sowIn:"Apr-May",harvest:"Jul-Sep",days:80,yld:4,waterNote:"Deep water at base. Mulch after soil warms.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Start indoors 6-8wk before last frost (late May). Determinate varieties for short season. Wall-O-Waters for early start."},
+    "Tomato":{sowIn:"Apr-May",harvest:"Jul-Sep",days:80,yld:4,waterNote:"Deep water at base. Mulch after soil warms.",fert:"NPK 5-10-10 at transplant. Side-dress 10-10-10 at 3wk. Switch to 0-10-20 (high-K) at fruit set. Compost tea every 2wk.",steps:[{d:-14,l:"Prepare soil",t:"Compost 5-8cm, pH 6-7, 30cm deep. Add calcium."},{d:0,l:"Transplant",t:"Bury 2/3 of stem. 2L water. Stake immediately."},{d:7,l:"Mulch",t:"Straw 5-8cm. Deep water at base."},{d:14,l:"First feed",t:"Balanced fertilizer or compost tea."},{d:21,l:"Prune suckers",t:"Remove below first flower. Tie to stakes."},{d:35,l:"K feed",t:"High-potassium. Continue removing suckers."},{d:45,l:"Pest check",t:"Hornworms, aphids, whitefly. Remove yellow leaves."},{d:55,l:"Reduce water",t:"Fruit coloring — less water = more flavor."},{d:70,l:"Harvest begins",t:"Pick colored but firm. Never refrigerate."},{d:85,l:"Season end",t:"Pull plants. Rotate: no nightshades here 3 yrs."}],storage:"Room temp 3-5d. Can 12mo+. Sun-dry 6mo+. Freeze blanched 8mo.",regionNote:"Start indoors 6-8wk before last frost (late May). Determinate varieties for short season. Wall-O-Waters for early start.",pests:[{n:"Late blight (#1 in short cool US Cold seasons)",t:"Late blight: copper spray every 10-14d from August, resistant varieties (Mountain Magic, Defiant) — key risk in NE/Midwest"},{n:"Tomato hornworm",t:"Hornworm: hand-pick (large green caterpillar), Bt spray — present but less severe than US Warm"},{n:"Septoria leaf spot",t:"Septoria leaf spot: copper spray, remove lower leaves, avoid wetting foliage — common in humid NE summers"}]},
     "Pepper (Sweet)":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:90,waterNote:"Consistent moisture, mulch in heat.",regionNote:"Start indoors 8-10wk early. Short season. Ace, King of the North for cold tolerance."},
-    "Potato":{sowIn:"Apr-May",harvest:"Jul-Sep",yld:2,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest.",regionNote:"Plant 2-3 weeks before last frost. Excellent crop. Kennebec, Yukon Gold."},
+    "Potato":{sowIn:"Apr-May",harvest:"Jul-Sep",yld:2,waterNote:"Even moisture in tuber stage. Stop 2wk pre-harvest.",regionNote:"Plant 2-3 weeks before last frost. Excellent crop. Kennebec, Yukon Gold.",pests:[{n:"Colorado beetle (Leptinotarsa — #1)",t:"Colorado beetle: hand-pick adults and orange egg masses daily (check leaf undersides), Bt var. tenebrionis, rotate ESSENTIAL"},{n:"Late blight (Phytophthora)",t:"Late blight: copper spray preventive, destroy infected plants, resistant varieties (Kennebec, Sarpo Mira)"},{n:"Wireworm",t:"Wireworm: trap with buried potato halves, rotate, avoid following grass"}]},
     "Onion":{sowIn:"Mar-Apr",harvest:"Aug-Sep",days:115,waterNote:"Regular during bulbing. Stop when tops fall.",regionNote:"Long-day varieties (Walla Walla, Copra, Candy). Start from sets or transplants."},
     "Garlic":{sowIn:"Sep-Oct",harvest:"Jul-Aug",days:260,waterFreq:"Every 5-7 days",waterNote:"Moderate. Stop 2-3wk pre-harvest.",steps:[{d:0,l:"Plant cloves",t:"Pointed up, 5cm deep."},{d:14,l:"Mulch 10cm",t:"Straw for winter."},{d:120,l:"Spring feed",t:"Nitrogen. Remove scapes."},{d:200,l:"Stop water",t:"Lower leaves browning."},{d:240,l:"Harvest",t:"Dig when 5-6 leaves brown. Cure 3-4wk."}],storage:"6-8 months cured.",regionNote:"Plant 4-6 weeks before ground freezes. Hardneck varieties (Music, German Extra Hardy). Mulch heavily."},
-    "Cabbage":{sowIn:"Apr-May, Jul-Aug",harvest:"Jul-Aug, Oct-Nov",yld:2,waterNote:"Consistent for tight heads. Heavy feeder.",regionNote:"Start indoors early. Can do spring and fall crop. Storage varieties (Danish Ballhead)."},
-    "Bean (Dry)":{harvest:"Sep",waterNote:"More during flowering.",regionNote:"Wait for warm soil (15°C+). Short season — choose early varieties."},
-    "Zucchini":{waterNote:"Heavy drinker. Base water only.",regionNote:"After last frost. Very productive in warm summers. Dark Star, Black Beauty."},
+    "Cabbage":{sowIn:"Apr-May, Jul-Aug",harvest:"Jul-Aug, Oct-Nov",yld:2,waterNote:"Consistent for tight heads. Heavy feeder.",regionNote:"Start indoors early. Can do spring and fall crop. Storage varieties (Danish Ballhead).",pests:[{n:"Imported cabbageworm (same species as WE cabbage white)",t:"Imported cabbageworm: Bt spray, fine mesh netting — same treatment as WE"},{n:"Flea beetle",t:"Flea beetle: row covers from transplant, kaolin clay — severe in cool dry northern spring"},{n:"Aphids",t:"Aphids: soap spray, hose blast"}]},
+    "Bean (Dry)":{harvest:"Sep",waterNote:"More during flowering.",regionNote:"Wait for warm soil (15°C+). Short season — choose early varieties.",pests:[{n:"Mexican bean beetle",t:"Mexican bean beetle: hand-pick yellow egg clusters on leaf undersides, Bt — not present in WE"},{n:"Bean leaf beetle",t:"Bean leaf beetle: row covers early season — US pest absent from WE"},{n:"Sclerotinia white mold",t:"White mold: spacing, avoid overhead water, rotate 3yr"}]},
+    "Zucchini":{waterNote:"Heavy drinker. Base water only.",regionNote:"After last frost. Very productive in warm summers. Dark Star, Black Beauty.",pests:[{n:"Squash bug (Anasa tristis — #1 in northern US)",t:"Squash bug: hand-pick bronze egg masses on leaf undersides, Bt, row covers early — absent from WE"},{n:"Squash vine borer",t:"Squash vine borer: row covers until flowering, wrap stem, Bt injection"},{n:"Striped cucumber beetle",t:"Striped cucumber beetle: row covers, kaolin clay — bacterial wilt vector"}]},
     "Carrot":{sowIn:"Apr-Jun",harvest:"Jul-Oct",waterNote:"Even moisture.",regionNote:"Direct sow when soil workable. Napoli, Bolero for storage. Mulch to extend harvest."},
     "Spinach":{sowIn:"Apr-May, Aug-Sep",harvest:"May-Jun, Sep-Nov",waterNote:"Keep moist. Bolts in heat.",regionNote:"Great cool-season crop. Plant as soon as soil workable. Bloomsdale."},
-    "Cucumber":{days:58,yld:3.5,waterNote:"Constant moisture or bitter.",regionNote:"After last frost. Marketmore, Straight Eight. Trellis saves space."},
+    "Cucumber":{days:58,yld:3.5,waterNote:"Constant moisture or bitter.",regionNote:"After last frost. Marketmore, Straight Eight. Trellis saves space.",pests:[{n:"Striped cucumber beetle (bacterial wilt vector)",t:"Striped cucumber beetle: row covers until flowering, kaolin clay — not present in WE"},{n:"Squash bug",t:"Squash bug: hand-pick eggs, Bt — less on cucumber than squash but present"}]},
     "Lettuce":{sowIn:"Apr-Aug",waterNote:"Consistently moist.",regionNote:"Direct sow as soon as soil workable. Succession sow every 2 weeks."},
-    "Pumpkin":{days:105,waterNote:"Deep weekly. Less at maturity.",regionNote:"Start indoors in short-season areas. New England Pie, Howden. Need 100+ frost-free days."},
+    "Pumpkin":{days:105,waterNote:"Deep weekly. Less at maturity.",regionNote:"Start indoors in short-season areas. New England Pie, Howden. Need 100+ frost-free days.",pests:[{n:"Squash bug (#1)",t:"Squash bug: hand-pick bronze egg masses, Bt, row covers early — not found in WE"},{n:"Squash vine borer",t:"Squash vine borer: row covers, wrap stem base in foil"},{n:"Powdery mildew",t:"Powdery mildew: resistant varieties, milk spray, airflow"}]},
     "Beetroot":{harvest:"Jun-Oct",days:60,waterNote:"Even moisture.",regionNote:"Reliable cool-season crop. Detroit Dark Red standard. Good for storage."},
     "Broad Bean":{sowIn:"Apr-May",harvest:"Jul-Aug",days:120,waterNote:"More at flowering.",regionNote:"Spring sowing only — too cold for overwintering. Plant as soon as soil workable."},
     "Leek":{harvest:"Sep-Feb",days:140,yld:0.3,waterNote:"Hill soil to blanch.",regionNote:"Start indoors early. Very cold hardy. King Richard, Giant Musselburgh."},
     "Olive":{_na:true,regionNote:"Cannot survive cold winters. Not viable outdoors."},
-    "Grape":{sowIn:"Apr-May",harvest:"Sep-Oct",yld:5,waterNote:"Reduce near harvest.",regionNote:"Cold-hardy varieties (Marquette, Frontenac, Concord). Wine and juice. Needs winter protection in coldest zones."},
+    "Grape":{sowIn:"Apr-May",harvest:"Sep-Oct",yld:5,waterNote:"Reduce near harvest.",regionNote:"Cold-hardy varieties (Marquette, Frontenac, Concord). Wine and juice. Needs winter protection in coldest zones.",pests:[{n:"Grape berry moth (Paralobesia viteana)",t:"Grape berry moth: pheromone traps, Bt at egg hatch — common in NE US vineyards"},{n:"Japanese beetle",t:"Japanese beetle: hand-pick morning, milky spore soil — not present in WE"},{n:"Black rot (Guignardia)",t:"Black rot: copper spray from bud break — serious NE US disease"}]},
     "Fig":{_na:true,regionNote:"Marginal. Chicago Hardy in sheltered spot with heavy winter protection, otherwise container only."},
     "Pomegranate":{_na:true,regionNote:"Not hardy. Container growing only."},
     "Basil":{waterNote:"Moist, not waterlogged.",regionNote:"After all frost danger. Short outdoor season. Genovese, Thai."},
@@ -1337,18 +1538,18 @@ const RO = {
     "Eggplant":{sowIn:"Mar-Apr",days:85,yld:2.5,waterNote:"Loves heat. Consistent deep water.",regionNote:"Start very early indoors. Short season. Fairy Tale, Orient Express for speed."},
     "Watermelon":{yld:6,waterNote:"Heavy water growing. Stop at ripening.",regionNote:"Short-season varieties only (Sugar Baby, Blacktail Mountain). Black plastic mulch. Marginal in coldest zones."},
     "Melon":{days:85,yld:3,waterNote:"Reduce water near harvest for sweetness.",regionNote:"Short-season varieties (Minnesota Midget, Fastbreak). Black plastic. Marginal."},
-    "Corn":{days:80,waterNote:"Critical during tasseling.",regionNote:"Wait for warm soil. Early varieties (Golden Bantam, Early Sunglow). Blocks of at least 4 rows."},
+    "Corn":{days:80,waterNote:"Critical during tasseling.",regionNote:"Wait for warm soil. Early varieties (Golden Bantam, Early Sunglow). Blocks of at least 4 rows.",pests:[{n:"European corn borer (Ostrinia nubilalis — #1 in north)",t:"Corn borer: Bt spray at silking, destroy stalks after harvest — more prevalent in northern US than WE"},{n:"Corn earworm",t:"Corn earworm: Bt at silking, mineral oil on silk — less severe than US Warm but present"},{n:"Cutworm",t:"Cutworm: collar seedlings (toilet roll), Bt soil drench"}]},
     "Okra":{sowIn:"Jun",days:65,yld:1.5,waterFreq:"Every 3 days",waterNote:"Drought-tolerant. Deep infrequent.",regionNote:"Marginal in coldest zones. Start indoors. Short season varieties (Cajun Delight)."},
     "Radish":{sowIn:"Apr-Sep",harvest:"May-Oct",waterNote:"Quick. Even moisture.",regionNote:"Plant as soon as soil workable. Fastest crop in the garden."},
     "Turnip":{sowIn:"Apr-May, Aug",harvest:"Jun, Oct-Nov",waterNote:"Cool season. Bolts in heat.",regionNote:"Spring and fall crop. Purple Top White Globe standard. Cold hardy."},
     "Celery":{sowIn:"Feb-Mar",harvest:"Aug-Oct",days:130,waterNote:"Needs constant moisture. Very thirsty.",regionNote:"Start indoors very early. Long season. Needs consistent moisture."},
     "Swiss Chard":{sowIn:"Apr-Jun",harvest:"Jun-Oct",waterNote:"Heat AND cold tolerant.",regionNote:"Cold tolerant. Good through light frosts. Bright Lights colourful."},
     "Kale":{sowIn:"Apr-Jun, Jul-Aug",harvest:"Jun-Jul, Sep-Dec",yld:0.6,waterNote:"Cold-hardy. Sweeter after frost.",regionNote:"Extremely cold hardy. Sweeter after hard frost. Can overwinter in many zones."},
-    "Asparagus":{sowIn:"Apr-May",harvest:"May-Jun (yr 3+)",waterNote:"Perennial. Establish well.",regionNote:"Very cold hardy perennial. Jersey Knight, Purple Passion. Great investment."},
+    "Asparagus":{sowIn:"Apr-May",harvest:"May-Jun (yr 3+)",waterNote:"Perennial. Establish well.",regionNote:"Very cold hardy perennial. Jersey Knight, Purple Passion. Great investment.",pests:[{n:"Asparagus beetle (Crioceris — much worse in US than WE)",t:"Asparagus beetle: hand-pick adults and larvae daily, Bt spray — far more damaging in US than WE"},{n:"Asparagus miner",t:"Asparagus miner: remove infested spears, conserve parasitic wasps"},{n:"Fusarium crown rot",t:"Fusarium: well-drained soil, resistant varieties (Jersey series)"}]},
     "Pea":{sowIn:"Apr-May",harvest:"Jun-Jul",days:60,waterNote:"Cool season. More at flowering.",regionNote:"Plant as soon as soil workable. Likes cool weather. Sugar snap popular."},
-    "Strawberry":{sowIn:"Apr-May",harvest:"Jun-Jul",yld:0.3,waterNote:"Consistent moisture. Straw mulch.",regionNote:"Mulch heavily for winter. June-bearing (Jewel, Honeoye) or everbearing (Albion)."},
-    "Raspberry":{sowIn:"Apr-May",harvest:"Jun-Jul, Sep",waterNote:"Post and wire support.",regionNote:"Very cold hardy. Heritage, Latham. Excellent fruit for cold climates."},
-    "Peach":{sowIn:"Apr",waterNote:"Deep water. Less near harvest.",regionNote:"Hardy varieties (Reliance, Contender). Late-blooming to avoid frost. Protect blossoms."},
+    "Strawberry":{sowIn:"Apr-May",harvest:"Jun-Jul",yld:0.3,waterNote:"Consistent moisture. Straw mulch.",regionNote:"Mulch heavily for winter. June-bearing (Jewel, Honeoye) or everbearing (Albion).",pests:[{n:"Tarnished plant bug (Lygus lineolaris)",t:"Tarnished plant bug: row covers until harvest, clean up nearby weeds — causes misshapen fruit; absent from WE"},{n:"Botrytis (grey mold)",t:"Botrytis: straw mulch, spacing, remove infected fruit — cool humid northern springs amplify"},{n:"Aphids",t:"Aphids: soap spray, reflective mulch"}]},
+    "Raspberry":{sowIn:"Apr-May",harvest:"Jun-Jul, Sep",waterNote:"Post and wire support.",regionNote:"Very cold hardy. Heritage, Latham. Excellent fruit for cold climates.",pests:[{n:"Spotted wing Drosophila (Drosophila suzukii)",t:"SWD: fine mesh covers, ACV traps, early morning harvest — serious northern US pest"},{n:"Cane borer (Agrilus ruficollis)",t:"Cane borer: prune infected canes to ground, destroy — wilts tip of new canes"},{n:"Botrytis",t:"Botrytis: airflow, harvest promptly — northern humidity promotes"}]},
+    "Peach":{sowIn:"Apr",waterNote:"Deep water. Less near harvest.",regionNote:"Hardy varieties (Reliance, Contender). Late-blooming to avoid frost. Protect blossoms.",pests:[{n:"Peach twig borer",t:"Peach twig borer: Bt spray at petal fall, pheromone traps — more severe in US than WE"},{n:"Peach leaf curl",t:"Peach leaf curl: copper spray after leaf fall and at bud swell — preventive only"},{n:"Brown rot",t:"Brown rot: copper spray at flowering, remove mummies"}]},
     "Plum":{sowIn:"Apr",waterNote:"Moderate water.",regionNote:"European plums hardier than Japanese. Stanley, Mount Royal. Good for cold zones."},
     "Cherry":{sowIn:"Apr",harvest:"Jul",waterNote:"Moderate. Net against birds.",regionNote:"Sour cherries (Montmorency) very cold hardy. Sweet cherries marginal in coldest zones."},
     "Apricot":{sowIn:"Apr",waterNote:"Drought-tolerant once established.",regionNote:"Hardy varieties (Harcot, Goldcot). Late-blooming types to avoid frost. Zone 5+ only."},
@@ -1397,6 +1598,7 @@ function getRegionalCrop(baseCrop, region) {
     merged[k] = ov[k] !== undefined ? ov[k] : baseCrop[k];
   }
   if (ov.regionNote) merged.regionNote = ov.regionNote;
+  if (ov.pests) merged.pests = ov.pests;
   return merged;
 }
 
@@ -1910,7 +2112,7 @@ const LIVESTOCK_CALENDAR = {
 /* ═══════════════════════════════════════════
    DEFAULT STATE
    ═══════════════════════════════════════════ */
-const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,region:"mediterranean",city:"",
+const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,region:"western_europe",city:"",
   // Daily task completions — keyed by local YYYY-MM-DD, value is array of task keys
   // completed on that day. Auto-pruned to last 30 days on migration.
   completions: {},
@@ -3812,7 +4014,7 @@ function Farming({data, setData, pageData, clearPageData}) {
     }
   }, [pageData]);
   const ci=rCM(data.region).get(form.crop);
-  const vi=ci && form.variety ? (VARIETIES[ci.name]||[]).find(v=>v.name===form.variety) : null;
+  const vi=ci && form.variety ? getRegionalVarieties(ci.name, data.region).find(v=>v.name===form.variety) : null;
   const effectiveDays = vi?.days || ci?.days || 0;
   const effectiveYld = vi?.yld || ci?.yld || 3;
   const autoMeasure = ci ? cropMeasureType(ci.name, data.region) : "plants";
@@ -3826,7 +4028,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const add=()=>{
     if(!form.crop)return;
     const c=rCM(data.region).get(form.crop);
-    const v=form.variety?(VARIETIES[form.crop]||[]).find(vr=>vr.name===form.variety):null;
+    const v=form.variety?getRegionalVarieties(form.crop, data.region).find(vr=>vr.name===form.variety):null;
     const displayName=form.name||(form.variety?`${form.crop} (${form.variety})`:form.crop);
     const _measure = form.measureType || (c ? cropMeasureType(c.name, data.region) : "plants");
     const _qty = (form.qty && +form.qty > 0) ? +form.qty : null;
@@ -3961,8 +4163,8 @@ function Farming({data, setData, pageData, clearPageData}) {
               )}
             </div>
           </div>
-          {ci && VARIETIES[ci.name] && VARIETIES[ci.name].length > 0 && (
-            <Sel label="Variety / Breed" value={form.variety} onChange={e=>setForm({...form,variety:e.target.value})} options={[{value:"",label:"— Any / General —"},...VARIETIES[ci.name].map(v=>({value:v.name,label:`${v.name} — ${v.note.slice(0,50)}`}))]}/>
+          {ci && getRegionalVarieties(ci.name, data.region).length > 0 && (
+            <Sel label="Variety / Breed" value={form.variety} onChange={e=>setForm({...form,variety:e.target.value})} options={[{value:"",label:"— Any / General —"},...getRegionalVarieties(ci.name, data.region).map(v=>({value:v.name,label:`${v.name} — ${v.note.slice(0,50)}`}))]}/>
           )}
           {vi && <Card style={{marginBottom:10,background:"#e8f5e9",padding:12}}><div style={SX.lblGreen}>🧬 {vi.name}</div><div style={{fontSize:12,marginTop:4}}>{vi.note}</div>{vi.days!==ci.days&&<div style={{fontSize:11,color:C.gl,marginTop:2}}>Adjusted harvest: ~{vi.days} days (vs {ci.days} general)</div>}</Card>}
           {ci&&<Card style={{marginBottom:14,background:C.gp}}><div style={SX.s13}>Harvest ~<strong>{effectiveDays}d</strong> · {ci.waterFreq} · {ci.sun} · {ci.spacing}cm</div>{COMP[ci.name]&&<div style={{fontSize:12,color:C.gl,marginTop:4}}>✓ Good with: {COMP[ci.name].good.join(", ")}{COMP[ci.name].bad.length>0?` · ✕ Bad: ${COMP[ci.name].bad.join(", ")}`:""}</div>}</Card>}
@@ -6015,7 +6217,7 @@ function farmKnowledgeEngine(query, data) {
   const matchedCrop = findCrop(q);
   if (matchedCrop) {
     const c = matchedCrop;
-    const varieties = VARIETIES[c.name] || [];
+    const varieties = getRegionalVarieties(c.name, data.region);
     const companions = COMP[c.name];
     const diff = getCropDifficulty(c.name);
     const userPlot = activePlots.find(p => p.crop === c.name);
