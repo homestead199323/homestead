@@ -1,0 +1,45 @@
+From eee54ee7098dbbe67502b71be75c57abdc51a8b5 Mon Sep 17 00:00:00 2001
+From: Dervis Kanina <dervis.kanina@gmail.com>
+Date: Wed, 6 May 2026 12:46:31 +0000
+Subject: [PATCH] Deploy 3: region-aware livestock calendar (LDB_RO), WE-first
+ base monthly notes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Strips Mediterranean references from the LIVESTOCK_CALENDAR base and reframes it
+for Western Europe (UK/NL maritime, USDA 7-9). Adds LDB_RO regional override
+system mirroring the RO/CROPS pattern, with overrides only on months where care,
+timing, or risk genuinely differs from the WE base.
+
+- LIVESTOCK_CALENDAR base rewritten WE-first across all 14 animals:
+  * Goat/Sheep/Cow kidding/lambing/calving moved Mar (was Feb 'coast')
+  * Heat thresholds reframed to '>28°C warm spells' for WE summers
+  * 'Hardy through Med winter' / 'Med heat: fine' / 'Med summers perfect'
+    references stripped from base notes
+  * Bee Aug stores raised 18-20kg minimum for wet WE winter
+  * Bee flora references switched (hawthorn/oilseed rape/lime/blackberry)
+- Horse LDB feed string: '60-80L in Med summer heat' -> 'in summer heat'
+- LDB_RO with 4 regions × 14 animals override sets:
+  * mediterranean: earlier kidding/laying (Jan-Feb), severe heat Jun-Aug,
+    minimal winter shelter, sage/thyme bee forage
+  * northern_europe: late kidding/laying (Apr-May), late bee inspections,
+    severe winter management
+  * us_warm: mild winter laying, hurricane prep SE coastal, severe heat
+  * us_cold: late kidding/laying, severe winter (-25°C), heated water,
+    hive wrapping, frostbite vigilance
+- New helper getRegionalCalendar(name, region) — caches via base + per-month
+  shallow merge; returns null for non-livestock entries
+- 3 consumers wired to use the helper:
+  * Manuals -> Animals -> modal Monthly Calendar card
+  * AIAssistant farmKnowledgeEngine animal queries
+  * Search index suggestion check left as base presence check (no regional
+    bearing on whether to suggest the calendar exists)
+
+Validation: babel-parser parse OK (585k chars), npm build green, 7
+distinctive new override strings confirmed in production bundle, 3
+Med-baked base strings confirmed removed.
+---
+ src/App.jsx | 613 +++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 540 insertions(+), 73 deletions(-)
+

@@ -1917,55 +1917,55 @@ const LIVESTOCK_CALENDAR = {
     Mar: "Set broody hens or start incubator. Chicks hatch (21d). Deep clean coop.",
     Apr: "Chicks to outdoor brooder at 4-6wk. Hens laying well. Start free-ranging.",
     May: "Peak laying season begins. Process excess cockerels at 12-16wk.",
-    Jun: "Peak laying. Watch for heat stress (>35°C): shade, cold water, electrolytes.",
-    Jul: "Heat management critical. Collect eggs 2x daily (heat spoils). Parasites peak.",
-    Aug: "Continue heat management. Dust bath area (diatomaceous earth for mites).",
+    Jun: "Peak laying. Watch for heat in warm spells (>28°C): shade, cold water, electrolytes.",
+    Jul: "Heat management if needed. Collect eggs 2x daily if warm. Parasites peak.",
+    Aug: "Continue parasite management. Dust bath area (diatomaceous earth for mites).",
     Sep: "Molt begins — laying drops. Increase protein (feather regrowth). Deworm.",
     Oct: "Molt continues. Clean and prepare coop for winter. Check ventilation.",
     Nov: "Reduced laying. Supplement calcium. Plan breeding for spring chicks.",
-    Dec: "Shortest days = lowest laying. Maintain but don't stress. Review flock — cull non-layers.",
+    Dec: "Shortest days = lowest laying. Wet maritime winter — keep shelter dry, draught-free.",
   },
   Goat: {
-    Jan: "Late pregnancy care. Increase grain. Selenium/vitamin E supplement 1 month before kidding.",
-    Feb: "KIDDING SEASON begins (coast). Have supplies ready: towels, iodine, molasses water.",
-    Mar: "Kidding continues. Colostrum within 1hr. Dam milking begins. Dehorn kids at 3-7 days.",
-    Apr: "Kids weaning at 8-12wk. Pasture quality improving. Reduce grain for does.",
-    May: "Full pasture. Hoof trim. Fecal egg count — deworm if needed (targeted, not routine).",
-    Jun: "Peak milk production. Watch for heat stress. Ensure shade and water. Fly management.",
-    Jul: "Heat management. Parasites peak. FAMACHA scoring for anemia (barberpole worm).",
+    Jan: "Late pregnancy. Increase grain. Selenium/vitamin E supplement 1 month before kidding.",
+    Feb: "Pre-kidding prep. Supplies ready: towels, iodine, molasses water. Heat lamp tested.",
+    Mar: "KIDDING SEASON begins. Colostrum within 1hr. Dam milking begins. Disbud kids at 3-7 days.",
+    Apr: "Kidding continues. Spring grass arriving — restrict lush pasture to prevent founder.",
+    May: "Full pasture. Hoof trim. Fecal egg count — targeted deworming only.",
+    Jun: "Peak milk production. Watch for heat in warm spells (>28°C). Shade and water. Fly management.",
+    Jul: "Summer parasites peak. FAMACHA scoring (barberpole worm). Rotate paddocks weekly.",
     Aug: "Continue parasite management. Dry off late-lactation does (stop milking 2mo before breeding).",
     Sep: "BREEDING SEASON begins. Introduce buck. Buck in rut — strong smell, aggressive.",
     Oct: "Breeding continues. Mark bred does with marking harness on buck.",
     Nov: "Remove buck. Fecal egg count. Hoof trim. Check body condition before winter.",
-    Dec: "Early pregnancy. Maintain nutrition. Copper bolus if deficient area.",
+    Dec: "Early pregnancy. Maintain nutrition. Wet maritime winter — keep shelter dry, draughts out.",
   },
   Bee: {
     Jan: "Leave alone. Don't open hive if <10°C. Check weight (hefting) — feed fondant if light.",
     Feb: "Queen starts laying. Monitor stores. First cleansing flights. Oxalic acid treatment (if not done Dec).",
     Mar: "Spring inspection when >15°C: queen present? Brood pattern? Food? Disease? Add super if strong.",
     Apr: "Main spring buildup. SWARM WATCH begins. Check weekly. Split strong hives to prevent swarming.",
-    May: "Peak swarming period. Inspect every 7 days. Add supers. Sage and thyme flowering begins.",
-    Jun: "Honey flow from wildflowers, sage, thyme. Add supers as needed. Continue swarm management.",
+    May: "Peak swarming period. Inspect every 7 days. Add supers. Wildflowers, sage, thyme begin.",
+    Jun: "Honey flow from wildflowers. Add supers as needed. Continue swarm management.",
     Jul: "Late honey flow. Monitor varroa (sugar roll test >3% = treat). Ensure water source.",
-    Aug: "HARVEST HONEY. Leave 15-20kg minimum for winter. Remove supers.",
+    Aug: "HARVEST HONEY. Leave 18-20kg minimum for wet WE winter. Remove supers.",
     Sep: "Varroa treatment (Apivar strips or formic acid). Feed 2:1 sugar syrup if stores low.",
     Oct: "Reduce entrance (mouse guard). Final feeding. Combine weak colonies with strong.",
-    Nov: "Wrap/insulate hives if mountain zone. Leave alone on coast. Monitor weight.",
+    Nov: "Wrap/insulate hives if needed. Monitor weight monthly. Wet winter prep.",
     Dec: "Oxalic acid treatment (broodless period). Don't disturb. Check weight monthly.",
   },
   Sheep: {
     Jan: "Late pregnancy care. Increase nutrition. Vaccinate ewes 4wk before lambing (CDT).",
-    Feb: "LAMBING begins. Supplies ready. Colostrum within 1hr. Iodine navels. Tag/record.",
-    Mar: "Lambing continues. Process lambs: dock tails (if wool breed), castrate, vaccinate.",
-    Apr: "Pasture improving. Rotational grazing starts. Fecal egg count.",
-    May: "SHEARING. Full pasture. Footbath monthly (zinc sulfate 10%). Wean early lambs.",
+    Feb: "Pre-lambing prep. Supplies ready for Mar lambing. Body condition scoring.",
+    Mar: "LAMBING begins. Colostrum within 1hr. Iodine navels. Tag/record. Heat lamp if cold.",
+    Apr: "Lambing continues. Process lambs: dock tails (if wool breed), castrate, vaccinate.",
+    May: "SHEARING. Full pasture begins. Footbath monthly (zinc sulfate 10%). Wean early lambs.",
     Jun: "Peak grazing. Monitor for fly strike (dagging — keep rear clean). Wean remaining lambs.",
     Jul: "Manage parasites. FAMACHA scoring. Targeted deworming only.",
     Aug: "Flush ewes (increase nutrition 2-3wk before breeding to boost ovulation).",
     Sep: "BREEDING SEASON. Ram goes in (1 ram per 30-40 ewes). Marking harness.",
     Oct: "Remove ram after 2 cycles (34 days). Fecal test. Hoof trim.",
     Nov: "Pregnancy scanning available (day 40-90). Winter feeding begins if pasture poor.",
-    Dec: "Feed hay if snow/poor pasture. Body condition score — should be 3-3.5/5.",
+    Dec: "Feed hay if snow/poor pasture. Wet maritime winter — ensure good shelter.",
   },
   Turkey: {
     Jan: "Low activity. Maintain weight. Shelter from rain — turkeys hate wet. Supplement grain.",
@@ -1973,7 +1973,7 @@ const LIVESTOCK_CALENDAR = {
     Mar: "BREEDING begins. 1 tom per 8-10 hens. Collect eggs for incubation or let hens brood.",
     Apr: "Incubation 28 days. Poults extremely fragile — warm, dry, no drafts. Medicated starter feed.",
     May: "Poults to outdoor shelter at 6-8wk. Pasture access. Start bug foraging — natural pest control.",
-    Jun: "Free range on pasture. Turkeys eat ticks, grasshoppers, scorpions. Shade critical in Med heat.",
+    Jun: "Free range on pasture. Turkeys eat ticks, grasshoppers, scorpions. Shade needed in warm weather.",
     Jul: "Heat management — turkeys tolerate heat better than chickens. Ensure shade and water. Dust baths.",
     Aug: "Growing birds on pasture. Heritage breeds ready at 6-7 months. Broad-breasted at 4-5 months.",
     Sep: "Continue pasture rotation. Supplemental grain increases as forage quality drops.",
@@ -1983,17 +1983,17 @@ const LIVESTOCK_CALENDAR = {
   },
   Goose: {
     Jan: "Breeding condition. Increase grain. Geese pair-bond — don't separate bonded pairs.",
-    Feb: "LAYING begins (Mediterranean). Collect eggs daily — 40-60 eggs per season. 30d incubation.",
-    Mar: "Peak laying. Set eggs under broody goose or incubator. Goslings at 30 days.",
-    Apr: "Goslings to grass at 2-3wk. Geese are excellent mothers — let them raise their own.",
-    May: "Pasture weeding — geese eat grass and weeds but leave most crops alone. Orchard weeding.",
-    Jun: "Full pasture. Geese need swimming water (even a tub). Shade in Med heat.",
-    Jul: "Heat management. Always access to water for bathing. Fresh drinking water twice daily.",
-    Aug: "Meat birds ready at 4-5 months. Down harvest from live birds (post-molt, humane).",
-    Sep: "Pasture quality dropping. Supplement with grain. Molt begins.",
-    Oct: "Feather molt complete. Guardian duty — geese are aggressive to foxes, dogs, strangers.",
-    Nov: "Reduce flock to breeding pairs. Geese live 20+ years — plan long-term.",
-    Dec: "Cold-hardy. Minimal shelter needed. Maintain breeding condition with good nutrition.",
+    Feb: "Pre-laying preparation. Increase nutrition for upcoming laying season.",
+    Mar: "LAYING begins. Collect eggs daily — 40-60 eggs per season. 30d incubation.",
+    Apr: "Peak laying. Set eggs under broody goose or incubator. Goslings at 30 days.",
+    May: "Goslings to grass at 2-3wk. Geese are excellent mothers — let them raise their own.",
+    Jun: "Pasture weeding — geese eat grass and weeds but leave most crops alone. Orchard weeding.",
+    Jul: "Full pasture. Geese need swimming water (even a tub). Shade in warm weather.",
+    Aug: "Heat management. Always access to water for bathing. Fresh drinking water twice daily.",
+    Sep: "Meat birds ready at 4-5 months. Down harvest from live birds (post-molt, humane).",
+    Oct: "Pasture quality dropping. Supplement with grain. Molt begins.",
+    Nov: "Feather molt complete. Guardian duty — geese are aggressive to foxes, dogs, strangers.",
+    Dec: "Reduce flock to breeding pairs. Geese live 20+ years — plan long-term.",
   },
   Quail: {
     Jan: "Indoor housing in Med climate. 14hr light for laying. Coturnix lay year-round with light.",
@@ -2108,6 +2108,101 @@ const LIVESTOCK_CALENDAR = {
     Dec: "Winter maintenance. Dry housing critical. Bumblefoot check.",
   },
 };
+
+/* ═══════════════════════════════════════════
+   9.1 LIVESTOCK REGIONAL OVERRIDES (LDB_RO)
+   ═══════════════════════════════════════════ */
+
+const LDB_RO = {
+  mediterranean: {
+    Goat: {
+      Jan: "KIDDING SEASON begins. Warmer Med winters bring earlier kidding. Supplies ready: towels, iodine, molasses water.",
+      Feb: "Kidding continues. Colostrum within 1hr. Disbud kids at 3-7 days. Mild winters help newborn survival.",
+      Mar: "Kids weaning at 8-12wk. Pasture quality already excellent. Reduce grain for does.",
+      Apr: "Full pasture early. Hoof trim. Fecal egg count.",
+      Jun: "Heat onset (>32°C common). Shade mandatory. Fly management critical.",
+      Jul: "Extreme heat (>38°C possible). Parasites peak. FAMACHA scoring. Reduce midday handling.",
+      Aug: "Continue heat + parasite management. Dry off late-lactation does. Breeding prep.",
+      Sep: "BREEDING SEASON. Buck introduced (some Med farms breed Aug for January kids).",
+      Dec: "Early pregnancy. Mild Med winter — minimal shelter needed. Copper bolus if deficient area.",
+    },
+    Chicken: {
+      Jun: "Peak laying. Watch for heat stress (>35°C): shade, cold water, electrolytes.",
+      Jul: "Heat management critical. Collect eggs 2x daily (heat spoils). Parasites peak.",
+      Dec: "Shortest days = lowest laying. Mild Med winter — minimal additional shelter.",
+    },
+    Bee: {
+      Feb: "Early spring activity. First inspections possible when >15°C. Queen laying increases.",
+      Aug: "HARVEST HONEY. Leave 15kg minimum for mild Med winter. Remove supers.",
+      Nov: "Minimal winterization needed in coastal Med zones.",
+    },
+    Sheep: {
+      Feb: "LAMBING begins. Mild Med winters allow Feb lambing. Supplies ready: towels, iodine.",
+      Dec: "Feed hay if snow/poor pasture. Body condition score — should be 3-3.5/5.",
+    },
+  },
+  northern_europe: {
+    Goat: {
+      Jan: "Late pregnancy. Heavy winter feeding. Selenium critical (deficient soils across N.Europe).",
+      Feb: "Pre-kidding prep. Cold winter still — heat lamp ready, deep straw bedding.",
+      Mar: "Late winter in colder zones. Pre-kidding feeding intense. Snow shelter critical.",
+      Apr: "KIDDING SEASON begins. Heat lamp essential — barns can be near-freezing at night.",
+      May: "Kidding continues. Spring grass finally arriving — restrict to prevent founder.",
+      Jun: "Full pasture starts. Hoof trim. Fecal egg count.",
+      Sep: "BREEDING SEASON. Buck in earlier than US-Cold to ensure kids born before deepest spring cold.",
+      Dec: "Early pregnancy. Severe winter — shelter at -15°C critical. Heavy feeding.",
+    },
+    Bee: {
+      Mar: "Late winter still. Wait for sustained >15°C before first inspection.",
+      Apr: "First spring inspection when weather permits. Check queen, brood, stores.",
+      Aug: "HARVEST HONEY. Leave 20-22kg minimum for long, cold northern winter.",
+      Nov: "Winterization essential. Wrap hives, reduce entrances, ensure ventilation.",
+    },
+  },
+  us_warm: {
+    Goat: {
+      Jan: "KIDDING SEASON begins. Mild winters allow Jan-Feb kidding. Supplies ready.",
+      Feb: "Kidding continues. Colostrum within 1hr. Disbud kids at 3-7 days.",
+      Mar: "Kids weaning at 8-12wk. Reduce grain for does. Pasture green-up underway.",
+      Apr: "Full pasture. Hoof trim. Fecal egg count.",
+      Jun: "Heat onset. Shade and water mandatory. Watch barberpole worm — humid heat amplifies it.",
+      Jul: "Extreme heat (>38°C in TX/SW). Parasites at peak — FAMACHA every 2wk.",
+      Aug: "Continue heat + parasite management. Dry off late-lactation does.",
+      Sep: "BREEDING SEASON. Buck in.",
+    },
+    Bee: {
+      Feb: "Early nectar flows begin in warmer zones. Check stores and brood.",
+      Aug: "HARVEST HONEY. Leave 15-18kg for mild southern winter. Hurricane prep if coastal.",
+    },
+  },
+  us_cold: {
+    Goat: {
+      Jan: "Late pregnancy. Heavy winter feeding. Heated water bowls. Selenium supplement (deficient region).",
+      Feb: "Pre-kidding prep. Heat lamp ready. Deep straw, draught-free shelter (-20°C nights).",
+      Mar: "Late winter still. Pre-kidding nutrition intense. Mud season approaching.",
+      Apr: "KIDDING SEASON begins. Heat lamps essential. Mud + cold = pneumonia risk for kids.",
+      May: "Kidding finishes. Spring grass arriving — restrict to prevent founder.",
+      Jun: "Full pasture begins. Hoof trim. Fecal egg count.",
+      Sep: "BREEDING SEASON. Buck in slightly later than N.Europe (less photoperiod stress).",
+      Dec: "Early pregnancy. Severe winter (-25°C+). Heated water, deep bedding, draught-free shelter mandatory.",
+    },
+    Bee: {
+      Apr: "Late winter. Wait for sustained warmth before first inspection.",
+      Aug: "HARVEST HONEY. Leave 20-22kg for severe northern winter. Winterization prep.",
+      Oct: "Essential winterization. Wrap hives, mouse guards, ensure ventilation but not drafts.",
+    },
+  },
+};
+
+// Helper function for regional livestock calendar lookup
+function getRegionalCalendar(animalName, region) {
+  const base = LIVESTOCK_CALENDAR[animalName];
+  if (!base) return null;
+  if (!region || region === "western_europe") return base;
+  const overrides = LDB_RO[region] && LDB_RO[region][animalName];
+  if (!overrides) return base;
+  return Object.assign({}, base, overrides);
+}
 
 /* ═══════════════════════════════════════════
    DEFAULT STATE
@@ -5109,7 +5204,7 @@ function Manuals({data}) {
         {sel?.feed&&<Overlay title={`${sel.e} ${sel.name}`} onClose={()=>setSel(null)} wide>
           {[{i:"🍽",t:"Feeding",v:sel.feed},{i:"🏠",t:"Housing",v:sel.house},{i:"😴",t:"Sleep",v:sel.sleep},{i:"💕",t:"Breeding",v:sel.breed}].map(s=><Card key={s.t} style={{marginBottom:8}}><div style={SX.lblGreen}>{s.i} {s.t}</div><div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div></Card>)}
           <Card style={{background:"#fce4ec",marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries</div>{sel.inj.map((j,i)=><div key={i} style={{marginTop:6}}><strong>{j.n}</strong><div style={SX.t2_12}>{j.t}</div></div>)}</Card>
-          {LIVESTOCK_CALENDAR[sel.name]&&<Card style={{marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.blue,marginBottom:8}}>📅 Monthly Calendar</div>{Object.entries(LIVESTOCK_CALENDAR[sel.name]).map(([m,t])=><div key={m} style={{display:"flex",gap:8,padding:"6px 0",borderBottom:"1px solid #f0f0f0"}}><span style={{fontSize:11,fontWeight:700,color:C.green,width:28,flexShrink:0,fontFamily:F.mono}}>{m}</span><span style={{fontSize:11,color:C.t2,lineHeight:1.4}}>{t}</span></div>)}</Card>}
+          {getRegionalCalendar(sel.name, data.region)&&<Card style={{marginBottom:8}}><div style={{fontSize:12,fontWeight:700,color:C.blue,marginBottom:8}}>📅 Monthly Calendar</div>{Object.entries(getRegionalCalendar(sel.name, data.region)).map(([m,t])=><div key={m} style={{display:"flex",gap:8,padding:"6px 0",borderBottom:"1px solid #f0f0f0"}}><span style={{fontSize:11,fontWeight:700,color:C.green,width:28,flexShrink:0,fontFamily:F.mono}}>{m}</span><span style={{fontSize:11,color:C.t2,lineHeight:1.4}}>{t}</span></div>)}</Card>}
         </Overlay>}
       </>}
 
@@ -6312,7 +6407,7 @@ function farmKnowledgeEngine(query, data) {
   if (matchedAnimal) {
     const [name, db] = matchedAnimal;
     const breeds = BREEDS[name] || [];
-    const cal = LIVESTOCK_CALENDAR[name];
+    const cal = getRegionalCalendar(name, data.region);
     const userAnimal = userAnimals.find(a => a.type === name);
 
     if (q.match(/feed|food|eat|diet|nutrition/)) {
@@ -6612,7 +6707,7 @@ function buildAISuggestions(region) {
     s.push({e:db.e, q:`${name} health & injuries`, cat:"Health", keys:[name.toLowerCase(),"health","sick","vet","injur"]});
     s.push({e:db.e, q:`${name} produce & yield`, cat:"Produce", keys:[name.toLowerCase(),"produce","egg","milk","yield"]});
     if (BREEDS[name]?.length > 0) s.push({e:db.e, q:`${name} breeds`, cat:"Breeds", keys:[name.toLowerCase(),"breed","type"]});
-    if (LIVESTOCK_CALENDAR[name]) s.push({e:db.e, q:`${name} monthly calendar`, cat:"Calendar", keys:[name.toLowerCase(),"calendar","month","schedule"]});
+    if (getRegionalCalendar(name, data.region)) s.push({e:db.e, q:`${name} monthly calendar`, cat:"Calendar", keys:[name.toLowerCase(),"calendar","month","schedule"]});
   });
   // Preservation suggestions
   Object.entries(PRESERVATION).forEach(([name, p]) => {
