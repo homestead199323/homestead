@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useReducer } from "react";
 import { createPortal } from "react-dom";
+import {
+  Home, ClipboardList, Map, Sprout, Rabbit, CalendarDays, Package,
+  TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
+  Settings, ChevronLeft, ChevronRight, X, Send, Search, Plus,
+  Check, AlertTriangle, Info, Download, Upload, Leaf
+} from "lucide-react";
 
 import { DB, uid } from "./lib/storage";
 import { C, F, SX } from "./lib/theme";
@@ -784,7 +790,7 @@ const Overlay = React.memo(function Overlay({title,onClose,children,wide}) {
       <div onClick={e=>e.stopPropagation()} className="overlay-sheet page-enter" style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
         <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
           <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
         </div>
         <div style={{padding:"16px 24px 24px"}}>{children}</div>
       </div>
@@ -1794,9 +1800,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
       {/* ── Section 4: Calendar — full width ── */}
       <Card p={false} style={SX.overflowHidden}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`}}>
-          <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}><ChevronLeft size={20} strokeWidth={2}/></button>
           <div style={{fontFamily:F.head,fontSize:17,fontWeight:700}}>{MN[viewMonth]} {viewYear}</div>
-          <button onClick={()=>{let m=viewMonth+1,y=viewYear;if(m>11){m=0;y++;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          <button onClick={()=>{let m=viewMonth+1,y=viewYear;if(m>11){m=0;y++;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}><ChevronRight size={20} strokeWidth={2}/></button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"10px 16px 4px",gap:2}}>
           {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:C.t2,fontFamily:F.mono}}>{d}</div>)}
@@ -4314,7 +4320,18 @@ function Projects({embedded}) {
   );
 }
 
-const NAV=[{id:"home",l:"Home",e:"🏠"},{id:"tasks",l:"Tasks",e:"📋"},{id:"setup",l:"Farm Layout",e:"🗺"},{id:"farm",l:"Farming",e:"🌱"},{id:"live",l:"Livestock",e:"🐄"},{id:"season",l:"Seasonal",e:"🗓"},{id:"pantry",l:"Pantry",e:"📦"},{id:"fin",l:"Financials",e:"💰"},{id:"manuals",l:"Manuals",e:"📖"},{id:"feedback",l:"Give Feedback",e:"💬"}];
+const NAV=[
+  {id:"home",    l:"Home",          E:Home},
+  {id:"tasks",   l:"Tasks",         E:ClipboardList},
+  {id:"setup",   l:"Farm Layout",   E:Map},
+  {id:"farm",    l:"Farming",       E:Sprout},
+  {id:"live",    l:"Livestock",     E:Rabbit},
+  {id:"season",  l:"Seasonal",      E:CalendarDays},
+  {id:"pantry",  l:"Pantry",        E:Package},
+  {id:"fin",     l:"Financials",    E:TrendingUp},
+  {id:"manuals", l:"Manuals",       E:BookOpen},
+  {id:"feedback",l:"Give Feedback", E:MessageSquare},
+];
 
 /* ═══════════════════════════════════════════
    DATA REDUCER — replaces spread-based state updates
@@ -4470,20 +4487,20 @@ function updateGamify(data) {
    BOTTOM NAVIGATION — mobile (< 768px)
    ═══════════════════════════════════════════ */
 const BOTTOM_TABS = [
-  {id:"home",   l:"Today",   e:"🏠"},
-  {id:"farm",   l:"Farm",    e:"🌱"},
-  {id:"live",   l:"Animals", e:"🐾"},
-  {id:"pantry", l:"Pantry",  e:"📦"},
-  {id:"more",   l:"More",    e:"⋯"},
+  {id:"home",   l:"Today",   E:Home},
+  {id:"farm",   l:"Farm",    E:Sprout},
+  {id:"live",   l:"Animals", E:PawPrint},
+  {id:"pantry", l:"Pantry",  E:Package},
+  {id:"more",   l:"More",    E:MoreHorizontal},
 ];
 
 const MORE_ITEMS = [
-  {id:"tasks",   l:"Task Queue",    e:"📋"},
-  {id:"setup",   l:"Farm Layout",   e:"🗺"},
-  {id:"season",  l:"Seasonal",      e:"🗓"},
-  {id:"fin",     l:"Financials",    e:"💰"},
-  {id:"manuals", l:"Manuals",       e:"📖"},
-  {id:"feedback",l:"Give Feedback", e:"💬"},
+  {id:"tasks",   l:"Task Queue",    E:ClipboardList},
+  {id:"setup",   l:"Farm Layout",   E:Map},
+  {id:"season",  l:"Seasonal",      E:CalendarDays},
+  {id:"fin",     l:"Financials",    E:TrendingUp},
+  {id:"manuals", l:"Manuals",       E:BookOpen},
+  {id:"feedback",l:"Give Feedback", E:MessageSquare},
 ];
 
 const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreOpen, setMoreOpen}) {
@@ -4508,7 +4525,7 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
               color: isActive ? C.green : C.t2, position:"relative",
             }}
           >
-            <span style={{fontSize:21,lineHeight:1.2,filter:isActive?"none":"grayscale(30%) opacity(70%)"}}>{tab.e}</span>
+            <span style={{display:"flex",alignItems:"center",justifyContent:"center",opacity:isActive?1:0.45,transition:"opacity .15s"}}><tab.E size={22} strokeWidth={isActive?2.2:1.7}/></span>
             <span style={{fontSize:9,fontWeight:isActive?700:400,fontFamily:F.body,letterSpacing:"0.01em",whiteSpace:"nowrap"}}>{tab.l}</span>
             {tab.id==="home"&&taskCount>0&&(
               <span style={{position:"absolute",top:0,right:"calc(50% - 18px)",background:"#ef4444",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,minWidth:16,textAlign:"center"}}>{taskCount>9?"9+":taskCount}</span>
@@ -4544,17 +4561,17 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
                   textAlign:"left",transition:"background .15s",
                 }}
               >
-                <span style={{fontSize:20,width:28,textAlign:"center"}}>{item.e}</span>{item.l}
+                <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center",color:page===item.id?C.green:C.t2}}><item.E size={19} strokeWidth={1.8}/></span>{item.l}
               </button>
             );
           })}
         </div>
         <div style={{margin:"4px 20px",borderTop:`1px solid ${C.bdr}`,paddingTop:4}}>
           <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
-            <span style={{fontSize:18,width:28,textAlign:"center"}}>💾</span> Export Backup
+            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><Download size={17} strokeWidth={1.8}/></span> Export Backup
           </button>
           <label style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",cursor:"pointer",fontSize:14,fontFamily:F.body,color:C.t2}}>
-            <span style={{fontSize:18,width:28,textAlign:"center"}}>📂</span> Import Backup
+            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><Upload size={17} strokeWidth={1.8}/></span> Import Backup
             <input type="file" accept=".json" onChange={function(e){if(e.target.files[0])importData(e.target.files[0]);e.target.value="";}} style={{display:"none"}}/>
           </label>
         </div>
@@ -4732,7 +4749,7 @@ function AppInner() {
           <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
           {NAV.map(n=>(
             <button key={n.id} onClick={()=>{setPage(n.id);}} className="nav-item" style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
-              <span style={{fontSize:isTablet?20:17,width:isTablet?undefined:24,textAlign:"center",filter:page===n.id?"none":"grayscale(30%)",transition:"filter .2s"}}>{n.e}</span>{!isTablet&&n.l}
+              <span style={{width:isTablet?undefined:24,display:"flex",alignItems:"center",justifyContent:"center",opacity:page===n.id?1:0.55,transition:"opacity .2s"}}><n.E size={isTablet?20:17} strokeWidth={page===n.id?2.2:1.8}/></span>{!isTablet&&n.l}
               {n.id==="home"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #ef4444, #dc2626)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,minWidth:18,textAlign:"center",boxShadow:"0 2px 6px rgba(239,68,68,.3)"}}>{taskCount}</span>}
               {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
             </button>
@@ -4742,10 +4759,10 @@ function AppInner() {
           {/* Backup controls — hidden on tablet icon rail */}
           {!isTablet&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.bdr}`,margin:"0 10px"}}>
             <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Download farm data as JSON backup">
-              <span style={{fontSize:14}}>💾</span> Export Backup
+              <Download size={14} strokeWidth={1.8}/> Export Backup
             </button>
             <label style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Restore from a JSON backup file">
-              <span style={{fontSize:14}}>📂</span> Import Backup
+              <Upload size={14} strokeWidth={1.8}/> Import Backup
               <input type="file" accept=".json" onChange={e => { if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; }} style={{display:"none"}}/>
             </label>
           </div>}
