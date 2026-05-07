@@ -28,11 +28,35 @@ const toLocalDateKey = (d) => {
   return `${y}-${m}-${day}`;
 };
 
+const todayLocalKey = () => toLocalDateKey(new Date());
+
+const localDateFromKey = (key) => {
+  if (!key) return null;
+  const [y, m, d] = String(key).split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+};
+
+const addDaysToLocalKey = (key, days) => {
+  const d = localDateFromKey(key);
+  if (!d) return "";
+  d.setDate(d.getDate() + days);
+  return toLocalDateKey(d);
+};
+
+const daysBetweenLocalKeys = (fromKey, toDate) => {
+  const from = localDateFromKey(fromKey);
+  if (!from) return 0;
+  const to = new Date(toDate);
+  to.setHours(0, 0, 0, 0);
+  return Math.floor((to - from) / 864e5);
+};
+
 // Append a task key to today's completions list (no-op if already present).
 // Returns a new data object — does NOT mutate.
 const markTaskDone = (data, taskKey) => {
   if (!taskKey) return data;
-  const todayKey = toLocalDateKey(new Date());
+  const todayKey = todayLocalKey();
   const existing = (data.completions && data.completions[todayKey]) || [];
   if (existing.includes(taskKey)) return data;
   return {
@@ -224,7 +248,7 @@ function rCR(region) {
   if (r !== _rCacheId) { _rCacheId = r; _rCacheMap = getRegionalCropMap(r); _rCacheCrops = getRegionalCrops(r); }
   return _rCacheCrops;
 }
-function getRegionalVarieties(cropName, region) {
+function getRegionalVarieties(cropName) {
   if (!cropName) return [];
   return VARIETIES[cropName] || [];
 }
@@ -872,7 +896,8 @@ const StepChecklist = React.memo(function StepChecklist({steps, plantDate, onTog
     <div style={SX.mb12}>
       <div style={{fontSize:13,fontWeight:700,color:C.green,marginBottom:8}}>Growing Steps</div>
       {steps.map((s, i) => {
-        const sd = plantDate ? new Date(new Date(plantDate).getTime() + s.d * 864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
+        const stepDate = localDateFromKey(addDaysToLocalKey(plantDate, s.d));
+        const sd = stepDate ? stepDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
         return (
           <div key={i} onClick={e => {e.stopPropagation(); onToggle?.(plotId, i);}} style={{display:"flex",gap:10,padding:"10px 12px",background:s.done?"#f0faf0":C.card,border:`1px solid ${s.done?C.gm:C.bdr}`,borderRadius:C.rs,marginBottom:4,cursor:"pointer"}}>
             <div style={{width:22,height:22,borderRadius:22,border:`2px solid ${s.done?C.green:C.bdr}`,background:s.done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0}}>{s.done?"✓":""}</div>
@@ -916,7 +941,7 @@ function buildTaskQueue(data) {
     if (!p.plantDate || p.status === "harvested") return;
     const crop = rCM(data.region).get(p.crop);
     if (!crop || !crop.days) return;
-    const dSince = Math.floor((now - new Date(p.plantDate)) / 864e5);
+    const dSince = daysBetweenLocalKeys(p.plantDate, now);
     const zone = zoneById.get(p.zone);
     const loc = zone ? zone.name : "Farm";
     const dLeft = crop.days - dSince;
@@ -947,7 +972,7 @@ function buildTaskQueue(data) {
 
     // Harvest forecast (upcoming) — info-only, no Done button
     if (dLeft > 0 && dLeft <= 14) {
-      const hDate = new Date(new Date(p.plantDate).getTime() + crop.days * 864e5);
+      const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
       const estYld = p.expectedYieldKg || crop.yld || 3;
       tasks.push({ key: `plot-${p.id}-forecast`, pri: 4, type: "forecast", emoji: "📅", title: `${p.name || p.crop} harvest in ${dLeft}d`, desc: `Expected: ${hDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}. ~${estYld}kg yield.`, loc, plotId: p.id, daysOut: dLeft });
     }
@@ -1011,7 +1036,6 @@ function buildTaskQueue(data) {
   (data.livestock?.animals || []).forEach(a => {
     const db = LDB[a.type];
     if (!db) return;
-    const e = db.e;
     // For per-animal tasks: use the animal's own name if given, else "Chicken #3"
     const label = a.name ? `${a.name} (${a.type})` : a.type;
     const aHash = hashStr(a.id);
@@ -1088,7 +1112,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   const harv = (p) => {
     const c = rCM(data.region).get(p.crop);
     const qty = p.expectedYieldKg || (p.plantCount && c ? p.plantCount * (c.yld || 3) : c?.cat === "Herb" ? 0.5 : c?.cat === "Grain" ? 5 : c?.yld || 3);
-    const item = {id: uid(), name: p.crop, category: "Fresh Produce", qty, unit: "kg", source: "farm", addedDate: toLocalDateKey(new Date()), storageNote: c?.storage || ""};
+    const item = {id: uid(), name: p.crop, category: "Fresh Produce", qty, unit: "kg", source: "farm", addedDate: todayLocalKey(), storageNote: c?.storage || ""};
     setData({
       ...data,
       garden: {plots: data.garden.plots.map(x => x.id === p.id ? {...x, status: "harvested"} : x)},
@@ -1173,7 +1197,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
 
       <div style={SX.btnRowEnd}>
         <Btn v="danger" sm onClick={()=>del(plot.id)}>Delete</Btn>
-        {plot.status !== "harvested" && plot.harvestDate && new Date(plot.harvestDate) <= new Date() && <Btn v="success" onClick={()=>harv(plot)}>🧺 Harvest</Btn>}
+        {plot.status !== "harvested" && plot.harvestDate && localDateFromKey(plot.harvestDate) <= localDateFromKey(todayLocalKey()) && <Btn v="success" onClick={()=>harv(plot)}>🧺 Harvest</Btn>}
       </div>
     </Overlay>
   );
@@ -1341,11 +1365,12 @@ function TaskQueue({data, setData, setPage, tasks}) {
       if (!p.plantDate || p.status === "harvested") return;
       const crop = rCM(data.region).get(p.crop);
       if (!crop) return;
-      const plantMs = new Date(p.plantDate).getTime();
+      const plantDate = localDateFromKey(p.plantDate);
+      if (!plantDate) return;
       const loc = zoneById.get(p.zone)?.name || "Farm";
 
       // Harvest date
-      const hDate = new Date(plantMs + crop.days * 864e5);
+      const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
       const hKey = toLocalDateKey(hDate);
       if (!evts[hKey]) evts[hKey] = [];
       evts[hKey].push({type:"harvest", emoji:crop.emoji, label:`Harvest ${p.name||p.crop}`, plotId:p.id, key:`plot-${p.id}-harvest`});
@@ -1357,7 +1382,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       // Step dates
       if (p.steps) p.steps.forEach((s, i) => {
         if (s.done) return;
-        const sDate = new Date(plantMs + s.d * 864e5);
+        const sDate = localDateFromKey(addDaysToLocalKey(p.plantDate, s.d));
         const sKey = toLocalDateKey(sDate);
         if (!evts[sKey]) evts[sKey] = [];
         evts[sKey].push({type:"step", emoji:crop.emoji, label:`${p.name||p.crop}: ${s.l}`, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
@@ -1495,7 +1520,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
     filteredTimeline.sort((a,b) => a.daysOut - b.daysOut);
     return { calendarEvents: evts, byTime: filteredTimeline };
-  }, [data]);
+  }, [data, animalLocName, zoneById]);
 
   // ─── Group today's tasks by location (Option D: location-batched with attention banner) ───
   const todayStr = toLocalDateKey(new Date());
@@ -2097,7 +2122,6 @@ function Setup({data, setData}) {
             if (zoneEl) {
               const zr = zoneEl.getBoundingClientRect();
               const dx = (curX - (zr.left - rect.left) - cropResize.startX) / zr.width;
-              const dy = (curY - (zr.top - rect.top) - cropResize.startY) / zr.height;
               let newPw = Math.max(0.15, Math.min(1, cropResize.origPw + dx));
               let newPh = Math.max(0.08, Math.min(1, cropResize.frac / newPw)); // keep area constant
               newPh = Math.min(1, newPh);
@@ -2254,7 +2278,7 @@ function Setup({data, setData}) {
                   }
                 }}
                 onMouseLeave={() => setHoverInfo(null)}
-                onClick={e => { if (!dragging && !cropDrag && !cropResize) setSel(z.id); }}
+                onClick={() => { if (!dragging && !cropDrag && !cropResize) setSel(z.id); }}
                 style={{
                   position:"absolute",
                   left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
@@ -2271,7 +2295,7 @@ function Setup({data, setData}) {
                 {/* Zone name */}
                 <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none"}}>{z.name}</div>
                 {/* Crop patches — draggable + resizable */}
-                {cropPatches.map((cb,i) => {
+                {cropPatches.map((cb) => {
                   const isDragThis = cropDrag?.plotId === cb.plotId;
                   const isResizeThis = cropResize?.plotId === cb.plotId;
                   return (
@@ -2629,16 +2653,15 @@ function Farming({data, setData, pageData, clearPageData}) {
       setShowAdd(true);
       if (clearPageData) clearPageData();
     }
-  }, [pageData]);
+  }, [pageData, clearPageData]);
   const ci=rCM(data.region).get(form.crop);
   const vi=ci && form.variety ? getRegionalVarieties(ci.name, data.region).find(v=>v.name===form.variety) : null;
   const effectiveDays = vi?.days || ci?.days || 0;
-  const effectiveYld = vi?.yld || ci?.yld || 3;
   const autoMeasure = ci ? cropMeasureType(ci.name, data.region) : "plants";
   const activeMeasure = form.measureType || autoMeasure;
   const plantsCalc = activeMeasure==="area" ? plantsFromArea(ci?.name, +form.qty||0, data.region) : null;
   const yieldCalc = ci && form.qty ? expectedYield(ci.name, +form.qty||0, activeMeasure, vi?.yld, data.region) : null;
-  const autoH=()=>form.plantDate&&ci?new Date(new Date(form.plantDate).getTime()+effectiveDays*864e5).toISOString().slice(0,10):"";
+  const autoH=()=>form.plantDate&&ci?addDaysToLocalKey(form.plantDate, effectiveDays):"";
   const vegZ=data.zones.filter(z=>["veg","orchard","herbs","greenhouse"].includes(z.type));
   const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region), [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]);
 
@@ -2653,7 +2676,7 @@ function Farming({data, setData, pageData, clearPageData}) {
     const _yieldKg = _qty ? expectedYield(form.crop, _qty, _measure, v?.yld, data.region) : null;
     const p={id:uid(),crop:form.crop,variety:form.variety||"",name:displayName,plantDate:form.plantDate,harvestDate:autoH(),status:form.plantDate?"planted":"planned",zone:form.zone,varietyNote:v?.note||"",steps:c?c.steps.map(s=>({...s,done:false})):[],qty:_qty,measureType:_measure,plantCount:_plants,expectedYieldKg:_yieldKg};
     const nd={...data,garden:{plots:[...data.garden.plots,p]},log:appendLog(data.log,{text:`🌱 Planted ${displayName}${_plants?` (${_plants} plants)`:""}`})};
-    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:new Date().toISOString().slice(0,10),cat:"Seeds"}]};
+    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:todayLocalKey(),cat:"Seeds"}]};
     setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setCropSearch("");setCropDropdownOpen(false);setShowAdd(false);
   };
   // tog/del/harv moved into PlotOverlay component — no longer needed here
@@ -2664,7 +2687,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const _totalPlants=_active.reduce(function(s,p){return s+(p.plantCount||0);},0);
   const _totalArea=_active.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
   const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
-  const _ready=_active.filter(function(p){return p.harvestDate&&new Date(p.harvestDate)<=new Date();}).length;
+  const _ready=_active.filter(function(p){return p.harvestDate&&localDateFromKey(p.harvestDate)<=localDateFromKey(todayLocalKey());}).length;
   // Plot overlay now computes its own zone / companion / card state — removed unused locals
   const _formZoneObj=form.zone?vegZ.find(function(z){return z.id===form.zone;}):null;
   const _formZoneStats=form.zone?zoneSpace[form.zone]:null;
@@ -2705,8 +2728,10 @@ function Farming({data, setData, pageData, clearPageData}) {
         const done=p.steps?p.steps.filter(s=>s.done).length:0;
         const total=p.steps?p.steps.length:0;
         const pct=total>0?done/total:0;
-        const isR=p.harvestDate&&new Date(p.harvestDate)<=new Date();
-        const dL=p.harvestDate?Math.ceil((new Date(p.harvestDate)-new Date())/864e5):null;
+        const todayDate = localDateFromKey(todayLocalKey());
+        const harvestDate = localDateFromKey(p.harvestDate);
+        const isR=p.harvestDate&&harvestDate<=todayDate;
+        const dL=harvestDate?Math.ceil((harvestDate-todayDate)/864e5):null;
         const zone=data.zones.find(z=>z.id===p.zone);
         const hasQty = p.plantCount || p.qty;
         return (
@@ -2847,7 +2872,7 @@ function Farming({data, setData, pageData, clearPageData}) {
           )}
 
           <Inp label="Name (optional)" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
-          <Inp label="Plant Date" type="date" value={form.plantDate} max={new Date().toISOString().slice(0,10)} onChange={e=>setForm({...form,plantDate:e.target.value})}/>
+          <Inp label="Plant Date" type="date" value={form.plantDate} max={todayLocalKey()} onChange={e=>setForm({...form,plantDate:e.target.value})}/>
           {form.plantDate&&ci&&<div style={{fontSize:12,color:C.green,marginBottom:10}}>🧺 Harvest: {autoH()}</div>}
           <Inp label="Seed Cost (€)" type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
           <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>{setShowAdd(false);setCropSearch("");setCropDropdownOpen(false);}}>Cancel</Btn><Btn onClick={add} dis={!form.crop}>Plant</Btn></div>
@@ -2912,7 +2937,7 @@ function FarmMapHero({data, onEditLayout}) {
       }
       return {z,zt,xPct,yPct,wPct,hPct,patches};
     });
-  }, [data.zones, data.garden.plots, data.farmW, data.farmH, cropColorMap]);
+  }, [data.zones, data.garden.plots, data.farmW, data.farmH, data.region, cropColorMap]);
 
   const legendEntries = useMemo(function(){return [...cropColorMap.entries()];},[cropColorMap]);
 
@@ -2975,8 +3000,9 @@ function FarmTab({data, setData, pageData, clearPageData}) {
   const [subTab, setSubTab] = useState(function() {
     return (pageData && pageData.tab) ? pageData.tab : "map";
   });
+  const noopClearPageData = useCallback(function(){}, []);
 
-  useEffect(function() { clearPageData(); }, []);
+  useEffect(function() { clearPageData(); }, [clearPageData]);
 
   const farmPageData = (pageData && !pageData.tab) ? pageData : null;
 
@@ -3002,7 +3028,7 @@ function FarmTab({data, setData, pageData, clearPageData}) {
         })}
       </div>
       {subTab==="map"   && <FarmMapHero data={data} onEditLayout={function(){setSubTab("setup");}}/>}
-      {subTab==="crops" && <Farming data={data} setData={setData} pageData={farmPageData} clearPageData={function(){}}/>}
+      {subTab==="crops" && <Farming data={data} setData={setData} pageData={farmPageData} clearPageData={noopClearPageData}/>}
       {subTab==="setup" && <Setup data={data} setData={setData}/>}
     </div>
   );
@@ -3022,7 +3048,7 @@ function Livestock({data, setData}) {
 
   const add=()=>{
     const nd={...data,livestock:{animals:[...data.livestock.animals,{...form,id:uid(),count:+form.count||1}]},log:appendLog(data.log,{text:`🐄 Added ${form.count} ${form.type}${form.breed?` (${form.breed})`:""}`})};
-    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:new Date().toISOString().slice(0,10),cat:"Animals"}]};
+    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:todayLocalKey(),cat:"Animals"}]};
     setData(nd);setForm({name:"",type:"Chicken",breed:"",count:"1",cost:""});setShowAdd(false);
   };
   // del moved into AnimalOverlay component — no longer needed here
@@ -3032,13 +3058,13 @@ function Livestock({data, setData}) {
     const p=db.out[produce];if(!p)return;
     const finalQty = qty > 0 ? qty : Math.round(p.p*animal.count*10)/10;
     setData({...data,
-      pantry:{items:[...data.pantry.items,{id:uid(),name:`${animal.type} ${produce}`,category:produce==="Eggs"?"Eggs":produce==="Meat"?"Meat":"Dairy",qty:finalQty,unit:produce==="Eggs"?"eggs":"kg",source:"livestock",addedDate:new Date().toISOString().slice(0,10),storageNote:p.s}]},
+      pantry:{items:[...data.pantry.items,{id:uid(),name:`${animal.type} ${produce}`,category:produce==="Eggs"?"Eggs":produce==="Meat"?"Meat":"Dairy",qty:finalQty,unit:produce==="Eggs"?"eggs":"kg",source:"livestock",addedDate:todayLocalKey(),storageNote:p.s}]},
       log:appendLog(data.log,{text:`Collected ${finalQty} ${produce==="Eggs"?"eggs":produce.toLowerCase()} from ${animal.name||animal.type}`})
     });
     setShowCollect(null);setCollectQty("");
   };
 
-  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...data,livestock:{animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:{items:[...data.pantry.items,{id:uid(),name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",addedDate:new Date().toISOString().slice(0,10),storageNote:mp.s}]},log:appendLog(data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`})});setShowK(null);};
+  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...data,livestock:{animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:{items:[...data.pantry.items,{id:uid(),name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",addedDate:todayLocalKey(),storageNote:mp.s}]},log:appendLog(data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`})});setShowK(null);};
   const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;
 
   return (
@@ -3109,7 +3135,7 @@ function Pantry({data, setData}) {
   const [showAdd,setShowAdd]=useState(false);const [cat,setCat]=useState("All");
   const [showEat,setShowEat]=useState(null);const [eatQty,setEatQty]=useState("1");
   const [form,setForm]=useState({name:"",category:"Other",qty:"",unit:"kg"});
-  const add=()=>{if(!form.name)return;setData({...data,pantry:{items:[...data.pantry.items,{...form,id:uid(),qty:+form.qty||0,source:"manual",addedDate:new Date().toISOString().slice(0,10)}]}});setForm({name:"",category:"Other",qty:"",unit:"kg"});setShowAdd(false);};
+  const add=()=>{if(!form.name)return;setData({...data,pantry:{items:[...data.pantry.items,{...form,id:uid(),qty:+form.qty||0,source:"manual",addedDate:todayLocalKey()}]}});setForm({name:"",category:"Other",qty:"",unit:"kg"});setShowAdd(false);};
   const del=id=>setData({...data,pantry:{items:data.pantry.items.filter(i=>i.id!==id)}});
   const eat=(item,q)=>{setData({...data,pantry:{items:data.pantry.items.map(i=>i.id===item.id?(i.qty-q<=0?null:{...i,qty:Math.round((i.qty-q)*10)/10}):i).filter(Boolean)},log:appendLog(data.log,{text:`Ate ${q}${item.unit} ${item.name}`})});};
   const cats=["All","Fresh Produce","Meat","Eggs","Dairy","Preserved","Grain","Other"];
@@ -3196,9 +3222,9 @@ function Financials({data, setData}) {
   const [showAdd,setShowAdd]=useState(false);
   const [chartMode,setChartMode]=useState("monthly");
   const [chartM,setChartM]=useState(new Date().getMonth());
-  const [form,setForm]=useState({type:"expense",amount:"",label:"",cat:"Seeds",date:new Date().toISOString().slice(0,10)});
-  const items = data.costs?.items || [];
-  const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:new Date().toISOString().slice(0,10)});setShowAdd(false);};
+  const [form,setForm]=useState({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey()});
+  const items = useMemo(() => data.costs?.items || [], [data.costs?.items]);
+  const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey()});setShowAdd(false);};
   const del=id=>setData({...data,costs:{items:items.filter(i=>i.id!==id)}});
   const {exp,inc,net,catT}=useMemo(()=>{let e=0,r=0;const ct={};items.forEach(i=>{if(i.type==="expense"){e+=i.amount;ct[i.cat]=(ct[i.cat]||0)+i.amount;}else r+=i.amount;});return{exp:e,inc:r,net:r-e,catT:ct};},[items]);
   const mN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -3274,7 +3300,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
   const [openAnimalId,setOpenAnimalId]=useState(null);
   const [wide,setWide]=useState(typeof window!=="undefined"&&window.innerWidth>=800);  useEffect(()=>{const h=()=>setWide(window.innerWidth>=800);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const totalKg=data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0);
-  const costs=data.costs?.items||[];
+  const costs=useMemo(() => data.costs?.items || [], [data.costs?.items]);
   const {exp,inc}=useMemo(()=>{let e=0,r=0;costs.forEach(i=>i.type==="expense"?e+=i.amount:r+=i.amount);return{exp:e,inc:r};},[costs]);
   const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region), [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]);
 
@@ -3310,7 +3336,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
       const cropProgress = zPlots.map(p => {
         const crop = rCM(data.region).get(p.crop);
         if (!crop || !p.plantDate) return null;
-        const dSince = Math.floor((new Date() - new Date(p.plantDate)) / 864e5);
+        const dSince = daysBetweenLocalKeys(p.plantDate, new Date());
         const pct = Math.min(1, dSince / crop.days);
         return { name: p.name || p.crop, pct, emoji: crop.emoji };
       }).filter(Boolean);
@@ -3329,7 +3355,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
       };
     });
     return intel;
-  }, [data.zones, data.garden.plots, data.livestock.animals, enrichedTasks, zoneSpace]);
+  }, [data.zones, data.garden.plots, data.livestock.animals, data.region, enrichedTasks, zoneSpace]);
 
   // Auto-select first zone with tasks, or first zone
   const activeZone = selZone && zoneIntel[selZone] ? selZone
@@ -3362,18 +3388,18 @@ function TodayScreen({data, setData, setPage, tasks}) {
     const growPct = Math.min(1, plantedCount / zoneCapacity);
 
     // Ring 3: Harvest readiness — crops within 7 days of harvest / all active
-    const now = Date.now();
+    const todayDate = localDateFromKey(todayLocalKey());
     const readyCount = activePlots.filter(p => {
       if (!p.plantDate) return false;
       const crop = rCM(data.region).get(p.crop);
       if (!crop) return false;
-      const harvestDate = new Date(p.plantDate).getTime() + crop.days * 864e5;
-      return harvestDate - now <= 7 * 864e5;
+      const harvestDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
+      return harvestDate && harvestDate - todayDate <= 7 * 864e5;
     }).length;
     const harvestPct = activePlots.length > 0 ? readyCount / activePlots.length : 0;
 
     return { taskPct, growPct, harvestPct, doneSteps: doneSteps.length, totalSteps: allSteps.length, plantedCount, readyCount };
-  }, [activePlots, data.zones]);
+  }, [activePlots, data.zones, data.region]);
 
   // All three rings closed?
   const allRingsClosed = ringData.taskPct >= 1 && ringData.growPct >= 1 && ringData.harvestPct >= 1;
@@ -3389,7 +3415,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
     if(!p.plantDate)return false;
     const crop=rCM(data.region).get(p.crop);
     if(!crop)return false;
-    return(Date.now()-new Date(p.plantDate).getTime())>=crop.days*864e5;
+    return daysBetweenLocalKeys(p.plantDate, new Date()) >= crop.days;
   });
   const _dnet = inc - exp;
   const _dAnimalTypes=(function(){const t={};data.livestock.animals.forEach(function(a){t[a.type]=(t[a.type]||0)+a.count;});return Object.entries(t).sort(function(a,b){return b[1]-a[1];});})();
@@ -4137,7 +4163,7 @@ function SeasonalCalendar({data, setPage}) {
     data.garden.plots.filter(p => p.status !== "harvested" && p.plantDate).forEach(p => {
       const crop = rCM(data.region).get(p.crop);
       if (!crop) return;
-      const ds = Math.floor((new Date() - new Date(p.plantDate)) / 864e5);
+      const ds = daysBetweenLocalKeys(p.plantDate, new Date());
       const pendingSteps = (p.steps||[]).filter(s => !s.done && Math.abs(s.d - ds) <= 14);
       if (pendingSteps.length > 0) maintain.push({...crop, plot: p, pendingSteps, action: "maintain"});
     });
@@ -4173,7 +4199,7 @@ function SeasonalCalendar({data, setPage}) {
             <Pill sm c={C.green} bg="#e8f5e9">💧 {c.waterFreq}</Pill>
           </div>
         </div>
-        {!c.planted && <Btn sm onClick={() => setPage("farm", {crop: c.name, plantDate: new Date().toISOString().slice(0,10)})}>+ Plant</Btn>}
+        {!c.planted && <Btn sm onClick={() => setPage("farm", {crop: c.name, plantDate: todayLocalKey()})}>+ Plant</Btn>}
       </div>
     </Card>
   );
@@ -4546,7 +4572,7 @@ class ErrorBoundary extends React.Component {
                     const blob = new Blob([raw], { type: "application/json" });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
-                    a.download = `myterra-emergency-backup-${new Date().toISOString().slice(0,10)}.json`;
+                    a.download = `myterra-emergency-backup-${todayLocalKey()}.json`;
                     a.click();
                   }
                 } catch(e) { alert("Could not export: " + e.message); }
@@ -4594,7 +4620,7 @@ function migrateGamify(data) {
       totalHarvests,
       totalPlants,
       totalLogEntries,
-      lastActiveDate: totalLogEntries > 0 ? toLocalDateKey(new Date()) : null,
+      lastActiveDate: totalLogEntries > 0 ? todayLocalKey() : null,
     }
   };
 }
@@ -4614,7 +4640,7 @@ function migrateCompletions(data) {
 // Update streak + badge state after any data change that includes a log entry
 function updateGamify(data) {
   const g = data.gamify || DEF.gamify;
-  const today = toLocalDateKey(new Date());
+  const today = todayLocalKey();
   let streak = g.streak;
   let bestStreak = g.bestStreak;
   const totalLogEntries = (data.log || []).length;
@@ -4787,7 +4813,6 @@ function AppInner() {
   });
   const [pageData,setPageData]=useState(null);
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
-  const [sidebarOpen,setSidebarOpen]=useState(false);
   const [viewW,setViewW]=useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [moreOpen,setMoreOpen]=useState(false);
   const [darkMode,setDarkMode]=useState(() => {
@@ -4873,7 +4898,7 @@ function AppInner() {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `myterra-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.download = `myterra-backup-${todayLocalKey()}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch(e) { console.warn("Export failed:", e); }
@@ -4905,12 +4930,13 @@ function AppInner() {
   useEffect(()=>{
     if(!data || !Array.isArray(data.zones)) return;
     if(!data.setupDone && data.zones.length===0) setPageRaw("setup");
-  },[data?.setupDone, data?.zones?.length]);
+  },[data]);
 
   // Compute tasks ONCE — passed down to Dashboard + TaskQueue
   // Null guard: if data hasn't initialized yet, return empty tasks rather than crashing buildTaskQueue.
   const tasks = useMemo(() => data ? buildTaskQueue(data) : [], [data]);
   const taskCount = useMemo(() => tasks.filter(t => t.pri <= 2).length, [tasks]);
+  const clearFarmPageData = useCallback(() => setPageData(null), []);
 
   // Loading fallback — if reducer somehow returns null, render a safe placeholder instead of crashing pg()
   if (!data) {
@@ -4920,7 +4946,7 @@ function AppInner() {
   const pg = () => {
     switch(page) {
       case "tasks": return <TaskQueue data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
-      case "farm": return <FarmTab data={data} setData={setData} pageData={pageData} clearPageData={() => setPageData(null)}/>;
+      case "farm": return <FarmTab data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData}/>;
       case "season": return <SeasonalCalendar data={data} setPage={setPage}/>;
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
@@ -5180,7 +5206,7 @@ function farmKnowledgeEngine(query, data) {
       r += `Harvest season: ${c.harvest}\n`;
       r += `Storage: ${c.storage}\n`;
       if (userPlot && userPlot.plantDate) {
-        const dLeft = Math.ceil((new Date(userPlot.plantDate).getTime() + c.days * 864e5 - now.getTime()) / 864e5);
+        const dLeft = c.days - daysBetweenLocalKeys(userPlot.plantDate, now);
         r += dLeft <= 0 ? `\nYour ${c.name} should be ready to harvest now!` : `\nYour ${c.name} should be ready in about ${dLeft} days.`;
       }
       return r;
@@ -5328,7 +5354,7 @@ function farmKnowledgeEngine(query, data) {
       activePlots.forEach(p => {
         const c = rCM(data.region).get(p.crop);
         if (c && p.plantDate) {
-          const dLeft = Math.ceil((new Date(p.plantDate).getTime() + c.days * 864e5 - now.getTime()) / 864e5);
+          const dLeft = c.days - daysBetweenLocalKeys(p.plantDate, now);
           r += `${c.emoji} ${p.name || p.crop}${dLeft <= 0 ? " — READY TO HARVEST!" : ` — ${dLeft}d to harvest`}\n`;
         } else {
           r += `${c?.emoji || "🌱"} ${p.name || p.crop} (planned)\n`;
@@ -5757,5 +5783,3 @@ function AIAssistant({data}) {
     </>
   );
 }
-
-
