@@ -224,6 +224,10 @@ function rCR(region) {
   if (r !== _rCacheId) { _rCacheId = r; _rCacheMap = getRegionalCropMap(r); _rCacheCrops = getRegionalCrops(r); }
   return _rCacheCrops;
 }
+function getRegionalVarieties(cropName, region) {
+  if (!cropName) return [];
+  return VARIETIES[cropName] || [];
+}
 
 /* ═══════════════════════════════════════════
    LIVESTOCK
