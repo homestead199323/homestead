@@ -4,7 +4,7 @@ import {
   Home, ClipboardList, Map as MapIcon, Sprout, Rabbit, CalendarDays, Package,
   TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
   Settings, ChevronLeft, ChevronRight, X, Send, Search, Plus,
-  Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun
+  Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun, Trash2
 } from "lucide-react";
 
 import { DB, uid } from "./lib/storage";
@@ -2979,7 +2979,7 @@ function Pantry({data, setData}) {
           <span style={SX.s20}>{itemIcon(item)}</span>
           <div style={SX.flex1}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><strong style={{fontSize:14}}>{item.name}</strong><Pill>{item.category}</Pill><span style={{fontSize:15,fontWeight:700}}>{item.qty} {item.unit}</span></div>
           {item.storageNote&&<div style={SX.t2_11mt2}>💡 {item.storageNote.slice(0,80)}</div>}</div>
-          <div style={{display:"flex",gap:4}}><Btn sm v="secondary" onClick={()=>{setShowEat(item);setEatQty(item.unit==="eggs"?"1":"0.5")}}>Eat</Btn><Btn sm v="ghost" onClick={()=>del(item.id)}>🗑</Btn></div>
+          <div style={{display:"flex",gap:4}}><Btn sm v="secondary" onClick={()=>{setShowEat(item);setEatQty(item.unit==="eggs"?"1":"0.5")}}>Eat</Btn><Btn sm v="ghost" onClick={()=>del(item.id)}><Trash2 size={14} strokeWidth={1.8}/></Btn></div>
         </div></Card>
       ))}</div>}
       {/* Eat / Take Modal */}
@@ -3079,7 +3079,7 @@ function Financials({data, setData}) {
           <div style={{width:36,height:36,borderRadius:18,background:i.type==="expense"?"#fce4ec":"#e8f5e9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{i.type==="expense"?"📤":"📥"}</div>
           <div style={SX.flex1}><div style={{fontSize:14,fontWeight:600}}>{i.label}</div><div style={SX.t2_12}>{i.date} {" "} {i.cat}</div></div>
           <div style={{fontSize:16,fontWeight:700,color:i.type==="expense"?C.red:C.green,fontFamily:F.mono}}>{i.type==="expense"?"-":"+"}{E}{i.amount.toFixed(2)}</div>
-          <Btn sm v="ghost" onClick={()=>del(i.id)}>🗑</Btn>
+          <Btn sm v="ghost" onClick={()=>del(i.id)}><Trash2 size={14} strokeWidth={1.8}/></Btn>
         </div></Card>
       ))}</div>}
       {showAdd&&<Overlay title="Add Entry" onClose={()=>setShowAdd(false)}>
@@ -4761,7 +4761,7 @@ function AppInner() {
         <nav style={{width:isMobile?0:isTablet?64:220,minWidth:isMobile?0:isTablet?64:220,background:C.card,borderRight:isMobile?"none":`1px solid ${C.bdr}`,display:isMobile?"none":"flex",flexDirection:"column",padding:"0",overflow:"hidden",position:"relative",transition:"width .3s cubic-bezier(.25,.46,.45,.94)"}}>
           {/* Premium brand header */}
           <div style={{padding:isTablet?"16px 0":"24px 20px 20px",marginBottom:4,background:C.grdHero,borderRadius:isTablet?"0":"0 0 20px 0",display:"flex",flexDirection:"column",alignItems:isTablet?"center":"flex-start"}}>
-            <div style={{fontSize:isTablet?22:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>🌾{!isTablet&&" MyTerra"}</div>
+            <div style={{fontSize:isTablet?22:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:6}}><Leaf size={isTablet?22:20} strokeWidth={2}/>{!isTablet&&" MyTerra"}</div>
             {!isTablet&&<div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>}
           </div>
           <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
@@ -5482,7 +5482,7 @@ function AIAssistant({data}) {
           {/* Header */}
           <div style={{background:C.grdHero,padding:"14px 18px",flexShrink:0}}>
             <div style={SX.rowCenterG10}>
-              <div style={{width:36,height:36,borderRadius:18,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🌾</div>
+              <div style={{width:36,height:36,borderRadius:18,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center"}}><Leaf size={20} strokeWidth={2} color="#fff"/></div>
               <div>
                 <div style={{fontSize:15,fontWeight:700,color:"#fff",fontFamily:F.head}}>Farm Assistant</div>
                 <div style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>Offline · {rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>
