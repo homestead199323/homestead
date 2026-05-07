@@ -780,11 +780,11 @@ const Txt = React.memo(function Txt({label,...p}) {
 
 const Overlay = React.memo(function Overlay({title,onClose,children,wide}) {
   return createPortal(
-    <div style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box"}} onClick={onClose}>
-      <div onClick={e=>e.stopPropagation()} className="page-enter" style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
+    <div className="overlay-backdrop" style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} className="overlay-sheet page-enter" style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
+        <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
           <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:32,height:32,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
         <div style={{padding:"16px 24px 24px"}}>{children}</div>
       </div>
@@ -1131,7 +1131,7 @@ function PlotOverlay({plot, data, setData, onClose}) {
       )}
 
       <WaterCard waterNote={crop.waterNote}/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+      <div className="g2" style={{gap:8,marginBottom:16}}>
         <Card><div style={SX.t2_11b}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{plot.plantDate || "—"}</div></Card>
         <Card><div style={SX.t2_11b}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{plot.harvestDate || "—"}</div></Card>
       </div>
@@ -1794,9 +1794,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
       {/* ── Section 4: Calendar — full width ── */}
       <Card p={false} style={SX.overflowHidden}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`}}>
-          <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.t2,width:32,height:32}}>‹</button>
+          <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
           <div style={{fontFamily:F.head,fontSize:17,fontWeight:700}}>{MN[viewMonth]} {viewYear}</div>
-          <button onClick={()=>{let m=viewMonth+1,y=viewYear;if(m>11){m=0;y++;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.t2,width:32,height:32}}>›</button>
+          <button onClick={()=>{let m=viewMonth+1,y=viewYear;if(m>11){m=0;y++;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"10px 16px 4px",gap:2}}>
           {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:C.t2,fontFamily:F.mono}}>{d}</div>)}
@@ -2363,7 +2363,7 @@ function Setup({data, setData}) {
                 </div>
                 <div style={{fontSize:15,fontWeight:800,marginBottom:2,fontFamily:F.head,letterSpacing:"-0.02em"}}>{sz2.name}</div>
                 <div style={{fontSize:11,color:"rgba(255,255,255,.5)",marginBottom:10,fontWeight:500}}>{zt2?.label || sz2.type}</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+                <div className="g2" style={{gap:6,marginBottom:8}}>
                   <div style={{background:"rgba(255,255,255,.06)",borderRadius:8,padding:"6px 8px",textAlign:"center"}}>
                     <div style={{fontSize:15,fontWeight:800,fontFamily:F.mono}}>{(sz2.wM||10).toFixed(0)}×{(sz2.hM||8).toFixed(0)}</div>
                     <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginTop:1}}>metres</div>
@@ -3038,7 +3038,7 @@ function Financials({data, setData}) {
         <div><h2 style={SX.headerH2}>💰 Financials</h2><p style={SX.pageSubHead}>Income, expenses, and profitability</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Add Entry</Btn>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
+      <div className="g3" style={{gap:10,marginBottom:20}}>
         <Stat label="Spent" value={E+exp.toFixed(0)} color={C.red}/>
         <Stat label="Revenue" value={E+inc.toFixed(0)} color={C.green}/>
         <Stat label="Net" value={E+Math.abs(net).toFixed(0)} sub={net>=0?"Profit":"Loss"} color={net>=0?C.green:C.red}/>
@@ -3260,7 +3260,7 @@ function Dashboard({data, setData, setPage, tasks}) {
             </div>
 
             {/* Info boxes — what a farmer reads first */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+            <div className="g5" style={{gap:10}}>
               {/* TODAY'S WORK */}
               <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:_durgent>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
                 <div style={SX.capHeader}>Today's Work</div>
@@ -3397,7 +3397,7 @@ function Dashboard({data, setData, setPage, tasks}) {
               {azData ? (
                 <div style={{padding:14}}>
                   {/* Metrics row */}
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:14}}>
+                  <div className="g2" style={{gap:8,marginBottom:14}}>
                     <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:"#fff"}}>
                       <div style={SX.t2_11b}>Task Load</div>
                       <div style={{fontSize:22,fontWeight:800,fontFamily:F.head}}>{azData.taskCount}</div>
@@ -4023,7 +4023,7 @@ function SeasonalCalendar({data, setPage}) {
       </div>
 
       {/* Summary stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+      <div className="g3" style={{gap:10,marginBottom:16}}>
         <Stat label="Sow This Month" value={results.sow.length} sub={`${results.sow.filter(c=>!c.planted).length} new options`} color={C.green}/>
         <Stat label="Harvest" value={results.harvest.length} sub="crops in season" color={C.orange}/>
         <Stat label="Maintain" value={results.maintain.length} sub="steps due" color={C.blue}/>
@@ -5532,7 +5532,7 @@ function AIAssistant({data}) {
               <button
                 onClick={send}
                 disabled={!input.trim()}
-                style={{flexShrink:0,width:34,height:34,borderRadius:17,background:!input.trim()?"#ccc":C.green,border:"none",cursor:!input.trim()?"default":"pointer",color:"#fff",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"background .2s"}}
+                style={{flexShrink:0,width:44,height:44,borderRadius:22,background:!input.trim()?"#ccc":C.green,border:"none",cursor:!input.trim()?"default":"pointer",color:"#fff",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",transition:"background .2s"}}
               >➤</button>
             </div>
             <div style={{fontSize:10,color:C.t3,textAlign:"center",marginTop:5}}>Type 2+ letters to see suggestions · Works offline</div>
