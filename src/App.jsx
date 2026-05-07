@@ -706,6 +706,18 @@ const LIVESTOCK_CALENDAR = {
 };
 
 /* ═══════════════════════════════════════════
+   LIVESTOCK HELPERS
+   ═══════════════════════════════════════════ */
+function getRegionalCalendar(animalName, region) {
+  const base = LIVESTOCK_CALENDAR[animalName];
+  if (!base) return null;
+  if (!region || region === "western_europe") return base;
+  const overrides = LDB_RO[region] && LDB_RO[region][animalName];
+  if (!overrides) return base;
+  return Object.assign({}, base, overrides);
+}
+
+/* ═══════════════════════════════════════════
    DEFAULT STATE
    ═══════════════════════════════════════════ */
 const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animals:[]},pantry:{items:[]},costs:{items:[]},log:[],setupDone:false,region:"western_europe",city:"",
