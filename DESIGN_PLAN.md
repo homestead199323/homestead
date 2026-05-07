@@ -31,10 +31,10 @@
 
 ## Phase 1 — Foundations (must precede pixel work)
 
-- [ ] **1.1 Tokenize the design.** Extract every color, spacing, radius, shadow into CSS custom properties (`--color-action-primary`, `--surface-card`, `--space-2`, etc.). This unblocks dark mode and palette refinement.
-- [ ] **1.2 Refine cream + forest tones.** Audit current colors. Push cream slightly less orange/dirty, forest green slightly more sage. Document final hex values as tokens.
-- [ ] **1.3 Type scale.** Six sizes (12 / 14 / 16 / 18 / 22 / 28). Two weights only (400, 600). Inter or system UI. Mobile body 16px minimum.
-- [ ] **1.4 Component library audit.** Document every Button, Card, Badge, Pill, Input, Modal variant in code. Consolidate duplicates into one component each with `variant`, `tone`, `size` props.
+- [x] **1.1 Tokenize the design.** `:root` block added to `index.css` — all colors, shadows, radius, spacing, type scale as CSS vars. `theme.js` C values now reference `var(--...)`. Dark-mode ready.
+- [x] **1.2 Refine cream + forest tones.** `--color-bg: #f7f6f3` (warm neutral, not orange). `--color-green: #2e6b52` (more sage). `--color-green-light: #3d9970`. Font import trimmed to 400+600 only.
+- [x] **1.3 Type scale.** `--text-xs/sm/base/md/lg/xl` vars (12/14/16/18/22/28). `TS` export added to `theme.js`. Body font-size set to `var(--text-base)` in CSS.
+- [x] **1.4 Component library audit.** Components: `Btn` (6 variants: primary/secondary/danger/ghost/success/orange), `Card`, `Inp`, `Sel`, `Txt`, `Overlay`, `Pill`, `Tooltip`, `Ring`, `Stat`. No duplicate definitions. Fixed 3 raw `<button>` elements in FeedbackSurvey/FeedbackPrompt that bypassed `<Btn>`. **Remaining for Phase 3.5:** ~15 inline `<span>` pills throughout that need `<Pill tone="...">` consolidation.
 
 ## Phase 2 — Mobile-responsive PWA
 
