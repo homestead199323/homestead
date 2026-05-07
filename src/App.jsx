@@ -4,7 +4,7 @@ import {
   Home, ClipboardList, Map, Sprout, Rabbit, CalendarDays, Package,
   TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
   Settings, ChevronLeft, ChevronRight, X, Send, Search, Plus,
-  Check, AlertTriangle, Info, Download, Upload, Leaf
+  Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun
 } from "lucide-react";
 
 import { DB, uid } from "./lib/storage";
@@ -4537,7 +4537,7 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
   );
 });
 
-const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, isOffline}) {
+const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, isOffline, darkMode, setDarkMode}) {
   return createPortal(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:500}}/>
@@ -4575,6 +4575,9 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
             <input type="file" accept=".json" onChange={function(e){if(e.target.files[0])importData(e.target.files[0]);e.target.value="";}} style={{display:"none"}}/>
           </label>
         </div>
+          <button onClick={function(){setDarkMode(!darkMode);}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
+            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}>{darkMode ? <Sun size={17} strokeWidth={1.8}/> : <Moon size={17} strokeWidth={1.8}/>}</span> {darkMode ? "Light Mode" : "Dark Mode"}
+          </button>
         {isOffline&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:"#ea580c",background:"linear-gradient(135deg, #fff7ed, #fef3c7)",textAlign:"center",borderRadius:8,margin:"0 10px 8px"}}>📡 Offline — data saved locally</div>}
       </div>
     </>,
@@ -4609,6 +4612,13 @@ function AppInner() {
   const [sidebarOpen,setSidebarOpen]=useState(false);
   const [viewW,setViewW]=useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [moreOpen,setMoreOpen]=useState(false);
+  const [darkMode,setDarkMode]=useState(() => {
+    try {
+      const saved = localStorage.getItem("hfm_theme");
+      if (saved) return saved === "dark";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch(e) { return false; }
+  });
   const [isOffline,setIsOffline]=useState(typeof navigator !== "undefined" && !navigator.onLine);
   const [showFeedbackPrompt,setShowFeedbackPrompt]=useState(false);
 
@@ -4654,6 +4664,14 @@ function AppInner() {
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
   }, []);
+
+  // Dark mode — apply data-theme attribute and persist
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+      localStorage.setItem('hfm_theme', darkMode ? 'dark' : 'light');
+    } catch(e) {}
+  }, [darkMode]);
 
   // Navigate + persist current page
   const setPage = useCallback((p, pData) => {
@@ -4767,6 +4785,9 @@ function AppInner() {
             </label>
           </div>}
           {!isTablet&&<div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>}
+          <button onClick={()=>setDarkMode(!darkMode)} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"8px 20px 14px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title={darkMode?"Switch to light mode":"Switch to dark mode"}>
+            {darkMode ? <Sun size={isTablet?20:14} strokeWidth={1.8}/> : <Moon size={isTablet?20:14} strokeWidth={1.8}/>}{!isTablet&&<span style={{marginLeft:2}}>{darkMode?"Light Mode":"Dark Mode"}</span>}
+          </button>
           {isOffline&&!isTablet&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:"#ea580c",background:"linear-gradient(135deg, #fff7ed, #fef3c7)",textAlign:"center",borderRadius:8,margin:"0 10px 10px"}}>📡 Offline — data saved locally</div>}
         </nav>
         <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
@@ -4774,7 +4795,7 @@ function AppInner() {
         </main>
       </div>
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
-      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline}/>}
+      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline} darkMode={darkMode} setDarkMode={setDarkMode}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { localStorage.setItem("hfm_feedback_dismissed", "true"); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <AIAssistant data={data} setData={setData}/>
     </>

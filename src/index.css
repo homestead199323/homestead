@@ -69,6 +69,47 @@
   --space-10: 40px;
 }
 
+/* ══════════════════════════════════════════════════
+   DARK MODE — "farm at night" warm dark greens
+   Triggered by [data-theme="dark"] on <html>
+   ══════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  --color-bg:          #111a11;
+  --color-card:        #192419;
+  --color-green:       #4abe85;
+  --color-green-dark:  #2e6b52;
+  --color-green-light: #5fd19a;
+  --color-green-pale:  #1a2e1f;
+  --color-green-mid:   #3d7a5a;
+  --color-text:        #e4ede4;
+  --color-text-2:      #7fa67f;
+  --color-text-3:      #3d5a3d;
+  --color-border:      #22332a;
+  --shadow:    0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.35);
+  --shadow-l:  0 10px 25px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.25);
+  --shadow-xl: 0 20px 40px rgba(0,0,0,.5),  0 8px 16px rgba(0,0,0,.35);
+}
+
+/* System-preference auto dark (no stored override) */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --color-bg:          #111a11;
+    --color-card:        #192419;
+    --color-green:       #4abe85;
+    --color-green-dark:  #2e6b52;
+    --color-green-light: #5fd19a;
+    --color-green-pale:  #1a2e1f;
+    --color-green-mid:   #3d7a5a;
+    --color-text:        #e4ede4;
+    --color-text-2:      #7fa67f;
+    --color-text-3:      #3d5a3d;
+    --color-border:      #22332a;
+    --shadow:    0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.35);
+    --shadow-l:  0 10px 25px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.25);
+    --shadow-xl: 0 20px 40px rgba(0,0,0,.5),  0 8px 16px rgba(0,0,0,.35);
+  }
+}
+
 /* ── Reset & Base ── */
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
