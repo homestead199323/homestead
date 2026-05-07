@@ -40,23 +40,23 @@
 
 The current `@media (width <= 700px)` block contains 3 rules. This is the single largest gap.
 
-- [ ] **2.1 Real breakpoints.** 0–479 phone, 480–767 phablet, 768–1023 tablet, 1024+ desktop. Each gets a dedicated layout.
-- [ ] **2.2 Bottom-tab navigation on mobile.** Five tabs: **Today / Farm / Animals / Pantry / More.** "More" holds Calendar, Financials, Manuals, Settings. Sidebar collapses to this on phone, becomes a rail on tablet, stays as today on desktop.
-- [ ] **2.3 Stack-first layout on phone.** All grids collapse to single column. KPI hero card on top, smaller secondary tiles below.
-- [ ] **2.4 Bottom sheets for detail views.** Tapping a crop, animal, or task opens a slide-up sheet — not a centered modal, not a route change.
+- [x] **2.1 Real breakpoints.** 0–479 phone, 480–767 phablet, 768–1023 tablet, 1024+ desktop. Each gets a dedicated layout.
+- [x] **2.2 Bottom-tab navigation on mobile.** Five tabs: **Today / Farm / Animals / Pantry / More.** "More" holds Calendar, Financials, Manuals, Settings. Sidebar collapses to this on phone, becomes a rail on tablet, stays as today on desktop.
+- [x] **2.3 Stack-first layout on phone.** All grids collapse to single column. `.g2/.g3/.g5` utility classes in CSS; 6 fixed grids in App.jsx converted.
+- [x] **2.4 Bottom sheets for detail views.** Overlay component slides up from bottom on phone. `.overlay-backdrop/.overlay-sheet/.overlay-handle-row` CSS classes added.
 - [ ] **2.5 Swipe gestures on lists.** Swipe-right to mark done. Swipe-left to delete with red reveal. Pull-to-refresh on Today and Tasks.
-- [ ] **2.6 Touch targets 44px buttons / 56px+ rows and gesture areas.**
-- [ ] **2.7 Safe-area + viewport correctness.** `viewport-fit=cover`, `env(safe-area-inset-*)` everywhere.
+- [x] **2.6 Touch targets 44px buttons / 56px+ rows and gesture areas.** Close, calendar nav, AI send all 44px+. Global `button { min-height: 44px }` in CSS.
+- [x] **2.7 Safe-area + viewport correctness.** `viewport-fit=cover`, `env(safe-area-inset-*)` everywhere.
 - [ ] **2.8 Real-device testing.** iPhone SE 2020, iPhone 14+, Pixel 6a, iPad Mini.
 
 
 ## Phase 3 — Visual identity and design system
 
-- [ ] **3.1 Icons: Lucide React + Twemoji-as-SVG bridge.** Lucide for UI chrome (nav, buttons, badges). Twemoji SVG (MIT-licensed, identical render across OS) for crops/animals/celebrations. Replace all OS emoji in headers and primary content. Keep emoji *literal characters* only at celebration moments (achievement unlock, harvest done).
-- [ ] **3.2 Iconography rule of thumb.** Custom/Lucide icon for navigation and primary identity. Twemoji for content (crops, animals). Native emoji ONLY for celebration moments. Three tiers, one rule each.
-- [ ] **3.3 Dark mode.** Build it now while tokenizing. System-preference aware, manual override in Settings. Designed surface — not an inversion.
-- [ ] **3.4 Lucide icon swap pass.** Sidebar/nav, all action buttons, FAB (replace 🌾 with chat-bubble-with-sprout or similar). The Livestock sidebar icon (currently goat) replaced with a generic Lucide farm icon.
-- [ ] **3.5 Pill/badge consolidation.** Merge "Done" / "Active" / "Easy" / "Full" / "Every 3 days" into one Pill component with tone variants.
+- [x] **3.1 Icons: Lucide React + Twemoji-as-SVG bridge.** `lucide-react` added. NAV, BOTTOM_TABS, MORE_ITEMS all use Lucide component refs (`E` property). Sidebar nav, bottom nav, MoreDrawer all render `<n.E size={...}>`.
+- [x] **3.2 Iconography rule of thumb.** Custom/Lucide icon for navigation and primary identity. Twemoji for content (crops, animals). Native emoji ONLY for celebration moments. Three tiers, one rule each.
+- [x] **3.3 Dark mode.** `[data-theme="dark"]` CSS token block + `@media (prefers-color-scheme: dark)` auto-detect. `darkMode` state with lazy initializer (localStorage + system pref). Moon/Sun toggle in sidebar footer + MoreDrawer. Persists to `localStorage` (`hfm_theme` key).
+- [x] **3.4 Lucide icon swap pass.** Sidebar brand header: `🌾` → `<Leaf/>`. AI chat FAB header: `🌾` → `<Leaf/>`. Pantry + Financials delete buttons: `🗑` → `<Trash2/>`. `Trash2` added to imports. **Note:** remaining `🌾` instances are all content/data (AI suggestion chips, harvest label, `_catIcons.Grain`) — intentionally left as emoji per iconography tiers. **Also fixed in this session:** `Map` lucide import renamed to `MapIcon` to prevent Rolldown minification shadowing global `Map` constructor (was causing `TypeError: A is not a constructor` crash). `getRegionalCalendar` function restored — was dropped during Phase A data module extraction (commit 58cdf57), not exported from `regional-overrides.js`.
+- [ ] **3.5 Pill/badge consolidation.** Merge "Done" / "Active" / "Easy" / "Full" / "Every 3 days" into one Pill component with tone variants. ~15 inline `<span>` pills throughout App.jsx.
 
 ## Phase 4 — Information architecture rethink
 
@@ -165,15 +165,15 @@ This screen is 80% of why someone keeps using MyTerra.
 
 | Week | Focus | Status |
 |---|---|---|
-| 1 | Phase 1 (tokenize, type, components) + Phase 3.1–3.2 (Lucide+Twemoji swap) | Phase 1 ✅ · Phase 3.1–3.2 pending |
-| 2 | Phase 2 (mobile breakpoints + bottom-tab nav + stack layouts) | not started |
-| 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) | not started |
+| 1 | Phase 1 (tokenize, type, components) + Phase 3.1–3.2 (Lucide+Twemoji swap) | ✅ Done |
+| 2 | Phase 2 (mobile breakpoints + bottom-tab nav + stack layouts) | ✅ Done (2.5 + 2.8 deferred) |
+| 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) | ✅ 3.3 + 3.4 done · **3.5 next** |
 | 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) | not started |
 | 5 | Phase 6 (module-by-module fixes) | not started |
 | 6 | Phase 8 (motion polish) | not started |
 | 7 | Phase 7 + Phase 9 + Phase 10 (onboarding + microcopy + a11y) | not started |
 
-**Next up:** Phase 3.1–3.2 (Lucide + Twemoji), then Phase 2 (mobile).
+**Next up: Phase 3.5** — Pill/badge consolidation (~15 inline `<span>` pills → `<Pill tone="...">` component).
 
 Phases run roughly sequentially — but tokens (1.1) MUST be done first. Mobile work (Phase 2) can run in parallel with anything once tokens exist.
 
@@ -192,3 +192,9 @@ When all checkboxes above are ticked, MyTerra is ready for the *next* big plan �
 | 2026-05-07 | Phase 1 complete — tokens in `:root`, C refs CSS vars, type scale exported as `TS`, 3 stray buttons fixed |
 | 2026-05-07 | `C.r` / `C.rs` stay numeric — `C.r+4` arithmetic in Overlay means CSS vars would break it |
 | 2026-05-07 | ~15 inline pill `<span>` elements deferred to Phase 3.5 (not worth touching before Pill gets tone variants) |
+| 2026-05-07 | Phase 2 complete (2.1–2.4, 2.6, 2.7). Deferred: 2.5 swipe gestures, 2.8 real-device testing |
+| 2026-05-07 | Phase 3.1–3.2 complete — lucide-react installed, all nav/tabs/drawer use Lucide component refs |
+| 2026-05-07 | Phase 3.3 complete — dark mode CSS tokens + JS toggle + localStorage persistence + system-pref detection |
+| 2026-05-07 | Phase 3.4 complete — Leaf icon in sidebar brand + AI FAB, Trash2 for delete buttons. Remaining 🌾 are content emoji (intentional). |
+| 2026-05-07 | Bug: lucide `Map` import shadows global `Map` constructor after Rolldown minification → fixed as `Map as MapIcon`. Rule: any lucide import matching a JS global MUST be aliased. |
+| 2026-05-07 | Bug: `getRegionalCalendar` dropped during Phase A Commit 4 data extraction, never exported from regional-overrides.js → restored to App.jsx before DEF block. |
