@@ -941,7 +941,7 @@
                     <li><span class="check">&#10003;</span> Seasonal calendar</li>
                     <li><span class="check">&#10003;</span> Full manuals</li>
                 </ul>
-                <button class="price-btn" onclick="window.location.href='/app'">Start Free Trial</button>
+                <button class="price-btn" data-launch-app>Start Free Trial</button>
             </div>
             <div class="price-card featured">
                 <h3>Pro</h3>
@@ -954,7 +954,7 @@
                     <li><span class="check">&#10003;</span> Advanced analytics</li>
                     <li><span class="check">&#10003;</span> Priority support</li>
                 </ul>
-                <button class="price-btn" onclick="window.location.href='/app'">Start Free Trial</button>
+                <button class="price-btn" data-launch-app>Start Free Trial</button>
             </div>
             <div class="price-card">
                 <h3>Lifetime</h3>
@@ -967,7 +967,7 @@
                     <li><span class="check">&#10003;</span> Founding member badge</li>
                     <li><span class="check">&#10003;</span> Shape the roadmap</li>
                 </ul>
-                <button class="price-btn" onclick="window.location.href='/app'">Start Free Trial</button>
+                <button class="price-btn" data-launch-app>Start Free Trial</button>
             </div>
         </div>
     </div>
@@ -995,53 +995,7 @@
 </footer>
 
 <!-- SCRIPTS -->
-<script>
-    // Nav scroll shadow
-    window.addEventListener('scroll', function() {
-        document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
-    });
-
-    // Smooth scroll for ALL anchor links (fixes nav + buttons)
-    document.querySelectorAll('a[href^="#"], [data-nav]').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            var href = this.getAttribute('href');
-            if (!href || !href.startsWith('#')) return;
-            var target = document.querySelector(href);
-            if (target) {
-                e.preventDefault();
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                // Close mobile menu if open
-                var navLinks = document.getElementById('navLinks');
-                navLinks.classList.remove('mobile-nav-open');
-            }
-        });
-    });
-
-    // Logo scrolls to top
-    document.querySelector('[data-scroll-top]').addEventListener('click', function(e) {
-        e.preventDefault();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    // Mobile menu toggle
-    document.getElementById('menuBtn').addEventListener('click', function() {
-        var navLinks = document.getElementById('navLinks');
-        navLinks.classList.toggle('mobile-nav-open');
-    });
-
-    // Fade in on scroll
-    var observer = new IntersectionObserver(function(entries) {
-        entries.forEach(function(entry) {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-            }
-        });
-    }, { threshold: 0.1 });
-
-    document.querySelectorAll('.fade-in').forEach(function(el) {
-        observer.observe(el);
-    });
-</script>
+<script defer src="/landing.js"></script>
 
 </body>
 </html>
