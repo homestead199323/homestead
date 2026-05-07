@@ -60,12 +60,12 @@ The current `@media (width <= 700px)` block contains 3 rules. This is the single
 
 ## Phase 4 — Information architecture rethink
 
-- [ ] **4.1 Today replaces Dashboard.** Renamed and redesigned. Action-first, not data-aggregator-first.
-- [ ] **4.2 Calm-default greeting.** Replace "8 urgent" red wall with "Three things on your walk today" or "A quiet day — one watering."
-- [ ] **4.3 Farm map promoted to hero on Farm tab.** Currently a half-screen tile inside dashboard. Promote to be the hero of Farm tab. Tapping a zone opens a bottom sheet with that zone's plants, tasks, stats.
-- [ ] **4.4 Module consolidation.** "Farming" and "Farm Layout" merge into one tab — **Farm**. Top-tab segmented control inside: **Map / Crops / Setup**.
-- [ ] **4.5 Manuals integrated into context.** Surface manual content inline ("Need help with tomatoes?" link inside crop detail). Keep Manuals tab for browsing.
-- [ ] **4.6 Settings out of the way.** Tucked behind a profile avatar in More.
+- [x] **4.1 Today replaces Dashboard.** `function Dashboard` → `TodayScreen`; NAV "Home"→"Today"; routing updated; "Back to Today" in FeedbackSurvey.
+- [x] **4.2 Calm-default greeting.** Urgent highlight changed red→orange; copy: "a quiet day 🌿" / "N need attention" / "on your walk today". Background gradient also softened.
+- [x] **4.3 Farm map promoted to hero on Farm tab.** `FarmMapHero` component — full-width zone map with crop patches, grid overlay, legend, empty-state CTA.
+- [x] **4.4 Module consolidation.** `FarmTab` wrapper with Map/Crops/Layout segmented control. `setup` removed from NAV + MORE_ITEMS; "Farming"→"Farm" in NAV. "Edit Map" in TodayScreen routes to `farm?tab=setup`.
+- [x] **4.5 Manuals integrated into context.** "📖 Need help growing X? See the Manuals →" button in PlotOverlay (closes overlay, navigates to Manuals). Available wherever `setPage` is in scope.
+- [x] **4.6 Settings out of the way.** Profile avatar section added at top of MoreDrawer (`User` icon in Lucide import; "My Farm / Free plan" label).
 
 
 ## Phase 5 — Today screen (the daily habit loop)
@@ -168,12 +168,12 @@ This screen is 80% of why someone keeps using MyTerra.
 | 1 | Phase 1 (tokenize, type, components) + Phase 3.1–3.2 (Lucide+Twemoji swap) | ✅ Done |
 | 2 | Phase 2 (mobile breakpoints + bottom-tab nav + stack layouts) | ✅ Done (2.5 + 2.8 deferred) |
 | 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) | ✅ Done |
-| 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) | not started |
+| 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) | ✅ Phase 4 done |
 | 5 | Phase 6 (module-by-module fixes) | not started |
 | 6 | Phase 8 (motion polish) | not started |
 | 7 | Phase 7 + Phase 9 + Phase 10 (onboarding + microcopy + a11y) | not started |
 
-**Next up: Phase 4** — IA rethink (Today screen, module consolidation, Farm tab redesign).
+**Next up: Phase 5** — Today screen redesign (hero section, priority queue, zone-focused layout).
 
 Phases run roughly sequentially — but tokens (1.1) MUST be done first. Mobile work (Phase 2) can run in parallel with anything once tokens exist.
 
@@ -199,3 +199,7 @@ When all checkboxes above are ticked, MyTerra is ready for the *next* big plan �
 | 2026-05-07 | Bug: lucide `Map` import shadows global `Map` constructor after Rolldown minification → fixed as `Map as MapIcon`. Rule: any lucide import matching a JS global MUST be aliased. |
 | 2026-05-07 | Bug: `getRegionalCalendar` dropped during Phase A Commit 4 data extraction, never exported from regional-overrides.js → restored to App.jsx before DEF block. |
 | 2026-05-07 | Phase 3.5 complete — `Pill` extended with `sm` + `border` props. 14 inline spans replaced across 7 locations. Nav/attention count badges left as-is (different semantic). |
+| 2026-05-07 | Phase 4 complete — TodayScreen, FarmTab (Map/Crops/Layout), FarmMapHero, calm greeting, manual link in PlotOverlay, profile avatar in MoreDrawer. |
+| 2026-05-07 | `setup` route removed from top-level routing — now lives as "Layout" subtab inside FarmTab. `setPage("farm", {tab:"setup"})` bridges old callers. |
+| 2026-05-07 | `setPage` made optional in PlotOverlay — callers without setPage (Farming subtab) silently skip the manual link CTA. No cascading prop drilling needed. |
+| 2026-05-07 | `FarmMapHero` zone-render logic is a deliberate duplication from TodayScreen mini-map — acceptable until shared component refactor in Phase 6+. |
