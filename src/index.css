@@ -160,6 +160,12 @@ body {
   50% { transform: translateY(-4px); }
 }
 
+/* Slide up — bottom sheets and More drawer */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
 /* ═══════════════════════════════════════════
    UTILITY CLASSES
    ═══════════════════════════════════════════ */
@@ -266,10 +272,36 @@ main > div {
 /* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
-@media (max-width: 700px) {
+/* ── Phone: 0–479px ── */
+@media (max-width: 479px) {
+  body { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* Touch targets */
+  button { min-height: 44px; }
+
+  /* Grid collapses to single column */
+  .grid-responsive { grid-template-columns: 1fr !important; }
+
+  /* Full-bleed cards */
+  .card-mobile-flush { border-radius: 0 !important; margin-left: -16px !important; margin-right: -16px !important; }
+}
+
+/* ── Phablet: 480–767px ── */
+@media (min-width: 480px) and (max-width: 767px) {
   body { padding-bottom: env(safe-area-inset-bottom); }
   button { min-height: 44px; }
-  main { padding: 12px !important; }
+  .grid-responsive { grid-template-columns: 1fr !important; }
+}
+
+/* ── Tablet: 768–1023px ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Rail nav — handled by JS, but touch targets still apply */
+  button { min-height: 40px; }
+}
+
+/* ── Legacy fallback (< 700) kept for any uncovered edge cases ── */
+@media (max-width: 700px) {
+  main { padding: 16px !important; }
 }
 
 /* ═══════════════════════════════════════════

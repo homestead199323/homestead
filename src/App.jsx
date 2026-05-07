@@ -4870,6 +4870,105 @@ function updateGamify(data) {
   return { ...data, gamify: newG };
 }
 
+/* ═══════════════════════════════════════════
+   BOTTOM NAVIGATION — mobile (< 768px)
+   ═══════════════════════════════════════════ */
+const BOTTOM_TABS = [
+  {id:"home",   l:"Today",   e:"🏠"},
+  {id:"farm",   l:"Farm",    e:"🌱"},
+  {id:"live",   l:"Animals", e:"🐾"},
+  {id:"pantry", l:"Pantry",  e:"📦"},
+  {id:"more",   l:"More",    e:"⋯"},
+];
+
+const MORE_ITEMS = [
+  {id:"tasks",   l:"Task Queue",    e:"📋"},
+  {id:"setup",   l:"Farm Layout",   e:"🗺"},
+  {id:"season",  l:"Seasonal",      e:"🗓"},
+  {id:"fin",     l:"Financials",    e:"💰"},
+  {id:"manuals", l:"Manuals",       e:"📖"},
+  {id:"feedback",l:"Give Feedback", e:"💬"},
+];
+
+const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreOpen, setMoreOpen}) {
+  return (
+    <nav aria-label="Main navigation" style={{
+      position:"fixed", bottom:0, left:0, right:0,
+      height:"calc(56px + env(safe-area-inset-bottom))",
+      background:C.card, borderTop:`1px solid ${C.bdr}`,
+      display:"flex", alignItems:"flex-start", paddingTop:6,
+      paddingBottom:"env(safe-area-inset-bottom)",
+      zIndex:400, boxShadow:"0 -1px 12px rgba(0,0,0,.06)",
+    }}>
+      {BOTTOM_TABS.map(function(tab) {
+        const isActive = tab.id==="more" ? moreOpen : (page===tab.id && !moreOpen);
+        return (
+          <button key={tab.id} aria-label={tab.l}
+            onClick={function(){ if(tab.id==="more"){setMoreOpen(!moreOpen);}else{setMoreOpen(false);setPage(tab.id);} }}
+            style={{
+              flex:1, display:"flex", flexDirection:"column", alignItems:"center",
+              justifyContent:"flex-start", gap:2, border:"none", background:"transparent",
+              cursor:"pointer", padding:"2px 4px", minHeight:44,
+              color: isActive ? C.green : C.t2, position:"relative",
+            }}
+          >
+            <span style={{fontSize:21,lineHeight:1.2,filter:isActive?"none":"grayscale(30%) opacity(70%)"}}>{tab.e}</span>
+            <span style={{fontSize:9,fontWeight:isActive?700:400,fontFamily:F.body,letterSpacing:"0.01em",whiteSpace:"nowrap"}}>{tab.l}</span>
+            {tab.id==="home"&&taskCount>0&&(
+              <span style={{position:"absolute",top:0,right:"calc(50% - 18px)",background:"#ef4444",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,minWidth:16,textAlign:"center"}}>{taskCount>9?"9+":taskCount}</span>
+            )}
+          </button>
+        );
+      })}
+    </nav>
+  );
+});
+
+const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, isOffline}) {
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:500}}/>
+      <div style={{
+        position:"fixed", bottom:"calc(56px + env(safe-area-inset-bottom))",
+        left:0, right:0, zIndex:501,
+        background:C.card, borderRadius:"20px 20px 0 0",
+        paddingBottom:8, boxShadow:"0 -4px 32px rgba(0,0,0,.14)",
+        animation:"slideUp .22s cubic-bezier(.25,.46,.45,.94) both",
+        maxHeight:"70vh", overflowY:"auto",
+      }}>
+        <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 8px"}}/>
+        <div style={{padding:"4px 0"}}>
+          {MORE_ITEMS.map(function(item) {
+            return (
+              <button key={item.id} onClick={function(){setPage(item.id);onClose();}}
+                style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px 20px",
+                  border:"none",background:page===item.id?C.gp:"transparent",
+                  color:page===item.id?C.green:C.text,cursor:"pointer",
+                  fontSize:15,fontFamily:F.body,fontWeight:page===item.id?600:400,
+                  textAlign:"left",transition:"background .15s",
+                }}
+              >
+                <span style={{fontSize:20,width:28,textAlign:"center"}}>{item.e}</span>{item.l}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{margin:"4px 20px",borderTop:`1px solid ${C.bdr}`,paddingTop:4}}>
+          <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
+            <span style={{fontSize:18,width:28,textAlign:"center"}}>💾</span> Export Backup
+          </button>
+          <label style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",cursor:"pointer",fontSize:14,fontFamily:F.body,color:C.t2}}>
+            <span style={{fontSize:18,width:28,textAlign:"center"}}>📂</span> Import Backup
+            <input type="file" accept=".json" onChange={function(e){if(e.target.files[0])importData(e.target.files[0]);e.target.value="";}} style={{display:"none"}}/>
+          </label>
+        </div>
+        {isOffline&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:"#ea580c",background:"linear-gradient(135deg, #fff7ed, #fef3c7)",textAlign:"center",borderRadius:8,margin:"0 10px 8px"}}>📡 Offline — data saved locally</div>}
+      </div>
+    </>,
+    document.body
+  );
+});
+
 function AppInner() {
   // Lazy initializer — loads data synchronously, no loading flash
   // Wrapped in try-catch: if localStorage is corrupt or migration throws, fall back to DEF
@@ -4894,8 +4993,9 @@ function AppInner() {
   });
   const [pageData,setPageData]=useState(null);
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
-  const [mob,setMob]=useState(false);
-  const [isMob,setIsMob]=useState(typeof window !== "undefined" ? window.innerWidth < 700 : false);
+  const [sidebarOpen,setSidebarOpen]=useState(false);
+  const [viewW,setViewW]=useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+  const [moreOpen,setMoreOpen]=useState(false);
   const [isOffline,setIsOffline]=useState(typeof navigator !== "undefined" && !navigator.onLine);
   const [showFeedbackPrompt,setShowFeedbackPrompt]=useState(false);
 
@@ -4927,10 +5027,13 @@ function AppInner() {
 
   // Responsive breakpoint listener
   useEffect(() => {
-    const check = () => setIsMob(window.innerWidth < 700);
+    const check = () => setViewW(window.innerWidth);
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  const isMobile = viewW < 768;
+  const isTablet = viewW >= 768 && viewW < 1024;
 
   // Flush pending save on tab close / navigate away
   useEffect(() => {
@@ -5024,25 +5127,24 @@ function AppInner() {
     <>
       {/* Fonts loaded via system fallback for offline use */}
       <div style={{display:"flex",height:"100vh",fontFamily:F.body,background:C.bg,color:C.text,overflow:"hidden",letterSpacing:"0.005em"}}>
-        <nav style={{width:220,minWidth:220,background:C.card,borderRight:`1px solid ${C.bdr}`,display:"flex",flexDirection:"column",padding:"0",position:isMob?"fixed":"relative",left:isMob?(mob?0:-240):0,top:0,bottom:0,zIndex:500,transition:"left .3s cubic-bezier(.25,.46,.45,.94)",boxShadow:isMob?C.shXL:"none"}}>
+        <nav style={{width:isMobile?0:isTablet?64:220,minWidth:isMobile?0:isTablet?64:220,background:C.card,borderRight:isMobile?"none":`1px solid ${C.bdr}`,display:isMobile?"none":"flex",flexDirection:"column",padding:"0",overflow:"hidden",position:"relative",transition:"width .3s cubic-bezier(.25,.46,.45,.94)"}}>
           {/* Premium brand header */}
-          <div style={{padding:"24px 20px 20px",marginBottom:4,background:C.grdHero,borderRadius:"0 0 20px 0"}}>
-            <div style={{fontSize:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>🌾 MyTerra</div>
-            <div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>
-            {/* save indicator removed — saves silently */}
+          <div style={{padding:isTablet?"16px 0":"24px 20px 20px",marginBottom:4,background:C.grdHero,borderRadius:isTablet?"0":"0 0 20px 0",display:"flex",flexDirection:"column",alignItems:isTablet?"center":"flex-start"}}>
+            <div style={{fontSize:isTablet?22:21,fontFamily:F.head,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>🌾{!isTablet&&" MyTerra"}</div>
+            {!isTablet&&<div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>}
           </div>
           <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
           {NAV.map(n=>(
-            <button key={n.id} onClick={()=>{setPage(n.id);setMob(false)}} className="nav-item" style={{display:"flex",alignItems:"center",gap:11,padding:"10px 14px",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}}>
-              <span style={{fontSize:17,width:24,textAlign:"center",filter:page===n.id?"none":"grayscale(30%)",transition:"filter .2s"}}>{n.e}</span>{n.l}
+            <button key={n.id} onClick={()=>{setPage(n.id);}} className="nav-item" style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
+              <span style={{fontSize:isTablet?20:17,width:isTablet?undefined:24,textAlign:"center",filter:page===n.id?"none":"grayscale(30%)",transition:"filter .2s"}}>{n.e}</span>{!isTablet&&n.l}
               {n.id==="home"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #ef4444, #dc2626)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,minWidth:18,textAlign:"center",boxShadow:"0 2px 6px rgba(239,68,68,.3)"}}>{taskCount}</span>}
               {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
             </button>
           ))}
           </div>
           <div style={SX.flex1}/>
-          {/* Backup controls */}
-          <div style={{padding:"10px 14px",borderTop:`1px solid ${C.bdr}`,margin:"0 10px"}}>
+          {/* Backup controls — hidden on tablet icon rail */}
+          {!isTablet&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.bdr}`,margin:"0 10px"}}>
             <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Download farm data as JSON backup">
               <span style={{fontSize:14}}>💾</span> Export Backup
             </button>
@@ -5050,16 +5152,16 @@ function AppInner() {
               <span style={{fontSize:14}}>📂</span> Import Backup
               <input type="file" accept=".json" onChange={e => { if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; }} style={{display:"none"}}/>
             </label>
-          </div>
-          <div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>
-          {isOffline&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:"#ea580c",background:"linear-gradient(135deg, #fff7ed, #fef3c7)",textAlign:"center",borderRadius:8,margin:"0 10px 10px"}}>📡 Offline — data saved locally</div>}
+          </div>}
+          {!isTablet&&<div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>}
+          {isOffline&&!isTablet&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:"#ea580c",background:"linear-gradient(135deg, #fff7ed, #fef3c7)",textAlign:"center",borderRadius:8,margin:"0 10px 10px"}}>📡 Offline — data saved locally</div>}
         </nav>
-        {mob&&isMob&&<div onClick={()=>setMob(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",zIndex:499,transition:"all .3s"}}/>}
-        <main style={{flex:1,overflow:"auto",padding:isMob?"16px":"32px 36px",paddingBottom:80,background:C.bg}}>
-          {isMob&&<button onClick={()=>setMob(!mob)} style={{border:"none",background:C.card,fontSize:20,cursor:"pointer",marginBottom:16,width:42,height:42,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:C.sh,transition:"all .2s"}}>☰</button>}
+        <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
           {pg()}
         </main>
       </div>
+      {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
+      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { localStorage.setItem("hfm_feedback_dismissed", "true"); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <AIAssistant data={data} setData={setData}/>
     </>
