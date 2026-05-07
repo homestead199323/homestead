@@ -4,7 +4,7 @@ import {
   Home, ClipboardList, Map as MapIcon, Sprout, Rabbit, CalendarDays, Package,
   TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
   Settings, ChevronLeft, ChevronRight, X, Send, Search, Plus,
-  Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun, Trash2
+  Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun, Trash2, User
 } from "lucide-react";
 
 import { DB, uid } from "./lib/storage";
@@ -1051,7 +1051,7 @@ function buildTaskQueue(data) {
 /* ═══════════════════════════════════════════
    PLOT OVERLAY — shared popup used from Farming, TaskQueue, Dashboard
    ═══════════════════════════════════════════ */
-function PlotOverlay({plot, data, setData, onClose}) {
+function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   const crop = rCM(data.region).get(plot.crop);
   const zone = plot.zone ? data.zones.find(z => z.id === plot.zone) : null;
   const zoneSpace = useMemo(
@@ -1160,7 +1160,12 @@ function PlotOverlay({plot, data, setData, onClose}) {
 
       <StepChecklist steps={plot.steps} plantDate={plot.plantDate} onToggle={togStep} plotId={plot.id}/>
       <StorageCard storage={crop.storage}/>
-      <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(crop.name + " growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:12}}>▶ Watch: Complete {crop.name} Growing Guide</a>
+      <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(crop.name + " growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:8}}>▶ Watch: Complete {crop.name} Growing Guide</a>
+      {setPage && (
+        <button onClick={function(){onClose();setPage("manuals");}} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.green,fontWeight:600,padding:"8px 14px",background:C.gp,borderRadius:C.rs,border:`1px solid ${C.bdr}`,marginBottom:12,cursor:"pointer",width:"100%",textAlign:"left"}}>
+          📖 Need help growing {crop.name}? See the Manuals →
+        </button>
+      )}
 
       <div style={SX.btnRowEnd}>
         <Btn v="danger" sm onClick={()=>del(plot.id)}>Delete</Btn>
@@ -1912,7 +1917,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
         })()}
       </Card>
 
-      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)}/>}
+      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)} setPage={setPage}/>}
       {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
     </div>
   );
@@ -2849,6 +2854,157 @@ function Farming({data, setData, pageData, clearPageData}) {
 }
 
 /* ═══════════════════════════════════════════
+   FARM MAP HERO — full-width zone map view
+   ═══════════════════════════════════════════ */
+function FarmMapHero({data, onEditLayout}) {
+  const cropColorMap = useMemo(function() {
+    const m = new Map();
+    let idx = 0;
+    data.garden.plots.forEach(function(p) {
+      if (p.status !== "harvested" && !m.has(p.crop)) {
+        m.set(p.crop, CROP_COLORS[idx % CROP_COLORS.length]);
+        idx++;
+      }
+    });
+    return m;
+  }, [data.garden.plots]);
+
+  const zoneBlocks = useMemo(function() {
+    const fW = data.farmW || 100, fH = data.farmH || 60;
+    return data.zones.map(function(z) {
+      const xPct = ((z.xM||0)/fW*100).toFixed(1);
+      const yPct = ((z.yM||0)/fH*100).toFixed(1);
+      const wPct = ((z.wM||10)/fW*100).toFixed(1);
+      const hPct = ((z.hM||8)/fH*100).toFixed(1);
+      const zt = ZT_MAP.get(z.type);
+      const isPlant = ["veg","orchard","herbs","greenhouse"].includes(z.type);
+      const zPlots = isPlant ? data.garden.plots.filter(function(p){return p.zone===z.id&&p.status!=="harvested";}) : [];
+      const zoneTotalM2 = (z.wM||10)*(z.hM||8);
+      const patches = [];
+      if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
+        let autoY = 1;
+        zPlots.forEach(function(p) {
+          let area = 0;
+          if (p.measureType==="area"&&p.qty) area=+p.qty;
+          else if (p.plantCount) {
+            const crop=rCM(data.region).get(p.crop);
+            if(crop){const sp=crop.spacing/100;area=p.plantCount*sp*sp;}
+          }
+          if (area > 0) {
+            const frac = Math.min(0.98, area/zoneTotalM2);
+            const cc = cropColorMap.get(p.crop)||{r:100,g:140,b:60};
+            let pw, ph, px, py;
+            if (p.patchW!==undefined&&p.patchH!==undefined) {
+              pw=p.patchW;ph=p.patchH;px=p.patchX||0.03;py=p.patchY||0;
+            } else {
+              const side=Math.sqrt(frac);
+              pw=Math.min(1,side*1.2);ph=Math.min(1,frac/pw);
+              px=0.03;py=Math.max(0,autoY-ph);autoY-=ph+0.02;
+            }
+            patches.push({name:p.name||p.crop,pctLabel:Math.round(frac*100),cc,pw,ph,px,py});
+          }
+        });
+        patches.sort(function(a,b){return b.pctLabel-a.pctLabel;});
+      }
+      return {z,zt,xPct,yPct,wPct,hPct,patches};
+    });
+  }, [data.zones, data.garden.plots, data.farmW, data.farmH, cropColorMap]);
+
+  const legendEntries = useMemo(function(){return [...cropColorMap.entries()];},[cropColorMap]);
+
+  if (data.zones.length === 0) {
+    return (
+      <div style={{padding:40,textAlign:"center",color:C.t2,background:C.bg,borderRadius:16,border:`1px dashed ${C.bdr}`}}>
+        <div style={{fontSize:32,marginBottom:8}}>🗺️</div>
+        <div style={{fontSize:14,fontWeight:600}}>No zones yet</div>
+        <div style={{fontSize:12,marginTop:4}}>Go to Layout tab to design your farm</div>
+        <button onClick={onEditLayout} style={{marginTop:14,padding:"8px 20px",background:C.green,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>Design Farm Layout</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{position:"relative",background:"linear-gradient(180deg,#f7faf5,#edf4e8)",border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
+        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
+        {zoneBlocks.map(function({z,zt,xPct,yPct,wPct,hPct,patches}) {
+          return (
+            <div key={z.id} style={{position:"absolute",left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,borderRadius:10,border:"1.5px solid rgba(35,50,35,.15)",background:zt?.fill?`${zt.fill}88`:"#ddd8",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3}}>{z.name}</div>
+              {patches.map(function(cb,i) {
+                return (
+                  <div key={i} style={{position:"absolute",left:`${(cb.px*100).toFixed(1)}%`,top:`${(cb.py*100).toFixed(1)}%`,width:`${(cb.pw*100).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,borderRadius:4,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
+                    <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,filter:"blur(6px)",zIndex:0}}/>
+                    <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.1}}>
+                      <div style={{fontSize:8,fontWeight:900,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
+                      <div style={{fontSize:6,fontWeight:700,color:"rgba(255,255,255,.85)",textShadow:"0 1px 2px rgba(0,0,0,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%",padding:"0 1px"}}>{cb.name}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        <button onClick={onEditLayout} style={{position:"absolute",top:8,right:10,background:"rgba(255,255,255,.9)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.green,cursor:"pointer"}}>✏️ Edit Layout</button>
+      </div>
+      {legendEntries.length > 0 && (
+        <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"8px 0 0",alignItems:"center"}}>
+          <span style={{fontSize:10,fontWeight:700,color:C.t2}}>Crops:</span>
+          {legendEntries.map(function([name,cc]) {
+            return (
+              <div key={name} style={{display:"flex",alignItems:"center",gap:3}}>
+                <div style={{width:8,height:8,borderRadius:2,background:`rgba(${cc.r},${cc.g},${cc.b},.55)`,boxShadow:`0 0 4px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
+                <span style={{fontSize:10,color:C.t1}}>{name}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   FARM TAB — merges Map + Crops + Layout
+   ═══════════════════════════════════════════ */
+function FarmTab({data, setData, pageData, clearPageData}) {
+  const [subTab, setSubTab] = useState(function() {
+    return (pageData && pageData.tab) ? pageData.tab : "map";
+  });
+
+  useEffect(function() { clearPageData(); }, []);
+
+  const farmPageData = (pageData && !pageData.tab) ? pageData : null;
+
+  const FARM_TABS = [
+    {id:"map",   l:"🗺️  Map"},
+    {id:"crops", l:"🌱 Crops"},
+    {id:"setup", l:"⚙️  Layout"},
+  ];
+
+  return (
+    <div style={{maxWidth:1100}}>
+      <div style={{display:"flex",background:C.bg,borderRadius:10,padding:3,marginBottom:16,border:`1px solid ${C.bdr}`,width:"fit-content"}}>
+        {FARM_TABS.map(function(t) {
+          const active = subTab===t.id;
+          return (
+            <button key={t.id} onClick={function(){setSubTab(t.id);}}
+              style={{padding:"6px 18px",borderRadius:8,border:"none",background:active?C.card:"transparent",
+                color:active?C.green:C.t2,fontWeight:active?700:500,fontSize:13,fontFamily:F.body,
+                cursor:"pointer",transition:"all .15s",boxShadow:active?"0 1px 4px rgba(0,0,0,.08)":"none",whiteSpace:"nowrap"}}>
+              {t.l}
+            </button>
+          );
+        })}
+      </div>
+      {subTab==="map"   && <FarmMapHero data={data} onEditLayout={function(){setSubTab("setup");}}/>}
+      {subTab==="crops" && <Farming data={data} setData={setData} pageData={farmPageData} clearPageData={function(){}}/>}
+      {subTab==="setup" && <Setup data={data} setData={setData}/>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    LIVESTOCK
    ═══════════════════════════════════════════ */
 function Livestock({data, setData}) {
@@ -3108,7 +3264,7 @@ function Financials({data, setData}) {
 /* ═══════════════════════════════════════════
    DASHBOARD
    ═══════════════════════════════════════════ */
-function Dashboard({data, setData, setPage, tasks}) {
+function TodayScreen({data, setData, setPage, tasks}) {
   const [selZone,setSelZone]=useState(null);
   const [openPlotId,setOpenPlotId]=useState(null);
   const [openAnimalId,setOpenAnimalId]=useState(null);
@@ -3280,11 +3436,11 @@ function Dashboard({data, setData, setPage, tasks}) {
             {/* Info boxes — what a farmer reads first */}
             <div className="g5" style={{gap:10}}>
               {/* TODAY'S WORK */}
-              <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?"linear-gradient(135deg,#fff5f5,#ffe8e8)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:_durgent>0?`1px solid rgba(220,60,60,.12)`:`1px solid rgba(45,106,79,.08)`}}>
+              <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?"linear-gradient(135deg,#fffbf0,#fff3e0)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:_durgent>0?`1px solid rgba(255,152,0,.18)`:`1px solid rgba(45,106,79,.08)`}}>
                 <div style={SX.capHeader}>Today's Work</div>
-                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_durgent>0?C.red:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_durgent>0?C.orange:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
                 <div style={SX.t2_11mt4}>
-                  {_durgent > 0 ? <span style={{color:C.red,fontWeight:700}}>{_durgent} urgent</span> : "tasks pending"}
+                  {enrichedTasks.length === 0 ? <span style={{color:C.green,fontWeight:600}}>a quiet day 🌿</span> : _durgent > 0 ? <span style={{color:C.orange,fontWeight:700}}>{_durgent} need attention</span> : "on your walk today"}
                 </div>
                 <div style={SX.t3_10mt2}>
                   <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:"#34c759",marginRight:4}}/>{ringData.doneSteps}/{ringData.totalSteps} done
@@ -3615,7 +3771,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 });
               })()}
               {/* Edit link */}
-              <button onClick={()=>setPage("setup")} style={{position:"absolute",top:6,right:8,background:"rgba(255,255,255,.85)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:600,color:C.green,cursor:"pointer"}}>Edit Map</button>
+              <button onClick={function(){setPage("farm",{tab:"setup"});}} style={{position:"absolute",top:6,right:8,background:"rgba(255,255,255,.85)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:600,color:C.green,cursor:"pointer"}}>Edit Map</button>
             </div>
             {/* Crop color legend */}
             {_miniColorMap.size > 0 && (
@@ -3671,7 +3827,7 @@ function Dashboard({data, setData, setPage, tasks}) {
           })}
         </div>
       </div>
-      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)}/>}
+      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)} setPage={setPage}/>}
       {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
     </div>
   );
@@ -4331,10 +4487,9 @@ function Projects({embedded}) {
 }
 
 const NAV=[
-  {id:"home",    l:"Home",          E:Home},
+  {id:"home",    l:"Today",         E:Home},
   {id:"tasks",   l:"Tasks",         E:ClipboardList},
-  {id:"setup",   l:"Farm Layout",   E:MapIcon},
-  {id:"farm",    l:"Farming",       E:Sprout},
+  {id:"farm",    l:"Farm",          E:Sprout},
   {id:"live",    l:"Livestock",     E:Rabbit},
   {id:"season",  l:"Seasonal",      E:CalendarDays},
   {id:"pantry",  l:"Pantry",        E:Package},
@@ -4506,7 +4661,6 @@ const BOTTOM_TABS = [
 
 const MORE_ITEMS = [
   {id:"tasks",   l:"Task Queue",    E:ClipboardList},
-  {id:"setup",   l:"Farm Layout",   E:Map},
   {id:"season",  l:"Seasonal",      E:CalendarDays},
   {id:"fin",     l:"Financials",    E:TrendingUp},
   {id:"manuals", l:"Manuals",       E:BookOpen},
@@ -4560,6 +4714,16 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
         maxHeight:"70vh", overflowY:"auto",
       }}>
         <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 8px"}}/>
+        {/* Profile section */}
+        <div style={{display:"flex",alignItems:"center",gap:14,padding:"10px 20px 14px",borderBottom:`1px solid ${C.bdr}`}}>
+          <div style={{width:44,height:44,borderRadius:22,background:C.grdHero,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <User size={22} strokeWidth={1.8} color="#fff"/>
+          </div>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:F.body}}>My Farm</div>
+            <div style={{fontSize:11,color:C.t2,marginTop:1}}>MyTerra · Free plan</div>
+          </div>
+        </div>
         <div style={{padding:"4px 0"}}>
           {MORE_ITEMS.map(function(item) {
             return (
@@ -4751,16 +4915,15 @@ function AppInner() {
 
   const pg = () => {
     switch(page) {
-      case "setup": return <Setup data={data} setData={setData}/>;
       case "tasks": return <TaskQueue data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
-      case "farm": return <Farming data={data} setData={setData} pageData={pageData} clearPageData={() => setPageData(null)}/>;
+      case "farm": return <FarmTab data={data} setData={setData} pageData={pageData} clearPageData={() => setPageData(null)}/>;
       case "season": return <SeasonalCalendar data={data} setPage={setPage}/>;
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
       case "fin": return <Financials data={data} setData={setData}/>;
       case "manuals": return <Manuals data={data}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
-      default: return <Dashboard data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
+      default: return <TodayScreen data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
     }
   };
 
@@ -4847,7 +5010,7 @@ function FeedbackSurvey({ setPage }) {
         <div style={{fontSize:56,marginBottom:16}}>🎉</div>
         <h2 style={{fontFamily:F.head,fontSize:24,fontWeight:800,color:C.green,marginBottom:8}}>Thank you!</h2>
         <p style={{color:C.t2,fontSize:15,lineHeight:1.6,marginBottom:24}}>Your feedback helps us build a better tool for farmers like you. We read every single response.</p>
-        <Btn onClick={() => setPage("home")}>Back to Dashboard</Btn>
+        <Btn onClick={() => setPage("home")}>Back to Today</Btn>
       </div>
     );
   }
