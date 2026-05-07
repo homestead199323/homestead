@@ -163,15 +163,17 @@ This screen is 80% of why someone keeps using MyTerra.
 
 ## Suggested execution order (5–7 weeks if Claude patches the codebase)
 
-| Week | Focus |
-|---|---|
-| 1 | Phase 1 (tokenize, type, components) + Phase 3.1–3.2 (Lucide+Twemoji swap) |
-| 2 | Phase 2 (mobile breakpoints + bottom-tab nav + stack layouts) |
-| 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) |
-| 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) |
-| 5 | Phase 6 (module-by-module fixes) |
-| 6 | Phase 8 (motion polish) |
-| 7 | Phase 7 + Phase 9 + Phase 10 (onboarding + microcopy + a11y) |
+| Week | Focus | Status |
+|---|---|---|
+| 1 | Phase 1 (tokenize, type, components) + Phase 3.1–3.2 (Lucide+Twemoji swap) | Phase 1 ✅ · Phase 3.1–3.2 pending |
+| 2 | Phase 2 (mobile breakpoints + bottom-tab nav + stack layouts) | not started |
+| 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) | not started |
+| 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) | not started |
+| 5 | Phase 6 (module-by-module fixes) | not started |
+| 6 | Phase 8 (motion polish) | not started |
+| 7 | Phase 7 + Phase 9 + Phase 10 (onboarding + microcopy + a11y) | not started |
+
+**Next up:** Phase 3.1–3.2 (Lucide + Twemoji), then Phase 2 (mobile).
 
 Phases run roughly sequentially — but tokens (1.1) MUST be done first. Mobile work (Phase 2) can run in parallel with anything once tokens exist.
 
@@ -187,3 +189,6 @@ When all checkboxes above are ticked, MyTerra is ready for the *next* big plan �
 | 2026-05-07 | Palette: keep cream + forest, refine tones |
 | 2026-05-07 | Icons: Lucide + Twemoji bridge, custom set later |
 | 2026-05-07 | This file is the working plan; updates merged via PR |
+| 2026-05-07 | Phase 1 complete — tokens in `:root`, C refs CSS vars, type scale exported as `TS`, 3 stray buttons fixed |
+| 2026-05-07 | `C.r` / `C.rs` stay numeric — `C.r+4` arithmetic in Overlay means CSS vars would break it |
+| 2026-05-07 | ~15 inline pill `<span>` elements deferred to Phase 3.5 (not worth touching before Pill gets tone variants) |
