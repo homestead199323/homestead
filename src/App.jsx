@@ -811,8 +811,8 @@ const Overlay = React.memo(function Overlay({title,onClose,children,wide}) {
   );
 });
 
-const Pill = React.memo(function Pill({children,c=C.green,bg=C.gp}) {
-  return <span style={{fontSize:11,padding:"3px 10px",borderRadius:20,background:bg,color:c,fontWeight:600,fontFamily:F.body,whiteSpace:"nowrap"}}>{children}</span>;
+const Pill = React.memo(function Pill({children,c=C.green,bg=C.gp,sm=false,border=null}) {
+  return <span style={{fontSize:sm?10:11,padding:sm?"2px 8px":"3px 10px",borderRadius:20,background:bg,color:c,fontWeight:600,fontFamily:F.body,whiteSpace:"nowrap",...(border?{border:`1px solid ${border}`}:{})}}>{children}</span>;
 });
 
 // Hover tooltip — shows a floating info card on mouse enter, hides on leave
@@ -3389,9 +3389,9 @@ function Dashboard({data, setData, setPage, tasks}) {
                     {t.stepIdx != null && <button onClick={e=>{e.stopPropagation();togStep(t.plotId,t.stepIdx);}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
                     {canMarkDone && <button onClick={e=>{e.stopPropagation();setData(markTaskDone(data,t.key));}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
                     {t.type==="harvest" && <button onClick={e=>{e.stopPropagation();if(t.plotId)setOpenPlotId(t.plotId);else setPage("farm");}} style={{background:C.orange,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Harvest</button>}
-                    <span style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:20,background:priBg(t.pri),color:priColor(t.pri),whiteSpace:"nowrap"}}>
+                    <Pill c={priColor(t.pri)} bg={priBg(t.pri)}>
                       {t.zoneId ? (data.zones.find(z=>z.id===t.zoneId)?.name?.split(" ").map(w=>w[0]).join("").slice(0,3) || "—") : "Farm"}
-                    </span>
+                    </Pill>
                   </div>
                 </div>
               );
@@ -3409,7 +3409,7 @@ function Dashboard({data, setData, setPage, tasks}) {
                 <div style={{fontSize:14,fontWeight:800,fontFamily:F.head}}>
                   {azData ? `${azData.zt?.icon || ""} ${azData.zone.name}` : "Select a zone"}
                 </div>
-                {azData && <span style={{fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:20,background:statusStyle(azData.status).bg,color:statusStyle(azData.status).color}}>{azData.status}</span>}
+                {azData && <Pill c={statusStyle(azData.status).color} bg={statusStyle(azData.status).bg}>{azData.status}</Pill>}
               </div>
 
               {azData ? (
@@ -3804,8 +3804,8 @@ function Preserving({embedded}) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>{r.name}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: cc.bg, color: cc.c, fontWeight: 600 }}>{r.cat}</span>
-                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#f5f5f5", color: dc, fontWeight: 600 }}>{r.difficulty}</span>
+                    <Pill sm c={cc.c} bg={cc.bg}>{r.cat}</Pill>
+                    <Pill sm bg="#f5f5f5" c={dc}>{r.difficulty}</Pill>
                   </div>
                 </div>
               </div>
@@ -3833,11 +3833,9 @@ function Preserving({embedded}) {
                 <div>
                   <h2 style={{ margin: 0, fontFamily: F.head, fontSize: 22, lineHeight: 1.2 }}>{sel.name}</h2>
                   <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: cc.bg, color: cc.c, fontWeight: 700 }}>{sel.cat}</span>
-                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: "#fff", color: dc, fontWeight: 700, border: `1px solid ${dc}` }}>
-                      {sel.difficulty === "Easy" || sel.difficulty.startsWith("Easy") ? "✓ " : sel.difficulty.startsWith("Advanced") ? "⚠ " : "◎ "}{sel.difficulty}
-                    </span>
-                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: "#fff", color: C.t2, fontWeight: 600 }}>📦 {sel.shelf}</span>
+                    <Pill c={cc.c} bg={cc.bg}>{sel.cat}</Pill>
+                    <Pill bg="#fff" c={dc} border={dc}>{sel.difficulty === "Easy" || sel.difficulty.startsWith("Easy") ? "✓ " : sel.difficulty.startsWith("Advanced") ? "⚠ " : "◎ "}{sel.difficulty}</Pill>
+                    <Pill bg="#fff" c={C.t2}>📦 {sel.shelf}</Pill>
                   </div>
                 </div>
               </div>
@@ -4010,9 +4008,9 @@ function SeasonalCalendar({data, setPage}) {
           </div>
           <div style={SX.t2_12mt2}>{c.cat} · {c.days}d to harvest · {c.spacing}cm spacing</div>
           <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
-            <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:c.diff.bg,color:c.diff.c,fontWeight:600}}>{c.diff.e} {c.diff.l}</span>
-            <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:"#e3f2fd",color:C.blue,fontWeight:600}}>☀ {c.sun}</span>
-            <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:"#e8f5e9",color:C.green,fontWeight:600}}>💧 {c.waterFreq}</span>
+            <Pill sm c={c.diff.c} bg={c.diff.bg}>{c.diff.e} {c.diff.l}</Pill>
+            <Pill sm c={C.blue} bg="#e3f2fd">☀ {c.sun}</Pill>
+            <Pill sm c={C.green} bg="#e8f5e9">💧 {c.waterFreq}</Pill>
           </div>
         </div>
         {!c.planted && <Btn sm onClick={() => setPage("farm", {crop: c.name, plantDate: new Date().toISOString().slice(0,10)})}>+ Plant</Btn>}
@@ -4269,8 +4267,8 @@ function Projects({embedded}) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>{r.name}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: cc.bg, color: cc.c, fontWeight: 600 }}>{r.cat}</span>
-                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#f5f5f5", color: dc, fontWeight: 600 }}>{r.difficulty}</span>
+                    <Pill sm c={cc.c} bg={cc.bg}>{r.cat}</Pill>
+                    <Pill sm bg="#f5f5f5" c={dc}>{r.difficulty}</Pill>
                   </div>
                 </div>
               </div>
@@ -4296,10 +4294,10 @@ function Projects({embedded}) {
                 <div>
                   <h2 style={{ margin: 0, fontFamily: F.head, fontSize: 22, lineHeight: 1.2 }}>{sel.name}</h2>
                   <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: cc.bg, color: cc.c, fontWeight: 700 }}>{sel.cat}</span>
-                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: "#fff", color: dc, fontWeight: 700, border: `1px solid ${dc}` }}>{sel.difficulty === "Easy" ? "✓ " : "◎ "}{sel.difficulty}</span>
-                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: "#fff", color: C.t2, fontWeight: 600 }}>⏱ {sel.time}</span>
-                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: "#fff", color: C.t2, fontWeight: 600 }}>💰 {sel.cost}</span>
+                    <Pill c={cc.c} bg={cc.bg}>{sel.cat}</Pill>
+                    <Pill bg="#fff" c={dc} border={dc}>{sel.difficulty === "Easy" ? "✓ " : "◎ "}{sel.difficulty}</Pill>
+                    <Pill bg="#fff" c={C.t2}>⏱ {sel.time}</Pill>
+                    <Pill bg="#fff" c={C.t2}>💰 {sel.cost}</Pill>
                   </div>
                 </div>
               </div>

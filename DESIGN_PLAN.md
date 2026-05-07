@@ -56,7 +56,7 @@ The current `@media (width <= 700px)` block contains 3 rules. This is the single
 - [x] **3.2 Iconography rule of thumb.** Custom/Lucide icon for navigation and primary identity. Twemoji for content (crops, animals). Native emoji ONLY for celebration moments. Three tiers, one rule each.
 - [x] **3.3 Dark mode.** `[data-theme="dark"]` CSS token block + `@media (prefers-color-scheme: dark)` auto-detect. `darkMode` state with lazy initializer (localStorage + system pref). Moon/Sun toggle in sidebar footer + MoreDrawer. Persists to `localStorage` (`hfm_theme` key).
 - [x] **3.4 Lucide icon swap pass.** Sidebar brand header: `🌾` → `<Leaf/>`. AI chat FAB header: `🌾` → `<Leaf/>`. Pantry + Financials delete buttons: `🗑` → `<Trash2/>`. `Trash2` added to imports. **Note:** remaining `🌾` instances are all content/data (AI suggestion chips, harvest label, `_catIcons.Grain`) — intentionally left as emoji per iconography tiers. **Also fixed in this session:** `Map` lucide import renamed to `MapIcon` to prevent Rolldown minification shadowing global `Map` constructor (was causing `TypeError: A is not a constructor` crash). `getRegionalCalendar` function restored — was dropped during Phase A data module extraction (commit 58cdf57), not exported from `regional-overrides.js`.
-- [ ] **3.5 Pill/badge consolidation.** Merge "Done" / "Active" / "Easy" / "Full" / "Every 3 days" into one Pill component with tone variants. ~15 inline `<span>` pills throughout App.jsx.
+- [x] **3.5 Pill/badge consolidation.** `Pill` extended with `sm` (10px/2px 8px) and `border` props. 14 inline `<span>` pills across 7 locations replaced: task priority zone label, zone status, seasonal card (×2), seasonal detail (×3), farm crop picker (×3), manuals DIY card (×2), manuals DIY detail (×4). Notification badges (nav, attention button) left as-is — different semantic purpose.
 
 ## Phase 4 — Information architecture rethink
 
@@ -167,13 +167,13 @@ This screen is 80% of why someone keeps using MyTerra.
 |---|---|---|
 | 1 | Phase 1 (tokenize, type, components) + Phase 3.1–3.2 (Lucide+Twemoji swap) | ✅ Done |
 | 2 | Phase 2 (mobile breakpoints + bottom-tab nav + stack layouts) | ✅ Done (2.5 + 2.8 deferred) |
-| 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) | ✅ 3.3 + 3.4 done · **3.5 next** |
+| 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) | ✅ Done |
 | 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) | not started |
 | 5 | Phase 6 (module-by-module fixes) | not started |
 | 6 | Phase 8 (motion polish) | not started |
 | 7 | Phase 7 + Phase 9 + Phase 10 (onboarding + microcopy + a11y) | not started |
 
-**Next up: Phase 3.5** — Pill/badge consolidation (~15 inline `<span>` pills → `<Pill tone="...">` component).
+**Next up: Phase 4** — IA rethink (Today screen, module consolidation, Farm tab redesign).
 
 Phases run roughly sequentially — but tokens (1.1) MUST be done first. Mobile work (Phase 2) can run in parallel with anything once tokens exist.
 
@@ -198,3 +198,4 @@ When all checkboxes above are ticked, MyTerra is ready for the *next* big plan �
 | 2026-05-07 | Phase 3.4 complete — Leaf icon in sidebar brand + AI FAB, Trash2 for delete buttons. Remaining 🌾 are content emoji (intentional). |
 | 2026-05-07 | Bug: lucide `Map` import shadows global `Map` constructor after Rolldown minification → fixed as `Map as MapIcon`. Rule: any lucide import matching a JS global MUST be aliased. |
 | 2026-05-07 | Bug: `getRegionalCalendar` dropped during Phase A Commit 4 data extraction, never exported from regional-overrides.js → restored to App.jsx before DEF block. |
+| 2026-05-07 | Phase 3.5 complete — `Pill` extended with `sm` + `border` props. 14 inline spans replaced across 7 locations. Nav/attention count badges left as-is (different semantic). |
