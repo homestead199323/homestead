@@ -1,31 +1,69 @@
 /* ═══════════════════════════════════════════
-   THEME — colors, fonts, shared style presets
-   Extracted from App.jsx (Phase A.1, 2026-05-07)
+   THEME — JS bridge to CSS tokens
+   Colors/shadows reference CSS custom properties (→ dark mode ready).
+   Radius stays numeric because C.r is used arithmetically (C.r+4).
+   Phase 1: tokenized 2026-05-07.
    ═══════════════════════════════════════════ */
 
 export const C = {
-  bg: "#f8faf9", card: "#ffffff", green: "#2d6a4f", gl: "#40916c", gp: "#e8f5e9",
-  gm: "#95d5b2", text: "#1a2e1a", t2: "#6b7b6b", t3: "#b8c4b8", bdr: "#e8ece8",
-  red: "#ef4444", orange: "#f59e0b", blue: "#3b82f6", yellow: "#eab308",
-  sh: "0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06)",
-  shL: "0 10px 25px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.04)",
-  shXL: "0 20px 40px rgba(0,0,0,.08), 0 8px 16px rgba(0,0,0,.04)",
-  r: 16, rs: 12,
-  // Gradient presets — viral apps always use gradients
-  grd: "linear-gradient(135deg, #2d6a4f 0%, #40916c 100%)",
-  grdLight: "linear-gradient(135deg, #f0faf4 0%, #e8f5e9 50%, #f0f9ff 100%)",
+  /* surfaces */
+  bg:   "var(--color-bg)",
+  card: "var(--color-card)",
+
+  /* brand green */
+  green: "var(--color-green)",
+  gl:    "var(--color-green-light)",
+  gp:    "var(--color-green-pale)",
+  gm:    "var(--color-green-mid)",
+
+  /* text */
+  text: "var(--color-text)",
+  t2:   "var(--color-text-2)",
+  t3:   "var(--color-text-3)",
+
+  /* border */
+  bdr: "var(--color-border)",
+
+  /* feedback */
+  red:    "var(--color-red)",
+  orange: "var(--color-orange)",
+  blue:   "var(--color-blue)",
+  yellow: "var(--color-yellow)",
+
+  /* shadows */
+  sh:   "var(--shadow)",
+  shL:  "var(--shadow-l)",
+  shXL: "var(--shadow-xl)",
+
+  /* radius — kept numeric: C.r is used as C.r+4 in Overlay */
+  r:  16,
+  rs: 12,
+
+  /* gradients — hardcoded because CSS vars in gradient strings
+     are valid CSS but lose IntelliSense; update if tokens change */
+  grd:     "linear-gradient(135deg, #2e6b52 0%, #3d9970 100%)",
+  grdLight:"linear-gradient(135deg, #f0faf4 0%, #e8f5ee 50%, #f0f9ff 100%)",
   grdWarm: "linear-gradient(135deg, #fef9ef 0%, #fff7ed 50%, #fef3c7 100%)",
-  grdHero: "linear-gradient(160deg, #1a4731 0%, #2d6a4f 40%, #40916c 100%)",
+  grdHero: "linear-gradient(160deg, #1a4731 0%, #2e6b52 40%, #3d9970 100%)",
 };
 
 export const F = {
   body: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
   head: "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  mono: "'JetBrains Mono','SF Mono','Cascadia Code',monospace"
+  mono: "'JetBrains Mono','SF Mono','Cascadia Code',monospace",
+};
+
+/* Type scale — mirrors --text-* CSS vars. Use TS.sm, TS.base etc in inline styles. */
+export const TS = {
+  xs:   "var(--text-xs)",    /* 12px */
+  sm:   "var(--text-sm)",    /* 14px */
+  base: "var(--text-base)",  /* 16px */
+  md:   "var(--text-md)",    /* 18px */
+  lg:   "var(--text-lg)",    /* 22px */
+  xl:   "var(--text-xl)",    /* 28px */
 };
 
 /* SHARED STYLE CONSTANTS
-   Extracted from repeated inline style objects to reduce per-render allocations.
    Rule: if a pattern appears 4+ times, it belongs here. */
 export const SX = {
   flex1: {flex:1},

@@ -1,11 +1,73 @@
 /* ═══════════════════════════════════════════
-   HOMESTEAD — Premium Visual Design System
-   Viral app visual tricks: smooth animations,
-   glass effects, satisfying micro-interactions
+   MYTERRA — Design System
+   Phase 1: Tokenized. Notion × Planta lane.
    ═══════════════════════════════════════════ */
 
-/* ── Google Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+/* ── Google Fonts — 400 + 600 only ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap');
+
+/* ══════════════════════════════════════════════════
+   DESIGN TOKENS — single source of truth
+   Dark mode: override these vars in [data-theme="dark"]
+   ══════════════════════════════════════════════════ */
+:root {
+  /* ── Surfaces ── */
+  --color-bg: #f7f6f3;          /* warm neutral page bg — clean, not orange */
+  --color-card: #ffffff;
+
+  /* ── Brand green — sage-forest ── */
+  --color-green: #2e6b52;       /* primary action */
+  --color-green-dark: #1a4731;  /* hero gradient deep end */
+  --color-green-light: #3d9970; /* hover / lighter variant */
+  --color-green-pale: #e8f5ee;  /* tinted backgrounds */
+  --color-green-mid: #95d5b2;   /* mid-tone accents */
+
+  /* ── Text ── */
+  --color-text: #1a2e1a;
+  --color-text-2: #6b7b6b;
+  --color-text-3: #b8c4b8;
+
+  /* ── Border ── */
+  --color-border: #e8ece8;
+
+  /* ── Feedback ── */
+  --color-red: #ef4444;
+  --color-orange: #f59e0b;
+  --color-blue: #3b82f6;
+  --color-yellow: #eab308;
+
+  /* ── Shadows ── */
+  --shadow: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-l: 0 10px 25px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.04);
+  --shadow-xl: 0 20px 40px rgba(0,0,0,.08), 0 8px 16px rgba(0,0,0,.04);
+
+  /* ── Radius ── */
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+
+  /* ── Type scale (12/14/16/18/22/28) ── */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-md: 18px;
+  --text-lg: 22px;
+  --text-xl: 28px;
+
+  /* ── Weights — two only ── */
+  --weight-normal: 400;
+  --weight-bold: 600;
+
+  /* ── Spacing scale ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+}
 
 /* ── Reset & Base ── */
 *, *::before, *::after {
@@ -20,7 +82,10 @@ html {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f5f5f7;
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  background: var(--color-bg);
+  color: var(--color-text);
   overscroll-behavior: none;
 }
 
@@ -31,88 +96,76 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #86868b; }
 
 /* ── Selection highlight ── */
-::selection { background: rgba(45, 106, 79, 0.15); color: #1d1d1f; }
+::selection { background: rgba(46, 107, 82, 0.15); color: var(--color-text); }
 
 /* ── Focus ring — modern accessible style ── */
 :focus-visible {
-  outline: 2px solid #40916c;
+  outline: 2px solid var(--color-green-light);
   outline-offset: 2px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
 }
 
 /* ═══════════════════════════════════════════
-   ANIMATIONS — the secret sauce of viral apps
+   ANIMATIONS
    ═══════════════════════════════════════════ */
 
-/* Fade + slide up — the "Instagram" entrance */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Fade in — simple opacity */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-/* Scale bounce — the "tap" effect */
 @keyframes scaleBounce {
   0% { transform: scale(1); }
   50% { transform: scale(0.96); }
   100% { transform: scale(1); }
 }
 
-/* Gentle pulse — draws attention */
 @keyframes gentlePulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
 
-/* Shimmer — loading skeleton effect */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
-/* Float up — for toasts/notifications */
 @keyframes floatUp {
   from { opacity: 0; transform: translateY(20px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Ring fill — progress animation */
 @keyframes ringFill {
   from { stroke-dashoffset: var(--ring-circumference); }
   to { stroke-dashoffset: var(--ring-target); }
 }
 
-/* Confetti burst — celebration */
 @keyframes confettiBurst {
   0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
   100% { transform: translateY(-80px) rotate(360deg) scale(0); opacity: 0; }
 }
 
-/* Slide in from left — sidebar items */
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(-8px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* Subtle float — for hero elements */
 @keyframes subtleFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
 
 /* ═══════════════════════════════════════════
-   UTILITY CLASSES — apply via className
+   UTILITY CLASSES
    ═══════════════════════════════════════════ */
 
-/* Page entrance — every page switch */
 .page-enter { animation: fadeUp 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
-/* Staggered card entrance — for grids */
 .card-enter { animation: fadeUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 .card-enter:nth-child(1) { animation-delay: 0s; }
 .card-enter:nth-child(2) { animation-delay: 0.05s; }
@@ -124,10 +177,9 @@ body {
 .card-enter:nth-child(8) { animation-delay: 0.35s; }
 
 /* ═══════════════════════════════════════════
-   PREMIUM BUTTON EFFECTS
+   BUTTONS
    ═══════════════════════════════════════════ */
 
-/* Primary button — tactile press effect */
 button {
   transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   -webkit-tap-highlight-color: transparent;
@@ -137,7 +189,7 @@ button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-/* Card hover lift — premium feel */
+/* ── Card hover lift ── */
 .card-hover {
   transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -146,7 +198,7 @@ button:active:not(:disabled) {
   box-shadow: 0 8px 25px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.04);
 }
 
-/* Nav item — smooth active state */
+/* ── Nav item ── */
 .nav-item {
   transition: all 0.2s ease;
   position: relative;
@@ -159,7 +211,7 @@ button:active:not(:disabled) {
   transform: translateY(-50%);
   width: 3px;
   height: 0;
-  background: #2d6a4f;
+  background: var(--color-green);
   border-radius: 0 3px 3px 0;
   transition: height 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -168,7 +220,7 @@ button:active:not(:disabled) {
 }
 
 /* ═══════════════════════════════════════════
-   GLASS MORPHISM — the "Apple" effect
+   GLASS MORPHISM
    ═══════════════════════════════════════════ */
 .glass {
   background: rgba(255, 255, 255, 0.72);
@@ -177,38 +229,31 @@ button:active:not(:disabled) {
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Status pill — notification badge style */
+/* ── Status pill ── */
 .status-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
   border-radius: 100px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   letter-spacing: 0.01em;
 }
 
-/* Gradient text — eye-catching headers */
+/* ── Gradient text ── */
 .gradient-text {
-  background: linear-gradient(135deg, #2d6a4f 0%, #40916c 50%, #52b788 100%);
+  background: linear-gradient(135deg, var(--color-green) 0%, var(--color-green-light) 50%, #52b788 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 /* ═══════════════════════════════════════════
-   SIDEBAR — premium navigation
+   SIDEBAR
    ═══════════════════════════════════════════ */
 nav button:hover {
-  background: rgba(45, 106, 79, 0.06) !important;
-}
-
-/* ═══════════════════════════════════════════
-   TOOLTIP — modern tooltip style
-   ═══════════════════════════════════════════ */
-[title] {
-  position: relative;
+  background: rgba(46, 107, 82, 0.06) !important;
 }
 
 /* ═══════════════════════════════════════════
@@ -219,29 +264,25 @@ main > div {
 }
 
 /* ═══════════════════════════════════════════
-   RESPONSIVE REFINEMENTS
+   RESPONSIVE
    ═══════════════════════════════════════════ */
 @media (max-width: 700px) {
-  /* Bottom safe area for PWA */
   body { padding-bottom: env(safe-area-inset-bottom); }
-  
-  /* Larger touch targets on mobile */
   button { min-height: 44px; }
-  
-  /* Cards full bleed on mobile */
   main { padding: 12px !important; }
 }
 
 /* ═══════════════════════════════════════════
-   PREMIUM CHECKBOX — satisfying toggle
+   FORM CONTROLS
    ═══════════════════════════════════════════ */
+
 input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   width: 20px;
   height: 20px;
-  border: 2px solid #c7c7cc;
-  border-radius: 6px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-xs);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
@@ -249,8 +290,8 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:checked {
-  background: #2d6a4f;
-  border-color: #2d6a4f;
+  background: var(--color-green);
+  border-color: var(--color-green);
 }
 
 input[type="checkbox"]:checked::after {
@@ -260,42 +301,37 @@ input[type="checkbox"]:checked::after {
   left: 50%;
   transform: translate(-50%, -50%);
   color: white;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
 }
 
 input[type="checkbox"]:active {
   transform: scale(0.9);
 }
 
-/* ═══════════════════════════════════════════
-   INPUT FIELDS — modern, clean
-   ═══════════════════════════════════════════ */
 input[type="text"], input[type="number"], input[type="date"],
 input[type="email"], input[type="url"], select, textarea {
   transition: all 0.2s ease;
-  border: 1.5px solid #e5e5ea !important;
-  border-radius: 10px !important;
+  border: 1.5px solid var(--color-border) !important;
+  border-radius: var(--radius-sm) !important;
 }
 
 input[type="text"]:focus, input[type="number"]:focus,
 input[type="date"]:focus, input[type="email"]:focus,
 input[type="url"]:focus, select:focus, textarea:focus {
-  border-color: #40916c !important;
-  box-shadow: 0 0 0 3px rgba(64, 145, 108, 0.12) !important;
+  border-color: var(--color-green-light) !important;
+  box-shadow: 0 0 0 3px rgba(61, 153, 112, 0.12) !important;
   outline: none;
 }
 
 /* ═══════════════════════════════════════════
-   STAT CARDS — number counter feel
+   COMPONENTS
    ═══════════════════════════════════════════ */
+
 .stat-value {
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* ═══════════════════════════════════════════
-   PILL BUTTONS — filter / tab style
-   ═══════════════════════════════════════════ */
 .pill-btn {
   transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -304,9 +340,6 @@ input[type="url"]:focus, select:focus, textarea:focus {
   box-shadow: 0 2px 8px rgba(0,0,0,.06);
 }
 
-/* ═══════════════════════════════════════════
-   SUCCESS FLASH — harvest / collect celebration
-   ═══════════════════════════════════════════ */
 @keyframes successFlash {
   0% { box-shadow: 0 0 0 0 rgba(34,197,94,.4); }
   70% { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
@@ -316,19 +349,13 @@ input[type="url"]:focus, select:focus, textarea:focus {
   animation: successFlash 0.6s ease-out;
 }
 
-/* ═══════════════════════════════════════════
-   SKELETON LOADING — premium placeholder
-   ═══════════════════════════════════════════ */
 .skeleton {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
 }
 
-/* ═══════════════════════════════════════════
-   BADGE UNLOCK — the "you earned it" pop
-   ═══════════════════════════════════════════ */
 @keyframes badgeUnlock {
   0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
   50% { transform: scale(1.15) rotate(3deg); opacity: 1; }
@@ -338,23 +365,14 @@ input[type="url"]:focus, select:focus, textarea:focus {
   animation: badgeUnlock 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* ═══════════════════════════════════════════
-   PROGRESS BAR — smooth fill animation
-   ═══════════════════════════════════════════ */
 .progress-fill {
   transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* ═══════════════════════════════════════════
-   RING PROGRESS — smooth SVG animation
-   ═══════════════════════════════════════════ */
 circle.ring-progress {
   transition: stroke-dashoffset 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* ═══════════════════════════════════════════
-   EMOJI BOUNCE — draws attention to actions
-   ═══════════════════════════════════════════ */
 @keyframes emojiBounce {
   0%, 100% { transform: translateY(0); }
   30% { transform: translateY(-6px); }
@@ -378,7 +396,7 @@ circle.ring-progress {
 }
 
 /* ═══════════════════════════════════════════
-   PRINT — clean printout
+   PRINT
    ═══════════════════════════════════════════ */
 @media print {
   nav { display: none !important; }
