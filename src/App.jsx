@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useReducer } from "react";
 import { createPortal } from "react-dom";
 import {
-  Home, ClipboardList, Map, Sprout, Rabbit, CalendarDays, Package,
+  Home, ClipboardList, Map as MapIcon, Sprout, Rabbit, CalendarDays, Package,
   TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
   Settings, ChevronLeft, ChevronRight, X, Send, Search, Plus,
   Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun
@@ -4323,7 +4323,7 @@ function Projects({embedded}) {
 const NAV=[
   {id:"home",    l:"Home",          E:Home},
   {id:"tasks",   l:"Tasks",         E:ClipboardList},
-  {id:"setup",   l:"Farm Layout",   E:Map},
+  {id:"setup",   l:"Farm Layout",   E:MapIcon},
   {id:"farm",    l:"Farming",       E:Sprout},
   {id:"live",    l:"Livestock",     E:Rabbit},
   {id:"season",  l:"Seasonal",      E:CalendarDays},
