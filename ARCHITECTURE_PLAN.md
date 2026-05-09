@@ -4,6 +4,8 @@
 
 This is the living checklist for architecture work. When a task is finished, change `[ ]` to `[x]` and add a short note if needed.
 
+**Last updated:** 2026-05-09 — Phase A (data extraction) complete. App.jsx reduced from ~6000 lines to 4031 lines.
+
 ---
 
 ## North Star
@@ -45,18 +47,124 @@ Other devices update
 
 ---
 
-## Target Folder Structure
+## Actual Current Folder Structure (as of 2026-05-09)
 
-This is the direction we are moving toward. It does not need to happen all at once.
+This is what exists on disk right now, not the target.
+
+```text
+src/
+  App.jsx                  ← 4031 lines — UI + state + routing only
+  main.jsx
+  index.css
+
+  components/
+    ui.jsx                 ← Btn, Card, Inp, Sel, Txt, Overlay, Pill,
+                             Tooltip, Ring, Stat, StepChecklist,
+                             WaterCard, StorageCard (13 components)
+
+  data/                    ← pure data constants, no logic
+    crops.js               ← CROPS, CROP_MAP, CROP_COLORS (70 crops)
+    zones.js               ← ZT, ZT_MAP
+    regions.js             ← REGIONS, REGION_MAP
+    regional-overrides.js  ← RO (crop overrides), LDB_RO (livestock overrides)
+    varieties.js           ← VARIETIES, VAR_RO
+    companions.js          ← COMP
+    breeds.js              ← BREEDS
+    livestock.js           ← LDB, POULTRY_SPECIES, HOOFED_SPECIES,
+                             GRAZER_SPECIES, animalPlural (14 animals)
+    livestock-calendar.js  ← LIVESTOCK_CALENDAR (14 animals × 12 months)
+    preservation.js        ← PRESERVATION (13 methods)
+    badges.js              ← BADGES
+    projects.js            ← PROJECT_GUIDES, BLUEPRINT_IMAGES
+    cities.js              ← CITY_DB, searchCity
+
+  lib/                     ← logic/helpers, no UI
+    storage.js             ← DB, uid (localStorage wrapper)
+    theme.js               ← C (colors), F (fonts), SX (style helpers)
+    utils.js               ← appendLog, toLocalDateKey, todayLocalKey,
+                             localDateFromKey, addDaysToLocalKey,
+                             daysBetweenLocalKeys, markTaskDone
+    regional.js            ← getRegionalCrop, getRegionalCrops,
+                             getRegionalCropMap, rCM, rCR,
+                             getRegionalVarieties, getRegionalCalendar
+    farm-calc.js           ← cropMeasureType, plantsFromArea, expectedYield,
+                             zoneAreaM2, plotAreaM2, zoneSpaceStats,
+                             buildZoneSpaceMap
+    task-queue.js          ← buildTaskQueue (crop tasks, animal tasks,
+                             species grouping, sorting)
+    calendar.js            ← MN_FULL, MN_ABR, parseSowMonths,
+                             parseHarvestMonths, CROP_DIFFICULTY,
+                             getCropDifficulty
+    migrations.js          ← migrateZones, migrateGamify,
+                             migrateCompletions, updateGamify
+    ai.js                  ← farmKnowledgeEngine, buildAISuggestions
+                             (offline assistant, no API key)
+```
+
+What App.jsx still contains (not yet extracted):
+- `DEF` — default state object
+- `dataReducer` — state reducer
+- `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` — navigation config (reference Lucide icons, tightly coupled to nav components)
+- `ErrorBoundary` class component
+- All screen components: PlotOverlay, AnimalOverlay, TaskRow, TaskQueue, Setup, Farming, FarmMapHero, FarmTab, Livestock, Pantry, Financials, TodayScreen, Manuals, Preserving, SeasonalCalendar, Blueprint, Projects, BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt, AIAssistant
+
+---
+
+## Commit History (all meaningful commits to date)
+
+### Phase A — Data Extraction (Jan–May 2026)
+
+| Commit | Message | App.jsx lines |
+|--------|---------|---------------|
+| `303a93c` | Phase A.1: extract DB, uid + C, F, SX into src/lib/ | – |
+| `b302ad0` | Phase A.2: extract ZT, COMP, BREEDS to src/data/ | – |
+| `f267e10` | Phase A.3: extract VARIETIES, CROPS, REGIONS to src/data/ | – |
+| `58cdf57` | Phase A.4: extract RO + LDB_RO to src/data/regional-overrides.js | 5950 → 5546 |
+| `ce2455c` | Phase A.5a: extract livestock data + LIVESTOCK_CALENDAR | 5785 → 5544 |
+| `5f64804` | Phase A.5b: extract PRESERVATION, BADGES, PROJECT_GUIDES, BLUEPRINT_IMAGES | 5544 → 5218 |
+| `51ad979` | Phase A.7: extract utils, cities, regional, farm-calc | 5218 → 4878 |
+| `4369a91` | Phase A.8: extract UI primitives + buildTaskQueue | 4878 → 4601 |
+| `d049add` | Phase A.9: extract calendar helpers + migrations | 4601 → 4485 |
+| `10038c8` | Phase A.10: extract farmKnowledgeEngine + buildAISuggestions into lib/ai.js | 4485 → 4031 |
+
+### UI/UX Design Phases (DESIGN_PLAN.md)
+
+| Commit | Message |
+|--------|---------|
+| `d9fc48f` | Phase 1.1–1.3: design tokens, refined palette, type scale |
+| `69c2e98` | Phase 1.4: component audit — fix stray inline buttons |
+| `0147277` | Phase 2.2: responsive nav — bottom tabs / icon rail / full sidebar |
+| `c2a448a` | Phase 2.3+2.4+2.6: stack grids, bottom-sheet Overlay, 44px touch targets |
+| `d467218` | Phase 3.1-3.2: Lucide React icons — nav, bottom tabs, controls |
+| `9b1c23f` | Phase 3.4: Lucide icon swap — Leaf for brand/FAB, Trash2 for delete |
+| `f867ee9` | Phase 3.5: pill/badge consolidation — 14 inline spans replaced |
+| `4816ca8` | Phase 4: IA rethink — Today tab, merged Farm tab, calm greeting, profile avatar |
+
+### Infrastructure / Fixes
+
+| Commit | Message |
+|--------|---------|
+| `ef5b45a` | CSP: extract inline scripts to external files |
+| `34e60b8` | Refactor: local date helpers + fix react-hooks deps + dead code removal |
+| `b5cfb12` | Fix: rename lucide Map import to MapIcon (crash fix) |
+| `befd4da` | Fix: restore getRegionalCalendar lost during Phase A extraction |
+| `b8e887c` | Fix: add missing getRegionalVarieties function |
+| `730c627` | Feat: dark mode toggle — persists to localStorage, respects system pref |
+| `e13c41a` | Docs: add ARCHITECTURE_PLAN.md |
+
+---
+
+## Target Folder Structure (what we're moving toward)
 
 ```text
 src/
   app/
     App.jsx
-    navigation.js
-    migrations.js
+    navigation.js    ← NAV, BOTTOM_TABS, MORE_ITEMS (currently in App.jsx)
+    state.js         ← DEF, dataReducer (currently in App.jsx)
+    migrations.js    ← already exists at src/lib/migrations.js
 
-  core/
+  core/              ← NOT STARTED — farming brain
     crops/
     animals/
     tasks/
@@ -65,16 +173,11 @@ src/
     pantry/
     financials/
 
-  data/
-    crops.js
-    breeds.js
-    varieties.js
-    regions.js
-    regional-overrides.js
-    companions.js
+  data/              ← ✅ DONE — all pure data constants extracted
+    (see actual structure above)
 
-  services/
-    storage/
+  services/          ← NOT STARTED
+    storage/         ← src/lib/storage.js exists but is minimal
     auth/
     sync/
     database/
@@ -82,7 +185,7 @@ src/
     weather/
     notifications/
 
-  features/
+  features/          ← NOT STARTED — all screens still in App.jsx
     today/
     farm/
     tasks/
@@ -92,82 +195,70 @@ src/
     manuals/
     assistant/
 
-  components/
-    Button.jsx
-    Card.jsx
-    Overlay.jsx
-    Pill.jsx
-    FormField.jsx
+  components/        ← PARTIAL — all in one file (ui.jsx) not split per component
+    ui.jsx           ← exists, contains all 13 components
+    (target: Button.jsx, Card.jsx, Overlay.jsx, Pill.jsx, etc.)
 
-  platform/
+  lib/               ← ✅ DONE — all shared logic extracted
+    (see actual structure above)
+
+  platform/          ← NOT STARTED
     web/
     mobile/
 ```
-
-Plain meaning:
-
-- `core/` is the farming brain.
-- `data/` is the farming knowledge database.
-- `services/` is login, storage, sync, payments, weather, and notifications.
-- `features/` is the main product areas users see.
-- `components/` is reusable UI like buttons, cards, and popups.
-- `platform/` is code that behaves differently on web versus mobile.
 
 ---
 
 ## Phase 0 — Protect The Working App
 
-Before architecture work starts, make sure the current app has basic safety checks.
-
-- [ ] Confirm `npm run build` passes before each architecture change.
-- [ ] Confirm the app opens locally after each architecture change.
-- [ ] Avoid changing product behavior during pure architecture cleanup.
-- [ ] Keep each change small enough to understand and undo.
+- [x] Confirm `npm run build` passes before each architecture change.
+- [x] Confirm the app opens locally after each architecture change.
+- [x] Avoid changing product behavior during pure architecture cleanup.
+- [x] Keep each change small enough to understand and undo.
 - [ ] Do not start mobile packaging until the shared app brain is separated from screen code.
-
-**Why this matters:** the app already works. The goal is to make it easier to improve, not to break it while organizing.
 
 ---
 
 ## Phase 1 — Split The Reusable UI Pieces
 
-Move small shared visual pieces out of `src/App.jsx` first. This is the safest cleanup.
+**Status: PARTIAL** — All components extracted but into one file (ui.jsx), not individual files.
 
-- [ ] Create `src/components/`.
-- [ ] Move `Btn` into `src/components/Button.jsx`.
-- [ ] Move `Card` into `src/components/Card.jsx`.
-- [ ] Move `Overlay` into `src/components/Overlay.jsx`.
-- [ ] Move `Pill` into `src/components/Pill.jsx`.
-- [ ] Move form fields such as `Inp`, `Sel`, and `Txt` into reusable component files.
-- [ ] Replace imports in `App.jsx` so the app still looks and behaves the same.
-- [ ] Run `npm run build`.
-- [ ] Open the app and check Today, Farm, Animals, Pantry, Financials, and Assistant.
+- [x] Create `src/components/`.
+- [x] Move `Btn` into components. *(in ui.jsx, not Button.jsx)*
+- [x] Move `Card` into components. *(in ui.jsx)*
+- [x] Move `Overlay` into components. *(in ui.jsx)*
+- [x] Move `Pill` into components. *(in ui.jsx)*
+- [x] Move form fields `Inp`, `Sel`, `Txt` into components. *(in ui.jsx)*
+- [x] Replace imports in `App.jsx`.
+- [x] Run `npm run build`.
+- [x] Open the app and check Today, Farm, Animals, Pantry, Financials, and Assistant.
+- [ ] *(optional later)* Split ui.jsx into individual component files.
 
-**Done when:** `App.jsx` is smaller, shared UI is reusable, and nothing looks different to the user.
+**Note:** splitting into individual files has no functional benefit at this stage. Leave it.
 
 ---
 
 ## Phase 2 — Create The Shared Farming Brain
 
-Move farming rules out of screen code and into `src/core/`.
+**Status: DONE** — All logic extracted into `src/lib/`. Named `src/lib/` not `src/core/` but functionally equivalent.
 
-- [ ] Create `src/core/`.
-- [ ] Move date helpers into `src/core/calendar/`.
-- [ ] Move crop yield helpers into `src/core/yields/`.
-- [ ] Move regional crop helpers into `src/core/crops/`.
-- [ ] Move animal care/calendar helpers into `src/core/animals/`.
-- [ ] Move task generation into `src/core/tasks/`.
-- [ ] Make Today, Tasks, Assistant, and Farm screens use the same task/crop logic.
-- [ ] Add simple tests for the most important rules.
-- [ ] Run `npm run build`.
-
-**Done when:** the app has one shared place for farming rules, instead of each screen having its own hidden logic.
+- [x] Create `src/lib/` *(used instead of src/core/ — same outcome)*
+- [x] Move date helpers into calendar. *(src/lib/calendar.js)*
+- [x] Move crop yield helpers. *(src/lib/farm-calc.js)*
+- [x] Move regional crop helpers. *(src/lib/regional.js)*
+- [x] Move animal care/calendar helpers. *(src/lib/regional.js — getRegionalCalendar)*
+- [x] Move task generation. *(src/lib/task-queue.js)*
+- [x] Move AI knowledge engine. *(src/lib/ai.js)*
+- [x] Run `npm run build`.
+- [ ] Add simple tests for the most important rules. *(not started — no test runner yet)*
 
 ---
 
 ## Phase 3 — Split Screens Into Feature Folders
 
-Move one user-facing area at a time into `src/features/`.
+**Status: NOT STARTED** — All screens still in App.jsx (4031 lines).
+
+Screens to extract: TodayScreen, TaskQueue, FarmTab (Farming + Setup + FarmMapHero), Livestock, Pantry, Financials, Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects), AIAssistant, FeedbackSurvey.
 
 - [ ] Create `src/features/`.
 - [ ] Move `Pantry` into `src/features/pantry/`.
@@ -178,66 +269,77 @@ Move one user-facing area at a time into `src/features/`.
 - [ ] Move `Farm` into `src/features/farm/`.
 - [ ] Move `Today` into `src/features/today/`.
 - [ ] Move `Assistant` into `src/features/assistant/`.
-- [ ] Keep navigation in `src/app/navigation.js`.
+- [ ] Extract `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` into `src/app/navigation.js`.
+- [ ] Extract `DEF`, `dataReducer` into `src/app/state.js`.
 - [ ] Run `npm run build` after each feature is moved.
 
-**Done when:** changing Pantry does not require digging through Farm, Assistant, or Today code.
+**Recommendation:** do this AFTER Supabase integration, not before. Extracting screens while the data layer is still localStorage makes the migration harder.
 
 ---
 
 ## Phase 4 — Build A Real Storage Layer
 
-Today the app saves mostly through browser `localStorage`. For iOS and Android, storage needs to be hidden behind a cleaner layer.
+**Status: PARTIAL** — storage.js exists (DB wrapper + uid). Migrations extracted. App still calls localStorage directly through DB.KEY in some places.
 
-- [ ] Create `src/services/storage/`.
-- [ ] Keep current browser storage working.
-- [ ] Add a storage API with plain functions like `loadFarm()`, `saveFarm()`, `exportFarm()`, and `importFarm()`.
-- [ ] Move migration logic into `src/app/migrations.js`.
+- [x] Create `src/services/storage/`. *(done as src/lib/storage.js)*
+- [x] Keep current browser storage working.
+- [x] Move migration logic into a module. *(src/lib/migrations.js)*
+- [ ] Add clean storage API: `loadFarm()`, `saveFarm()`, `exportFarm()`, `importFarm()`.
 - [ ] Make the app talk only to the storage service, not directly to `localStorage`.
-- [ ] Prepare the storage service so Capacitor/mobile storage can be added later.
+- [ ] Prepare for Capacitor/mobile storage later.
 - [ ] Run `npm run build`.
 
-**Done when:** the app does not care whether data is saved in browser storage, phone storage, or later cloud sync.
+**Note:** this phase is the gateway to Supabase. Do not start Phase 5 until the storage layer is behind a clean API.
 
 ---
 
 ## Phase 5 — Add Accounts And Cloud Backup
 
-This is where Supabase should enter, but only after the local architecture is cleaner.
+**Status: NOT STARTED.** Architecture decision made 2026-05-09: Supabase is the backend.
+
+Agreed architecture:
+- Online-first PWA with offline write queue
+- Supabase as source of truth
+- localStorage as local cache
+- Optimistic writes with mutation queue draining on reconnect
+- Last-write-wins via `updated_at`
+- Auth: email + Google OAuth
+
+Three open decisions (pending):
+1. Do real production users exist whose data must be preserved on migration?
+2. Should sign-in be mandatory or optional? (recommended: 7-day trial before requiring it)
+3. Extract data/sync layer now or keep monolithic App.jsx temporarily?
+   (recommended: hybrid — extract to `src/lib/db.js`, `src/lib/sync.js`, `src/lib/auth.js`; leave UI as one file)
 
 - [ ] Create `src/services/auth/`.
 - [ ] Create `src/services/database/`.
-- [ ] Add Supabase project.
-- [ ] Design the database tables for farms, zones, crops, animals, pantry items, costs, and logs.
+- [ ] Create Supabase project.
+- [ ] Design database tables: users, farms, zones, plots, animals, pantry, costs, log.
 - [ ] Add email login.
 - [ ] Add Google login.
-- [ ] Let users keep using the app without login at first.
+- [ ] Let users keep using app without login.
 - [ ] Add cloud backup for logged-in users.
-- [ ] Keep local offline data as the first source of truth.
-
-**Done when:** a user can log in and back up their farm, but the app still works offline.
+- [ ] Keep local offline data as source of truth.
 
 ---
 
 ## Phase 6 — Add Offline Sync
 
-This is one of the most important phases for a farm app.
+**Status: NOT STARTED.**
 
 - [ ] Create `src/services/sync/`.
 - [ ] Track local changes while offline.
 - [ ] Sync changes to Supabase when internet returns.
-- [ ] Handle the same user opening the app on two devices.
-- [ ] Decide what happens when two devices edit the same item.
-- [ ] Show a simple sync status in the app.
-- [ ] Add backup/export fallback in case sync fails.
-
-**Done when:** the app works in the field without internet, then updates the cloud later.
+- [ ] Handle same user on two devices.
+- [ ] Decide conflict resolution (agreed: last-write-wins via `updated_at`).
+- [ ] Show sync status in the app.
+- [ ] Add backup/export fallback if sync fails.
 
 ---
 
 ## Phase 7 — Prepare For Mobile App Stores
 
-Use Capacitor first so the current React app can become iOS and Android apps without a full rewrite.
+**Status: NOT STARTED. Deferred until content + backend are solid (est. 6–8 weeks).**
 
 - [ ] Add Capacitor to the project.
 - [ ] Create iOS project.
@@ -246,61 +348,58 @@ Use Capacitor first so the current React app can become iOS and Android apps wit
 - [ ] Test local storage on iOS.
 - [ ] Test local storage on Android.
 - [ ] Test offline mode on iOS and Android.
-- [ ] Test camera/photo access if farm photos are added.
-- [ ] Test push/local notifications if reminders are added.
 - [ ] Create app icons and splash screens for stores.
-
-**Done when:** the same MyTerra app can run as web, iOS, and Android.
 
 ---
 
 ## Phase 8 — Payments And Subscriptions
 
-Payments need special care because web payments and mobile app store payments are different.
+**Status: NOT STARTED.**
+
+Pricing (canonical — verified in public/landing.html line 954):
+- 7-day free trial, no card required
+- Basic $4.99/mo
+- Pro $9.99/mo (AI assistant, multi-zone, analytics)
+- Lifetime $190 one-time (early adopter)
 
 - [ ] Create `src/services/payments/`.
 - [ ] Keep Stripe for web subscriptions.
-- [ ] Research Apple App Store subscription rules before adding iOS payments.
-- [ ] Research Google Play subscription rules before adding Android payments.
-- [ ] Keep paid-feature checks in shared code, not scattered across screens.
-- [ ] Add a simple subscription status service.
-- [ ] Make sure free users, trial users, and paid users all have clear app states.
-
-**Done when:** paid features can be controlled from one shared place across web, iOS, and Android.
+- [ ] Research Apple App Store subscription rules before iOS payments.
+- [ ] Research Google Play subscription rules before Android payments.
+- [ ] Keep paid-feature checks in shared code.
+- [ ] Add subscription status service.
+- [ ] 72h offline grace token for subscribers.
 
 ---
 
 ## Phase 9 — Weather, Notifications, And Reminders
 
-These should be services, not hardcoded inside screens.
+**Status: NOT STARTED.**
+
+Agreed: Open-Meteo API (free, no key, 7-day forecast). No push notifications needed yet.
 
 - [ ] Create `src/services/weather/`.
 - [ ] Create `src/services/notifications/`.
-- [ ] Add weather provider for web.
+- [ ] Add Open-Meteo weather for web.
 - [ ] Add mobile-safe weather access.
 - [ ] Add local reminders for daily farm tasks.
 - [ ] Add notification permission screens for iOS and Android.
-- [ ] Make reminders use the shared task engine from `src/core/tasks/`.
-
-**Done when:** Today, Tasks, and mobile notifications all use the same task rules.
+- [ ] Make reminders use shared task engine from `src/lib/task-queue.js`.
 
 ---
 
 ## Phase 10 — Testing And Quality Gates
 
-Future changes get easier only if the app can warn us before something breaks.
+**Status: NOT STARTED.**
 
-- [ ] Make `npm run lint` pass.
+- [ ] Make `npm run lint` pass cleanly.
 - [ ] Add a test runner.
 - [ ] Add tests for crop timing.
 - [ ] Add tests for expected yield.
 - [ ] Add tests for task generation.
 - [ ] Add tests for storage migrations.
 - [ ] Add tests for import/export backup.
-- [ ] Add a simple manual release checklist.
-- [ ] Before every release, run build, lint, tests, and mobile smoke checks.
-
-**Done when:** changes feel safer because the app checks the important rules automatically.
+- [ ] Add a manual release checklist.
 
 ---
 
@@ -317,9 +416,15 @@ Future changes get easier only if the app can warn us before something breaks.
 ## Decision Log
 
 | Date | Decision |
-|---|---|
+|------|----------|
 | 2026-05-07 | Long-term target is web, iOS, and Android. |
 | 2026-05-07 | Best architecture is offline-first, feature-based, with one shared farming brain. |
-| 2026-05-07 | Use Capacitor first for iOS/Android unless the app later needs a full native rewrite. |
+| 2026-05-07 | Use Capacitor for iOS/Android (not React Native rewrite). |
 | 2026-05-07 | Keep current React/Vite app and refactor gradually instead of rebuilding from zero. |
-
+| 2026-05-09 | Supabase migration moved from Phase 6 → Phase 4 (next priority after Phase A). |
+| 2026-05-09 | Offline architecture: online-first, localStorage as cache, Supabase as source of truth, mutation queue, last-write-wins via updated_at. |
+| 2026-05-09 | Auth: email + Google OAuth via Supabase. |
+| 2026-05-09 | Weather: Open-Meteo API (free, no key, 7-day forecast). No push notifications needed yet. |
+| 2026-05-09 | Phase A complete. App.jsx reduced from ~6000 to 4031 lines. All data in src/data/, all logic in src/lib/. |
+| 2026-05-05 | Market pivot: Western Europe is now the base climate layer (USDA 7-9, maritime temperate). Mediterranean is an override layer, not the base. Default region: western_europe. |
+| 2026-05-09 | Screen extraction (Phase 3) deferred until after Supabase integration. Extracting screens while data layer is still localStorage makes migration harder. |
