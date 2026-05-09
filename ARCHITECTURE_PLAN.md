@@ -4,7 +4,7 @@
 
 This is the living checklist for architecture work. When a task is finished, change `[ ]` to `[x]` and add a short note if needed.
 
-**Last updated:** 2026-05-09 — Phase 4 (storage layer) complete. App.jsx no longer touches localStorage directly; all persistence funnels through `src/lib/storage.js`. Ready for Supabase swap in Phase 5.
+**Last updated:** 2026-05-09 — Phase 3.2 (Financials extraction) complete. App.jsx down to 3876 lines. Pantry + Financials now live in `src/features/`.
 
 ---
 
@@ -53,9 +53,15 @@ This is what exists on disk right now, not the target.
 
 ```text
 src/
-  App.jsx                  ← 4031 lines — UI + state + routing only
+  App.jsx                  ← 3876 lines — UI + state + routing only
   main.jsx
   index.css
+
+  features/                ← screen components extracted from App.jsx
+    pantry/
+      Pantry.jsx           ← Phase 3.1 (commit 4a17087)
+    financials/
+      Financials.jsx       ← Phase 3.2 (commit c42a1aa)
 
   components/
     ui.jsx                 ← Btn, Card, Inp, Sel, Txt, Overlay, Pill,
@@ -106,7 +112,7 @@ What App.jsx still contains (not yet extracted):
 - `dataReducer` — state reducer
 - `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` — navigation config (reference Lucide icons, tightly coupled to nav components)
 - `ErrorBoundary` class component
-- All screen components: PlotOverlay, AnimalOverlay, TaskRow, TaskQueue, Setup, Farming, FarmMapHero, FarmTab, Livestock, Pantry, Financials, TodayScreen, Manuals, Preserving, SeasonalCalendar, Blueprint, Projects, BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt, AIAssistant
+- All remaining screen components: PlotOverlay, AnimalOverlay, TaskRow, TaskQueue, Setup, Farming, FarmMapHero, FarmTab, Livestock, TodayScreen, Manuals, Preserving, SeasonalCalendar, Blueprint, Projects, BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt, AIAssistant *(Pantry, Financials extracted to `src/features/`)*
 
 ---
 
@@ -148,6 +154,14 @@ What App.jsx still contains (not yet extracted):
 | `3815979` | Phase 4: storage layer — clean API + UI pref helpers, zero raw localStorage in App.jsx |
 | `0431ca4` | Docs: ARCHITECTURE_PLAN — mark Phase 4 done, add commit row, append decision-log entries |
 | *(this commit)* | Phase 4 close-out: delete unused DB shim + mark Phases 0/1/2/4 FINAL |
+
+### Phase 3 — Screen Extraction (May 2026)
+
+| Commit | Message | App.jsx lines |
+|--------|---------|---------------|
+| `667c78b` | Docs: ARCHITECTURE_PLAN — Phase 3 starts (overrides defer note), lock Phase 5 inputs in decision log | – |
+| `4a17087` | Phase 3.1: extract Pantry into src/features/pantry/ | 4037 → 3952 |
+| `c42a1aa` | Phase 3.2: extract Financials into src/features/financials/ | 3952 → 3876 |
 
 ### Infrastructure / Fixes
 
@@ -194,13 +208,13 @@ src/
     weather/
     notifications/
 
-  features/          ← NOT STARTED — all screens still in App.jsx
+  features/          ← PARTIAL — 2 of ~9 screens extracted
     today/
     farm/
     tasks/
     animals/
-    pantry/
-    financials/
+    pantry/          ← ✅ DONE (Phase 3.1)
+    financials/      ← ✅ DONE (Phase 3.2)
     manuals/
     assistant/
 
@@ -269,13 +283,13 @@ src/
 
 ## Phase 3 — Split Screens Into Feature Folders
 
-**Status: IN PROGRESS (started 2026-05-09)** — All screens still in App.jsx (4037 lines after Phase 4). Recommendation to defer until after Supabase has been overridden per Dervis. Plan: extract one feature per commit, build + verify live bundle each time.
+**Status: IN PROGRESS (started 2026-05-09)** — 2 of ~9 screens extracted. App.jsx 4037 → 3876 lines (-161 from Phase 3 so far). Each commit: extract one feature, npm run build, verify live bundle hash matches sandbox.
 
-Screens to extract: TodayScreen, TaskQueue, FarmTab (Farming + Setup + FarmMapHero), Livestock, Pantry, Financials, Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects), AIAssistant, FeedbackSurvey.
+Screens to extract: TodayScreen, TaskQueue, FarmTab (Farming + Setup + FarmMapHero), Livestock, ~~Pantry~~, ~~Financials~~, Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects), AIAssistant, FeedbackSurvey.
 
-- [ ] Create `src/features/`.
-- [ ] Move `Pantry` into `src/features/pantry/`.
-- [ ] Move `Financials` into `src/features/financials/`.
+- [x] Create `src/features/`. *(Phase 3.1)*
+- [x] Move `Pantry` into `src/features/pantry/`. *(commit `4a17087`, 4037 → 3952)*
+- [x] Move `Financials` into `src/features/financials/`. *(commit `c42a1aa`, 3952 → 3876)*
 - [ ] Move `Manuals` into `src/features/manuals/`.
 - [ ] Move `Animals` into `src/features/animals/`.
 - [ ] Move `Tasks` into `src/features/tasks/`.
@@ -284,7 +298,7 @@ Screens to extract: TodayScreen, TaskQueue, FarmTab (Farming + Setup + FarmMapHe
 - [ ] Move `Assistant` into `src/features/assistant/`.
 - [ ] Extract `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` into `src/app/navigation.js`.
 - [ ] Extract `DEF`, `dataReducer` into `src/app/state.js`.
-- [ ] Run `npm run build` after each feature is moved.
+- [x] Run `npm run build` after each feature is moved. *(established workflow)*
 
 **Recommendation:** do this AFTER Supabase integration, not before. Extracting screens while the data layer is still localStorage makes the migration harder.
 
@@ -455,3 +469,4 @@ Agreed: Open-Meteo API (free, no key, 7-day forecast). No push notifications nee
 | 2026-05-09 | Phase 5 inputs locked: **no production users to migrate** — clean-slate Supabase rollout, no migration script needed. |
 | 2026-05-09 | Phase 5 inputs locked: **mandatory sign-in** — auth wall before any app access. Phase 5 bullet "Let users keep using app without login" is OVERRIDDEN. Landing CTA goes to sign-up, not directly to /app. |
 | 2026-05-09 | Phase 5 inputs locked: **hybrid extraction** — `src/lib/db.js` (Supabase client), `src/lib/sync.js` (mutation queue), `src/lib/auth.js` (auth wrapper). UI remains in feature folders post-Phase-3. |
+| 2026-05-09 | Phase 3.2 (Financials extraction) shipped at commit `c42a1aa`. Local + live bundle md5 byte-identical (`1b3570aae9d44ba9e5c80fdb5224256c`). All 6 marker strings verified in deployed `index-CofRtakY.js`. App.jsx 3952 → 3876 lines. 4 pre-existing eslint unused-import warnings in App.jsx flagged for separate cleanup commit. |
