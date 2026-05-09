@@ -7,7 +7,15 @@ import {
   Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun, Trash2, User
 } from "lucide-react";
 
-import { DB, uid } from "./lib/storage";
+import {
+  uid,
+  loadFarm, saveFarm, flushFarm, exportFarm,
+  loadPage, savePage,
+  loadTheme, saveTheme,
+  loadFeedbackDone, markFeedbackDone,
+  loadFeedbackDismissed, markFeedbackDismissed,
+  loadFirstUse, saveFirstUse,
+} from "./lib/storage";
 import { C, F, SX } from "./lib/theme";
 import { ZT, ZT_MAP } from "./data/zones";
 import { COMP } from "./data/companions";
@@ -3353,7 +3361,7 @@ class ErrorBoundary extends React.Component {
             <div style={{display:"flex",gap:8,justifyContent:"center"}}>
               <button onClick={() => {
                 try {
-                  const raw = localStorage.getItem(DB.KEY);
+                  const raw = exportFarm();
                   if (raw) {
                     const blob = new Blob([raw], { type: "application/json" });
                     const a = document.createElement("a");
@@ -3490,11 +3498,11 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
 
 function AppInner() {
   // Lazy initializer — loads data synchronously, no loading flash
-  // Wrapped in try-catch: if localStorage is corrupt or migration throws, fall back to DEF
+  // Wrapped in try-catch: if storage is corrupt or migration throws, fall back to DEF
   // instead of crashing the reducer with undefined state.
   const initData = () => {
     try {
-      const d = DB.load();
+      const d = loadFarm();
       let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
       if (!initial.schemaVersion) initial = {...initial, schemaVersion: 7};
       initial = migrateZones(initial);
@@ -3508,7 +3516,7 @@ function AppInner() {
   };
 
   const [page,setPageRaw]=useState(() => {
-    try { const p = localStorage.getItem("hfm_page"); return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
+    try { const p = loadPage(); return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
   });
   const [pageData,setPageData]=useState(null);
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
@@ -3516,7 +3524,7 @@ function AppInner() {
   const [moreOpen,setMoreOpen]=useState(false);
   const [darkMode,setDarkMode]=useState(() => {
     try {
-      const saved = localStorage.getItem("hfm_theme");
+      const saved = loadTheme();
       if (saved) return saved === "dark";
       return window.matchMedia("(prefers-color-scheme: dark)").matches;
     } catch(e) { return false; }
@@ -3527,13 +3535,11 @@ function AppInner() {
   // 7-day feedback prompt — record first use, show prompt after 7 days (once)
   useEffect(() => {
     try {
-      const done = localStorage.getItem("hfm_feedback_done");
-      if (done) return; // already submitted
-      const dismissed = localStorage.getItem("hfm_feedback_dismissed");
-      if (dismissed) return; // user said "maybe later"
-      let firstUse = localStorage.getItem("hfm_first_use");
+      if (loadFeedbackDone()) return; // already submitted
+      if (loadFeedbackDismissed()) return; // user said "maybe later"
+      let firstUse = loadFirstUse();
       if (!firstUse) {
-        localStorage.setItem("hfm_first_use", Date.now().toString());
+        saveFirstUse(Date.now());
         return; // just started using, check again next time
       }
       const daysSinceFirst = (Date.now() - parseInt(firstUse)) / (1000 * 60 * 60 * 24);
@@ -3562,7 +3568,7 @@ function AppInner() {
 
   // Flush pending save on tab close / navigate away
   useEffect(() => {
-    const flush = () => DB.flush();
+    const flush = () => flushFarm();
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
   }, []);
@@ -3571,7 +3577,7 @@ function AppInner() {
   useEffect(() => {
     try {
       document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-      localStorage.setItem('hfm_theme', darkMode ? 'dark' : 'light');
+      saveTheme(darkMode ? 'dark' : 'light');
     } catch(e) {}
   }, [darkMode]);
 
@@ -3579,7 +3585,7 @@ function AppInner() {
   const setPage = useCallback((p, pData) => {
     setPageRaw(p);
     setPageData(pData || null);
-    try { localStorage.setItem("hfm_page", p); } catch(e) {}
+    try { savePage(p); } catch(e) {}
   }, []);
 
   // Save wrapper — backward-compatible setData that dispatches + debounced save
@@ -3587,7 +3593,7 @@ function AppInner() {
   const setData = useCallback((nd) => {
     const withGamify = updateGamify(nd);
     dispatchData({type:'SET_ALL', data: withGamify});
-    DB.save(withGamify);
+    saveFarm(withGamify);
     // silent save — no UI indicator
   }, []);
 
@@ -3698,7 +3704,7 @@ function AppInner() {
       </div>
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
       {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline} darkMode={darkMode} setDarkMode={setDarkMode}/>}
-      {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { localStorage.setItem("hfm_feedback_dismissed", "true"); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
+      {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <AIAssistant data={data} setData={setData}/>
     </>
   );
@@ -3730,7 +3736,7 @@ function FeedbackSurvey({ setPage }) {
     window.open(`mailto:dervis.kanina@gmail.com?subject=${subject}&body=${body}`, "_blank");
     setSubmitted(true);
     // Mark survey as done so 7-day prompt won't show again
-    try { localStorage.setItem("hfm_feedback_done", "true"); } catch(e) {}
+    try { markFeedbackDone(); } catch(e) {}
   };
 
   if (submitted) {
