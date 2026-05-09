@@ -23,17 +23,17 @@ import { VARIETIES, VAR_RO } from "./data/varieties";
 import { CROPS, CROP_MAP, CROP_COLORS } from "./data/crops";
 import { REGIONS, REGION_MAP } from "./data/regions";
 import { RO, LDB_RO } from "./data/regional-overrides";
-import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "./data/livestock";
+import { LDB } from "./data/livestock";
 import { LIVESTOCK_CALENDAR } from "./data/livestock-calendar";
 import { PRESERVATION } from "./data/preservation";
 import { BADGES } from "./data/badges";
 import { PROJECT_GUIDES, BLUEPRINT_IMAGES } from "./data/projects";
-import { appendLog, toLocalDateKey, todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "./lib/utils";
+import { appendLog, todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "./lib/utils";
 import { CITY_DB, searchCity } from "./data/cities";
-import { getRegionalCrop, getRegionalCrops, getRegionalCropMap, rCM, rCR, getRegionalVarieties, getRegionalCalendar } from "./lib/regional";
-import { cropMeasureType, plantsFromArea, expectedYield, zoneAreaM2, plotAreaM2, zoneSpaceStats, buildZoneSpaceMap } from "./lib/farm-calc";
+import { getRegionalCrops, rCM, rCR, getRegionalVarieties } from "./lib/regional";
+import { cropMeasureType, plantsFromArea, expectedYield, buildZoneSpaceMap } from "./lib/farm-calc";
 import { buildTaskQueue } from "./lib/task-queue";
-import { MN_FULL, MN_ABR, parseSowMonths, parseHarvestMonths, CROP_DIFFICULTY, getCropDifficulty } from "./lib/calendar";
+import { MN_FULL, MN_ABR, CROP_DIFFICULTY } from "./lib/calendar";
 import { migrateZones, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
 import { farmKnowledgeEngine, buildAISuggestions } from "./lib/ai";
 import { Btn, Card, Inp, Sel, Txt, Overlay, Pill, Tooltip, Ring, Stat, StepChecklist, WaterCard, StorageCard } from "./components/ui";
@@ -42,6 +42,8 @@ import Financials from "./features/financials/Financials";
 import Manuals from "./features/manuals/Manuals";
 import Livestock from "./features/animals/Livestock";
 import AnimalOverlay from "./features/animals/AnimalOverlay";
+import PlotOverlay from "./features/farm/PlotOverlay";
+import TaskQueue from "./features/tasks/TaskQueue";
 /* ═══════════════════════════════════════════
    DEFAULT STATE
    ═══════════════════════════════════════════ */
@@ -77,817 +79,6 @@ const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animals:[]},p
 /* ═══════════════════════════════════════════
    WEATHER DASHBOARD CARD — full card for dashboard
    ═══════════════════════════════════════════ */
-
-
-/* ═══════════════════════════════════════════
-   PLOT OVERLAY — shared popup used from Farming, TaskQueue, Dashboard
-   ═══════════════════════════════════════════ */
-function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
-  const crop = rCM(data.region).get(plot.crop);
-  const zone = plot.zone ? data.zones.find(z => z.id === plot.zone) : null;
-  const zoneSpace = useMemo(
-    () => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region),
-    [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]
-  );
-  const zoneStats = plot.zone ? zoneSpace[plot.zone] : null;
-  const zoneMyArea = plotAreaM2(plot, data.region);
-  const zoneFill = zoneStats ? (zoneStats.pct >= 0.95 ? C.red : zoneStats.pct >= 0.7 ? C.orange : C.green) : C.green;
-
-  const compZonePlots = plot.zone
-    ? data.garden.plots.filter(p => p.zone === plot.zone && p.status !== "harvested" && p.id !== plot.id).map(p => p.crop)
-    : [];
-  const compObj = COMP[plot.crop];
-  const compGood = compObj ? compZonePlots.filter(n => compObj.good.includes(n)) : [];
-  const compBad  = compObj ? compZonePlots.filter(n => compObj.bad.includes(n)) : [];
-  const showComp = plot.zone && compObj && compZonePlots.length > 0 && (compGood.length > 0 || compBad.length > 0);
-
-  const togStep = (pid, si) => {
-    const plots = data.garden.plots.map(p => {
-      if (p.id === pid) { const st = [...p.steps]; st[si] = {...st[si], done: !st[si].done}; return {...p, steps: st}; }
-      return p;
-    });
-    setData({...data, garden: {plots}});
-  };
-  const del = id => {
-    setData({...data, garden: {plots: data.garden.plots.filter(p => p.id !== id)}});
-    onClose();
-  };
-  const harv = (p) => {
-    const c = rCM(data.region).get(p.crop);
-    const qty = p.expectedYieldKg || (p.plantCount && c ? p.plantCount * (c.yld || 3) : c?.cat === "Herb" ? 0.5 : c?.cat === "Grain" ? 5 : c?.yld || 3);
-    const item = {id: uid(), name: p.crop, category: "Fresh Produce", qty, unit: "kg", source: "farm", addedDate: todayLocalKey(), storageNote: c?.storage || ""};
-    setData({
-      ...data,
-      garden: {plots: data.garden.plots.map(x => x.id === p.id ? {...x, status: "harvested"} : x)},
-      pantry: {items: [...data.pantry.items, item]},
-      log: appendLog(data.log, {text: `🧺 Harvested ${qty}kg ${p.crop}`}),
-    });
-    onClose();
-  };
-
-  if (!crop) {
-    return (
-      <Overlay title={`${plot.name || plot.crop}`} onClose={onClose} wide>
-        <div style={{padding:"24px 12px",color:C.t2,fontSize:13}}>Crop data not found for this plot.</div>
-      </Overlay>
-    );
-  }
-
-  return (
-    <Overlay title={`${crop.emoji} ${plot.name || plot.crop}`} onClose={onClose} wide>
-      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-        <Pill>{plot.status}</Pill>
-        <Pill>☀ {crop.sun}</Pill>
-        <Pill>💧 {crop.waterFreq}</Pill>
-        {zone && <Pill c={C.blue} bg="#e3f2fd">📍 {zone.name}</Pill>}
-      </div>
-
-      {(plot.plantCount || plot.qty || plot.expectedYieldKg) && (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:14}}>
-          {plot.plantCount && <Card style={{background:"#e8f5e9",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{plot.plantCount}</div><div style={SX.t2_10}>estimated</div></Card>}
-          {plot.qty && plot.measureType === "area" && <Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
-          {plot.qty && plot.measureType === "plants" && <Card style={{background:"#e3f2fd",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}</div><div style={SX.t2_10}>plants</div></Card>}
-          {plot.expectedYieldKg && <Card style={{background:"#fff3e0",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{plot.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
-          {plot.plantCount && crop.spacing ? <Card style={{background:"#f3e5f5",padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:"#7b1fa2"}}>{crop.spacing}cm</div><div style={SX.t2_10}>between plants</div></Card> : null}
-        </div>
-      )}
-
-      {plot.zone && zone && zoneStats && zoneStats.totalM2 > 0 && (
-        <Card style={{marginBottom:12, background: zoneStats.pct >= 0.95 ? "#fff5f5" : zoneStats.pct >= 0.7 ? "#fffde7" : "#f0faf0"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-            <div style={{fontSize:12,fontWeight:700,color:zoneFill}}>
-              {zoneStats.pct >= 0.95 ? "🔴 Zone Full" : zoneStats.pct >= 0.7 ? "🟡 Zone Getting Full" : "🟢 Zone Space"}
-            </div>
-            <div style={{fontSize:11,color:C.t2,fontFamily:F.mono}}>{zone.name}</div>
-          </div>
-          <div style={{height:8,borderRadius:4,background:C.bdr,overflow:"hidden",marginBottom:6}}>
-            <div style={{height:"100%",width:`${Math.min(100,zoneStats.pct*100).toFixed(0)}%`,background:zoneFill,borderRadius:4,transition:"width .4s"}}/>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2}}>
-            <span>Used: <strong style={{color:C.text}}>{zoneStats.usedM2}m²</strong></span>
-            {zoneMyArea > 0 && <span>This crop: <strong style={{color:zoneFill}}>{Math.round(zoneMyArea*10)/10}m²</strong></span>}
-            <span>Free: <strong style={{color:zoneFill}}>{zoneStats.freeM2}m²</strong> of {zoneStats.totalM2.toFixed(0)}m²</span>
-          </div>
-        </Card>
-      )}
-
-      {showComp && (
-        <Card style={{marginBottom:12,background:compBad.length > 0 ? "#fff5f5" : "#f0faf0"}}>
-          <div style={SX.lblGreen}>🌱 Companions in zone</div>
-          {compGood.length > 0 && <div style={{fontSize:12,color:C.green,marginTop:4}}>✓ Good: {compGood.join(", ")}</div>}
-          {compBad.length  > 0 && <div style={{fontSize:12,color:C.red,marginTop:4}}>✕ Bad: {compBad.join(", ")}</div>}
-        </Card>
-      )}
-
-      <WaterCard waterNote={crop.waterNote}/>
-      <div className="g2" style={{gap:8,marginBottom:16}}>
-        <Card><div style={SX.t2_11b}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{plot.plantDate || "—"}</div></Card>
-        <Card><div style={SX.t2_11b}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{plot.harvestDate || "—"}</div></Card>
-      </div>
-
-      <Card style={{marginBottom:12,background:"#f0f7f4",border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{crop.pH && <Pill c="#6d4c41" bg="#efebe9">pH {crop.pH}</Pill>}</div></Card>
-      {crop.fert && <Card style={{marginBottom:12,background:"#e8f5e9"}}><div style={SX.lblGreen}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{crop.fert}</div></Card>}
-      {crop.pests && crop.pests.length > 0 && <Card style={{marginBottom:12,background:"#fff3e0"}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{crop.pests.slice(0,3).map(function(pst,i){return <div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{pst.n}</strong>{pst.t && <div style={SX.t2_11}>→ {pst.t}</div>}</div>;})}</Card>}
-
-      <StepChecklist steps={plot.steps} plantDate={plot.plantDate} onToggle={togStep} plotId={plot.id}/>
-      <StorageCard storage={crop.storage}/>
-      <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(crop.name + " growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#ff0000",textDecoration:"none",fontWeight:600,padding:"8px 14px",background:"#fff5f5",borderRadius:C.rs,border:"1px solid #ffcdd2",marginBottom:8}}>▶ Watch: Complete {crop.name} Growing Guide</a>
-      {setPage && (
-        <button onClick={function(){onClose();setPage("manuals");}} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.green,fontWeight:600,padding:"8px 14px",background:C.gp,borderRadius:C.rs,border:`1px solid ${C.bdr}`,marginBottom:12,cursor:"pointer",width:"100%",textAlign:"left"}}>
-          📖 Need help growing {crop.name}? See the Manuals →
-        </button>
-      )}
-
-      <div style={SX.btnRowEnd}>
-        <Btn v="danger" sm onClick={()=>del(plot.id)}>Delete</Btn>
-        {plot.status !== "harvested" && plot.harvestDate && localDateFromKey(plot.harvestDate) <= localDateFromKey(todayLocalKey()) && <Btn v="success" onClick={()=>harv(plot)}>🧺 Harvest</Btn>}
-      </div>
-    </Overlay>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   TASK ROW — extracted outside TaskQueue to prevent remount on every render
-   ═══════════════════════════════════════════ */
-const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone, onGoToFarm}) {
-  const borderC = t.pri === 0 ? C.red : t.pri === 1 ? "#ff6b35" : t.pri === 2 ? C.orange : C.blue;
-  const bg = t.pri === 0 ? "#fff5f5" : t.pri === 1 ? "#fffaf0" : t.pri === 2 ? "#fffde7" : "#f0f7ff";
-  const clickable = !!(t.plotId || t.animalId);
-  const dateLabel = t.dueDate
-    ? (t.daysOut === 0 ? "Today" : t.dueDate.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))
-    : (t.daysOut === 0 ? "Today" : t.daysOut > 0 ? `In ${t.daysOut}d` : null);
-  const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
-  return (
-    <div
-      onClick={clickable && onOpen ? onOpen : undefined}
-      style={{
-        display:"flex",alignItems:"center",gap:12,
-        padding:"12px 14px",
-        background:bg,borderRadius:C.rs,
-        marginBottom:6,
-        borderLeft:`4px solid ${borderC}`,
-        cursor:clickable && onOpen ? "pointer" : "default",
-        transition:"all .15s",
-      }}
-    >
-      <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{t.emoji}</span>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4}}>{t.title}</div>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
-          <span>📍 {t.loc}</span>
-          {dateLabel && <span style={{color:t.daysOut === 0 ? C.red : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
-        {t.stepIdx != null && onToggleStep && (
-          <button onClick={()=>onToggleStep(t.plotId, t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
-        )}
-        {canMarkDone && onMarkDone && (
-          <button onClick={()=>onMarkDone(t.key)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
-        )}
-        {t.type === "harvest" && onGoToFarm && (
-          <button onClick={onGoToFarm} style={{background:C.orange,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🧺 Harvest</button>
-        )}
-      </div>
-    </div>
-  );
-});
-
-/* ═══════════════════════════════════════════
-   TASK QUEUE — Calendar + Urgency + Timeline
-   ═══════════════════════════════════════════ */
-function TaskQueue({data, setData, setPage, tasks}) {
-  const [viewMonth, setViewMonth] = useState(new Date().getMonth());
-  const [viewYear, setViewYear] = useState(new Date().getFullYear());
-  const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD" or null
-  const [openPlotId, setOpenPlotId] = useState(null);
-  const [openAnimalId, setOpenAnimalId] = useState(null);
-  const [doneCollapsed, setDoneCollapsed] = useState(true);
-  const [farmWeekCollapsed, setFarmWeekCollapsed] = useState(true);
-  const [animalsWeekCollapsed, setAnimalsWeekCollapsed] = useState(true);
-
-  const togStep = (pid, si) => {
-    const plots = data.garden.plots.map(p => {
-      if (p.id === pid) { const st = [...p.steps]; st[si] = {...st[si], done: !st[si].done}; return {...p, steps: st}; }
-      return p;
-    });
-    setData({...data, garden: {plots}});
-  };
-
-  const markDone = (key) => setData(markTaskDone(data, key));
-
-  const openTask = (t) => {
-    if (t.plotId) setOpenPlotId(t.plotId);
-    else if (t.animalId) setOpenAnimalId(t.animalId);
-  };
-
-  const openPlot = openPlotId ? data.garden.plots.find(p => p.id === openPlotId) : null;
-  const openAnimal = openAnimalId ? (data.livestock?.animals || []).find(a => a.id === openAnimalId) : null;
-
-  // O(1) zone lookups — used inside memoized calendarEvents/byTime + render path
-  const zoneById = useMemo(() => new Map((data.zones || []).map(z => [z.id, z])), [data.zones]);
-  const zoneByName = useMemo(() => new Map((data.zones || []).map(z => [z.name, z])), [data.zones]);
-  const animalZone = useMemo(() => (data.zones || []).find(z => ["barn","pasture"].includes(z.type)) || null, [data.zones]);
-  const animalLocName = animalZone ? animalZone.name : "Farm";
-
-  // ── CONSOLIDATED: compute calendar events AND by-time list in ONE pass over plots ──
-  const { calendarEvents, byTime } = useMemo(() => {
-    const evts = {};
-    const timeline = [];
-    const now = new Date(); now.setHours(0,0,0,0);
-    const todayKey = toLocalDateKey(now);
-    const doneToday = new Set((data.completions && data.completions[todayKey]) || []);
-
-    data.garden.plots.forEach(p => {
-      if (!p.plantDate || p.status === "harvested") return;
-      const crop = rCM(data.region).get(p.crop);
-      if (!crop) return;
-      const plantDate = localDateFromKey(p.plantDate);
-      if (!plantDate) return;
-      const loc = zoneById.get(p.zone)?.name || "Farm";
-
-      // Harvest date
-      const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
-      const hKey = toLocalDateKey(hDate);
-      if (!evts[hKey]) evts[hKey] = [];
-      evts[hKey].push({type:"harvest", emoji:crop.emoji, label:`Harvest ${p.name||p.crop}`, plotId:p.id, key:`plot-${p.id}-harvest`});
-      const dLeft = Math.ceil((hDate - now) / 864e5);
-      if (dLeft >= 0 && dLeft <= 60) {
-        timeline.push({daysOut: dLeft, dueDate: hDate, type:"harvest", emoji:crop.emoji, title:`Harvest ${p.name||p.crop}`, loc, plotId:p.id, key:`plot-${p.id}-harvest`});
-      }
-
-      // Step dates
-      if (p.steps) p.steps.forEach((s, i) => {
-        if (s.done) return;
-        const sDate = localDateFromKey(addDaysToLocalKey(p.plantDate, s.d));
-        const sKey = toLocalDateKey(sDate);
-        if (!evts[sKey]) evts[sKey] = [];
-        evts[sKey].push({type:"step", emoji:crop.emoji, label:`${p.name||p.crop}: ${s.l}`, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
-        const sLeft = Math.ceil((sDate - now) / 864e5);
-        if (sLeft >= -1 && sLeft <= 30) {
-          timeline.push({daysOut: Math.max(0,sLeft), dueDate: sDate, type:"step", emoji:crop.emoji, title:`${p.name||p.crop}: ${s.l}`, loc, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
-        }
-      });
-    });
-
-    // ─── Animal tasks projected forward (species-grouped + per-animal) ───
-    const today0 = Math.floor(now.getTime() / 864e5);
-    const aLoc = animalLocName;
-
-    // Hash helper (local — matches buildTaskQueue)
-    const hashStr2 = (str) => {
-      let h = 0;
-      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-      return h;
-    };
-
-    // Build species summary for grouped projections
-    const speciesMap2 = new Map();
-    (data.livestock?.animals || []).forEach(a => {
-      const db = LDB[a.type];
-      if (!db) return;
-      if (!speciesMap2.has(a.type)) speciesMap2.set(a.type, { type: a.type, db, headCount: 0 });
-      speciesMap2.get(a.type).headCount += (a.count || 1);
-    });
-
-    // Species-grouped tasks (feed/water/eggs/clean/bedding/paddock)
-    speciesMap2.forEach(s => {
-      const { type, db, headCount } = s;
-      const e = db.e;
-      const speciesLabel = animalPlural(type, headCount);
-      const sHash = hashStr2(type);
-
-      // Daily tasks
-      const dailies = [];
-      if (type !== "Bee") {
-        dailies.push({type: "feed",  emoji: e,    title: `Feed ${speciesLabel}`,  keySuffix: "feed"});
-        dailies.push({type: "water", emoji: "💧", title: `Water ${speciesLabel}`, keySuffix: "water"});
-      }
-      if (POULTRY_SPECIES.has(type)) {
-        dailies.push({type: "eggs", emoji: "🥚", title: `Collect eggs — ${speciesLabel}`, keySuffix: "eggs"});
-      }
-      dailies.forEach(dt => {
-        for (let d = 0; d <= 60; d++) {
-          const dueDate = new Date(now.getTime() + d * 864e5);
-          const key = toLocalDateKey(dueDate);
-          const taskKey = `species-${type}-${dt.keySuffix}`;
-          if (!evts[key]) evts[key] = [];
-          evts[key].push({type: dt.type, emoji: dt.emoji, label: dt.title, speciesType: type, key: taskKey, routine: true});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: aLoc, speciesType: type, key: taskKey, routine: true});
-        }
-      });
-
-      // Periodic species-grouped tasks
-      const periodics = [];
-      if (type !== "Bee") {
-        periodics.push({period: 7,  offset: 0, type: "clean",   emoji: "🧹", title: `Clean housing — ${speciesLabel}`,      keySuffix: "clean"});
-        periodics.push({period: 30, offset: 0, type: "bedding", emoji: "🛏️", title: `Full bedding change — ${speciesLabel}`, keySuffix: "bedding"});
-      }
-      if (GRAZER_SPECIES.has(type)) {
-        periodics.push({period: 21, offset: 0, type: "paddock", emoji: "🔄", title: `Rotate paddock — ${speciesLabel}`, keySuffix: "paddock"});
-      }
-      periodics.forEach(pt => {
-        for (let d = 0; d <= 60; d++) {
-          if ((today0 + d + sHash + pt.offset) % pt.period !== 0) continue;
-          const dueDate = new Date(now.getTime() + d * 864e5);
-          const key = toLocalDateKey(dueDate);
-          const taskKey = `species-${type}-${pt.keySuffix}`;
-          if (!evts[key]) evts[key] = [];
-          evts[key].push({type: pt.type, emoji: pt.emoji, label: pt.title, speciesType: type, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: aLoc, speciesType: type, key: taskKey});
-        }
-      });
-    });
-
-    // Per-animal tasks (health, hoof, hive) — genuinely per-individual
-    (data.livestock?.animals || []).forEach(a => {
-      const db = LDB[a.type];
-      if (!db) return;
-      const label = a.name ? `${a.name} (${a.type})` : a.type;
-      const aHash = hashStr2(a.id);
-
-      // Weekly health check (per animal)
-      if (a.type !== "Bee") {
-        for (let d = 0; d <= 60; d++) {
-          if ((today0 + d + aHash + 3) % 7 !== 0) continue;
-          const dueDate = new Date(now.getTime() + d * 864e5);
-          const key = toLocalDateKey(dueDate);
-          const taskKey = `animal-${a.id}-health`;
-          if (!evts[key]) evts[key] = [];
-          evts[key].push({type: "health", emoji: "🩺", label: `Health check — ${label}`, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "health", emoji: "🩺", title: `Health check — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
-        }
-      }
-
-      // Bi-weekly hoof check (per hoofed animal)
-      if (HOOFED_SPECIES.has(a.type)) {
-        for (let d = 0; d <= 60; d++) {
-          if ((today0 + d + aHash) % 14 !== 0) continue;
-          const dueDate = new Date(now.getTime() + d * 864e5);
-          const key = toLocalDateKey(dueDate);
-          const taskKey = `animal-${a.id}-hoof`;
-          if (!evts[key]) evts[key] = [];
-          evts[key].push({type: "hoof", emoji: "🦶", label: `Hoof check — ${label}`, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
-        }
-      }
-
-      // Bee hive inspections — 10d cycle, Mar–Sep only, per hive
-      if (a.type === "Bee") {
-        for (let d = 0; d <= 60; d++) {
-          const due = new Date(now.getTime() + d * 864e5);
-          const m = due.getMonth() + 1;
-          if (m < 3 || m > 9) continue;
-          if ((today0 + d + aHash) % 10 !== 0) continue;
-          const key = toLocalDateKey(due);
-          const taskKey = `animal-${a.id}-hive`;
-          if (!evts[key]) evts[key] = [];
-          evts[key].push({type: "hive", emoji: "🐝", label: `Hive inspection — ${label}`, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate: due, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
-        }
-      }
-    });
-
-    // Hide today's completed tasks from both calendar (today only) and timeline (today only)
-    Object.keys(evts).forEach(k => {
-      if (k !== todayKey) return;
-      evts[k] = evts[k].filter(ev => !ev.key || !doneToday.has(ev.key));
-    });
-    const filteredTimeline = timeline.filter(t => !(t.daysOut === 0 && t.key && doneToday.has(t.key)));
-
-    filteredTimeline.sort((a,b) => a.daysOut - b.daysOut);
-    return { calendarEvents: evts, byTime: filteredTimeline };
-  }, [data, animalLocName, zoneById]);
-
-  // ─── Group today's tasks by location (Option D: location-batched with attention banner) ───
-  const todayStr = toLocalDateKey(new Date());
-  const doneTodayKeys = new Set((data.completions && data.completions[todayStr]) || []);
-
-  // ─── Two-bucket model ───
-  // ROUTINE: plot water, animal feed/water/eggs. Daily ritual. Grouped by location.
-  //          Never appears in attention banner, coming-up, or calendar.
-  // IMPORTANT: everything else. Harvests, growing steps (pinch, transplant, fertilize, prune),
-  //            weekly+ animal care (clean, health, hoof, paddock, bedding, hive inspection).
-  //            Drives the attention banner, "Coming Up This Week", and calendar.
-  const routineTasks = tasks.filter(t => t.routine === true);
-  const importantTasks = tasks.filter(t => t.routine !== true);
-
-  // Attention = important tasks due today or overdue (step with negative due, harvest ready)
-  // For steps, an "upcoming" row has daysOut > 0 (was computed from due-days-in-future, not overdue).
-  // buildTaskQueue uses pri: 1 for "step" (due 0..3 days back, i.e. overdue or today)
-  //                  pri: 3 for "upcoming" (will-be-due in 1..3 days)
-  //                  pri: 0 for "harvest" (ready)
-  //                  pri: 2 for periodic animal (due today — hash-based, already pruned to today)
-  const attentionTasks = importantTasks.filter(t =>
-    t.type === "harvest" ||            // harvest ready
-    t.type === "step" ||               // growing step due today or overdue
-    (t.daysOut === 0 && !["upcoming","forecast"].includes(t.type))  // periodic animal care due today
-  );
-
-  // Group routine by location (for the daily walking lists)
-  const routineByLoc = {};
-  routineTasks.forEach(t => {
-    const key = t.loc || "Farm";
-    if (!routineByLoc[key]) routineByLoc[key] = [];
-    routineByLoc[key].push(t);
-  });
-  const routineLocations = Object.keys(routineByLoc).sort();
-
-  // Pick a location icon based on zone type; falls back to 📍
-  const locIcon = (locName) => {
-    const z = zoneByName.get(locName);
-    if (!z) return "📍";
-    const zt = ZT_MAP.get(z.type);
-    return zt?.icon || "📍";
-  };
-
-  // Coming up this week = important tasks, tomorrow..+7, excluding routine
-  const thisWeek = byTime.filter(t => t.daysOut >= 1 && t.daysOut <= 7 && t.routine !== true);
-  // Split coming-up into Farm (plots — harvests, growing steps) vs Animals (periodic care)
-  const thisWeekFarm    = thisWeek.filter(t => !!t.plotId);
-  const thisWeekAnimals = thisWeek.filter(t => !!t.animalId);
-
-  // Done today: reconstruct from completion keys by parsing each key and finding the referenced
-  // plot or animal in data. We don't read today's calendar events because they're already
-  // filtered (completed items are hidden from evts).
-  const doneTodayList = [];
-  const seenKeys = new Set();
-  doneTodayKeys.forEach(k => {
-    if (seenKeys.has(k)) return;
-    seenKeys.add(k);
-    // Try to find a matching task-shape from any source (tasks array won't have it since filtered)
-    // Parse the key to reconstruct a minimal display shape
-    // keys look like: plot-{id}-{type}, animal-{id}-{type}, or species-{Type}-{type}
-    const [kind, id, ...rest] = k.split("-");
-    const typeSuffix = rest.join("-");
-    if (kind === "plot") {
-      const p = data.garden.plots.find(x => x.id === id);
-      if (!p) return;
-      const crop = rCM(data.region).get(p.crop);
-      const zone = data.zones.find(z => z.id === p.zone);
-      const loc = zone ? zone.name : "Farm";
-      let title = `${p.name || p.crop}`;
-      let emoji = crop?.emoji || "🌱";
-      if (typeSuffix === "harvest") title = `Harvest ${p.name || p.crop}`;
-      else if (typeSuffix === "water") { title = `Water ${p.name || p.crop}`; emoji = "💧"; }
-      doneTodayList.push({ key: k, emoji, title, loc });
-    } else if (kind === "species") {
-      // Grouped species task — id is the species type name (e.g. "Chicken")
-      const speciesType = id;
-      const animals = (data.livestock?.animals || []).filter(x => x.type === speciesType);
-      if (animals.length === 0) return;
-      const headCount = animals.reduce((sum, x) => sum + (x.count || 1), 0);
-      const db = LDB[speciesType];
-      const speciesLabel = animalPlural(speciesType, headCount);
-      const loc = animalLocName;
-      let emoji = db?.e || "🐾";
-      let title = speciesLabel;
-      if (typeSuffix === "feed")       title = `Feed ${speciesLabel}`;
-      else if (typeSuffix === "water"){ title = `Water ${speciesLabel}`; emoji = "💧"; }
-      else if (typeSuffix === "eggs") { title = `Collect eggs — ${speciesLabel}`; emoji = "🥚"; }
-      else if (typeSuffix === "clean"){ title = `Clean housing — ${speciesLabel}`; emoji = "🧹"; }
-      else if (typeSuffix === "bedding"){title = `Full bedding change — ${speciesLabel}`; emoji = "🛏️"; }
-      else if (typeSuffix === "paddock"){title = `Rotate paddock — ${speciesLabel}`; emoji = "🔄"; }
-      doneTodayList.push({ key: k, emoji, title, loc });
-    } else if (kind === "animal") {
-      const a = (data.livestock?.animals || []).find(x => x.id === id);
-      if (!a) return;
-      const db = LDB[a.type];
-      // Per-animal keys are now only health/hoof/hive — use animal's individual label
-      const label = a.name ? `${a.name} (${a.type})` : a.type;
-      const loc = animalLocName;
-      let emoji = db?.e || "🐾";
-      let title = label;
-      if (typeSuffix === "health"){title = `Health check — ${label}`; emoji = "🩺"; }
-      else if (typeSuffix === "hoof") { title = `Hoof check — ${label}`; emoji = "🦶"; }
-      else if (typeSuffix === "hive") { title = `Hive inspection — ${label}`; emoji = "🐝"; }
-      doneTodayList.push({ key: k, emoji, title, loc });
-    }
-  });
-
-  // Un-mark helper: remove a key from today's completions (lets user undo a done tick)
-  const undoDone = (key) => {
-    const existing = (data.completions && data.completions[todayStr]) || [];
-    if (!existing.includes(key)) return;
-    setData({
-      ...data,
-      completions: {
-        ...(data.completions || {}),
-        [todayStr]: existing.filter(k => k !== key),
-      },
-    });
-  };
-
-  const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  // Calendar grid
-  const calStart = new Date(viewYear, viewMonth, 1);
-  const calEnd = new Date(viewYear, viewMonth+1, 0);
-  const firstDow = calStart.getDay();
-  const daysInMonth = calEnd.getDate();
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  // todayStr already computed at top of function (for completions); reused for calendar grid below
-
-  const goToFarm = useCallback(() => setPage("farm"), [setPage]);
-
-  return (
-    <div className="page-enter" style={{maxWidth:1100}}>
-      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📋 Task Calendar</h2>
-      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>Today's work first, then the week, then the month</p>
-
-      {/* ── Section 1: TODAY — attention banner + location-grouped routine + done-today ── */}
-      {/* ── Section 1: NEEDS ATTENTION — harvests, steps, periodic animal care ── */}
-      {attentionTasks.length > 0 && (
-        <Card p={false} style={{overflow:"hidden",marginBottom:16,border:`1px solid #fecaca`}}>
-          <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`,background:"#fff5f5"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:18}}>⚠️</span>
-                <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.red,letterSpacing:"-0.01em"}}>Needs Attention</div>
-              </div>
-              <span style={{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:12}}>{attentionTasks.length}</span>
-            </div>
-            <div style={{fontSize:12,color:C.t2,marginTop:3}}>Do these today — miss the window and plants bolt, fail, or spoil</div>
-          </div>
-          <div style={{padding:"12px 14px"}}>
-            {attentionTasks.map((t,i) => (
-              <TaskRow
-                key={t.key || `att-${i}`}
-                t={t}
-                onOpen={()=>openTask(t)}
-                onToggleStep={togStep}
-                onMarkDone={markDone}
-                onGoToFarm={goToFarm}
-              />
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* ── Section 2a: COMING UP — FARM (plot harvests + growing steps, next 7 days) ── */}
-      <Card p={false} style={{overflow:"hidden",marginBottom:12}}>
-        <button
-          onClick={()=>setFarmWeekCollapsed(v=>!v)}
-          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#f0faf0",border:"none",cursor:"pointer",borderBottom: farmWeekCollapsed ? "none" : `1px solid ${C.bdr}`}}
-        >
-          <div style={{textAlign:"left"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:16}}>🌱</span>
-              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Farm — This Week</div>
-            </div>
-            <div style={{fontSize:12,color:C.t2,marginTop:3}}>
-              {thisWeekFarm.length === 0 ? "Nothing this week" : `${thisWeekFarm.length} task${thisWeekFarm.length === 1 ? "" : "s"} · harvests, transplants, pinching, pruning`}
-            </div>
-          </div>
-          <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{farmWeekCollapsed ? "Show ▾" : "Hide ▴"}</span>
-        </button>
-        {!farmWeekCollapsed && (
-          thisWeekFarm.length > 0 ? (
-            <div style={{padding:"12px 14px"}}>
-              {thisWeekFarm.map((t,i) => (
-                <TaskRow
-                  key={t.key || `farm-${i}`}
-                  t={t}
-                  onOpen={()=>openTask(t)}
-                  onToggleStep={togStep}
-                  onMarkDone={markDone}
-                  onGoToFarm={goToFarm}
-                />
-              ))}
-            </div>
-          ) : (
-            <div style={{textAlign:"center",padding:"20px 16px",color:C.t2,fontSize:12}}>🌱 Nothing growing step or harvest in the next 7 days</div>
-          )
-        )}
-      </Card>
-
-      {/* ── Section 2b: COMING UP — ANIMALS (weekly+ periodic care, next 7 days) ── */}
-      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
-        <button
-          onClick={()=>setAnimalsWeekCollapsed(v=>!v)}
-          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",background:"#fff7eb",border:"none",cursor:"pointer",borderBottom: animalsWeekCollapsed ? "none" : `1px solid ${C.bdr}`}}
-        >
-          <div style={{textAlign:"left"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:16}}>🐄</span>
-              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Animals — This Week</div>
-            </div>
-            <div style={{fontSize:12,color:C.t2,marginTop:3}}>
-              {thisWeekAnimals.length === 0 ? "Nothing this week" : `${thisWeekAnimals.length} task${thisWeekAnimals.length === 1 ? "" : "s"} · cleaning, health, bedding, paddock rotation`}
-            </div>
-          </div>
-          <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{animalsWeekCollapsed ? "Show ▾" : "Hide ▴"}</span>
-        </button>
-        {!animalsWeekCollapsed && (
-          thisWeekAnimals.length > 0 ? (
-            <div style={{padding:"12px 14px"}}>
-              {thisWeekAnimals.map((t,i) => (
-                <TaskRow
-                  key={t.key || `animals-${i}`}
-                  t={t}
-                  onOpen={()=>openTask(t)}
-                  onToggleStep={togStep}
-                  onMarkDone={markDone}
-                  onGoToFarm={goToFarm}
-                />
-              ))}
-            </div>
-          ) : (
-            <div style={{textAlign:"center",padding:"20px 16px",color:C.t2,fontSize:12}}>🐄 No scheduled animal care this week</div>
-          )
-        )}
-      </Card>
-
-      {/* ── Section 3: DAILY ROUTINE — grouped by location, same every day ── */}
-      <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
-        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`,background:"linear-gradient(180deg, #f0faf0, #fff)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:18}}>☀️</span>
-              <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Daily Routine</div>
-            </div>
-            <div style={{fontSize:12,color:C.t2,fontFamily:F.mono,fontWeight:600}}>
-              {new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
-            </div>
-          </div>
-          <div style={{fontSize:12,color:C.t2,marginTop:3}}>
-            {routineTasks.length === 0
-              ? "No routine tasks set up yet"
-              : `${routineTasks.length} task${routineTasks.length === 1 ? "" : "s"} · your daily walk`}
-          </div>
-        </div>
-
-        {routineLocations.length > 0 ? (
-          <div style={{padding:"14px"}}>
-            {routineLocations.map(loc => (
-              <div key={loc} style={{marginBottom:14}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingLeft:2}}>
-                  <span style={{fontSize:16}}>{locIcon(loc)}</span>
-                  <div style={{fontSize:12,fontWeight:700,color:C.text,textTransform:"uppercase",letterSpacing:"0.04em"}}>At the {loc}</div>
-                  <div style={{marginLeft:"auto",fontSize:11,color:C.t2,fontWeight:600,fontFamily:F.mono}}>
-                    {routineByLoc[loc].length}
-                  </div>
-                </div>
-                {routineByLoc[loc].map((t,i) => (
-                  <TaskRow
-                    key={t.key || `${loc}-${i}`}
-                    t={t}
-                    onOpen={()=>openTask(t)}
-                    onToggleStep={togStep}
-                    onMarkDone={markDone}
-                    onGoToFarm={goToFarm}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{textAlign:"center",padding:"28px 20px",color:C.t2,fontSize:13}}>
-            ✨ All routine done for today
-          </div>
-        )}
-      </Card>
-
-      {/* ── Done today — collapsible, stands on its own ── */}
-      {doneTodayList.length > 0 && (
-        <Card p={false} style={{overflow:"hidden",marginBottom:16,background:"#fafcfa"}}>
-          <button
-            onClick={()=>setDoneCollapsed(v=>!v)}
-            style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:C.green,letterSpacing:"0.02em"}}
-          >
-            <span>✓ Done today · {doneTodayList.length}</span>
-            <span style={{fontSize:11,color:C.t2,fontWeight:500,fontFamily:F.mono}}>{doneCollapsed ? "Show ▾" : "Hide ▴"}</span>
-          </button>
-          {!doneCollapsed && (
-            <div style={{padding:"0 14px 14px"}}>
-              {doneTodayList.map((d,i) => (
-                <div key={d.key || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
-                  <span style={{fontSize:20,flexShrink:0}}>{d.emoji}</span>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:C.t2,textDecoration:"line-through"}}>{d.title}</div>
-                    <div style={{fontSize:11,color:C.t2,marginTop:2}}>📍 {d.loc}</div>
-                  </div>
-                  <button onClick={()=>undoDone(d.key)} style={{background:"none",border:`1px solid ${C.bdr}`,color:C.t2,borderRadius:6,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>Undo</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* ── Section 4: Calendar — full width ── */}
-      <Card p={false} style={SX.overflowHidden}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`}}>
-          <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}><ChevronLeft size={20} strokeWidth={2}/></button>
-          <div style={{fontFamily:F.head,fontSize:17,fontWeight:700}}>{MN[viewMonth]} {viewYear}</div>
-          <button onClick={()=>{let m=viewMonth+1,y=viewYear;if(m>11){m=0;y++;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}><ChevronRight size={20} strokeWidth={2}/></button>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"10px 16px 4px",gap:2}}>
-          {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:C.t2,fontFamily:F.mono}}>{d}</div>)}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"4px 16px 16px",gap:4}}>
-          {cells.map((d,i) => {
-            if (!d) return <div key={i}/>;
-            const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-            const evts = (calendarEvents[dateStr] || []).filter(ev => ev.routine !== true);
-            const isToday = dateStr === todayStr;
-            const isSel = dateStr === selectedDate;
-            const hasHarvest = evts.some(e=>e.type==="harvest");
-            const hasStep = evts.some(e=>e.type==="step");
-            return (
-              <div key={i} onClick={()=>setSelectedDate(isSel?null:dateStr)} style={{textAlign:"center",padding:"6px 2px",borderRadius:10,background:isSel?"#1a5c2e":isToday?C.green:evts.length>0?"#f0f7f4":"transparent",minHeight:52,cursor:"pointer",border:isSel?"2px solid #145224":"2px solid transparent",transition:"all 0.15s ease"}}>
-                <div style={{fontSize:13,fontWeight:(isToday||isSel)?700:400,color:(isToday||isSel)?"#fff":C.text}}>{d}</div>
-                {evts.length > 0 && (
-                  <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:3,flexWrap:"wrap"}}>
-                    {hasHarvest && <div style={{width:7,height:7,borderRadius:4,background:isSel?"#ffb347":C.orange}} title="Harvest"/>}
-                    {hasStep && <div style={{width:7,height:7,borderRadius:4,background:isSel?"#87ceeb":C.blue}} title="Step due"/>}
-                  </div>
-                )}
-                {evts.length > 0 && (
-                  <div style={{fontSize:10,color:(isToday||isSel)?"rgba(255,255,255,.8)":C.t2,marginTop:2,lineHeight:1.1}}>
-                    {evts.slice(0,1).map(e=>e.emoji).join("")}{evts.length>1?`+${evts.length-1}`:""}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div style={{display:"flex",gap:14,padding:"8px 18px 14px",borderTop:`1px solid ${C.bdr}`,flexWrap:"wrap"}}>
-          <span style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.t2}}><div style={{width:8,height:8,borderRadius:4,background:C.orange}}/> Harvest</span>
-          <span style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.t2}}><div style={{width:8,height:8,borderRadius:4,background:C.blue}}/> Growing step</span>
-          <span style={{fontSize:10,color:C.t2,marginLeft:"auto"}}>Tap a day to see tasks</span>
-        </div>
-
-        {/* ── Selected Day Task List ── */}
-        {selectedDate && (() => {
-          const selEvts = (calendarEvents[selectedDate] || []).filter(ev => ev.routine !== true);
-          const selDateObj = new Date(selectedDate + "T00:00:00");
-          const dayLabel = selDateObj.toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
-          const isSelToday = selectedDate === todayStr;
-          return (
-            <div style={{borderTop:`2px solid ${C.green}`,padding:"14px 18px 16px",background:"#f8fdf9"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                <div>
-                  <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,color:C.text}}>
-                    {isSelToday ? "📌 Today" : "📅"} {dayLabel}
-                  </div>
-                  <div style={SX.t2_11mt2}>
-                    {selEvts.length === 0 ? "No tasks scheduled" : `${selEvts.length} task${selEvts.length>1?"s":""} scheduled`}
-                  </div>
-                </div>
-                <button onClick={()=>setSelectedDate(null)} style={{background:"none",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"4px 10px",fontSize:11,color:C.t2,cursor:"pointer",fontWeight:600}}>✕ Close</button>
-              </div>
-              {selEvts.length === 0
-                ? <div style={{textAlign:"center",padding:"20px 0",color:C.t2,fontSize:12}}>🌱 Nothing to do — enjoy the day!</div>
-                : <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {selEvts.map((evt,idx) => {
-                      // Synthesize a task-shape object so we can reuse TaskRow
-                      const loc = evt.plotId
-                        ? (data.zones.find(z => z.id === (data.garden.plots.find(p => p.id === evt.plotId)?.zone))?.name || "Farm")
-                        : (data.zones.find(z => ["barn","pasture"].includes(z.type))?.name || "Farm");
-                      const pri = evt.type === "harvest" ? 0 : evt.type === "step" ? 1 : evt.type === "feed" || evt.type === "water" || evt.type === "eggs" ? 1 : 2;
-                      const daysOut = Math.max(0, Math.ceil((selDateObj - today) / 864e5));
-                      const tAsTask = {
-                        key: evt.key,
-                        pri,
-                        type: evt.type,
-                        emoji: evt.emoji,
-                        title: evt.label,
-                        loc,
-                        plotId: evt.plotId,
-                        animalId: evt.animalId,
-                        stepIdx: evt.stepIdx,
-                        daysOut,
-                        dueDate: selDateObj,
-                      };
-                      return (
-                        <TaskRow
-                          key={evt.key || idx}
-                          t={tAsTask}
-                          onOpen={()=>openTask(tAsTask)}
-                          onToggleStep={togStep}
-                          onMarkDone={isSelToday ? markDone : undefined}
-                          onGoToFarm={goToFarm}
-                        />
-                      );
-                    })}
-                  </div>
-              }
-            </div>
-          );
-        })()}
-      </Card>
-
-      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)} setPage={setPage}/>}
-      {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
-    </div>
-  );
-}
 
 
 /* ═══════════════════════════════════════════
@@ -959,7 +150,7 @@ function Setup({data, setData}) {
       </div>
 
       {/* Climate Region — city input */}
-      <Card style={{marginBottom:12,padding:"14px 18px",background:"linear-gradient(135deg,#f0f7f0,#e8f5e9)",border:`1.5px solid ${C.gm}`}}>
+      <Card style={{marginBottom:12,padding:"14px 18px",background:C.grdLight,border:`1.5px solid ${C.gm}`}}>
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
           <span style={{fontSize:18}}>{curRegion ? curRegion.emoji : "🌍"}</span>
           <div>
@@ -1220,9 +411,9 @@ function Setup({data, setData}) {
                   position:"absolute",
                   left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
                   borderRadius:10,
-                  border:`2px solid ${isSel ? C.green : "rgba(35,50,35,.12)"}`,
+                  border:`2px solid ${isSel ? C.green : C.bdr}`,
                   boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.25), 0 0 16px rgba(45,106,79,.15), inset 0 0 20px rgba(45,106,79,.08)` : "0 2px 8px rgba(0,0,0,.06)",
-                  background: zt?.fill ? `${zt.fill}${isSel ? "bb" : "88"}` : "#ddd8",
+                  background: zt?.fill ? `${zt.fill}${isSel ? "bb" : "88"}` : C.surface,
                   cursor: isDraggingThis ? "grabbing" : "pointer",
                   opacity: isDraggingThis ? 0.75 : 1,
                   transition: dragging ? "none" : "all .2s ease",
@@ -1230,7 +421,7 @@ function Setup({data, setData}) {
                   overflow:"hidden",
                 }}>
                 {/* Zone name */}
-                <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none"}}>{z.name}</div>
+                <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none",textShadow:"0 1px 2px rgba(0,0,0,.18)"}}>{z.name}</div>
                 {/* Crop patches — draggable + resizable */}
                 {cropPatches.map((cb) => {
                   const isDragThis = cropDrag?.plotId === cb.plotId;
@@ -1464,7 +655,7 @@ function Setup({data, setData}) {
       {/* Zone list */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8,marginTop:14}}>
         {zones.map(z=>{const zt=ZT.find(t=>t.id===z.type);return(
-          <Card key={z.id} onClick={()=>setSel(z.id)} active={sel===z.id} style={{borderLeft:`4px solid ${zt?.fill||"#ccc"}`}}>
+          <Card key={z.id} onClick={()=>setSel(z.id)} active={sel===z.id} style={{borderLeft:`4px solid ${zt?.fill||C.bdr}`}}>
             <div style={{fontSize:13,fontWeight:600}}>{zt?.icon} {z.name}</div>
             <div style={SX.t2_11}>{zt?.label}</div>
             <div style={{fontSize:10,color:C.t3,fontFamily:F.mono,marginTop:2}}>{(z.wM||0).toFixed(0)}m × {(z.hM||0).toFixed(0)}m</div>
@@ -1605,7 +796,7 @@ function Farming({data, setData, pageData, clearPageData}) {
                 </div>
               </div>
               <div style={{display:"flex",gap:4,flexDirection:"column",alignItems:"flex-end"}}>
-                {isR&&<Pill c={C.orange} bg="#fff3e0">🧺 Ready</Pill>}
+                {isR&&<Pill c={C.orange} bg={C.harvestBg}>🧺 Ready</Pill>}
                 {dL>0&&<Pill>{dL}d</Pill>}
               </div>
             </div>
@@ -1646,9 +837,9 @@ function Farming({data, setData, pageData, clearPageData}) {
                             <div
                               key={c.name}
                               onMouseDown={function(e){e.preventDefault();setForm({...form,crop:c.name,variety:""});setCropSearch("");setCropDropdownOpen(false);}}
-                              style={{padding:"9px 14px",fontSize:14,cursor:"pointer",background:isSel?"#e8f5e9":"transparent",color:C.text,borderBottom:`1px solid ${C.bg}`}}
-                              onMouseEnter={function(e){e.currentTarget.style.background="#f0f7f4";}}
-                              onMouseLeave={function(e){e.currentTarget.style.background=isSel?"#e8f5e9":"transparent";}}
+                              style={{padding:"9px 14px",fontSize:14,cursor:"pointer",background:isSel?C.soft:"transparent",color:C.text,borderBottom:`1px solid ${C.bdr}`}}
+                              onMouseEnter={function(e){e.currentTarget.style.background=C.soft;}}
+                              onMouseLeave={function(e){e.currentTarget.style.background=isSel?C.soft:"transparent";}}
                             >
                               {c.emoji} {c.name}
                             </div>
@@ -1664,7 +855,7 @@ function Farming({data, setData, pageData, clearPageData}) {
           {ci && getRegionalVarieties(ci.name, data.region).length > 0 && (
             <Sel label="Variety / Breed" value={form.variety} onChange={e=>setForm({...form,variety:e.target.value})} options={[{value:"",label:"— Any / General —"},...getRegionalVarieties(ci.name, data.region).map(v=>({value:v.name,label:`${v.name} — ${v.note.slice(0,50)}`}))]}/>
           )}
-          {vi && <Card style={{marginBottom:10,background:"#e8f5e9",padding:12}}><div style={SX.lblGreen}>🧬 {vi.name}</div><div style={{fontSize:12,marginTop:4}}>{vi.note}</div>{vi.days!==ci.days&&<div style={{fontSize:11,color:C.gl,marginTop:2}}>Adjusted harvest: ~{vi.days} days (vs {ci.days} general)</div>}</Card>}
+          {vi && <Card style={{marginBottom:10,background:C.soft,padding:12}}><div style={SX.lblGreen}>🧬 {vi.name}</div><div style={{fontSize:12,marginTop:4}}>{vi.note}</div>{vi.days!==ci.days&&<div style={{fontSize:11,color:C.gl,marginTop:2}}>Adjusted harvest: ~{vi.days} days (vs {ci.days} general)</div>}</Card>}
           {ci&&<Card style={{marginBottom:14,background:C.gp}}><div style={SX.s13}>Harvest ~<strong>{effectiveDays}d</strong> · {ci.waterFreq} · {ci.sun} · {ci.spacing}cm</div>{COMP[ci.name]&&<div style={{fontSize:12,color:C.gl,marginTop:4}}>✓ Good with: {COMP[ci.name].good.join(", ")}{COMP[ci.name].bad.length>0?` · ✕ Bad: ${COMP[ci.name].bad.join(", ")}`:""}</div>}</Card>}
           {vegZ.length>0&&(
             <div style={SX.mb12}>
@@ -1815,7 +1006,7 @@ function FarmMapHero({data, onEditLayout}) {
         {zoneBlocks.map(function({z,zt,xPct,yPct,wPct,hPct,patches}) {
           return (
             <div key={z.id} style={{position:"absolute",left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,borderRadius:10,border:"1.5px solid rgba(35,50,35,.15)",background:zt?.fill?`${zt.fill}88`:"#ddd8",overflow:"hidden"}}>
-              <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3}}>{z.name}</div>
+              <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,textShadow:"0 1px 2px rgba(0,0,0,.18)"}}>{z.name}</div>
               {patches.map(function(cb,i) {
                 return (
                   <div key={i} style={{position:"absolute",left:`${(cb.px*100).toFixed(1)}%`,top:`${(cb.py*100).toFixed(1)}%`,width:`${(cb.pw*100).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,borderRadius:4,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
@@ -1964,12 +1155,12 @@ function TodayScreen({data, setData, setPage, tasks}) {
 
   // Priority color helper
   const priColor = (pri) => pri === 0 ? C.red : pri <= 1 ? C.orange : pri <= 2 ? C.blue : C.green;
-  const priBg = (pri) => pri === 0 ? "#fce4ec" : pri <= 1 ? "#fff8e1" : pri <= 2 ? "#e3f2fd" : "#e8f5e9";
+  const priBg = (pri) => pri === 0 ? C.dangerBg : pri <= 1 ? C.harvestBg : pri <= 2 ? C.waterBg : C.soft;
 
   // Status color helper
-  const statusStyle = (s) => s === "Needs attention" ? {color:C.red,bg:"#fce4ec"}
-    : s === "Active" ? {color:C.orange,bg:"#fff8e1"}
-    : s === "Stable" ? {color:C.green,bg:"#e8f5e9"}
+  const statusStyle = (s) => s === "Needs attention" ? {color:C.red,bg:C.dangerBg}
+    : s === "Active" ? {color:C.orange,bg:C.harvestBg}
+    : s === "Stable" ? {color:C.green,bg:C.soft}
     : {color:C.t2,bg:C.bg};
 
   // ── Progress Rings data ──
@@ -2047,7 +1238,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
                 <p style={{color:C.t2,fontSize:12,margin:"2px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                <div style={{textAlign:"center",padding:"5px 10px",background:g.streak>=7?"linear-gradient(135deg,#fff8e1,#ffe0b2)":C.bg,borderRadius:10}}>
+                <div style={{textAlign:"center",padding:"5px 10px",background:g.streak>=7?C.harvestBg:C.surface,borderRadius:10}}>
                   <div style={{fontSize:20,fontWeight:800,fontFamily:F.head,color:g.streak>=7?C.orange:C.green,lineHeight:1}}>{g.streak}</div>
                   <div style={{fontSize:8,color:C.t2,fontWeight:600,marginTop:1}}>streak{g.streak>=7?" 🔥":""}</div>
                 </div>
@@ -2065,7 +1256,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
             {/* Info boxes — what a farmer reads first */}
             <div className="g5" style={{gap:10}}>
               {/* TODAY'S WORK */}
-              <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?"linear-gradient(135deg,#fffbf0,#fff3e0)":"linear-gradient(135deg,#f0faf0,#e8f5e8)",border:_durgent>0?`1px solid rgba(255,152,0,.18)`:`1px solid rgba(45,106,79,.08)`}}>
+              <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?C.grdTask:C.grdCrops,border:_durgent>0?`1px solid ${C.orange}`:`1px solid ${C.bdr}`}}>
                 <div style={SX.capHeader}>Today's Work</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_durgent>0?C.orange:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
                 <div style={SX.t2_11mt4}>
@@ -2161,7 +1352,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
                     display:"grid",gridTemplateColumns:"auto 1fr auto",gap:10,alignItems:"center",
                     padding:"10px 12px",marginBottom:4,
                     border:`1px solid ${isActive ? C.gm : C.bdr}`,
-                    borderRadius:12,background:isActive ? "#f0faf0" : "#fcfdfb",
+                    borderRadius:12,background:isActive ? C.soft : C.raised,
                     cursor: canOpen ? "pointer" : (t.zoneId?"pointer":"default"),
                     transition:"all .15s"
                   }}>
@@ -2363,7 +1554,7 @@ function TodayScreen({data, setData, setPage, tasks}) {
                       }}>
                       {/* Zone name label — floating on top */}
                       <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,
-                        color:"#213321",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                        color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                         zIndex:3}}>
                         {z.name}
                       </div>
@@ -2440,14 +1631,14 @@ function TodayScreen({data, setData, setPage, tasks}) {
               }>
                 <div style={{
                   flex:"0 0 auto",minWidth:100,padding:"12px 10px",borderRadius:12,textAlign:"center",cursor:"pointer",
-                  background: earned ? "linear-gradient(135deg, #fff8e1, #fffde7)" : C.bg,
+                  background: earned ? C.harvestBg : C.surface,
                   border: earned ? `1.5px solid ${C.orange}` : `1.5px dashed ${C.bdr}`,
-                  opacity: earned ? 1 : 0.5,
+                  opacity: earned ? 1 : 0.72,
                   transition: "all .3s ease",
                   boxShadow: earned ? "0 2px 8px rgba(255,152,0,.15)" : "none",
                 }}>
                   <div style={{fontSize:28,filter:earned?"none":"grayscale(1)",marginBottom:4}}>{badge.emoji}</div>
-                  <div style={{fontSize:10,fontWeight:700,color:earned?C.text:C.t3,fontFamily:F.body}}>{badge.name}</div>
+                  <div style={{fontSize:10,fontWeight:700,color:earned?C.text:C.t2,fontFamily:F.body}}>{badge.name}</div>
                   {earned && <div style={{fontSize:9,color:C.orange,marginTop:2,fontWeight:600}}>Unlocked ✓</div>}
                   {!earned && <div style={{fontSize:9,color:C.t3,marginTop:2}}>{badge.desc.slice(0,35)}…</div>}
                 </div>
@@ -3104,7 +2295,7 @@ function AIAssistant({data}) {
               <div key={i} style={{display:"flex",flexDirection:"column",alignItems:m.role==="user"?"flex-end":"flex-start",gap:4}}>
                 <div style={{
                   maxWidth:"88%", padding:"10px 13px",
-                  background:m.role==="user"?C.green:"#f3f4f6",
+                  background:m.role==="user"?C.green:C.surface,
                   color:m.role==="user"?"#fff":C.text,
                   borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
                   fontSize:13, lineHeight:1.6,
@@ -3143,7 +2334,7 @@ function AIAssistant({data}) {
                     style={{
                       display:"flex", alignItems:"center", gap:10,
                       width:"100%", padding:"10px 14px",
-                      background: i === selIdx ? "#f0fdf4" : "transparent",
+                      background: i === selIdx ? C.soft : "transparent",
                       border:"none", borderBottom:`1px solid ${C.bdr}`,
                       cursor:"pointer", textAlign:"left",
                       transition:"background .1s",
@@ -3169,7 +2360,7 @@ function AIAssistant({data}) {
                 style={{
                   flex:1, padding:"8px 12px", border:`1.5px solid ${suggestions.length > 0 ? C.green : C.bdr}`,
                   borderRadius:18, fontSize:13, fontFamily:F.body,
-                  outline:"none", resize:"none", background:C.card,
+                  outline:"none", resize:"none", background:C.card,color:C.text,
                   lineHeight:1.4, maxHeight:80, overflowY:"auto",
                   transition:"border-color .2s",
                 }}
@@ -3177,7 +2368,7 @@ function AIAssistant({data}) {
               <button
                 onClick={send}
                 disabled={!input.trim()}
-                style={{flexShrink:0,width:44,height:44,borderRadius:22,background:!input.trim()?"#ccc":C.green,border:"none",cursor:!input.trim()?"default":"pointer",color:"#fff",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",transition:"background .2s"}}
+                style={{flexShrink:0,width:44,height:44,borderRadius:22,background:!input.trim()?C.bdr:C.green,border:"none",cursor:!input.trim()?"default":"pointer",color:"#fff",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",transition:"background .2s"}}
               >➤</button>
             </div>
             <div style={{fontSize:10,color:C.t3,textAlign:"center",marginTop:5}}>Type 2+ letters to see suggestions · Works offline</div>
