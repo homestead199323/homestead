@@ -269,7 +269,7 @@ src/
 
 ## Phase 3 — Split Screens Into Feature Folders
 
-**Status: NOT STARTED** — All screens still in App.jsx (4037 lines after Phase 4).
+**Status: IN PROGRESS (started 2026-05-09)** — All screens still in App.jsx (4037 lines after Phase 4). Recommendation to defer until after Supabase has been overridden per Dervis. Plan: extract one feature per commit, build + verify live bundle each time.
 
 Screens to extract: TodayScreen, TaskQueue, FarmTab (Farming + Setup + FarmMapHero), Livestock, Pantry, Financials, Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects), AIAssistant, FeedbackSurvey.
 
@@ -451,3 +451,7 @@ Agreed: Open-Meteo API (free, no key, 7-day forecast). No push notifications nee
 | 2026-05-09 | Phase 4 (storage layer) shipped at commit `3815979`. `src/lib/storage.js` is now the single persistence layer with adapter pattern, centralized `KEYS`, full farm-data API, and UI pref helpers. App.jsx has zero raw `localStorage` and zero `DB.*` references. Verified live: bundle hash matches sandbox build byte-for-byte; all six storage keys appear exactly once in the live bundle inside the minified `KEYS` object. |
 | 2026-05-09 | `DB` shim kept in storage.js as a thin alias for backward compat. No remaining call sites in the codebase. Can be deleted in a follow-up commit when we're confident no future feature work reaches for it. |
 | 2026-05-09 | Phase 0/1/2/4 walkthrough — every required bullet verified against actual codebase, all four phases marked FINAL. `DB` shim deleted (zero consumers confirmed). Phase 2's "add tests" bullet reassigned to Phase 10. Phase 1's "split ui.jsx" optional bullet deliberately not done — would add boilerplate without benefit at 13 components / 10 KB. Phase 3 deferred to a separate chat per Dervis. |
+| 2026-05-09 | Phase 3 (screen extraction) starts now, ahead of Phase 5. Overrides the earlier "defer until after Supabase" note — Dervis chose to go feature-folder-first. |
+| 2026-05-09 | Phase 5 inputs locked: **no production users to migrate** — clean-slate Supabase rollout, no migration script needed. |
+| 2026-05-09 | Phase 5 inputs locked: **mandatory sign-in** — auth wall before any app access. Phase 5 bullet "Let users keep using app without login" is OVERRIDDEN. Landing CTA goes to sign-up, not directly to /app. |
+| 2026-05-09 | Phase 5 inputs locked: **hybrid extraction** — `src/lib/db.js` (Supabase client), `src/lib/sync.js` (mutation queue), `src/lib/auth.js` (auth wrapper). UI remains in feature folders post-Phase-3. |
