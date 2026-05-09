@@ -4,7 +4,7 @@
 
 This is the living checklist for architecture work. When a task is finished, change `[ ]` to `[x]` and add a short note if needed.
 
-**Last updated:** 2026-05-09 — Phase 3.2 (Financials extraction) complete. App.jsx down to 3876 lines. Pantry + Financials now live in `src/features/`.
+**Last updated:** 2026-05-09 — Phase 3.4 (Animals extraction) complete. App.jsx down to 3189 lines. Pantry + Financials + Manuals + Animals now live in `src/features/`.
 
 ---
 
@@ -53,7 +53,7 @@ This is what exists on disk right now, not the target.
 
 ```text
 src/
-  App.jsx                  ← 3876 lines — UI + state + routing only
+  App.jsx                  ← 3189 lines — UI + state + routing only
   main.jsx
   index.css
 
@@ -62,6 +62,13 @@ src/
       Pantry.jsx           ← Phase 3.1 (commit 4a17087)
     financials/
       Financials.jsx       ← Phase 3.2 (commit c42a1aa)
+    manuals/
+      Manuals.jsx          ← Phase 3.3 (commit 33a7a14) — also contains
+                             Preserving, SeasonalCalendar, Blueprint, Projects
+    animals/
+      Livestock.jsx        ← Phase 3.4 (commit 930e9d0)
+      AnimalOverlay.jsx    ← Phase 3.4 (commit 930e9d0) — shared popup,
+                             still imported back by TaskQueue + TodayScreen
 
   components/
     ui.jsx                 ← Btn, Card, Inp, Sel, Txt, Overlay, Pill,
@@ -112,7 +119,7 @@ What App.jsx still contains (not yet extracted):
 - `dataReducer` — state reducer
 - `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` — navigation config (reference Lucide icons, tightly coupled to nav components)
 - `ErrorBoundary` class component
-- All remaining screen components: PlotOverlay, AnimalOverlay, TaskRow, TaskQueue, Setup, Farming, FarmMapHero, FarmTab, Livestock, TodayScreen, Manuals, Preserving, SeasonalCalendar, Blueprint, Projects, BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt, AIAssistant *(Pantry, Financials extracted to `src/features/`)*
+- All remaining screen components: PlotOverlay, TaskRow, TaskQueue, Setup, Farming, FarmMapHero, FarmTab, TodayScreen, BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt, AIAssistant *(Pantry, Financials, Manuals + sub-screens, Livestock + AnimalOverlay extracted to `src/features/`)*
 
 ---
 
@@ -162,6 +169,8 @@ What App.jsx still contains (not yet extracted):
 | `667c78b` | Docs: ARCHITECTURE_PLAN — Phase 3 starts (overrides defer note), lock Phase 5 inputs in decision log | – |
 | `4a17087` | Phase 3.1: extract Pantry into src/features/pantry/ | 4037 → 3952 |
 | `c42a1aa` | Phase 3.2: extract Financials into src/features/financials/ | 3952 → 3876 |
+| `33a7a14` | Phase 3.3: extract Manuals (+ Preserving/SeasonalCalendar/Blueprint/Projects) | 3876 → 3348 |
+| `930e9d0` | Phase 3.4: extract Livestock + AnimalOverlay into src/features/animals/ | 3348 → 3189 |
 
 ### Infrastructure / Fixes
 
@@ -283,15 +292,15 @@ src/
 
 ## Phase 3 — Split Screens Into Feature Folders
 
-**Status: IN PROGRESS (started 2026-05-09)** — 2 of ~9 screens extracted. App.jsx 4037 → 3876 lines (-161 from Phase 3 so far). Each commit: extract one feature, npm run build, verify live bundle hash matches sandbox.
+**Status: IN PROGRESS (started 2026-05-09)** — 4 of ~9 screens extracted. App.jsx 4037 → 3189 lines (-848 from Phase 3 so far). Each commit: extract one feature, npm run build, verify live bundle hash matches sandbox.
 
-Screens to extract: TodayScreen, TaskQueue, FarmTab (Farming + Setup + FarmMapHero), Livestock, ~~Pantry~~, ~~Financials~~, Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects), AIAssistant, FeedbackSurvey.
+Screens to extract: TodayScreen, TaskQueue, FarmTab (Farming + Setup + FarmMapHero), ~~Livestock~~, ~~Pantry~~, ~~Financials~~, ~~Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects)~~, AIAssistant, FeedbackSurvey.
 
 - [x] Create `src/features/`. *(Phase 3.1)*
 - [x] Move `Pantry` into `src/features/pantry/`. *(commit `4a17087`, 4037 → 3952)*
 - [x] Move `Financials` into `src/features/financials/`. *(commit `c42a1aa`, 3952 → 3876)*
-- [ ] Move `Manuals` into `src/features/manuals/`.
-- [ ] Move `Animals` into `src/features/animals/`.
+- [x] Move `Manuals` into `src/features/manuals/`. *(commit `33a7a14`, 3876 → 3348 — also moved Preserving, SeasonalCalendar, Blueprint, Projects)*
+- [x] Move `Animals` into `src/features/animals/`. *(commit `930e9d0`, 3348 → 3189 — Livestock + shared AnimalOverlay)*
 - [ ] Move `Tasks` into `src/features/tasks/`.
 - [ ] Move `Farm` into `src/features/farm/`.
 - [ ] Move `Today` into `src/features/today/`.
@@ -470,3 +479,5 @@ Agreed: Open-Meteo API (free, no key, 7-day forecast). No push notifications nee
 | 2026-05-09 | Phase 5 inputs locked: **mandatory sign-in** — auth wall before any app access. Phase 5 bullet "Let users keep using app without login" is OVERRIDDEN. Landing CTA goes to sign-up, not directly to /app. |
 | 2026-05-09 | Phase 5 inputs locked: **hybrid extraction** — `src/lib/db.js` (Supabase client), `src/lib/sync.js` (mutation queue), `src/lib/auth.js` (auth wrapper). UI remains in feature folders post-Phase-3. |
 | 2026-05-09 | Phase 3.2 (Financials extraction) shipped at commit `c42a1aa`. Local + live bundle md5 byte-identical (`1b3570aae9d44ba9e5c80fdb5224256c`). All 6 marker strings verified in deployed `index-CofRtakY.js`. App.jsx 3952 → 3876 lines. 4 pre-existing eslint unused-import warnings in App.jsx flagged for separate cleanup commit. |
+| 2026-05-09 | Phase 3.3 (Manuals extraction) shipped at commit `33a7a14`. Moved Manuals + 4 sibling screens (Preserving, SeasonalCalendar, Blueprint, Projects) into `src/features/manuals/Manuals.jsx`. App.jsx 3876 → 3348 lines (-527). Bundle 652 kB / 189 kB gz. Deployed READY at `dpl_AEjewBcyiz7ZcyBybXPsecjWjQ11`. *(Doc update for this commit was rolled into the Phase 3.4 doc commit, since 3.3 → 3.4 happened back-to-back.)* |
+| 2026-05-09 | Phase 3.4 (Animals extraction) shipped at commit `930e9d0`. Moved Livestock + shared AnimalOverlay into `src/features/animals/`. AnimalOverlay imported back into App.jsx because TaskQueue and TodayScreen still consume it (will resolve when those screens are extracted in later 3.x commits). App.jsx 3348 → 3189 lines (-159). BREEDS import dropped from App.jsx (no remaining consumers). Bundle filename `index-J0lGSxWP.js` byte-identical between sandbox and Mac. All 8 marker strings ("Manage your animals, collect produce", "Layer Flock A", "Tap for guide", "Care Guide", "Egg production: ~", "Injuries & Treatment", "Suggested daily", "🥚 Collect Eggs") verified in live bundle on `myterra-sigma.vercel.app`. Deployed READY at `dpl_7kFLEXGgtj7T6YLqM5GKeBKPWAph`. The same 8 pre-existing eslint unused-import warnings in App.jsx (untouched by this commit) still pending a separate cleanup. |
