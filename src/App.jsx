@@ -26,6 +26,8 @@ import { CITY_DB, searchCity } from "./data/cities";
 import { getRegionalCrop, getRegionalCrops, getRegionalCropMap, rCM, rCR, getRegionalVarieties, getRegionalCalendar } from "./lib/regional";
 import { cropMeasureType, plantsFromArea, expectedYield, zoneAreaM2, plotAreaM2, zoneSpaceStats, buildZoneSpaceMap } from "./lib/farm-calc";
 import { buildTaskQueue } from "./lib/task-queue";
+import { MN_FULL, MN_ABR, parseSowMonths, parseHarvestMonths, CROP_DIFFICULTY, getCropDifficulty } from "./lib/calendar";
+import { migrateZones, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
 import { Btn, Card, Inp, Sel, Txt, Overlay, Pill, Tooltip, Ring, Stat, StepChecklist, WaterCard, StorageCard } from "./components/ui";
 /* ═══════════════════════════════════════════
    DEFAULT STATE
@@ -3016,38 +3018,6 @@ function Preserving({embedded}) {
    SEASONAL PLANTING CALENDAR
    Location-aware "what to plant this month"
    ═══════════════════════════════════════════ */
-const MN_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const MN_ABR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-function parseSowMonths(sowIn) {
-  if (!sowIn) return [];
-  const months = [];
-  const ranges = sowIn.split(",").map(s => s.trim());
-  ranges.forEach(r => {
-    const parts = r.split("-").map(s => s.trim());
-    if (parts.length === 2) {
-      let si = MN_ABR.indexOf(parts[0]), ei = MN_ABR.indexOf(parts[1]);
-      if (si < 0 || ei < 0) return;
-      if (ei >= si) { for (let i = si; i <= ei; i++) months.push(i); }
-      else { for (let i = si; i <= 11; i++) months.push(i); for (let i = 0; i <= ei; i++) months.push(i); }
-    } else if (parts.length === 1) {
-      const idx = MN_ABR.indexOf(parts[0]);
-      if (idx >= 0) months.push(idx);
-    }
-  });
-  return [...new Set(months)];
-}
-
-function parseHarvestMonths(harvest) { return parseSowMonths(harvest); }
-
-// Difficulty rating for beginners
-const CROP_DIFFICULTY = {
-  easy: ["Radish","Lettuce","Spinach","Zucchini","Bean (Dry)","Pea","Broad Bean","Mint","Basil","Kale","Swiss Chard","Strawberry","Turnip","Sunflower","Blackberry","Rhubarb","Lentil","Chickpea"],
-  medium: ["Tomato","Pepper (Sweet)","Cucumber","Carrot","Onion","Beetroot","Cabbage","Potato","Garlic","Leek","Pumpkin","Corn","Oregano","Rosemary","Sage","Thyme","Parsley","Dill","Chamomile","Lavender","Broccoli","Brussels Sprouts","Fennel","Sweet Potato"],
-  hard: ["Eggplant","Pepper (Hot)","Watermelon","Melon","Celery","Asparagus","Okra","Wheat","Olive","Grape","Fig","Pomegranate","Peach","Plum","Cherry","Apricot","Walnut","Almond","Chestnut","Quince","Persimmon","Lemon","Orange","Hazelnut","Raspberry","Cauliflower","Artichoke","Celeriac"],
-};
-function getCropDifficulty(name) { if (CROP_DIFFICULTY.easy.includes(name)) return {l:"Easy",c:"#27ae60",bg:"#e8f5e9",e:"🟢"}; if (CROP_DIFFICULTY.hard.includes(name)) return {l:"Advanced",c:"#e74c3c",bg:"#fce4ec",e:"🔴"}; return {l:"Medium",c:"#f39c12",bg:"#fff3e0",e:"🟡"}; }
-
 function SeasonalCalendar({data, setPage}) {
   const [month, setMonth] = useState(new Date().getMonth());
   const [filter, setFilter] = useState("sow"); // sow | harvest | all
@@ -3404,93 +3374,6 @@ class ErrorBoundary extends React.Component {
     }
     return this.props.children;
   }
-}
-
-/* ═══════════════════════════════════════════
-   ZONE MIGRATION — convert legacy percent coords to meters (run once)
-   ═══════════════════════════════════════════ */
-function migrateZones(data) {
-  const farmW = data.farmW || 100;
-  const farmH = data.farmH || 60;
-  let changed = false;
-  const zones = data.zones.map(z => {
-    if (z.xM !== undefined) return z;
-    changed = true;
-    return {...z, xM: z.x/100*farmW, yM: z.y/100*farmH, wM: z.w/100*farmW, hM: z.h/100*farmH};
-  });
-  if (changed) return {...data, zones};
-  return data;
-}
-
-function migrateGamify(data) {
-  if (data.gamify) return data;
-  // Bootstrap gamification state from existing data (defensive against corrupted localStorage)
-  const totalHarvests = (data.garden?.plots || []).filter(p => p.status === "harvested").length;
-  const totalPlants = (data.garden?.plots || []).length;
-  const totalLogEntries = (data.log || []).length;
-  return {
-    ...data,
-    gamify: {
-      ...DEF.gamify,
-      totalHarvests,
-      totalPlants,
-      totalLogEntries,
-      lastActiveDate: totalLogEntries > 0 ? todayLocalKey() : null,
-    }
-  };
-}
-
-// Ensure data.completions exists and prune entries older than 30 days to keep
-// localStorage small. Safe to call on every load.
-function migrateCompletions(data) {
-  const out = data.completions ? {...data.completions} : {};
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30); cutoff.setHours(0,0,0,0);
-  Object.keys(out).forEach(k => {
-    const d = new Date(k + "T00:00:00");
-    if (isNaN(d.getTime()) || d < cutoff) delete out[k];
-  });
-  return {...data, completions: out};
-}
-
-// Update streak + badge state after any data change that includes a log entry
-function updateGamify(data) {
-  const g = data.gamify || DEF.gamify;
-  const today = todayLocalKey();
-  let streak = g.streak;
-  let bestStreak = g.bestStreak;
-  const totalLogEntries = (data.log || []).length;
-  const totalHarvests = (data.garden?.plots || []).filter(p => p.status === "harvested").length;
-  const totalPlants = (data.garden?.plots || []).length;
-
-  // Update streak
-  if (g.lastActiveDate !== today) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = toLocalDateKey(yesterday);
-    if (g.lastActiveDate === yStr) {
-      streak = streak + 1; // consecutive day
-    } else if (g.lastActiveDate && g.lastActiveDate < yStr) {
-      streak = 1; // hard reset — missed a day
-    } else if (!g.lastActiveDate) {
-      streak = 1; // first ever activity
-    }
-    bestStreak = Math.max(bestStreak, streak);
-  }
-
-  const newG = { ...g, streak, bestStreak, lastActiveDate: today, totalHarvests, totalPlants, totalLogEntries };
-
-  // Check for new badges
-  const testData = { ...data, gamify: newG };
-  const earned = new Set(newG.badges.map(b => b.id));
-  const newBadges = [...newG.badges];
-  BADGES.forEach(b => {
-    if (!earned.has(b.id) && b.check(testData)) {
-      newBadges.push({ id: b.id, unlockedAt: today });
-    }
-  });
-  newG.badges = newBadges;
-
-  return { ...data, gamify: newG };
 }
 
 /* ═══════════════════════════════════════════
