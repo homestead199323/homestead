@@ -103,18 +103,6 @@ export const markFeedbackDismissed = () => kvSet(KEYS.FEEDBACK_DISMISSED, "true"
 export const loadFirstUse = () => kvGet(KEYS.FIRST_USE);
 export const saveFirstUse = (ts) => kvSet(KEYS.FIRST_USE, String(ts));
 
-// ─── Backwards-compat DB shim ───────────────────────────────
-// Thin alias kept in case any future code reaches for DB. The migration
-// in App.jsx removes all DB.* call sites — this can be deleted once we
-// confirm nothing else references it.
-export const DB = {
-  KEY: KEYS.FARM,
-  load: loadFarm,
-  save: saveFarm,
-  saveImmediate: saveFarmImmediate,
-  flush: flushFarm,
-};
-
 // ─── Utility ────────────────────────────────────────────────
 export const uid = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID)
