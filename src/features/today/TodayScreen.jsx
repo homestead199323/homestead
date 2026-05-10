@@ -1,0 +1,581 @@
+import { useState, useEffect, useMemo } from "react";
+
+import { C, F, SX } from "../../lib/theme";
+import { ZT_MAP } from "../../data/zones";
+import { CROPS, CROP_COLORS } from "../../data/crops";
+import { BADGES } from "../../data/badges";
+import { todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "../../lib/utils";
+import { rCM } from "../../lib/regional";
+import { buildZoneSpaceMap } from "../../lib/farm-calc";
+import { Card, Pill, Tooltip, Ring } from "../../components/ui";
+import AnimalOverlay from "../animals/AnimalOverlay";
+import PlotOverlay from "../farm/PlotOverlay";
+
+export default function TodayScreen({data, setData, setPage, tasks}) {
+  const [selZone,setSelZone]=useState(null);
+  const [openPlotId,setOpenPlotId]=useState(null);
+  const [openAnimalId,setOpenAnimalId]=useState(null);
+  const [wide,setWide]=useState(typeof window!=="undefined"&&window.innerWidth>=800);  useEffect(()=>{const h=()=>setWide(window.innerWidth>=800);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  const totalKg=data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0);
+  const costs=useMemo(() => data.costs?.items || [], [data.costs?.items]);
+  const {exp,inc}=useMemo(()=>{let e=0,r=0;costs.forEach(i=>i.type==="expense"?e+=i.amount:r+=i.amount);return{exp:e,inc:r};},[costs]);
+  const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region), [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]);
+
+  const togStep = (pid, si) => {
+    const plots = data.garden.plots.map(p => {
+      if (p.id === pid) { const st = [...p.steps]; st[si] = {...st[si], done: !st[si].done}; return {...p, steps: st}; }
+      return p;
+    });
+    setData({...data, garden: {plots}});
+  };
+
+  // Enrich tasks with zone id for linking
+  const enrichedTasks = useMemo(() => tasks.map(t => {
+    const plot = data.garden.plots.find(p => p.id === t.plotId);
+    return { ...t, zoneId: plot?.zone || null };
+  }), [tasks, data.garden.plots]);
+
+  // Zone intelligence data
+  const zoneIntel = useMemo(() => {
+    const intel = {};
+    data.zones.forEach(z => {
+      const zPlots = data.garden.plots.filter(p => p.zone === z.id && p.status !== "harvested");
+      const zTasks = enrichedTasks.filter(t => t.zoneId === z.id);
+      const sp = zoneSpace[z.id];
+      const zt = ZT_MAP.get(z.type);
+      const isAnimal = ["barn","pasture"].includes(z.type);
+      const zAnimals = isAnimal ? data.livestock.animals.filter(a => {
+        const zone = data.zones.find(zn => zn.id === z.id);
+        return zone && zone.type === (a.type === "Chicken" || a.type === "Duck" || a.type === "Turkey" || a.type === "Quail" || a.type === "Goose" ? "barn" : "pasture");
+      }) : [];
+      const totalAnimals = zAnimals.reduce((s,a) => s + a.count, 0);
+      const yieldEst = zPlots.reduce((s,p) => s + (p.expectedYieldKg || 0), 0);
+      const cropProgress = zPlots.map(p => {
+        const crop = rCM(data.region).get(p.crop);
+        if (!crop || !p.plantDate) return null;
+        const dSince = daysBetweenLocalKeys(p.plantDate, new Date());
+        const pct = Math.min(1, dSince / crop.days);
+        return { name: p.name || p.crop, pct, emoji: crop.emoji };
+      }).filter(Boolean);
+
+      intel[z.id] = {
+        zone: z, zt, sp, isAnimal,
+        plotCount: zPlots.length,
+        taskCount: zTasks.length,
+        urgentCount: zTasks.filter(t => t.pri <= 1).length,
+        yieldEst,
+        totalAnimals,
+        cropProgress,
+        status: zTasks.filter(t=>t.pri===0).length > 0 ? "Needs attention"
+          : zTasks.filter(t=>t.pri<=2).length > 0 ? "Active"
+          : zPlots.length > 0 || totalAnimals > 0 ? "Stable" : "Empty"
+      };
+    });
+    return intel;
+  }, [data.zones, data.garden.plots, data.livestock.animals, data.region, enrichedTasks, zoneSpace]);
+
+  // Auto-select first zone with tasks, or first zone
+  const activeZone = selZone && zoneIntel[selZone] ? selZone
+    : data.zones.find(z => (zoneIntel[z.id]?.taskCount || 0) > 0)?.id
+    || data.zones[0]?.id || null;
+  const azData = activeZone ? zoneIntel[activeZone] : null;
+
+  // Priority color helper
+  const priColor = (pri) => pri === 0 ? C.red : pri <= 1 ? C.orange : pri <= 2 ? C.blue : C.green;
+  const priBg = (pri) => pri === 0 ? C.dangerBg : pri <= 1 ? C.harvestBg : pri <= 2 ? C.waterBg : C.soft;
+
+  // Status color helper
+  const statusStyle = (s) => s === "Needs attention" ? {color:C.red,bg:C.dangerBg}
+    : s === "Active" ? {color:C.orange,bg:C.harvestBg}
+    : s === "Stable" ? {color:C.green,bg:C.soft}
+    : {color:C.t2,bg:C.bg};
+
+  // ── Progress Rings data ──
+  const g = data.gamify || DEF.gamify;
+  const activePlots = data.garden.plots.filter(p => p.status !== "harvested");
+  const ringData = useMemo(() => {
+    // Ring 1: Tasks done today — steps marked done / total steps across active plots
+    const allSteps = activePlots.flatMap(p => p.steps || []);
+    const doneSteps = allSteps.filter(s => s.done);
+    const taskPct = allSteps.length > 0 ? doneSteps.length / allSteps.length : 0;
+
+    // Ring 2: Crops growing — active plots that have been planted / total zone capacity
+    const plantedCount = activePlots.filter(p => p.plantDate).length;
+    const zoneCapacity = Math.max(1, data.zones.filter(z => ["veg","orchard","herbs","greenhouse"].includes(z.type)).length * 4); // ~4 crops per zone as target
+    const growPct = Math.min(1, plantedCount / zoneCapacity);
+
+    // Ring 3: Harvest readiness — crops within 7 days of harvest / all active
+    const todayDate = localDateFromKey(todayLocalKey());
+    const readyCount = activePlots.filter(p => {
+      if (!p.plantDate) return false;
+      const crop = rCM(data.region).get(p.crop);
+      if (!crop) return false;
+      const harvestDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
+      return harvestDate && harvestDate - todayDate <= 7 * 864e5;
+    }).length;
+    const harvestPct = activePlots.length > 0 ? readyCount / activePlots.length : 0;
+
+    return { taskPct, growPct, harvestPct, doneSteps: doneSteps.length, totalSteps: allSteps.length, plantedCount, readyCount };
+  }, [activePlots, data.zones, data.region]);
+
+  // All three rings closed?
+  const allRingsClosed = ringData.taskPct >= 1 && ringData.growPct >= 1 && ringData.harvestPct >= 1;
+
+  // Pre-computed vars to avoid IIFEs in JSX render
+  const _dap = data.garden.plots.filter(function(p){return p.status!=="harvested";});
+  const _dfp = _dap.reduce(function(s,p){return s+(p.plantCount||0);},0);
+  const _dfa = _dap.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
+  const _dfy = _dap.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
+  const _dac = data.livestock.animals.reduce(function(s,a){return s+a.count;},0);
+  const _durgent = enrichedTasks.filter(function(t){return t.pri<=1;}).length;
+  const _dready = _dap.filter(function(p){
+    if(!p.plantDate)return false;
+    const crop=rCM(data.region).get(p.crop);
+    if(!crop)return false;
+    return daysBetweenLocalKeys(p.plantDate, new Date()) >= crop.days;
+  });
+  const _dnet = inc - exp;
+  const _dAnimalTypes=(function(){const t={};data.livestock.animals.forEach(function(a){t[a.type]=(t[a.type]||0)+a.count;});return Object.entries(t).sort(function(a,b){return b[1]-a[1];});})();
+  const _dCropCats=(function(){const cats={};_dap.forEach(function(p){const cr=rCM(data.region).get(p.crop);if(cr)cats[cr.cat]=(cats[cr.cat]||0)+1;});return Object.entries(cats).sort(function(a,b){return b[1]-a[1];});})();
+  const _catIcons={Fruit:"🍅",Vegetable:"🥬",Herb:"🌿",Legume:"🫘",Root:"🥕",Grain:"🌾",Flower:"🌻",Brassica:"🥦",Perennial:"🫐",Tuber:"🥔"};
+  const _miniColorMap=(function(){const m=new Map();let i=0;data.garden.plots.forEach(function(p){if(p.status!=="harvested"&&!m.has(p.crop)){m.set(p.crop,CROP_COLORS[i%CROP_COLORS.length]);i++;}});return m;})();
+
+  // Overlay lookups — pre-computed to avoid IIFEs in JSX render path
+  const openPlot = openPlotId ? data.garden.plots.find(x => x.id === openPlotId) : null;
+  const openAnimal = openAnimalId ? (data.livestock?.animals || []).find(x => x.id === openAnimalId) : null;
+
+  return (
+    <div className="page-enter" style={{maxWidth:1100}}>
+      {/* ── Morning Dashboard Header ── */}
+      <div style={{marginBottom:20}}>
+            {/* Top row: Rings + Title + Date */}
+            <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
+              <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
+                <Ring pct={ringData.taskPct} size={64} sw={4} color="#34c759">{""}</Ring>
+                <div style={{position:"absolute",top:8,left:8}}><Ring pct={ringData.growPct} size={48} sw={4} color={C.blue}>{""}</Ring></div>
+                <div style={{position:"absolute",top:16,left:16}}><Ring pct={ringData.harvestPct} size={32} sw={4} color={C.orange}>{allRingsClosed?"✨":""}</Ring></div>
+              </div>
+              <div style={{fontSize:10,lineHeight:1.9,flexShrink:0}}>
+                <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:"#34c759",marginRight:5}}/>Tasks <strong>{ringData.doneSteps}/{ringData.totalSteps}</strong></div>
+                <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.blue,marginRight:5}}/>Growing <strong>{ringData.plantedCount}</strong></div>
+                <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.orange,marginRight:5}}/>Harvest <strong>{ringData.readyCount}</strong></div>
+              </div>
+              <div style={SX.flex1}>
+                <h2 style={{fontFamily:F.head,fontSize:24,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>MyTerra</h2>
+                <p style={{color:C.t2,fontSize:12,margin:"2px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                <div style={{textAlign:"center",padding:"5px 10px",background:g.streak>=7?C.harvestBg:C.surface,borderRadius:10}}>
+                  <div style={{fontSize:20,fontWeight:800,fontFamily:F.head,color:g.streak>=7?C.orange:C.green,lineHeight:1}}>{g.streak}</div>
+                  <div style={{fontSize:8,color:C.t2,fontWeight:600,marginTop:1}}>streak{g.streak>=7?" 🔥":""}</div>
+                </div>
+                {g.badges.length > 0 && (
+                  <div style={{display:"flex",gap:2}}>
+                    {g.badges.slice(-3).map(b => {
+                      const def = BADGES.find(bd => bd.id === b.id);
+                      return def ? <Tooltip key={b.id} width={180} content={<div><div style={{fontWeight:700}}>{def.emoji} {def.name}</div><div style={{opacity:.85,marginTop:2}}>{def.desc}</div></div>}><span style={{fontSize:16,cursor:"pointer"}}>{def.emoji}</span></Tooltip> : null;
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Info boxes — what a farmer reads first */}
+            <div className="g5" style={{gap:10}}>
+              {/* TODAY'S WORK */}
+              <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?C.grdTask:C.grdCrops,border:_durgent>0?`1px solid ${C.orange}`:`1px solid ${C.bdr}`}}>
+                <div style={SX.capHeader}>Today's Work</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_durgent>0?C.orange:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
+                <div style={SX.t2_11mt4}>
+                  {enrichedTasks.length === 0 ? <span style={{color:C.green,fontWeight:600}}>a quiet day 🌿</span> : _durgent > 0 ? <span style={{color:C.orange,fontWeight:700}}>{_durgent} need attention</span> : "on your walk today"}
+                </div>
+                <div style={SX.t3_10mt2}>
+                  <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:"#34c759",marginRight:4}}/>{ringData.doneSteps}/{ringData.totalSteps} done
+                </div>
+              </Card>
+
+              {/* CROPS */}
+              <Card onClick={function(){setPage("farm");}} style={{padding:"14px 16px",background:"linear-gradient(135deg,#f5fbf0,#edf5e5)",border:"1px solid rgba(45,106,79,.08)"}}>
+                <div style={SX.capHeader}>Crops</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dap.length}</div>
+                <div style={SX.t2_11mt4}>
+                  <span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.blue,marginRight:4}}/>{ringData.plantedCount} growing
+                </div>
+                {_dready.length > 0 && (
+                  <div style={{fontSize:10,color:C.orange,fontWeight:700,marginTop:2}}>🌾 {_dready.length} ready to harvest!</div>
+                )}
+                {_dready.length === 0 && _dfa > 0 && (
+                  <div style={SX.t3_10mt2}>{_dfa.toFixed(0)}m² cultivated</div>
+                )}
+              </Card>
+
+              {/* ANIMALS */}
+              <Card onClick={function(){setPage("live");}} style={{padding:"14px 16px",background:"linear-gradient(135deg,#faf8f0,#f5f0e5)",border:"1px solid rgba(180,150,60,.08)"}}>
+                <div style={SX.capHeader}>Animals</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dac}</div>
+                <div style={SX.t2_11mt4}>
+                  {_dAnimalTypes.length === 0 ? "none yet" : _dAnimalTypes.slice(0,2).map(([t,c]) => `${c} ${t}`).join(", ")}
+                </div>
+                {data.livestock.animals.length > 2 && (
+                  <div style={SX.t3_10mt2}>{Object.keys(data.livestock.animals.reduce((m,a)=>{m[a.type]=1;return m;},{})).length} types</div>
+                )}
+              </Card>
+
+              {/* WHAT'S GROWING — crop categories */}
+              <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
+                <div style={SX.capHeader}>Growing</div>
+                <>
+                    <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dCropCats.length}</div>
+                    <div style={SX.t2_11mt4}>{_dCropCats.length === 1 ? "category" : "categories"}</div>
+                    <div style={{fontSize:10,color:C.t3,marginTop:3,lineHeight:1.6}}>
+                      {_dCropCats.slice(0,3).map(function([cat,n]){return <div key={cat}>{_catIcons[cat]||"🌱"} {n} {cat}{n>1?"s":""}</div>;})}
+                    </div>
+                  </>
+              </Card>
+
+              {/* MONEY */}
+              <Card style={{padding:"14px 16px",background:_dnet>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:_dnet>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
+                <div style={SX.capHeader}>Money</div>
+                <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_dnet>=0?C.green:C.red,lineHeight:1,marginTop:4}}>€{_dnet.toFixed(0)}</div>
+                <div style={SX.t2_11mt4}>
+                  {inc > 0 && <span style={{color:C.green}}>+€{inc.toFixed(0)}</span>}
+                  {inc > 0 && exp > 0 && " / "}
+                  {exp > 0 && <span style={{color:C.red}}>-€{exp.toFixed(0)}</span>}
+                  {inc === 0 && exp === 0 && "no transactions"}
+                </div>
+                <div style={SX.t3_10mt2}>Pantry: {Math.round(totalKg)}kg stored</div>
+              </Card>
+            </div>
+      </div>
+
+      {/* ── Main two-column: Task Pipeline + Zone Inspector ── */}
+      <div style={{display:"grid",gridTemplateColumns: data.zones.length > 0 && wide ? "1.05fr 1.25fr" : "1fr",gap:16,marginBottom:20}}>
+
+        {/* LEFT: Task Pipeline */}
+        <Card p={false} style={{overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${C.bdr}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:15,fontWeight:800,fontFamily:F.head,letterSpacing:"-0.02em",color:C.text}}>Task Pipeline</div>
+            <button onClick={()=>setPage("tasks")} style={{background:C.gp,border:"none",fontSize:12,color:C.green,fontWeight:600,cursor:"pointer",padding:"5px 12px",borderRadius:8,transition:"all .2s"}}>View all →</button>
+          </div>
+          <div style={{flex:1,overflow:"auto",padding:"6px 10px"}}>
+            {enrichedTasks.length === 0 ? (
+              <div style={{textAlign:"center",padding:"48px 24px",color:C.t2,background:C.grdLight,borderRadius:12,margin:8}}>
+                <div style={{fontSize:40,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"}}>🌱</div>
+                <div style={{fontSize:14,fontWeight:700,color:C.text}}>Your garden awaits</div>
+                <div style={{fontSize:12.5,marginTop:6,lineHeight:1.5,maxWidth:220,margin:"6px auto 0"}}>Add crops or livestock to get personalized daily tasks</div>
+              </div>
+            ) : enrichedTasks.slice(0, 12).map((t, i) => {
+              const isActive = t.zoneId === activeZone;
+              const canOpen = !!(t.plotId || t.animalId);
+              const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
+              return (
+                <div key={t.key || i}
+                  onClick={() => {
+                    if (t.zoneId) setSelZone(t.zoneId);
+                    if (t.plotId) setOpenPlotId(t.plotId);
+                    else if (t.animalId) setOpenAnimalId(t.animalId);
+                  }}
+                  style={{
+                    display:"grid",gridTemplateColumns:"auto 1fr auto",gap:10,alignItems:"center",
+                    padding:"10px 12px",marginBottom:4,
+                    border:`1px solid ${isActive ? C.gm : C.bdr}`,
+                    borderRadius:12,background:isActive ? C.soft : C.raised,
+                    cursor: canOpen ? "pointer" : (t.zoneId?"pointer":"default"),
+                    transition:"all .15s"
+                  }}>
+                  <span style={{width:9,height:9,borderRadius:"50%",background:priColor(t.pri),flexShrink:0}}/>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.emoji} {t.title}</div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:1}}>{t.loc}{t.daysOut > 0 ? ` · in ${t.daysOut}d` : t.daysOut === 0 && t.type !== "water" ? " · now" : ""}</div>
+                  </div>
+                  <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                    {t.stepIdx != null && <button onClick={e=>{e.stopPropagation();togStep(t.plotId,t.stepIdx);}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
+                    {canMarkDone && <button onClick={e=>{e.stopPropagation();setData(markTaskDone(data,t.key));}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
+                    {t.type==="harvest" && <button onClick={e=>{e.stopPropagation();if(t.plotId)setOpenPlotId(t.plotId);else setPage("farm");}} style={{background:C.orange,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Harvest</button>}
+                    <Pill c={priColor(t.pri)} bg={priBg(t.pri)}>
+                      {t.zoneId ? (data.zones.find(z=>z.id===t.zoneId)?.name?.split(" ").map(w=>w[0]).join("").slice(0,3) || "—") : "Farm"}
+                    </Pill>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* RIGHT: Zone Inspector + Mini Map */}
+        {data.zones.length > 0 && (
+          <div style={{display:"grid",gap:14,gridTemplateRows:"auto 1fr",alignContent:"start"}}>
+
+            {/* Zone Inspector */}
+            <Card p={false} style={SX.overflowHidden}>
+              <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bdr}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:14,fontWeight:800,fontFamily:F.head}}>
+                  {azData ? `${azData.zt?.icon || ""} ${azData.zone.name}` : "Select a zone"}
+                </div>
+                {azData && <Pill c={statusStyle(azData.status).color} bg={statusStyle(azData.status).bg}>{azData.status}</Pill>}
+              </div>
+
+              {azData ? (
+                <div style={{padding:14}}>
+                  {/* Metrics row */}
+                  <div className="g2" style={{gap:8,marginBottom:14}}>
+                    <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:"#fff"}}>
+                      <div style={SX.t2_11b}>Task Load</div>
+                      <div style={{fontSize:22,fontWeight:800,fontFamily:F.head}}>{azData.taskCount}</div>
+                      {azData.urgentCount > 0 && <div style={{fontSize:10,color:C.red,fontWeight:600,marginTop:2}}>{azData.urgentCount} urgent</div>}
+                    </div>
+                    <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:"#fff"}}>
+                      <div style={SX.t2_11b}>{azData.isAnimal ? "Animals" : "Est. Yield"}</div>
+                      <div style={{fontSize:22,fontWeight:800,fontFamily:F.head}}>
+                        {azData.isAnimal ? azData.totalAnimals : `${azData.yieldEst.toFixed(0)}kg`}
+                      </div>
+                      {azData.sp && azData.sp.totalM2 > 0 && !azData.isAnimal && (
+                        <div style={{fontSize:10,color:C.t2,marginTop:2,fontFamily:F.mono}}>{azData.sp.usedM2}/{azData.sp.totalM2.toFixed(0)}m²</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Crop progress gauges */}
+                  {azData.cropProgress.length > 0 && (
+                    <div style={{display:"flex",flexWrap:"wrap",gap:12,justifyContent:"center"}}>
+                      {azData.cropProgress.slice(0, 5).map((cp, i) => {
+                        const pct = Math.round(cp.pct * 100);
+                        const r = 32, stroke = 6, circ = 2 * Math.PI * (r - stroke);
+                        const offset = circ - (circ * pct / 100);
+                        const gaugeColor = pct >= 90 ? "#e74c3c" : pct >= 50 ? "#f39c12" : C.green;
+                        const statusLabel = pct >= 100 ? "Ready to harvest!" : pct >= 80 ? "Almost ready" : pct >= 50 ? "Growing strong" : pct >= 25 ? "Sprouting" : "Just planted";
+                        return (
+                          <div key={i} style={{textAlign:"center",minWidth:80}}>
+                            <div style={{position:"relative",width:r*2,height:r*2,margin:"0 auto"}}>
+                              <svg width={r*2} height={r*2} style={{transform:"rotate(-90deg)"}}>
+                                <circle cx={r} cy={r} r={r-stroke} fill="none" stroke="#edf3e9" strokeWidth={stroke}/>
+                                <circle cx={r} cy={r} r={r-stroke} fill="none" stroke={gaugeColor} strokeWidth={stroke}
+                                  strokeDasharray={circ} strokeDashoffset={offset}
+                                  strokeLinecap="round" style={{transition:"stroke-dashoffset .6s ease"}}/>
+                              </svg>
+                              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                                <div style={{fontSize:14,fontWeight:800,color:"#2d3a2d",fontFamily:F.mono}}>{pct}%</div>
+                              </div>
+                            </div>
+                            <div style={{fontSize:11,fontWeight:600,color:"#445644",marginTop:4}}>{cp.emoji} {cp.name}</div>
+                            <div style={{fontSize:9,color:C.t3,marginTop:1}}>{statusLabel}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Zone capacity bar */}
+                  {azData.sp && azData.sp.totalM2 > 0 && (
+                    <div style={{marginTop:14}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                        <span style={{color:"#445644"}}>Zone Capacity</span>
+                        <strong style={{color: azData.sp.pct >= 0.95 ? C.red : azData.sp.pct >= 0.7 ? C.orange : C.green, fontFamily:F.mono}}>
+                          {azData.sp.pct >= 0.95 ? "FULL" : `${azData.sp.freeM2}m² free`}
+                        </strong>
+                      </div>
+                      <div style={{height:7,borderRadius:20,background:"#edf3e9",overflow:"hidden",border:"1px solid #e0e9da"}}>
+                        <div style={{height:"100%",width:`${Math.min(100,azData.sp.pct*100).toFixed(0)}%`,background: azData.sp.pct >= 0.95 ? C.red : azData.sp.pct >= 0.7 ? C.orange : `linear-gradient(90deg, ${C.gl}, ${C.green})`,borderRadius:20}}/>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick zone nav */}
+                  {data.zones.length > 1 && (
+                    <div style={{display:"flex",gap:6,marginTop:14,flexWrap:"wrap"}}>
+                      {data.zones.map(z => {
+                        const zi = zoneIntel[z.id];
+                        const isSel = z.id === activeZone;
+                        return (
+                          <button key={z.id} onClick={() => setSelZone(z.id)}
+                            style={{fontSize:11,fontWeight:isSel?700:500,padding:"5px 10px",borderRadius:20,
+                              border:`1px solid ${isSel ? C.green : C.bdr}`,
+                              background:isSel ? C.gp : "#fff",color:isSel ? C.green : "#556655",
+                              cursor:"pointer",transition:"all .15s"}}>
+                            {zi?.zt?.icon} {z.name.length > 10 ? z.name.slice(0,10)+"…" : z.name}
+                            {zi?.urgentCount > 0 && <span style={{marginLeft:4,color:C.red,fontWeight:700}}>!</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{padding:32,textAlign:"center",color:C.t2}}>
+                  <div style={SX.s13}>Click a task or zone to inspect</div>
+                </div>
+              )}
+            </Card>
+
+            {/* Mini Farm Map — preserves actual farm proportions */}
+            <div style={{position:"relative",background:"linear-gradient(180deg,#f7faf5,#edf4e8)",border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
+              {/* Grid overlay */}
+              <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
+              {/* Zone blocks — with crop color overlays */}
+              {(()=>{
+                // Build crop color map for the mini map
+                const MINI_CROP_COLORS = CROP_COLORS;
+                const miniCropColorMap = new Map();
+                let colorIdx = 0;
+                data.garden.plots.forEach(p => {
+                  if (p.status !== "harvested" && !miniCropColorMap.has(p.crop)) {
+                    miniCropColorMap.set(p.crop, MINI_CROP_COLORS[colorIdx % MINI_CROP_COLORS.length]);
+                    colorIdx++;
+                  }
+                });
+                return data.zones.map(z => {
+                  const fW = data.farmW || 100, fH = data.farmH || 60;
+                  const xPct = ((z.xM || 0) / fW * 100).toFixed(1);
+                  const yPct = ((z.yM || 0) / fH * 100).toFixed(1);
+                  const wPct = ((z.wM || 10) / fW * 100).toFixed(1);
+                  const hPct = ((z.hM || 8) / fH * 100).toFixed(1);
+                  const zt = ZT_MAP.get(z.type);
+                  const isSel = z.id === activeZone;
+                  const isPlant = ["veg","orchard","herbs","greenhouse"].includes(z.type);
+
+                  // Calculate crop patches — use saved positions from Farm Layout
+                  const zPlots = isPlant ? data.garden.plots.filter(p => p.zone === z.id && p.status !== "harvested") : [];
+                  const zoneTotalM2 = (z.wM||10)*(z.hM||8);
+                  const patches = [];
+                  if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
+                    let autoFillY = 1;
+                    zPlots.forEach(p => {
+                      let area = 0;
+                      if (p.measureType === "area" && p.qty) area = +p.qty;
+                      else if (p.plantCount) {
+                        const crop = rCM(data.region).get(p.crop);
+                        if (crop) { const sp = crop.spacing/100; area = p.plantCount * sp * sp; }
+                      }
+                      if (area > 0) {
+                        const frac = Math.min(0.98, area / zoneTotalM2);
+                        const cc = miniCropColorMap.get(p.crop) || {r:100,g:140,b:60};
+                        let pw, ph, px, py;
+                        if (p.patchW !== undefined && p.patchH !== undefined) {
+                          pw = p.patchW; ph = p.patchH;
+                          px = p.patchX || 0.03; py = p.patchY || 0;
+                        } else {
+                          const side = Math.sqrt(frac);
+                          pw = Math.min(1, side * 1.2);
+                          ph = Math.min(1, frac / pw);
+                          px = 0.03;
+                          py = Math.max(0, autoFillY - ph);
+                          autoFillY -= ph + 0.02;
+                        }
+                        patches.push({crop:p.crop, name:p.name||p.crop, frac, pctLabel:Math.round(frac*100), cc, pw, ph, px, py});
+                      }
+                    });
+                    patches.sort((a,b) => b.frac - a.frac);
+                  }
+
+                  return (
+                    <div key={z.id}
+                      onClick={() => setSelZone(z.id)}
+                      style={{
+                        position:"absolute",
+                        left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
+                        borderRadius:10,
+                        border:`1.5px solid ${isSel ? C.green : "rgba(35,50,35,.15)"}`,
+                        boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
+                        background: zt?.fill ? `${zt.fill}88` : "#ddd8",
+                        cursor:"pointer",transition:"all .15s",overflow:"hidden",
+                      }}>
+                      {/* Zone name label — floating on top */}
+                      <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,
+                        color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                        zIndex:3}}>
+                        {z.name}
+                      </div>
+                      {/* Crop patches — use saved positions from Farm Layout */}
+                      {patches.map((cb,i) => (
+                        <div key={i} style={{
+                          position:"absolute",
+                          left:`${(cb.px * 100).toFixed(1)}%`,
+                          top:`${(cb.py * 100).toFixed(1)}%`,
+                          width:`${(cb.pw * 100).toFixed(1)}%`,
+                          height:`${(cb.ph * 100).toFixed(1)}%`,
+                          background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,
+                          borderRadius:4,overflow:"hidden",
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          zIndex:1,
+                        }}>
+                          {/* Inner glow */}
+                          <div style={{position:"absolute",inset:"10%",borderRadius:"50%",
+                            background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,
+                            filter:"blur(6px)",zIndex:0}}/>
+                          {/* Label */}
+                          <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.1}}>
+                            <div style={{fontSize:8,fontWeight:900,color:"#fff",
+                              textShadow:"0 1px 3px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
+                            <div style={{fontSize:6,fontWeight:700,color:"rgba(255,255,255,.85)",
+                              textShadow:"0 1px 2px rgba(0,0,0,.4)",
+                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                              maxWidth:"100%",padding:"0 1px"}}>{cb.name}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                });
+              })()}
+              {/* Edit link */}
+              <button onClick={function(){setPage("farm",{tab:"setup"});}} style={{position:"absolute",top:6,right:8,background:"rgba(255,255,255,.85)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:600,color:C.green,cursor:"pointer"}}>Edit Map</button>
+            </div>
+            {/* Crop color legend */}
+            {_miniColorMap.size > 0 && (
+              <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"6px 0 0",alignItems:"center"}}>
+                  <span style={{fontSize:10,fontWeight:700,color:C.t2}}>Crops:</span>
+                  {[..._miniColorMap.entries()].map(function([name,cc]){return (
+                    <div key={name} style={{display:"flex",alignItems:"center",gap:3}}>
+                      <div style={{width:8,height:8,borderRadius:2,background:`rgba(${cc.r},${cc.g},${cc.b},.55)`,boxShadow:`0 0 4px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
+                      <span style={{fontSize:10,color:C.t1}}>{name}</span>
+                    </div>
+                  );})})
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+
+
+      {/* Recent Activity */}
+      {data.log.length>0&&<div><div style={{fontSize:14,fontWeight:700,fontFamily:F.head,marginBottom:8}}>Recent Activity</div>{data.log.slice(-5).reverse().map((l,i)=><div key={i} style={{fontSize:12,color:C.t2,padding:"6px 0",borderBottom:`1px solid ${C.bg}`}}>{l.text}</div>)}</div>}
+
+      {/* ── Achievement Badges ── */}
+      <div style={{marginTop:20}}>
+        <div style={{fontSize:14,fontWeight:700,fontFamily:F.head,marginBottom:10}}>Achievements</div>
+        <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
+          {BADGES.map(badge => {
+            const earned = g.badges.find(b => b.id === badge.id);
+            return (
+              <Tooltip key={badge.id} width={200} content={
+                <div>
+                  <div style={{fontWeight:700,marginBottom:4}}>{badge.emoji} {badge.name}</div>
+                  <div style={{opacity:.85}}>{badge.desc}</div>
+                  {earned && <div style={{marginTop:6,color:"#ffcc00",fontWeight:600,fontSize:11}}>Unlocked {earned.unlockedAt}</div>}
+                  {!earned && <div style={{marginTop:6,opacity:.6,fontSize:11}}>Not yet earned</div>}
+                </div>
+              }>
+                <div style={{
+                  flex:"0 0 auto",minWidth:100,padding:"12px 10px",borderRadius:12,textAlign:"center",cursor:"pointer",
+                  background: earned ? C.harvestBg : C.surface,
+                  border: earned ? `1.5px solid ${C.orange}` : `1.5px dashed ${C.bdr}`,
+                  opacity: earned ? 1 : 0.72,
+                  transition: "all .3s ease",
+                  boxShadow: earned ? "0 2px 8px rgba(255,152,0,.15)" : "none",
+                }}>
+                  <div style={{fontSize:28,filter:earned?"none":"grayscale(1)",marginBottom:4}}>{badge.emoji}</div>
+                  <div style={{fontSize:10,fontWeight:700,color:earned?C.text:C.t2,fontFamily:F.body}}>{badge.name}</div>
+                  {earned && <div style={{fontSize:9,color:C.orange,marginTop:2,fontWeight:600}}>Unlocked ✓</div>}
+                  {!earned && <div style={{fontSize:9,color:C.t3,marginTop:2}}>{badge.desc.slice(0,35)}…</div>}
+                </div>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </div>
+      {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)} setPage={setPage}/>}
+      {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
+    </div>
+  );
+}
