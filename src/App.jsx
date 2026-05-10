@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useReducer } from "react";
 import { createPortal } from "react-dom";
 import {
-  Home, ClipboardList, Map as MapIcon, Sprout, Rabbit, CalendarDays, Package,
+  Home, ClipboardList, Sprout, Rabbit, CalendarDays, Package,
   TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
-  Settings, ChevronLeft, ChevronRight, Send, Search, Plus,
-  Check, AlertTriangle, Info, Download, Upload, Leaf, Moon, Sun, Trash2, User
+  Download, Upload, Leaf, Moon, Sun, User
 } from "lucide-react";
 
 import {
@@ -16,29 +15,17 @@ import {
   loadFirstUse, saveFirstUse,
 } from "./lib/storage";
 import { C, F, SX } from "./lib/theme";
-import { ZT_MAP } from "./data/zones";
-import { VARIETIES, VAR_RO } from "./data/varieties";
-import { CROPS, CROP_MAP, CROP_COLORS } from "./data/crops";
-import { RO, LDB_RO } from "./data/regional-overrides";
 import { LDB } from "./data/livestock";
-import { LIVESTOCK_CALENDAR } from "./data/livestock-calendar";
-import { PRESERVATION } from "./data/preservation";
-import { BADGES } from "./data/badges";
-import { PROJECT_GUIDES, BLUEPRINT_IMAGES } from "./data/projects";
-import { todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "./lib/utils";
-import { rCM, rCR } from "./lib/regional";
-import { buildZoneSpaceMap } from "./lib/farm-calc";
+import { todayLocalKey } from "./lib/utils";
+import { rCR } from "./lib/regional";
 import { buildTaskQueue } from "./lib/task-queue";
-import { MN_FULL, MN_ABR, CROP_DIFFICULTY } from "./lib/calendar";
 import { migrateZones, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
 import { farmKnowledgeEngine, buildAISuggestions } from "./lib/ai";
-import { Btn, Card, Inp, Sel, Txt, Overlay, Pill, Tooltip, Ring, Stat, StepChecklist, WaterCard, StorageCard } from "./components/ui";
+import { Btn } from "./components/ui";
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
 import Manuals, { SeasonalCalendar } from "./features/manuals/Manuals";
 import Livestock from "./features/animals/Livestock";
-import AnimalOverlay from "./features/animals/AnimalOverlay";
-import PlotOverlay from "./features/farm/PlotOverlay";
 import FarmTab from "./features/farm/Farm";
 import TaskQueue from "./features/tasks/TaskQueue";
 import TodayScreen from "./features/today/TodayScreen";
