@@ -61,24 +61,6 @@ const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animals:[]},p
 };
 
 /* ═══════════════════════════════════════════
-   BADGE DEFINITIONS — real farming milestones
-   ═══════════════════════════════════════════ */
-
-
-
-/* ═══════════════════════════════════════════
-   TASK QUEUE ENGINE — sorted by urgency
-   ═══════════════════════════════════════════ */
-/* ═══════════════════════════════════════════
-   (FarmMap component removed — replaced by div-based farm map in Setup)
-   ═══════════════════════════════════════════ */
-
-/* ═══════════════════════════════════════════
-   WEATHER DASHBOARD CARD — full card for dashboard
-   ═══════════════════════════════════════════ */
-
-
-/* ═══════════════════════════════════════════
    DASHBOARD
    ═══════════════════════════════════════════ */
 function TodayScreen({data, setData, setPage, tasks}) {
