@@ -35,7 +35,7 @@ import { farmKnowledgeEngine, buildAISuggestions } from "./lib/ai";
 import { Btn, Card, Inp, Sel, Txt, Overlay, Pill, Tooltip, Ring, Stat, StepChecklist, WaterCard, StorageCard } from "./components/ui";
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
-import Manuals from "./features/manuals/Manuals";
+import Manuals, { SeasonalCalendar } from "./features/manuals/Manuals";
 import Livestock from "./features/animals/Livestock";
 import AnimalOverlay from "./features/animals/AnimalOverlay";
 import PlotOverlay from "./features/farm/PlotOverlay";

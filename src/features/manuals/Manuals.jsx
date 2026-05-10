@@ -255,7 +255,7 @@ function Preserving({embedded}) {
    SEASONAL PLANTING CALENDAR
    Location-aware "what to plant this month"
    ═══════════════════════════════════════════ */
-function SeasonalCalendar({data, setPage}) {
+export function SeasonalCalendar({data, setPage}) {
   const [month, setMonth] = useState(new Date().getMonth());
   const [filter, setFilter] = useState("sow"); // sow | harvest | all
   const [catFilter, setCatFilter] = useState("all");
