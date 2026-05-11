@@ -67,6 +67,40 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
+
+  /* ── Tinted surfaces (light mode) ──
+     Used for inner cards/rows/banners. All have dark-mode overrides below. */
+  --surface-raised:        #ffffff;
+  --surface-soft:          #f1f7ee;
+  --surface-warm:          #fbf4e8;
+  --tint-danger:           #fef2f2;
+  --tint-harvest:          #fef3c7;
+  --tint-water:            #dbeafe;
+
+  --tint-blue-soft:        #e3f2fd;
+  --tint-yellow-soft:      #fffde7;
+  --tint-orange-soft:      #fff3e0;
+  --tint-pink-soft:        #fce4ec;
+  --tint-green-soft:       #e8f5e9;
+  --tint-green-soft-2:     #f0f7f4;
+  --tint-green-band:       linear-gradient(135deg,#e8f5e9,#f1f8e9);
+  --tint-green-band-bd:    #a5d6a7;
+
+  --tint-crop-card:        linear-gradient(135deg,#f5fbf0,#edf5e5);
+  --tint-animal-card:      linear-gradient(135deg,#faf8f0,#f5f0e5);
+  --tint-grow-card:        linear-gradient(135deg,#f8faf5,#f0f4eb);
+  --tint-money-pos:        linear-gradient(135deg,#f0faf5,#e5f5ed);
+  --tint-money-neg:        linear-gradient(135deg,#fdf5f5,#f5eaea);
+  --tint-task-urgent:      linear-gradient(135deg,#fff7ed,#fef3c7);
+  --tint-task-calm:        linear-gradient(135deg,#f0faf4,#e8f5ee);
+  --tint-map:              linear-gradient(180deg,#f7faf5,#edf4e8);
+
+  --tint-progress-track:   #edf3e9;
+  --tint-progress-track-bd:#e0e9da;
+
+  --tint-crop-bd:          rgba(45,106,79,.08);
+  --tint-animal-bd:        rgba(180,150,60,.08);
+  --tint-money-neg-bd:     rgba(220,60,60,.08);
 }
 
 /* ══════════════════════════════════════════════════
@@ -88,6 +122,40 @@
   --shadow:    0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.35);
   --shadow-l:  0 10px 25px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.25);
   --shadow-xl: 0 20px 40px rgba(0,0,0,.5),  0 8px 16px rgba(0,0,0,.35);
+
+  /* ── Tinted surfaces — dark mode ──
+     Subtle tinted dark surfaces preserve info hierarchy without glaring whites. */
+  --surface-raised:        #1f2c20;
+  --surface-soft:          #182519;
+  --surface-warm:          #1f1d15;
+  --tint-danger:           #2a181f;
+  --tint-harvest:          #2a2010;
+  --tint-water:            #15243a;
+
+  --tint-blue-soft:        #15243a;
+  --tint-yellow-soft:      #2a2410;
+  --tint-orange-soft:      #2a1f12;
+  --tint-pink-soft:        #2a181f;
+  --tint-green-soft:       #1a2e1f;
+  --tint-green-soft-2:     #182519;
+  --tint-green-band:       linear-gradient(135deg,#1c2e1f,#1a2a1c);
+  --tint-green-band-bd:    #2e6b52;
+
+  --tint-crop-card:        linear-gradient(135deg,#1c2a1f,#192319);
+  --tint-animal-card:      linear-gradient(135deg,#252217,#1f1d15);
+  --tint-grow-card:        linear-gradient(135deg,#1c2a1f,#192319);
+  --tint-money-pos:        linear-gradient(135deg,#1b2c22,#1a2419);
+  --tint-money-neg:        linear-gradient(135deg,#2a1c1c,#241919);
+  --tint-task-urgent:      linear-gradient(135deg,#2a1f10,#241a08);
+  --tint-task-calm:        linear-gradient(135deg,#1a2e1f,#192a1c);
+  --tint-map:              linear-gradient(180deg,#162115,#111a11);
+
+  --tint-progress-track:   #1a261c;
+  --tint-progress-track-bd:#22332a;
+
+  --tint-crop-bd:          rgba(74,190,133,.18);
+  --tint-animal-bd:        rgba(229,168,49,.20);
+  --tint-money-neg-bd:     rgba(239,68,68,.20);
 }
 
 /* System-preference auto dark (no stored override) */
@@ -107,6 +175,34 @@
     --shadow:    0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.35);
     --shadow-l:  0 10px 25px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.25);
     --shadow-xl: 0 20px 40px rgba(0,0,0,.5),  0 8px 16px rgba(0,0,0,.35);
+
+    --surface-raised:        #1f2c20;
+    --surface-soft:          #182519;
+    --surface-warm:          #1f1d15;
+    --tint-danger:           #2a181f;
+    --tint-harvest:          #2a2010;
+    --tint-water:            #15243a;
+    --tint-blue-soft:        #15243a;
+    --tint-yellow-soft:      #2a2410;
+    --tint-orange-soft:      #2a1f12;
+    --tint-pink-soft:        #2a181f;
+    --tint-green-soft:       #1a2e1f;
+    --tint-green-soft-2:     #182519;
+    --tint-green-band:       linear-gradient(135deg,#1c2e1f,#1a2a1c);
+    --tint-green-band-bd:    #2e6b52;
+    --tint-crop-card:        linear-gradient(135deg,#1c2a1f,#192319);
+    --tint-animal-card:      linear-gradient(135deg,#252217,#1f1d15);
+    --tint-grow-card:        linear-gradient(135deg,#1c2a1f,#192319);
+    --tint-money-pos:        linear-gradient(135deg,#1b2c22,#1a2419);
+    --tint-money-neg:        linear-gradient(135deg,#2a1c1c,#241919);
+    --tint-task-urgent:      linear-gradient(135deg,#2a1f10,#241a08);
+    --tint-task-calm:        linear-gradient(135deg,#1a2e1f,#192a1c);
+    --tint-map:              linear-gradient(180deg,#162115,#111a11);
+    --tint-progress-track:   #1a261c;
+    --tint-progress-track-bd:#22332a;
+    --tint-crop-bd:          rgba(74,190,133,.18);
+    --tint-animal-bd:        rgba(229,168,49,.20);
+    --tint-money-neg-bd:     rgba(239,68,68,.20);
   }
 }
 

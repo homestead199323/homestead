@@ -342,7 +342,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </Card>
 
               {/* CROPS */}
-              <Card onClick={function(){setPage("farm");}} style={{padding:"14px 16px",background:"linear-gradient(135deg,#f5fbf0,#edf5e5)",border:"1px solid rgba(45,106,79,.08)"}}>
+              <Card onClick={function(){setPage("farm");}} style={{padding:"14px 16px",background:C.tCrop,border:`1px solid ${C.tCropBd}`}}>
                 <div style={SX.capHeader}>Crops</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dap.length}</div>
                 <div style={SX.t2_11mt4}>
@@ -357,7 +357,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </Card>
 
               {/* ANIMALS */}
-              <Card onClick={function(){setPage("live");}} style={{padding:"14px 16px",background:"linear-gradient(135deg,#faf8f0,#f5f0e5)",border:"1px solid rgba(180,150,60,.08)"}}>
+              <Card onClick={function(){setPage("live");}} style={{padding:"14px 16px",background:C.tAnimal,border:`1px solid ${C.tAnimalBd}`}}>
                 <div style={SX.capHeader}>Animals</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dac}</div>
                 <div style={SX.t2_11mt4}>
@@ -369,7 +369,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </Card>
 
               {/* WHAT'S GROWING — crop categories */}
-              <Card className="bento-wide" style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
+              <Card className="bento-wide" style={{padding:"14px 16px",background:C.tGrow,border:`1px solid ${C.tCropBd}`}}>
                 <div style={SX.capHeader}>Growing</div>
                 <>
                     <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dCropCats.length}</div>
@@ -381,7 +381,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </Card>
 
               {/* MONEY */}
-              <Card className="bento-wide" style={{padding:"14px 16px",background:_dnet>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:_dnet>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
+              <Card className="bento-wide" style={{padding:"14px 16px",background:_dnet>=0?C.tMoneyPos:C.tMoneyNeg,border:_dnet>=0?`1px solid ${C.tCropBd}`:`1px solid ${C.tMoneyNegBd}`}}>
                 <div style={SX.capHeader}>Money</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_dnet>=0?C.green:C.red,lineHeight:1,marginTop:4}}>€{_dnet.toFixed(0)}</div>
                 <div style={SX.t2_11mt4}>
@@ -476,12 +476,12 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                 <div style={{padding:14}}>
                   {/* Metrics row */}
                   <div className="g2" style={{gap:8,marginBottom:14}}>
-                    <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:"#fff"}}>
+                    <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:C.card}}>
                       <div style={SX.t2_11b}>Task Load</div>
                       <div style={{fontSize:22,fontWeight:800,fontFamily:F.head}}>{azData.taskCount}</div>
                       {azData.urgentCount > 0 && <div style={{fontSize:10,color:C.red,fontWeight:600,marginTop:2}}>{azData.urgentCount} urgent</div>}
                     </div>
-                    <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:"#fff"}}>
+                    <div style={{border:`1px solid ${C.bdr}`,borderRadius:12,padding:"10px 12px",background:C.card}}>
                       <div style={SX.t2_11b}>{azData.isAnimal ? "Animals" : "Est. Yield"}</div>
                       <div style={{fontSize:22,fontWeight:800,fontFamily:F.head}}>
                         {azData.isAnimal ? azData.totalAnimals : `${azData.yieldEst.toFixed(0)}kg`}
@@ -505,16 +505,16 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                           <div key={i} style={{textAlign:"center",minWidth:80}}>
                             <div style={{position:"relative",width:r*2,height:r*2,margin:"0 auto"}}>
                               <svg width={r*2} height={r*2} style={{transform:"rotate(-90deg)"}}>
-                                <circle cx={r} cy={r} r={r-stroke} fill="none" stroke="#edf3e9" strokeWidth={stroke}/>
+                                <circle cx={r} cy={r} r={r-stroke} fill="none" stroke={C.tProgress} strokeWidth={stroke}/>
                                 <circle cx={r} cy={r} r={r-stroke} fill="none" stroke={gaugeColor} strokeWidth={stroke}
                                   strokeDasharray={circ} strokeDashoffset={offset}
                                   strokeLinecap="round" style={{transition:"stroke-dashoffset .6s ease"}}/>
                               </svg>
                               <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                                <div style={{fontSize:14,fontWeight:800,color:"#2d3a2d",fontFamily:F.mono}}>{pct}%</div>
+                                <div style={{fontSize:14,fontWeight:800,color:C.text,fontFamily:F.mono}}>{pct}%</div>
                               </div>
                             </div>
-                            <div style={{fontSize:11,fontWeight:600,color:"#445644",marginTop:4}}>{cp.emoji} {cp.name}</div>
+                            <div style={{fontSize:11,fontWeight:600,color:C.text,marginTop:4}}>{cp.emoji} {cp.name}</div>
                             <div style={{fontSize:9,color:C.t3,marginTop:1}}>{statusLabel}</div>
                           </div>
                         );
@@ -526,12 +526,12 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                   {azData.sp && azData.sp.totalM2 > 0 && (
                     <div style={{marginTop:14}}>
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                        <span style={{color:"#445644"}}>Zone Capacity</span>
+                        <span style={{color:C.text}}>Zone Capacity</span>
                         <strong style={{color: azData.sp.pct >= 0.95 ? C.red : azData.sp.pct >= 0.7 ? C.orange : C.green, fontFamily:F.mono}}>
                           {azData.sp.pct >= 0.95 ? "FULL" : `${azData.sp.freeM2}m² free`}
                         </strong>
                       </div>
-                      <div style={{height:7,borderRadius:20,background:"#edf3e9",overflow:"hidden",border:"1px solid #e0e9da"}}>
+                      <div style={{height:7,borderRadius:20,background:C.tProgress,overflow:"hidden",border:`1px solid ${C.tProgressBd}`}}>
                         <div style={{height:"100%",width:`${Math.min(100,azData.sp.pct*100).toFixed(0)}%`,background: azData.sp.pct >= 0.95 ? C.red : azData.sp.pct >= 0.7 ? C.orange : `linear-gradient(90deg, ${C.gl}, ${C.green})`,borderRadius:20}}/>
                       </div>
                     </div>
@@ -547,7 +547,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                           <button key={z.id} onClick={() => setSelZone(z.id)}
                             style={{fontSize:11,fontWeight:isSel?700:500,padding:"5px 10px",borderRadius:20,
                               border:`1px solid ${isSel ? C.green : C.bdr}`,
-                              background:isSel ? C.gp : "#fff",color:isSel ? C.green : "#556655",
+                              background:isSel ? C.gp : C.card,color:isSel ? C.green : C.t2,
                               cursor:"pointer",transition:"all .15s"}}>
                             {zi?.zt?.icon} {z.name.length > 10 ? z.name.slice(0,10)+"…" : z.name}
                             {zi?.urgentCount > 0 && <span style={{marginLeft:4,color:C.red,fontWeight:700}}>!</span>}
@@ -565,7 +565,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
             </Card>
 
             {/* Mini Farm Map — preserves actual farm proportions */}
-            <div style={{position:"relative",background:"linear-gradient(180deg,#f7faf5,#edf4e8)",border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
+            <div style={{position:"relative",background:C.tMap,border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
               {/* Grid overlay */}
               <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
               {/* Zone blocks — with crop color overlays */}

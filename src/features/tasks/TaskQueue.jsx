@@ -567,7 +567,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
       {/* ── Done today — collapsible, stands on its own ── */}
       {doneTodayList.length > 0 && (
-        <Card p={false} style={{overflow:"hidden",marginBottom:16,background:"#fafcfa"}}>
+        <Card p={false} style={{overflow:"hidden",marginBottom:16,background:C.soft}}>
           <button
             onClick={()=>setDoneCollapsed(v=>!v)}
             style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:C.green,letterSpacing:"0.02em"}}
@@ -578,7 +578,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           {!doneCollapsed && (
             <div style={{padding:"0 14px 14px"}}>
               {doneTodayList.map((d,i) => (
-                <div key={d.key || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:"#fff",borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
+                <div key={d.key || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:C.card,borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
                   <span style={{fontSize:20,flexShrink:0}}>{d.emoji}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:C.t2,textDecoration:"line-through"}}>{d.title}</div>
@@ -642,7 +642,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const dayLabel = selDateObj.toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
           const isSelToday = selectedDate === todayStr;
           return (
-            <div style={{borderTop:`2px solid ${C.green}`,padding:"14px 18px 16px",background:"#f8fdf9"}}>
+            <div style={{borderTop:`2px solid ${C.green}`,padding:"14px 18px 16px",background:C.soft}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                 <div>
                   <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,color:C.text}}>

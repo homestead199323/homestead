@@ -139,12 +139,12 @@ export const StepChecklist = React.memo(function StepChecklist({steps, plantDate
 
 export const WaterCard = React.memo(function WaterCard({waterNote}) {
   if (!waterNote) return null;
-  return <Card style={{marginBottom:12,background:"#e3f2fd"}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Watering</div><div style={SX.s13mt4}>{waterNote}</div></Card>;
+  return <Card style={{marginBottom:12,background:C.tBlue}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Watering</div><div style={SX.s13mt4}>{waterNote}</div></Card>;
 });
 
 export const StorageCard = React.memo(function StorageCard({storage}) {
   if (!storage) return null;
-  return <Card style={{marginBottom:12,background:"#fffde7"}}><div style={{fontSize:12,fontWeight:700,color:"#f57f17"}}>📦 Storage</div><div style={SX.s13mt4}>{storage}</div></Card>;
+  return <Card style={{marginBottom:12,background:C.tYellow}}><div style={{fontSize:12,fontWeight:700,color:C.yellow}}>📦 Storage</div><div style={SX.s13mt4}>{storage}</div></Card>;
 });
 
 /* ═══════════════════════════════════════════

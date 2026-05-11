@@ -45,6 +45,44 @@ export const C = {
   grdLight:"linear-gradient(135deg, #f0faf4 0%, #e8f5ee 50%, #f0f9ff 100%)",
   grdWarm: "linear-gradient(135deg, #fef9ef 0%, #fff7ed 50%, #fef3c7 100%)",
   grdHero: "linear-gradient(160deg, #1a4731 0%, #2e6b52 40%, #3d9970 100%)",
+
+  /* ── Tinted surfaces — dark-mode aware via CSS vars ──
+     Used for inner cards, banners, list rows, etc. */
+  soft:        "var(--surface-soft)",      /* sage tint inner surface */
+  warm:        "var(--surface-warm)",      /* warm cream inner surface */
+  raised:      "var(--surface-raised)",    /* "white card" alternative */
+  surface:     "var(--surface-soft)",      /* alias for soft */
+  dangerBg:    "var(--tint-danger)",
+  harvestBg:   "var(--tint-harvest)",
+  waterBg:     "var(--tint-water)",
+
+  /* Multi-color card gradients (Dashboard bento) */
+  grdTask:     "var(--tint-task-urgent)",
+  grdCrops:    "var(--tint-task-calm)",
+  tCrop:       "var(--tint-crop-card)",
+  tAnimal:     "var(--tint-animal-card)",
+  tGrow:       "var(--tint-grow-card)",
+  tMoneyPos:   "var(--tint-money-pos)",
+  tMoneyNeg:   "var(--tint-money-neg)",
+  tMap:        "var(--tint-map)",
+  tWarmBand:   "var(--tint-task-urgent)",
+  tCropBd:     "var(--tint-crop-bd)",
+  tAnimalBd:   "var(--tint-animal-bd)",
+  tMoneyNegBd: "var(--tint-money-neg-bd)",
+
+  /* Solid pale tints (Manuals, Animal/Plot overlays, info cards) */
+  tBlue:       "var(--tint-blue-soft)",
+  tYellow:     "var(--tint-yellow-soft)",
+  tOrange:     "var(--tint-orange-soft)",
+  tPink:       "var(--tint-pink-soft)",
+  tGreen:      "var(--tint-green-soft)",
+  tGreen2:     "var(--tint-green-soft-2)",
+  tGreenBand:  "var(--tint-green-band)",
+  tGreenBandBd:"var(--tint-green-band-bd)",
+
+  /* Progress bar track (Zone Capacity etc.) */
+  tProgress:   "var(--tint-progress-track)",
+  tProgressBd: "var(--tint-progress-track-bd)",
 };
 
 export const F = {

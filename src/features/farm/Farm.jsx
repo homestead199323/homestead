@@ -104,9 +104,9 @@ function Setup({data, setData}) {
               }}
               onFocus={function() { if (cityResults.length > 0) setShowCityDropdown(true); }}
               onBlur={function() { setTimeout(function() { setShowCityDropdown(false); }, 200); }}
-              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:14,fontFamily:F.body,background:"#fff",outline:"none",boxSizing:"border-box"}}/>
+              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:14,fontFamily:F.body,background:C.card,color:C.text,outline:"none",boxSizing:"border-box"}}/>
             {showCityDropdown && cityResults.length > 0 && (
-              <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:`1px solid ${C.bdr}`,borderRadius:10,boxShadow:C.shL,zIndex:50,maxHeight:220,overflowY:"auto",marginTop:4}}>
+              <div style={{position:"absolute",top:"100%",left:0,right:0,background:C.card,border:`1px solid ${C.bdr}`,borderRadius:10,boxShadow:C.shL,zIndex:50,maxHeight:220,overflowY:"auto",marginTop:4}}>
                 {cityResults.map(function(c, idx) {
                   const rInfo = REGION_MAP.get(c.region);
                   return (
@@ -131,7 +131,7 @@ function Setup({data, setData}) {
             <label style={{fontSize:11,fontWeight:600,color:C.t2,display:"block",marginBottom:3}}>Or pick a region</label>
             <select value={data.region || "western_europe"}
               onChange={function(e) { setData({...data, region: e.target.value}); }}
-              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:13,fontFamily:F.body,background:"#fff",cursor:"pointer",boxSizing:"border-box"}}>
+              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:13,fontFamily:F.body,background:C.card,color:C.text,cursor:"pointer",boxSizing:"border-box"}}>
               {REGIONS.map(function(r) {
                 return <option key={r.id} value={r.id}>{r.emoji} {r.name} — {r.examples}</option>;
               })}
@@ -166,7 +166,7 @@ function Setup({data, setData}) {
       {/* Draggable Farm Map — clean light style (matches Dashboard) */}
       <div ref={svgRef} style={{
         position:"relative",
-        background:"linear-gradient(180deg,#f7faf5,#edf4e8)",
+        background:C.tMap,
         border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",
         minHeight:440,userSelect:"none",
         cursor:dragging?"grabbing":"default",
@@ -933,7 +933,7 @@ function FarmMapHero({data, onEditLayout}) {
 
   return (
     <div>
-      <div style={{position:"relative",background:"linear-gradient(180deg,#f7faf5,#edf4e8)",border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
+      <div style={{position:"relative",background:C.tMap,border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
         <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
         {zoneBlocks.map(function({z,zt,xPct,yPct,wPct,hPct,patches}) {
           return (

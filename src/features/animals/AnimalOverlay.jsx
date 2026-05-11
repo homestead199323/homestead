@@ -26,11 +26,11 @@ function AnimalOverlay({animal, data, setData, onClose}) {
     <Overlay title={`${db.e} ${animal.name || animal.type} Care Guide`} onClose={onClose} wide>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         <Pill>×{animal.count} head</Pill>
-        {animal.breed && <Pill c={C.blue} bg="#e3f2fd">{animal.breed}</Pill>}
+        {animal.breed && <Pill c={C.blue} bg={C.tBlue}>{animal.breed}</Pill>}
         {db.prod.map(p => <Pill key={p} c={C.green} bg={C.gp}>{p}</Pill>)}
       </div>
       {breedInfo && (
-        <Card style={{marginBottom:8,background:"#e3f2fd"}}>
+        <Card style={{marginBottom:8,background:C.tBlue}}>
           <div style={{fontSize:12,fontWeight:700,color:C.blue}}>🧬 Breed: {breedInfo.name}</div>
           <div style={SX.s13mt4}>{breedInfo.note}</div>
           {breedInfo.eggs && <div style={{fontSize:12,color:C.green,marginTop:2}}>Egg production: ~{breedInfo.eggs} eggs/day per hen</div>}
@@ -47,7 +47,7 @@ function AnimalOverlay({animal, data, setData, onClose}) {
           <div style={{fontSize:13,lineHeight:1.7,marginTop:4}}>{s.v}</div>
         </Card>
       ))}
-      <Card style={{background:"#fce4ec",marginBottom:8}}>
+      <Card style={{background:C.tPink,marginBottom:8}}>
         <div style={{fontSize:12,fontWeight:700,color:C.red}}>🩹 Injuries & Treatment</div>
         {db.inj.map((j,i) => (
           <div key={i} style={{marginTop:8}}>
@@ -56,7 +56,7 @@ function AnimalOverlay({animal, data, setData, onClose}) {
           </div>
         ))}
       </Card>
-      <Card style={{marginBottom:8,background:"#e8f5e9"}}>
+      <Card style={{marginBottom:8,background:C.tGreen}}>
         <div style={SX.lblGreen}>📦 Produce & Storage</div>
         {Object.entries(db.out).map(([k,v]) => (
           <div key={k} style={{marginTop:6}}>
