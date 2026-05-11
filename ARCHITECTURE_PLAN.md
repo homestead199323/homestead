@@ -4,7 +4,7 @@
 
 This is the living checklist for architecture work. When a task is finished, change `[ ]` to `[x]` and add a short note if needed.
 
-**Last updated:** 2026-05-10 — Phase 3.8 (AIAssistant extraction) complete. App.jsx down to 558 lines. All 8 feature screens now live in `src/features/`: pantry, financials, manuals, animals, tasks, farm, today, assistant.
+**Last updated:** 2026-05-11 — Phase 3.9 (NAV config extraction) complete. App.jsx down to 529 lines. Navigation config (NAV, BOTTOM_TABS, MORE_ITEMS) now lives in `src/app/navigation.js`.
 
 ---
 
@@ -53,9 +53,12 @@ This is what exists on disk right now, not the target.
 
 ```text
 src/
-  App.jsx                  ← 558 lines — UI + state + routing only
+  App.jsx                  ← 529 lines — UI + state + routing only
   main.jsx
   index.css
+
+  app/                     ← Phase 3.9 (commit pending) — navigation config
+    navigation.js          ← NAV, BOTTOM_TABS, MORE_ITEMS + their lucide icons
 
   features/                ← screen components extracted from App.jsx
     pantry/
@@ -129,9 +132,8 @@ src/
 What App.jsx still contains (not yet extracted):
 - `DEF` — default state object
 - `dataReducer` — state reducer
-- `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` — navigation config (reference Lucide icons, tightly coupled to nav components)
 - `ErrorBoundary` class component
-- All remaining screen components: BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt *(Pantry, Financials, Manuals + sub-screens, Livestock + AnimalOverlay, TaskQueue + TaskRow, PlotOverlay, Setup + Farming + FarmMapHero + FarmTab, TodayScreen, AIAssistant all extracted to `src/features/`)*
+- All remaining screen components: BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt *(Pantry, Financials, Manuals + sub-screens, Livestock + AnimalOverlay, TaskQueue + TaskRow, PlotOverlay, Setup + Farming + FarmMapHero + FarmTab, TodayScreen, AIAssistant all extracted to `src/features/`; NAV/BOTTOM_TABS/MORE_ITEMS extracted to `src/app/navigation.js`)*
 
 ---
 
@@ -190,6 +192,7 @@ What App.jsx still contains (not yet extracted):
 | `f359230` | fix: restore Seasonal nav button (export SeasonalCalendar from Manuals.jsx) | 788 |
 | `ff60873` | cleanup: drop 47 unused imports from App.jsx | 775 |
 | `29cf39d` | Phase 3.8: extract AIAssistant into src/features/assistant/AIAssistant.jsx | 775 → 558 |
+| *(this commit)* | Phase 3.9: extract NAV/BOTTOM_TABS/MORE_ITEMS into src/app/navigation.js | 558 → 529 |
 
 ### Infrastructure / Fixes
 
@@ -324,7 +327,7 @@ Screens to extract: ~~TodayScreen~~, ~~TaskQueue~~, ~~FarmTab (Farming + Setup +
 - [x] Move `Farm` into `src/features/farm/`. *(commit `fb8d6e3`, 2380 → 1378 — Setup + Farming + FarmMapHero + FarmTab; only FarmTab default-exported, others are file-internal)*
 - [x] Move `Today` into `src/features/today/`. *(commit `5425623`, 1359 → 788 — TodayScreen default-exported)*
 - [x] Move `Assistant` into `src/features/assistant/`. *(commit `29cf39d`, 775 → 558 — AIAssistant default-exported; floating chat + autocomplete dropdown + quick-prompt rail)*
-- [ ] Extract `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` into `src/app/navigation.js`.
+- [x] Extract `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` into `src/app/navigation.js`. *(Phase 3.9 — 558 → 529, 11 lucide icons moved alongside config; App.jsx keeps Download/Upload/Leaf/Moon/Sun/User)*
 - [ ] Extract `DEF`, `dataReducer` into `src/app/state.js`.
 - [x] Run `npm run build` after each feature is moved. *(established workflow)*
 

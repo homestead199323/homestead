@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
 import {
-  Home, ClipboardList, Sprout, Rabbit, CalendarDays, Package,
-  TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
   Download, Upload, Leaf, Moon, Sun, User
 } from "lucide-react";
 
@@ -29,6 +27,7 @@ import FarmTab from "./features/farm/Farm";
 import TaskQueue from "./features/tasks/TaskQueue";
 import TodayScreen from "./features/today/TodayScreen";
 import AIAssistant from "./features/assistant/AIAssistant";
+import { NAV, BOTTOM_TABS, MORE_ITEMS } from "./app/navigation";
 /* ═══════════════════════════════════════════
    DEFAULT STATE
    ═══════════════════════════════════════════ */
@@ -47,18 +46,6 @@ const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animals:[]},p
     totalLogEntries: 0,      // Lifetime activity log entries
   },
 };
-
-const NAV=[
-  {id:"home",    l:"Today",         E:Home},
-  {id:"tasks",   l:"Tasks",         E:ClipboardList},
-  {id:"farm",    l:"Farm",          E:Sprout},
-  {id:"live",    l:"Livestock",     E:Rabbit},
-  {id:"season",  l:"Seasonal",      E:CalendarDays},
-  {id:"pantry",  l:"Pantry",        E:Package},
-  {id:"fin",     l:"Financials",    E:TrendingUp},
-  {id:"manuals", l:"Manuals",       E:BookOpen},
-  {id:"feedback",l:"Give Feedback", E:MessageSquare},
-];
 
 /* ═══════════════════════════════════════════
    DATA REDUCER — replaces spread-based state updates
@@ -126,22 +113,6 @@ class ErrorBoundary extends React.Component {
 /* ═══════════════════════════════════════════
    BOTTOM NAVIGATION — mobile (< 768px)
    ═══════════════════════════════════════════ */
-const BOTTOM_TABS = [
-  {id:"home",   l:"Today",   E:Home},
-  {id:"farm",   l:"Farm",    E:Sprout},
-  {id:"live",   l:"Animals", E:PawPrint},
-  {id:"pantry", l:"Pantry",  E:Package},
-  {id:"more",   l:"More",    E:MoreHorizontal},
-];
-
-const MORE_ITEMS = [
-  {id:"tasks",   l:"Task Queue",    E:ClipboardList},
-  {id:"season",  l:"Seasonal",      E:CalendarDays},
-  {id:"fin",     l:"Financials",    E:TrendingUp},
-  {id:"manuals", l:"Manuals",       E:BookOpen},
-  {id:"feedback",l:"Give Feedback", E:MessageSquare},
-];
-
 const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreOpen, setMoreOpen}) {
   return (
     <nav aria-label="Main navigation" style={{
