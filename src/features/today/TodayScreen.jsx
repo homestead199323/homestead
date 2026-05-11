@@ -7,6 +7,7 @@ import { BADGES } from "../../data/badges";
 import { todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
 import { buildZoneSpaceMap } from "../../lib/farm-calc";
+import { fetchWeather } from "../../lib/weather";
 import { Card, Pill, Tooltip, Ring, SwipeableRow } from "../../components/ui";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import PlotOverlay from "../farm/PlotOverlay";
@@ -16,6 +17,21 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
   const [openPlotId,setOpenPlotId]=useState(null);
   const [openAnimalId,setOpenAnimalId]=useState(null);
   const [wide,setWide]=useState(typeof window!=="undefined"&&window.innerWidth>=800);  useEffect(()=>{const h=()=>setWide(window.innerWidth>=800);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  // ── Hero block: time-of-day greeting + live weather ──
+  const [weather, setWeather] = useState(null);
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 6) return "Quiet hours";
+    if (h < 12) return "Good morning";
+    if (h < 18) return "Good afternoon";
+    return "Good evening";
+  }, []);
+  useEffect(() => {
+    let mounted = true;
+    if (!data.city) { setWeather(null); return; }
+    fetchWeather(data.city).then(w => { if (mounted) setWeather(w); });
+    return () => { mounted = false; };
+  }, [data.city]);
   const totalKg=data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0);
   const costs=useMemo(() => data.costs?.items || [], [data.costs?.items]);
   const {exp,inc}=useMemo(()=>{let e=0,r=0;costs.forEach(i=>i.type==="expense"?e+=i.amount:r+=i.amount);return{exp:e,inc:r};},[costs]);
@@ -161,8 +177,26 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                 <div><span style={{display:"inline-block",width:8,height:8,borderRadius:4,background:C.orange,marginRight:5}}/>Harvest <strong>{ringData.readyCount}</strong></div>
               </div>
               <div style={SX.flex1}>
-                <h2 style={{fontFamily:F.head,fontSize:24,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>MyTerra</h2>
+                <h2 style={{fontFamily:F.head,fontSize:24,margin:0,letterSpacing:"-0.03em",fontWeight:800,color:C.text}}>{greeting}</h2>
                 <p style={{color:C.t2,fontSize:12,margin:"2px 0 0",fontWeight:500}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
+                {weather && weather.ok && (
+                  <p style={{color:C.t2,fontSize:12,margin:"3px 0 0",fontWeight:500}}>
+                    <span style={{marginRight:5}}>{weather.emoji}</span>
+                    <span style={{color:C.text,fontWeight:600}}>{weather.temp}°C</span>
+                    <span> · {weather.desc} in {weather.location}</span>
+                    <span style={{color:C.green,fontWeight:600}}> — {weather.hint}</span>
+                  </p>
+                )}
+                {weather && !weather.ok && data.city && (
+                  <p style={{color:C.t2,fontSize:11,margin:"3px 0 0",fontWeight:500,opacity:.7}}>
+                    weather unavailable
+                  </p>
+                )}
+                {!data.city && (
+                  <p style={{color:C.t2,fontSize:11,margin:"3px 0 0",fontWeight:500,opacity:.75}}>
+                    set your city for weather → Farm › Layout
+                  </p>
+                )}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
                 <div style={{textAlign:"center",padding:"5px 10px",background:g.streak>=7?C.harvestBg:C.surface,borderRadius:10}}>

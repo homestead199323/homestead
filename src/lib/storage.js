@@ -39,6 +39,8 @@ const KEYS = {
   FEEDBACK_DONE: "hfm_feedback_done",
   FEEDBACK_DISMISSED: "hfm_feedback_dismissed",
   FIRST_USE: "hfm_first_use",
+  WEATHER_CACHE: "hfm_weather_cache_v1",
+  GEO_CACHE: "hfm_geo_cache_v1",
 };
 
 // ─── Farm data — debounced ──────────────────────────────────
@@ -102,6 +104,24 @@ export const markFeedbackDismissed = () => kvSet(KEYS.FEEDBACK_DISMISSED, "true"
 
 export const loadFirstUse = () => kvGet(KEYS.FIRST_USE);
 export const saveFirstUse = (ts) => kvSet(KEYS.FIRST_USE, String(ts));
+
+// ─── Weather + geocode caches ───────────────────────────────
+// Both store JSON objects keyed by lowercase city name. Weather entries
+// carry their own `fetchedAt` timestamp; the TTL check lives in
+// src/lib/weather.js (storage stays dumb).
+const loadJsonCache = (key) => {
+  const raw = kvGet(key);
+  if (!raw) return {};
+  try { return JSON.parse(raw); }
+  catch (e) { return {}; }
+};
+const saveJsonCache = (key, obj) => kvSet(key, JSON.stringify(obj));
+
+export const loadWeatherCache = () => loadJsonCache(KEYS.WEATHER_CACHE);
+export const saveWeatherCache = (obj) => saveJsonCache(KEYS.WEATHER_CACHE, obj);
+
+export const loadGeoCache = () => loadJsonCache(KEYS.GEO_CACHE);
+export const saveGeoCache = (obj) => saveJsonCache(KEYS.GEO_CACHE, obj);
 
 // ─── Utility ────────────────────────────────────────────────
 export const uid = () =>
