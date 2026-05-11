@@ -51,6 +51,36 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
     }
     return days;
   }, [data.completions]);
+  // ── Contextual suggestions derived from current data state (not log history) ──
+  // Each suggestion is a concrete, immediately-actionable CTA. New ones can be
+  // added as data signals become available. Returns [] when nothing applies.
+  const suggestions = useMemo(() => {
+    const out = [];
+    // Fresh harvest in Pantry → cross-link to preservation methods in Manuals.
+    // This is the only place in the app that bridges Pantry items to the 13
+    // preservation methods documented in Manuals.
+    const sevenDaysAgo = addDaysToLocalKey(todayLocalKey(), -7);
+    const freshHarvest = (data.pantry.items || []).filter(function(item) {
+      return item.source === "harvest"
+        && item.addedDate
+        && item.addedDate >= sevenDaysAgo
+        && item.unit === "kg"
+        && item.qty > 0;
+    });
+    if (freshHarvest.length > 0) {
+      const totalKg = freshHarvest.reduce(function(s, i) { return s + i.qty; }, 0);
+      const names = freshHarvest.slice(0, 2).map(function(i) { return i.name; }).join(", ");
+      const more = freshHarvest.length > 2 ? ` +${freshHarvest.length - 2} more` : "";
+      out.push({
+        id: "preserve-fresh",
+        emoji: "🏺",
+        text: `${totalKg.toFixed(1)}kg fresh ${names}${more} won't last forever`,
+        ctaLabel: "How to preserve →",
+        ctaTarget: "manuals",
+      });
+    }
+    return out;
+  }, [data.pantry.items]);
   const totalKg=data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0);
   const costs=useMemo(() => data.costs?.items || [], [data.costs?.items]);
   const {exp,inc}=useMemo(()=>{let e=0,r=0;costs.forEach(i=>i.type==="expense"?e+=i.amount:r+=i.amount);return{exp:e,inc:r};},[costs]);
@@ -633,6 +663,22 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
       </div>
 
 
+
+      {/* Suggestions — contextual CTAs derived from current data state */}
+      {suggestions.length > 0 && (
+        <div style={{marginTop:20}}>
+          <div style={{fontSize:14,fontWeight:700,fontFamily:F.head,marginBottom:8}}>Suggestions</div>
+          {suggestions.map(function(s) {
+            return (
+              <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:C.surface,borderRadius:C.rs,marginBottom:6,border:`1px solid ${C.bdr}`,flexWrap:"wrap"}}>
+                <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{s.emoji}</span>
+                <div style={{flex:1,minWidth:160,fontSize:13,color:C.text,fontWeight:500,lineHeight:1.3}}>{s.text}</div>
+                <button onClick={function(){setPage(s.ctaTarget);}} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>{s.ctaLabel}</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Recent Activity */}
       {data.log.length>0&&<div><div style={{fontSize:14,fontWeight:700,fontFamily:F.head,marginBottom:8}}>Recent Activity</div>{data.log.slice(-5).reverse().map((l,i)=><div key={i} style={{fontSize:12,color:C.t2,padding:"6px 0",borderBottom:`1px solid ${C.bg}`}}>{l.text}</div>)}</div>}
