@@ -11,11 +11,13 @@ import { fetchWeather } from "../../lib/weather";
 import { Card, Pill, Tooltip, Ring, SwipeableRow } from "../../components/ui";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import PlotOverlay from "../farm/PlotOverlay";
+import WalkOverlay from "./WalkOverlay";
 
 export default function TodayScreen({data, setData, setPage, tasks}) {
   const [selZone,setSelZone]=useState(null);
   const [openPlotId,setOpenPlotId]=useState(null);
   const [openAnimalId,setOpenAnimalId]=useState(null);
+  const [walkOpen,setWalkOpen]=useState(false);
   const [wide,setWide]=useState(typeof window!=="undefined"&&window.innerWidth>=800);  useEffect(()=>{const h=()=>setWide(window.innerWidth>=800);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   // ── Hero block: time-of-day greeting + live weather ──
   const [weather, setWeather] = useState(null);
@@ -295,6 +297,35 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                 })}
               </div>
             </div>
+
+            {/* "Start your walk" CTA — primary action of the day. Hidden when nothing to do. */}
+            {enrichedTasks.length > 0 && (
+              <button
+                onClick={function(){setWalkOpen(true);}}
+                style={{
+                  width:"100%",
+                  padding:"14px 18px",
+                  borderRadius:C.rs,
+                  background:C.green,
+                  border:"none",
+                  color:"#fff",
+                  fontSize:15,
+                  fontWeight:700,
+                  fontFamily:F.body,
+                  cursor:"pointer",
+                  marginBottom:16,
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  gap:10,
+                  boxShadow:"0 2px 8px rgba(45,106,79,.25)",
+                }}
+              >
+                <span style={{fontSize:18,lineHeight:1}}>🌿</span>
+                <span>Start your walk</span>
+                <span style={{opacity:.8}}>→</span>
+              </button>
+            )}
 
             {/* Info boxes — what a farmer reads first */}
             <div className="bento" style={{gap:10}}>
@@ -718,6 +749,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
       </div>
       {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)} setPage={setPage}/>}
       {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
+      {walkOpen && <WalkOverlay tasks={tasks} data={data} setData={setData} onClose={()=>setWalkOpen(false)}/>}
     </div>
   );
 }
