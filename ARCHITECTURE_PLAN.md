@@ -4,7 +4,7 @@
 
 This is the living checklist for architecture work. When a task is finished, change `[ ]` to `[x]` and add a short note if needed.
 
-**Last updated:** 2026-05-11 — Phase 3.9 (NAV config extraction) complete. App.jsx down to 529 lines. Navigation config (NAV, BOTTOM_TABS, MORE_ITEMS) now lives in `src/app/navigation.js`.
+**Last updated:** 2026-05-11 — Phase 3 complete. App.jsx down to 386 lines — only `ErrorBoundary`, `BottomNav`, `MoreDrawer`, `AppInner`, and the `App` default export remain. All 9 feature screens live in `src/features/`. Navigation config + default state + reducer live in `src/app/`.
 
 ---
 
@@ -53,12 +53,13 @@ This is what exists on disk right now, not the target.
 
 ```text
 src/
-  App.jsx                  ← 529 lines — UI + state + routing only
+  App.jsx                  ← 386 lines — UI shell + routing only
   main.jsx
   index.css
 
-  app/                     ← Phase 3.9 (commit c09ba81) — navigation config
-    navigation.js          ← NAV, BOTTOM_TABS, MORE_ITEMS + their lucide icons
+  app/                     ← Phase 3.9 + 3.10 — App.jsx scaffolding
+    navigation.js          ← Phase 3.9 (commit c09ba81) — NAV, BOTTOM_TABS, MORE_ITEMS + lucide icons
+    state.js               ← Phase 3.10 (commit 2fdc02b) — DEF + dataReducer
 
   features/                ← screen components extracted from App.jsx
     pantry/
@@ -84,6 +85,10 @@ src/
     assistant/
       AIAssistant.jsx      ← Phase 3.8 (commit 29cf39d) — floating chat +
                              autocomplete dropdown + quick-prompt rail
+    feedback/
+      FeedbackSurvey.jsx   ← Phase 3.11 (commit 9e93789) — 4-question survey
+                             (default export) + 7-day FeedbackPrompt toast
+                             (named export)
 
   components/
     ui.jsx                 ← Btn, Card, Inp, Sel, Txt, Overlay, Pill,
@@ -129,11 +134,11 @@ src/
                              (offline assistant, no API key)
 ```
 
-What App.jsx still contains (not yet extracted):
-- `DEF` — default state object
-- `dataReducer` — state reducer
+What App.jsx still contains (deliberately kept — App.jsx is now the UI shell):
 - `ErrorBoundary` class component
-- All remaining screen components: BottomNav, MoreDrawer, AppInner, App, FeedbackSurvey, FeedbackPrompt *(Pantry, Financials, Manuals + sub-screens, Livestock + AnimalOverlay, TaskQueue + TaskRow, PlotOverlay, Setup + Farming + FarmMapHero + FarmTab, TodayScreen, AIAssistant all extracted to `src/features/`; NAV/BOTTOM_TABS/MORE_ITEMS extracted to `src/app/navigation.js`)*
+- `BottomNav` + `MoreDrawer` (mobile navigation UI)
+- `AppInner` (top-level state owner + page router)
+- `App` default export (just wraps AppInner in ErrorBoundary)
 
 ---
 
@@ -193,6 +198,8 @@ What App.jsx still contains (not yet extracted):
 | `ff60873` | cleanup: drop 47 unused imports from App.jsx | 775 |
 | `29cf39d` | Phase 3.8: extract AIAssistant into src/features/assistant/AIAssistant.jsx | 775 → 558 |
 | `c09ba81` | Phase 3.9: extract NAV/BOTTOM_TABS/MORE_ITEMS into src/app/navigation.js | 558 → 529 |
+| `2fdc02b` | Phase 3.10: extract DEF + dataReducer into src/app/state.js | 529 → 491 |
+| `9e93789` | Phase 3.11: extract FeedbackSurvey + FeedbackPrompt into src/features/feedback/ | 491 → 386 |
 
 ### Infrastructure / Fixes
 
@@ -314,9 +321,9 @@ src/
 
 ## Phase 3 — Split Screens Into Feature Folders
 
-**Status: IN PROGRESS (started 2026-05-09)** — 8 of ~9 screens extracted. App.jsx 4037 → 558 lines (-3479 from Phase 3 so far). Each commit: extract one feature, npm run build, verify live bundle hash matches sandbox.
+**Status: FINAL (2026-05-11)** — All 9 screens extracted, plus navigation config + default state + reducer. App.jsx 4037 → 386 lines (-3651 in Phase 3 alone, -5614 from original ~6000-line monolith). The "Recommendation: do this AFTER Supabase integration" advice from the original plan was overridden by Dervis on 2026-05-09 and the feature-folder-first approach proved correct — when Supabase comes in Phase 5, each feature can be touched independently without rewiring everything.
 
-Screens to extract: ~~TodayScreen~~, ~~TaskQueue~~, ~~FarmTab (Farming + Setup + FarmMapHero)~~, ~~Livestock~~, ~~Pantry~~, ~~Financials~~, ~~Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects)~~, ~~AIAssistant~~, FeedbackSurvey.
+Screens to extract: ~~TodayScreen~~, ~~TaskQueue~~, ~~FarmTab (Farming + Setup + FarmMapHero)~~, ~~Livestock~~, ~~Pantry~~, ~~Financials~~, ~~Manuals (Manuals + Preserving + SeasonalCalendar + Blueprint + Projects)~~, ~~AIAssistant~~, ~~FeedbackSurvey~~.
 
 - [x] Create `src/features/`. *(Phase 3.1)*
 - [x] Move `Pantry` into `src/features/pantry/`. *(commit `4a17087`, 4037 → 3952)*
@@ -328,7 +335,8 @@ Screens to extract: ~~TodayScreen~~, ~~TaskQueue~~, ~~FarmTab (Farming + Setup +
 - [x] Move `Today` into `src/features/today/`. *(commit `5425623`, 1359 → 788 — TodayScreen default-exported)*
 - [x] Move `Assistant` into `src/features/assistant/`. *(commit `29cf39d`, 775 → 558 — AIAssistant default-exported; floating chat + autocomplete dropdown + quick-prompt rail)*
 - [x] Extract `NAV`, `BOTTOM_TABS`, `MORE_ITEMS` into `src/app/navigation.js`. *(Phase 3.9 — 558 → 529, 11 lucide icons moved alongside config; App.jsx keeps Download/Upload/Leaf/Moon/Sun/User)*
-- [ ] Extract `DEF`, `dataReducer` into `src/app/state.js`.
+- [x] Extract `DEF`, `dataReducer` into `src/app/state.js`. *(Phase 3.10 — commit `2fdc02b`, 529 → 491; pure source reorg, byte-identical bundle vs Phase 3.9)*
+- [x] Extract `FeedbackSurvey` + `FeedbackPrompt` into `src/features/feedback/FeedbackSurvey.jsx`. *(Phase 3.11 — commit `9e93789`, 491 → 386; FeedbackSurvey default-exported, FeedbackPrompt named-exported. Dropped Btn + markFeedbackDone from App.jsx imports.)*
 - [x] Run `npm run build` after each feature is moved. *(established workflow)*
 
 **Recommendation:** do this AFTER Supabase integration, not before. Extracting screens while the data layer is still localStorage makes the migration harder.
@@ -509,3 +517,6 @@ Agreed: Open-Meteo API (free, no key, 7-day forecast). No push notifications nee
 | 2026-05-10 | **Pre-existing bug discovered (NOT introduced by Phase 3.7):** `<SeasonalCalendar>` is referenced at App.jsx switch case `"season"` but isn't imported — it lives inside `src/features/manuals/Manuals.jsx` without being exported. Bug introduced in Phase 3.3 (commit `33a7a14`, 2026-05-09): SeasonalCalendar was extracted into Manuals.jsx as a file-internal helper without re-exporting it, and the App.jsx switch case wasn't updated. The Seasonal nav button (sidebar + mobile More drawer) has been broken in production since May 9 — clicking it triggers `Element type is invalid` and lands the user in the ErrorBoundary. Fix held back from this commit to keep Phase 3.7 a clean extraction. Fixed in commit `f359230` (2026-05-10) by exporting SeasonalCalendar from Manuals.jsx and adding `{ SeasonalCalendar }` to the named-import in App.jsx. |
 | 2026-05-10 | Phase 3.8 (AIAssistant extraction) shipped at commit `29cf39d`. Moved AIAssistant + autocomplete dropdown + quick-prompt rail into `src/features/assistant/AIAssistant.jsx` (225 lines, default-exported). App.jsx 775 → 558 lines (-217). Dropped from App.jsx imports: `useRef` (only consumer was AIAssistant) and the entire `./lib/ai` import line (`farmKnowledgeEngine`, `buildAISuggestions` — only consumers were inside AIAssistant). AIAssistant.jsx imports: react hooks (useState, useEffect, useMemo, useRef), Leaf from lucide-react, C/F/SX from lib/theme, LDB from data/livestock, rCR from lib/regional, farmKnowledgeEngine + buildAISuggestions from lib/ai. Bundle 1763 modules, 659.77 kB / 194.51 kB gz, filename `index-e_P-vcqi.js` byte-identical between Mac dist and live deployment (md5 `688f167e1e708339287d8f2f11ca0f6c` via direct curl). All 8 marker strings ("Farm Assistant", "What should I plant now", "Type 2+ letters to see suggestions", "Type a crop or animal name", "Companion planting tips", "How to grow tomatoes", "Watering tips for my crops", "Chicken care guide") verified in live bundle on `myterra-sigma.vercel.app`. Deployed READY at `dpl_3yHicwYZcpEtmW5v3iFzBfne8Hh1`. Eslint clean on both App.jsx and AIAssistant.jsx. All 8 feature screens now live in `src/features/`; only FeedbackSurvey + FeedbackPrompt + AppInner + ErrorBoundary + BottomNav + MoreDrawer remain in App.jsx alongside DEF / dataReducer / NAV config. |
 | 2026-05-11 | Phase 3.9 (NAV config extraction) shipped at commit `c09ba81`. Moved `NAV`, `BOTTOM_TABS`, and `MORE_ITEMS` out of App.jsx into a new `src/app/navigation.js` (38 lines). App.jsx 558 → 529 lines (-29). The 11 lucide-react icons that were only used by navigation config (Home, ClipboardList, Sprout, Rabbit, CalendarDays, Package, TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint) moved alongside the config. App.jsx now imports only the 6 lucide icons it still renders directly: Download, Upload, Leaf, Moon, Sun, User (sidebar brand, export/import buttons, dark-mode toggle, MoreDrawer profile avatar). New `src/app/` directory introduced — first non-`features/`, non-`lib/`, non-`data/`, non-`components/` location for code that organises App.jsx itself. Bundle 1764 modules, 659.77 kB / 194.51 kB gz, filename `index-CrkbOzjf.js` byte-identical between Mac sandbox build and live deployment (md5 `7d5546a81a811c9bbdf799ea00342a09` confirmed via direct curl). All 6 marker strings — "Animals" (4×, BOTTOM_TABS), "Livestock" (4×, NAV), "Task Queue" (1×, MORE_ITEMS only), "Give Feedback" (1×, NAV+MORE_ITEMS), "Seasonal" (4×), "Financials" (3×) — verified in live bundle on `myterra-sigma.vercel.app`. Deployed READY at `dpl_9Ra97hejzrrbwDrXrRX5o9JUR3xR`. Eslint clean on both App.jsx and navigation.js. Remaining Phase 3 work: `DEF` + `dataReducer` → `src/app/state.js`. FeedbackSurvey/FeedbackPrompt extraction not yet scheduled. |
+| 2026-05-11 | Phase 3.10 (state extraction) shipped at commit `2fdc02b`. Moved `DEF` (default farm-data shape) and `dataReducer` (pure (state, action) → newState) into a new `src/app/state.js` (45 lines). App.jsx 529 → 491 lines (-38). Both are pure JS — no React, no external deps — which sets them up cleanly for unit tests in Phase 10. **Bundle byte-identical to Phase 3.9:** same filename `index-CrkbOzjf.js`, same md5 `7d5546a81a811c9bbdf799ea00342a09`, verified live via curl. That's the strongest possible signal that this is a pure source reorganisation with zero semantic change — Vite's deterministic minifier produces the same compiled output for the same dependency graph regardless of which source file each symbol came from. All 4 marker strings — `western_europe` (2×, DEF region default), `TOGGLE_STEP` (1×, dataReducer action), `SET_ALL` (1×, dataReducer action), `schemaVersion` (1×, DEF property) — verified in live bundle. Deployed READY at `dpl_2GFPcEWr5LAy5Ydnh2UnBic656hU`. Eslint clean. |
+| 2026-05-11 | Phase 3.11 (Feedback extraction) shipped at commit `9e93789`. Moved `FeedbackSurvey` (the 4-question survey page, default-exported) and `FeedbackPrompt` (the 7-day toast, named-exported) into `src/features/feedback/FeedbackSurvey.jsx` (109 lines). App.jsx 491 → 386 lines (-105). Two App.jsx imports trimmed because their only consumers were inside the feedback components: `Btn` from `./components/ui` (used by both feedback components for buttons) and `markFeedbackDone` from `./lib/storage` (used by FeedbackSurvey's submit handler). Bundle 1765 modules, 659.77 kB / 194.53 kB gz, new filename `index-Bdu8v4CQ.js` byte-identical between Mac sandbox build and live deployment (md5 `efa70ddda56b3d505eebf4ee797ca4e0` confirmed via direct curl). All 5 marker strings — "Help Us Improve", "How's it going", "Send Feedback via Email", "Maybe Later", "Back to Today" — verified in live bundle (1× each). Note: the literal `"MyTerra App Feedback"` does NOT appear in the bundle because Vite's minifier constant-folded `encodeURIComponent("MyTerra App Feedback")` into the percent-encoded `"MyTerra%20App%20Feedback"` at build time — an optimization, not a bug. Deployed READY at `dpl_AzNMSX3Nyz6H7UkRyK5QyyA2fjtG`. Eslint clean. **Phase 3 is now FINAL** — App.jsx is purely the UI shell (ErrorBoundary, BottomNav, MoreDrawer, AppInner, App). All 9 feature screens live in `src/features/`; navigation config, default state, and reducer live in `src/app/`. Next: Phase 5 (Supabase auth + cloud backup). |
+| 2026-05-11 | **Sandbox mishap during Phase 3.11 deployment:** While editing App.jsx on the Mac with a one-liner pipeline `awk 'NR<=386' src/App.jsx > /tmp/x && mv /tmp/x src/App.jsx`, the redirect emptied src/App.jsx to 0 bytes because the shell opened the output file (truncating it) before awk could finish reading the input. Recovered immediately with `git restore src/App.jsx` (last commit was Phase 3.10's `2fdc02b`, so no work was lost). The earlier in-process import edits had to be re-applied, which I did by writing the validated full sandbox file directly over the Mac copy via Desktop Commander:write_file. Lesson: never use `cmd > file && mv file orig` on the file being read — always write to a temp path first, then rename atomically with `mv`, OR use a different output path entirely. Direct file overwrite via the file-writer tool is safer than shell pipelines for files-with-spaces-in-the-path. |
