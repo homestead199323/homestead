@@ -206,6 +206,27 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stops, stepIdx]);
 
+  // Plot icons — visible crops inside zones for game-like feel. One icon
+  // per active (non-harvested) plot at the plot's center within its zone.
+  const plotIcons = useMemo(function() {
+    const cropMap = rCM(data.region);
+    const out = [];
+    ((data.garden && data.garden.plots) || []).forEach(function(p) {
+      if (p.status === "harvested") return;
+      const crop = cropMap.get(p.crop);
+      if (!crop) return;
+      out.push({
+        id: p.id,
+        zoneId: p.zone,
+        emoji: crop.emoji || "🌱",
+        px: typeof p.px === "number" ? p.px : 50,
+        py: typeof p.py === "number" ? p.py : 50,
+      });
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reset the quick-log input each time the active task changes.
   useEffect(function() {
     setLogVal(defaultLogValue(task, data));
@@ -291,23 +312,25 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 1000,
+      position: "fixed", inset: 0, zIndex: 9999,
+      width: "100vw", height: "100dvh",
       background: "linear-gradient(180deg, #1a3d2e 0%, #0f2418 100%)",
       display: "flex", flexDirection: "column",
       color: "#fff",
       fontFamily: F.body,
+      overflow: "hidden",
     }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.7)", letterSpacing: ".02em" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,.08)", flex: "0 0 auto" }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.7)", letterSpacing: ".02em" }}>
           {phase === "walking" ? ("Walk · " + (stepIdx + 1) + " of " + total) : "Walk complete"}
         </div>
-        <button onClick={onClose} aria-label="Close walk" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,.6)", fontSize: 24, cursor: "pointer", padding: 4, lineHeight: 1, width: 32, height: 32 }}>×</button>
+        <button onClick={onClose} aria-label="Close walk" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,.6)", fontSize: 22, cursor: "pointer", padding: 4, lineHeight: 1, width: 30, height: 30 }}>×</button>
       </div>
 
       {/* Progress bar */}
       {phase === "walking" && (
-        <div style={{ height: 3, background: "rgba(255,255,255,.08)" }}>
+        <div style={{ height: 3, background: "rgba(255,255,255,.08)", flex: "0 0 auto" }}>
           <div style={{
             height: "100%",
             width: (total === 0 ? 0 : (stepIdx / total) * 100) + "%",
@@ -319,32 +342,38 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
 
       {/* Walking phase */}
       {phase === "walking" && task && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {/* Map */}
-          <div style={{ padding: "14px 14px 6px" }}>
-            <WalkMap
-              stops={stops}
-              currentStopIdx={currentStopIdx}
-              completedStopKeys={completedStopKeys}
-              zones={data.zones || []}
-              farmW={data.farmW || 100}
-              farmH={data.farmH || 60}
-            />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, padding: "0 4px" }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,.6)", fontWeight: 600 }}>📍 {stopHeader}</div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+          {/* Map fills available height */}
+          <div style={{ flex: 1, padding: "10px 12px 4px", display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+              <WalkMap
+                stops={stops}
+                currentStopIdx={currentStopIdx}
+                completedStopKeys={completedStopKeys}
+                zones={data.zones || []}
+                plotIcons={plotIcons}
+                farmW={data.farmW || 100}
+                farmH={data.farmH || 60}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 4px 0", flex: "0 0 auto" }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>📍 {stopHeader}</div>
               {stopBadge && <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", letterSpacing: ".05em" }}>{stopBadge}</div>}
             </div>
           </div>
 
-          {/* Task card */}
+          {/* Compact task panel docked at bottom */}
           <div
             onTouchStart={needsInput ? undefined : swipe.bind.onTouchStart}
             onTouchMove={needsInput ? undefined : swipe.bind.onTouchMove}
             onTouchEnd={needsInput ? undefined : swipe.bind.onTouchEnd}
             style={{
-              flex: 1,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              padding: "8px 20px 4px",
+              flex: "0 0 auto",
+              padding: "12px 16px calc(14px + env(safe-area-inset-bottom))",
+              background: "rgba(8, 22, 14, 0.92)",
+              borderTop: "1px solid rgba(255,255,255,.10)",
+              boxShadow: "0 -4px 20px rgba(0,0,0,.3)",
+              display: "flex", flexDirection: "column", gap: 10,
               transform: cardTransform,
               opacity: cardOpacity,
               transition: swipe.dragging ? "none" : "transform 0.18s ease, opacity 0.18s ease",
@@ -352,67 +381,58 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
               userSelect: "none",
             }}
           >
-            <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 12 }}>{task.emoji || "🌱"}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: F.head, textAlign: "center", marginBottom: 6, maxWidth: 340, lineHeight: 1.2, padding: "0 8px" }}>
-              {task.title}
-            </div>
-            {task.desc && (
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,.55)", marginBottom: 10, textAlign: "center", maxWidth: 320, lineHeight: 1.4 }}>
-                {task.desc}
+            {/* Title row: emoji + (title / description) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: 34, lineHeight: 1, flex: "0 0 auto" }}>{task.emoji || "🌱"}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, fontFamily: F.head, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {task.title}
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,.55)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {task.desc || typeLabel}
+                </div>
               </div>
-            )}
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 12 }}>
-              {typeLabel}
             </div>
 
-            {/* Quick-log input */}
-            {needsInput && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, background: "rgba(255,255,255,.06)", padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,.12)" }}>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step={task.type === "eggs" ? "1" : "0.1"}
-                  value={logVal == null ? "" : logVal}
-                  onChange={function(e) {
-                    const v = e.target.value;
-                    setLogVal(v === "" ? "" : Number(v));
-                  }}
-                  style={{
-                    width: 80,
-                    background: "transparent",
-                    border: "none",
-                    color: "#fff",
-                    fontSize: 24,
-                    fontWeight: 700,
-                    textAlign: "right",
-                    outline: "none",
-                    fontFamily: F.head,
-                  }}
-                />
-                <div style={{ fontSize: 14, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>{inputUnit}</div>
-              </div>
-            )}
-            {needsInput && (
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 4 }}>{inputHelp}</div>
-            )}
-          </div>
-
-          {/* Action area */}
-          <div style={{ padding: "10px 20px 22px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-            {!needsInput && (
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", letterSpacing: ".05em" }}>
-                swipe up to complete
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 360 }}>
+            {/* Input + buttons row */}
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              {needsInput && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.06)", padding: "0 10px", borderRadius: 12, border: "1px solid rgba(255,255,255,.15)", flex: "0 0 auto" }}>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step={task.type === "eggs" ? "1" : "0.1"}
+                    value={logVal == null ? "" : logVal}
+                    onChange={function(e) {
+                      const v = e.target.value;
+                      setLogVal(v === "" ? "" : Number(v));
+                    }}
+                    style={{
+                      width: 52,
+                      background: "transparent",
+                      border: "none",
+                      color: "#fff",
+                      fontSize: 18,
+                      fontWeight: 700,
+                      textAlign: "center",
+                      outline: "none",
+                      fontFamily: F.head,
+                      padding: "10px 0",
+                    }}
+                  />
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>{inputUnit}</div>
+                </div>
+              )}
               <button onClick={skipCurrent} style={{
-                flex: 1, padding: "13px 18px", borderRadius: 14,
+                flex: needsInput ? 1 : 1,
+                padding: "11px 14px", borderRadius: 12,
                 background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)",
                 color: "rgba(255,255,255,.85)", fontSize: 14, fontWeight: 600, cursor: "pointer",
               }}>Skip</button>
               <button onClick={completeCurrent} style={{
-                flex: 2, padding: "13px 18px", borderRadius: 14,
+                flex: needsInput ? 2 : 2,
+                padding: "11px 14px", borderRadius: 12,
                 background: "#7fc97f", border: "none",
                 color: "#0f2418", fontSize: 14, fontWeight: 700, cursor: "pointer",
                 boxShadow: "0 2px 10px rgba(127,201,127,.25)",
