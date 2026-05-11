@@ -63,7 +63,7 @@ The current `@media (width <= 700px)` block contains 3 rules. This is the single
 - [x] **4.1 Today replaces Dashboard.** `function Dashboard` → `TodayScreen`; NAV "Home"→"Today"; routing updated; "Back to Today" in FeedbackSurvey.
 - [x] **4.2 Calm-default greeting.** Urgent highlight changed red→orange; copy: "a quiet day 🌿" / "N need attention" / "on your walk today". Background gradient also softened.
 - [x] **4.3 Farm map promoted to hero on Farm tab.** `FarmMapHero` component — full-width zone map with crop patches, grid overlay, legend, empty-state CTA.
-- [x] **4.4 Module consolidation.** `FarmTab` wrapper with Map/Crops/Layout segmented control. `setup` removed from NAV + MORE_ITEMS; "Farming"→"Farm" in NAV. "Edit Map" in TodayScreen routes to `farm?tab=setup`.
+- [x] **4.4 Module consolidation.** `FarmTab` wrapper with Map/Crops/Layout segmented control. `setup` removed from NAV + MORE_ITEMS; "Farming"→"Farm" in NAV. "Edit Map" in TodayScreen routes to `farm?tab=setup`. **Known issue:** mobile `BOTTOM_TABS` says "Animals" while desktop `NAV` still says "Livestock" (`src/app/navigation.js` lines 16 + 27) — same screen, two names. Phase 6.3.1 will reconcile.
 - [x] **4.5 Manuals integrated into context.** "📖 Need help growing X? See the Manuals →" button in PlotOverlay (closes overlay, navigates to Manuals). Available wherever `setPage` is in scope.
 - [x] **4.6 Settings out of the way.** Profile avatar section added at top of MoreDrawer (`User` icon in Lucide import; "My Farm / Free plan" label).
 
@@ -73,10 +73,10 @@ The current `@media (width <= 700px)` block contains 3 rules. This is the single
 This screen is 80% of why someone keeps using MyTerra.
 
 - [ ] **5.1 Hero block.** Greeting + date + weather snippet ("Cool and cloudy in London — good for transplanting"). Wire OpenWeather API.
-- [ ] **5.2 Streak module.** Hero size, Duolingo-flame energy. Current streak number + week-strip showing last 7 days. Streak Freeze earned weekly to forgive one missed day.
-- [ ] **5.3 Three rings.** Apple Fitness pattern. Tasks done / Plants growing / Pantry stocked. Tap a ring → drill in.
+- [~] **5.2 Streak module.** Small streak stat exists (TodayScreen.jsx lines 168-170, shows `g.streak` with 🔥 at 7+ days). Still owed: hero sizing, Duolingo-flame energy, week-strip showing last 7 days, Streak Freeze mechanic to forgive one missed day per week.
+- [x] **5.3 Three rings.** Apple Fitness pattern. Tasks done / Plants growing / Harvest readiness. Three nested rings shipped at TodayScreen.jsx lines 154-156. Rings themselves not tappable; cards directly below them are (drill-in works via card onClick). Third ring diverged from original plan ("Pantry stocked" → "Harvest readiness") — kept as shipped, harvest readiness is the more useful daily signal.
 - [ ] **5.4 "Start your walk" CTA.** Single primary button. Launches guided sequence — one task per screen, swipe-up to complete, soft chime, end-of-walk summary card.
-- [ ] **5.5 Recent activity feed.** "Yesterday you harvested 4kg mint — preserve some?" with one-tap shortcut to the right Pantry workflow.
+- [~] **5.5 Recent activity feed.** Plain log feed exists (TodayScreen.jsx line 541, shows last 5 entries from `data.log`). Still owed: contextual CTAs like "Yesterday you harvested 4kg mint — preserve some?" with one-tap shortcut to the right Pantry workflow.
 - [ ] **5.6 Glanceable secondary tiles.** Bento-grid below the hero — mixed sizes, not equal-width KPI row.
 
 ## Phase 6 — Module-by-module fixes
@@ -168,7 +168,7 @@ This screen is 80% of why someone keeps using MyTerra.
 | 1 | Phase 1 (tokenize, type, components) + Phase 3.1–3.2 (Lucide+Twemoji swap) | ✅ Done |
 | 2 | Phase 2 (mobile breakpoints + bottom-tab nav + stack layouts) | ✅ Done (2.5 + 2.8 deferred) |
 | 3 | Phase 3.3–3.5 (dark mode, icon swap pass, pill consolidation) | ✅ Done |
-| 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) | ✅ Phase 4 done |
+| 4 | Phase 4 + Phase 5 (IA rethink + Today screen redesign) | ✅ Phase 4 done; Phase 5 partial — 5.3 done, 5.2 + 5.5 partial, 5.1 + 5.4 + 5.6 not started |
 | 5 | Phase 6 (module-by-module fixes) | not started |
 | 6 | Phase 8 (motion polish) | not started |
 | 7 | Phase 7 + Phase 9 + Phase 10 (onboarding + microcopy + a11y) | not started |
@@ -180,6 +180,14 @@ Phases run roughly sequentially — but tokens (1.1) MUST be done first. Mobile 
 ## Where this plan ends
 
 When all checkboxes above are ticked, MyTerra is ready for the *next* big plan — the native-shipping plan (Capacitor wrapper, App Store, monetization). That plan is parked. Don't touch it until this one is mostly green.
+
+## Cleanup backlog
+
+Surfaced during the 2026-05-11 sync pass and knocked out before Phase 5 work resumed.
+
+- [x] **Delete `src/App.jsx.backup`.** 239 KB stale snapshot, git-tracked. Residue from the Phase 3.11 sandbox mishap noted in ARCHITECTURE_PLAN's decision log (2026-05-11 entry). Removed via `git rm`.
+- [x] **Add `output/` and `.playwright-cli/` to `.gitignore`.** Both were untracked Playwright debug artifact dirs (2.2 MB + 216 KB) at repo root. Added under a new "Playwright local artifacts" comment block.
+- [x] **Retire `PROGRESS.md`.** Last updated 2026-03-31, still said "Mediterranean/Albanian agriculture focus is non-negotiable" — directly contradicted the 2026-05-05 Western Europe pivot recorded in ARCHITECTURE_PLAN. Removed via `git rm`. Launch/business tracking is parked until we're closer to a real ship date.
 
 ## Decision log
 
@@ -203,3 +211,4 @@ When all checkboxes above are ticked, MyTerra is ready for the *next* big plan �
 | 2026-05-07 | `setup` route removed from top-level routing — now lives as "Layout" subtab inside FarmTab. `setPage("farm", {tab:"setup"})` bridges old callers. |
 | 2026-05-07 | `setPage` made optional in PlotOverlay — callers without setPage (Farming subtab) silently skip the manual link CTA. No cascading prop drilling needed. |
 | 2026-05-07 | `FarmMapHero` zone-render logic is a deliberate duplication from TodayScreen mini-map — acceptable until shared component refactor in Phase 6+. |
+| 2026-05-11 | Sync pass against shipped code. **5.3 flipped to done** — three nested rings already shipped at TodayScreen.jsx 154-156; third ring is "Harvest readiness" rather than "Pantry stocked" — kept as shipped, harvest readiness is the more useful daily signal. **5.2 + 5.5 reclassified as partial** — small streak stat and plain log feed exist on Today, but neither matches the full plan (no hero streak, no Streak Freeze, no contextual activity CTAs). **4.4 annotated** with the BOTTOM_TABS "Animals" / NAV "Livestock" name inconsistency — same screen, two labels — to be reconciled in 6.3.1. Cleanup backlog added (App.jsx.backup, gitignore, PROGRESS.md). |

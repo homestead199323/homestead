@@ -27,3 +27,7 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Playwright local artifacts (screenshots, console logs)
+output/
+.playwright-cli/
