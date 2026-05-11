@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { C, F, SX } from "../../lib/theme";
-import { Card } from "../../components/ui";
+import { Card, SwipeableRow } from "../../components/ui";
 import PlotOverlay from "../farm/PlotOverlay";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../../data/livestock";
@@ -20,39 +20,48 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
     ? (t.daysOut === 0 ? "Today" : t.dueDate.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))
     : (t.daysOut === 0 ? "Today" : t.daysOut > 0 ? `In ${t.daysOut}d` : null);
   const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
+  // Pick the swipe-right action based on task type — step tasks toggle the
+  // step, regular tasks mark done. Steps/upcoming/forecast/harvest with no
+  // applicable action get no swipe (undefined disables that direction).
+  const swipeRightAction = (t.stepIdx != null && onToggleStep)
+    ? function() { onToggleStep(t.plotId, t.stepIdx); }
+    : (canMarkDone && onMarkDone)
+    ? function() { onMarkDone(t.key); }
+    : undefined;
   return (
-    <div
-      onClick={clickable && onOpen ? onOpen : undefined}
-      style={{
-        display:"flex",alignItems:"center",gap:12,
-        padding:"12px 14px",
-        background:bg,borderRadius:C.rs,
-        marginBottom:6,
-        borderLeft:`4px solid ${borderC}`,
-        cursor:clickable && onOpen ? "pointer" : "default",
-        transition:"all .15s",
-      }}
-    >
-      <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{t.emoji}</span>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4}}>{t.title}</div>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
-          <span>📍 {t.loc}</span>
-          {dateLabel && <span style={{color:t.daysOut === 0 ? C.red : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
+    <SwipeableRow onSwipeRight={swipeRightAction} style={{marginBottom:6,borderRadius:C.rs}}>
+      <div
+        onClick={clickable && onOpen ? onOpen : undefined}
+        style={{
+          display:"flex",alignItems:"center",gap:12,
+          padding:"12px 14px",
+          background:bg,borderRadius:C.rs,
+          borderLeft:`4px solid ${borderC}`,
+          cursor:clickable && onOpen ? "pointer" : "default",
+          transition:"all .15s",
+        }}
+      >
+        <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{t.emoji}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4}}>{t.title}</div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
+            <span>📍 {t.loc}</span>
+            {dateLabel && <span style={{color:t.daysOut === 0 ? C.red : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+          {t.stepIdx != null && onToggleStep && (
+            <button onClick={()=>onToggleStep(t.plotId, t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
+          )}
+          {canMarkDone && onMarkDone && (
+            <button onClick={()=>onMarkDone(t.key)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
+          )}
+          {t.type === "harvest" && onGoToFarm && (
+            <button onClick={onGoToFarm} style={{background:C.orange,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🧺 Harvest</button>
+          )}
         </div>
       </div>
-      <div style={{display:"flex",gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
-        {t.stepIdx != null && onToggleStep && (
-          <button onClick={()=>onToggleStep(t.plotId, t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
-        )}
-        {canMarkDone && onMarkDone && (
-          <button onClick={()=>onMarkDone(t.key)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
-        )}
-        {t.type === "harvest" && onGoToFarm && (
-          <button onClick={onGoToFarm} style={{background:C.orange,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🧺 Harvest</button>
-        )}
-      </div>
-    </div>
+    </SwipeableRow>
   );
 });
 

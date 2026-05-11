@@ -7,7 +7,7 @@ import { BADGES } from "../../data/badges";
 import { todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
 import { buildZoneSpaceMap } from "../../lib/farm-calc";
-import { Card, Pill, Tooltip, Ring } from "../../components/ui";
+import { Card, Pill, Tooltip, Ring, SwipeableRow } from "../../components/ui";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import PlotOverlay from "../farm/PlotOverlay";
 
@@ -268,8 +268,17 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               const isActive = t.zoneId === activeZone;
               const canOpen = !!(t.plotId || t.animalId);
               const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
+              // Pick swipe-right action — step toggles its done state, regular
+              // tasks call markTaskDone. Harvest/upcoming/forecast tasks (and
+              // those with no key) get no swipe.
+              const swipeRightAction = (t.stepIdx != null && t.plotId)
+                ? function() { togStep(t.plotId, t.stepIdx); }
+                : (canMarkDone && t.key)
+                ? function() { setData(markTaskDone(data, t.key)); }
+                : undefined;
               return (
-                <div key={t.key || i}
+                <SwipeableRow key={t.key || i} onSwipeRight={swipeRightAction} style={{marginBottom:4,borderRadius:12}}>
+                <div
                   onClick={() => {
                     if (t.zoneId) setSelZone(t.zoneId);
                     if (t.plotId) setOpenPlotId(t.plotId);
@@ -277,7 +286,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                   }}
                   style={{
                     display:"grid",gridTemplateColumns:"auto 1fr auto",gap:10,alignItems:"center",
-                    padding:"10px 12px",marginBottom:4,
+                    padding:"10px 12px",
                     border:`1px solid ${isActive ? C.gm : C.bdr}`,
                     borderRadius:12,background:isActive ? C.soft : C.raised,
                     cursor: canOpen ? "pointer" : (t.zoneId?"pointer":"default"),
@@ -297,6 +306,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                     </Pill>
                   </div>
                 </div>
+                </SwipeableRow>
               );
             })}
           </div>

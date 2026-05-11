@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { C, F, SX } from "../lib/theme";
 import { localDateFromKey, addDaysToLocalKey } from "../lib/utils";
+import { useSwipe } from "../lib/use-swipe";
 
 /* ═══════════════════════════════════════════
    UI COMPONENTS
@@ -144,4 +145,118 @@ export const WaterCard = React.memo(function WaterCard({waterNote}) {
 export const StorageCard = React.memo(function StorageCard({storage}) {
   if (!storage) return null;
   return <Card style={{marginBottom:12,background:"#fffde7"}}><div style={{fontSize:12,fontWeight:700,color:"#f57f17"}}>📦 Storage</div><div style={SX.s13mt4}>{storage}</div></Card>;
+});
+
+/* ═══════════════════════════════════════════
+   SwipeableRow — touch swipe wrapper for list rows
+
+   Wraps any row content. On touch devices, horizontal swipes reveal
+   an action and (past threshold) commit it. Desktop is unaffected —
+   mouse interactions on the children keep working as normal.
+
+   Props:
+     onSwipeRight        callback for swipe-right (e.g. mark done)
+     onSwipeLeft         callback for swipe-left (e.g. delete)
+     rightActionLabel    label shown in the right-reveal background (default "✓ Done")
+     rightActionBg       background color of the right reveal (default sage green)
+     leftActionLabel     label shown in the left-reveal background (default "🗑 Delete")
+     leftActionBg        background color of the left reveal (default red)
+     disabled            if true, behaves like a passthrough wrapper
+     style               passed through to the outer container
+
+   Pass only the handler(s) you need. A missing handler disables that direction.
+   ═══════════════════════════════════════════ */
+export const SwipeableRow = React.memo(function SwipeableRow({
+  children,
+  onSwipeRight,
+  onSwipeLeft,
+  rightActionLabel,
+  rightActionBg = "#34c759",
+  leftActionLabel,
+  leftActionBg = "#ef4444",
+  disabled = false,
+  style: outerStyle,
+}) {
+  const { bind, offset, dragging, committed } = useSwipe({ onSwipeRight, onSwipeLeft, disabled });
+
+  const showingRight = offset > 4 && !!onSwipeRight;
+  const showingLeft = offset < -4 && !!onSwipeLeft;
+  const pastRight = offset >= 80;
+  const pastLeft = offset <= -80;
+
+  // Transition rules:
+  //   while dragging → no transition (track the finger exactly)
+  //   during commit → 220ms slide-off
+  //   on release without commit → 150ms snap-back
+  const tx = dragging
+    ? "transform 0ms"
+    : committed
+    ? "transform 220ms ease-out"
+    : "transform 150ms ease-out";
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: 10, ...outerStyle }}>
+      {onSwipeRight && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            paddingLeft: 18,
+            background: rightActionBg,
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 13,
+            fontFamily: F.body,
+            opacity: showingRight ? 1 : 0,
+            transform: pastRight ? "scale(1.06)" : "scale(1)",
+            transformOrigin: "left center",
+            transition: "opacity 120ms, transform 120ms",
+            pointerEvents: "none",
+          }}
+        >
+          {rightActionLabel || "✓ Done"}
+        </div>
+      )}
+      {onSwipeLeft && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            paddingRight: 18,
+            background: leftActionBg,
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 13,
+            fontFamily: F.body,
+            opacity: showingLeft ? 1 : 0,
+            transform: pastLeft ? "scale(1.06)" : "scale(1)",
+            transformOrigin: "right center",
+            transition: "opacity 120ms, transform 120ms",
+            pointerEvents: "none",
+          }}
+        >
+          {leftActionLabel || "🗑 Delete"}
+        </div>
+      )}
+      <div
+        {...bind}
+        style={{
+          position: "relative",
+          transform: `translateX(${offset}px)`,
+          transition: tx,
+          touchAction: "pan-y",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
 });

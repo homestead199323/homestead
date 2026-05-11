@@ -5,7 +5,7 @@ import { appendLog, todayLocalKey } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
 import { LDB } from "../../data/livestock";
 import { C, SX } from "../../lib/theme";
-import { Btn, Card, Inp, Sel, Overlay, Pill, Stat } from "../../components/ui";
+import { Btn, Card, Inp, Sel, Overlay, Pill, Stat, SwipeableRow } from "../../components/ui";
 
 /* ═══════════════════════════════════════════
    PANTRY
@@ -52,12 +52,14 @@ export default function Pantry({data, setData}) {
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>{cats.map(c=><button key={c} onClick={()=>setCat(c)} style={{padding:"6px 14px",borderRadius:20,border:"none",background:cat===c?C.green:C.card,color:cat===c?"#fff":C.t2,fontSize:12,fontWeight:600,cursor:"pointer",boxShadow:cat===c?"none":C.sh}}>{c}</button>)}</div>
       {fil.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={SX.emptyIcon}>📦</div><div style={SX.s15Bold}>Pantry is empty</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Harvest crops or collect produce to stock up</div></Card>:
       <div style={{display:"grid",gap:6}}>{fil.map(item=>(
-        <Card key={item.id}><div style={SX.rowCenterG10}>
+        <SwipeableRow key={item.id} onSwipeLeft={function(){del(item.id);}} leftActionLabel="🗑 Remove">
+        <Card><div style={SX.rowCenterG10}>
           <span style={SX.s20}>{itemIcon(item)}</span>
           <div style={SX.flex1}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><strong style={{fontSize:14}}>{item.name}</strong><Pill>{item.category}</Pill><span style={{fontSize:15,fontWeight:700}}>{item.qty} {item.unit}</span></div>
           {item.storageNote&&<div style={SX.t2_11mt2}>💡 {item.storageNote.slice(0,80)}</div>}</div>
           <div style={{display:"flex",gap:4}}><Btn sm v="secondary" onClick={()=>{setShowEat(item);setEatQty(item.unit==="eggs"?"1":"0.5")}}>Eat</Btn><Btn sm v="ghost" onClick={()=>del(item.id)}><Trash2 size={14} strokeWidth={1.8}/></Btn></div>
         </div></Card>
+        </SwipeableRow>
       ))}</div>}
       {/* Eat / Take Modal */}
       {showEat&&<Overlay title={`🍽 Use ${showEat.name}`} onClose={()=>setShowEat(null)}>
