@@ -1,5 +1,5 @@
 import {
-  Home, ClipboardList, Sprout, Rabbit, CalendarDays, Package,
+  Home, ClipboardList, Sprout, CalendarDays, Package,
   TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
 } from "lucide-react";
 
@@ -13,7 +13,7 @@ export const NAV = [
   {id:"home",    l:"Today",         E:Home},
   {id:"tasks",   l:"Tasks",         E:ClipboardList},
   {id:"farm",    l:"Farm",          E:Sprout},
-  {id:"live",    l:"Livestock",     E:Rabbit},
+  {id:"live",    l:"Animals",       E:PawPrint},
   {id:"season",  l:"Seasonal",      E:CalendarDays},
   {id:"pantry",  l:"Pantry",        E:Package},
   {id:"fin",     l:"Financials",    E:TrendingUp},

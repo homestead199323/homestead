@@ -63,7 +63,7 @@ The current `@media (width <= 700px)` block contains 3 rules. This is the single
 - [x] **4.1 Today replaces Dashboard.** `function Dashboard` → `TodayScreen`; NAV "Home"→"Today"; routing updated; "Back to Today" in FeedbackSurvey.
 - [x] **4.2 Calm-default greeting.** Urgent highlight changed red→orange; copy: "a quiet day 🌿" / "N need attention" / "on your walk today". Background gradient also softened.
 - [x] **4.3 Farm map promoted to hero on Farm tab.** `FarmMapHero` component — full-width zone map with crop patches, grid overlay, legend, empty-state CTA.
-- [x] **4.4 Module consolidation.** `FarmTab` wrapper with Map/Crops/Layout segmented control. `setup` removed from NAV + MORE_ITEMS; "Farming"→"Farm" in NAV. "Edit Map" in TodayScreen routes to `farm?tab=setup`. **Known issue:** mobile `BOTTOM_TABS` says "Animals" while desktop `NAV` still says "Livestock" (`src/app/navigation.js` lines 16 + 27) — same screen, two names. Phase 6.3.1 will reconcile.
+- [x] **4.4 Module consolidation.** `FarmTab` wrapper with Map/Crops/Layout segmented control. `setup` removed from NAV + MORE_ITEMS; "Farming"→"Farm" in NAV. "Edit Map" in TodayScreen routes to `farm?tab=setup`. *Mobile/desktop "Livestock" vs "Animals" mismatch resolved 2026-05-11 by pulling 6.3.1 + 6.3.2 forward — both navs now show "Animals" with the `PawPrint` icon.*
 - [x] **4.5 Manuals integrated into context.** "📖 Need help growing X? See the Manuals →" button in PlotOverlay (closes overlay, navigates to Manuals). Available wherever `setPage` is in scope.
 - [x] **4.6 Settings out of the way.** Profile avatar section added at top of MoreDrawer (`User` icon in Lucide import; "My Farm / Free plan" label).
 
@@ -93,8 +93,8 @@ This screen is 80% of why someone keeps using MyTerra.
 - [ ] **6.2.4** Crop detail opens as a bottom sheet, not full-screen.
 
 ### Livestock → Animals
-- [ ] **6.3.1** Rename "Livestock" to "Animals" — friendlier for novices.
-- [ ] **6.3.2** Resolve sidebar icon mismatch (currently goat, content is chickens).
+- [x] **6.3.1** Renamed "Livestock" → "Animals" across all user-facing surfaces: desktop sidebar NAV (`src/app/navigation.js`), Animals page header (`Livestock.jsx`), Projects category color map (`Manuals.jsx`), Chicken Coop project category (`projects.js`), AI assistant output strings (`lib/ai.js`). FeedbackSurvey modules array also refreshed end-to-end (Dashboard→Today, Farm Layout+Farming→Farm, Seasonal Calendar→Seasonal, Livestock→Animals, "Smart offline farm assistant"→"Farm Assistant"). Component name `Livestock`, route id `"live"`, and code/data-file references kept unchanged.
+- [x] **6.3.2** Sidebar icon swapped `Rabbit` → `PawPrint` to match the mobile bottom-tab icon. Plan note about "currently goat" was outdated — actual icon was `Rabbit`. `Rabbit` import dropped from navigation.js.
 - [ ] **6.3.3** Animal detail view: feeding schedule, last collected eggs, photo upload slot.
 
 
@@ -212,3 +212,4 @@ Surfaced during the 2026-05-11 sync pass and knocked out before Phase 5 work res
 | 2026-05-07 | `setPage` made optional in PlotOverlay — callers without setPage (Farming subtab) silently skip the manual link CTA. No cascading prop drilling needed. |
 | 2026-05-07 | `FarmMapHero` zone-render logic is a deliberate duplication from TodayScreen mini-map — acceptable until shared component refactor in Phase 6+. |
 | 2026-05-11 | Sync pass against shipped code. **5.3 flipped to done** — three nested rings already shipped at TodayScreen.jsx 154-156; third ring is "Harvest readiness" rather than "Pantry stocked" — kept as shipped, harvest readiness is the more useful daily signal. **5.2 + 5.5 reclassified as partial** — small streak stat and plain log feed exist on Today, but neither matches the full plan (no hero streak, no Streak Freeze, no contextual activity CTAs). **4.4 annotated** with the BOTTOM_TABS "Animals" / NAV "Livestock" name inconsistency — same screen, two labels — to be reconciled in 6.3.1. Cleanup backlog added (App.jsx.backup, gitignore, PROGRESS.md). |
+| 2026-05-11 | **6.3.1 + 6.3.2 pulled forward** to resolve the 4.4 mobile/desktop label mismatch in one shot. Renamed "Livestock" → "Animals" across all UI surfaces (sidebar NAV, page header, Projects category, AI assistant strings) and refreshed FeedbackSurvey's obsolete module list end-to-end. Sidebar icon swapped `Rabbit` → `PawPrint` to match the mobile bottom tab; `Rabbit` import dropped. Internal names (`Livestock` component, `"live"` route id, data files, "Livestock:" sub-tip inside Perimeter Fencing method content) intentionally left as-is — scope limited to user-facing UI labels. Bundle clean: zero "Livestock" matches for UI/nav strings; 18 "Animals" matches present. |

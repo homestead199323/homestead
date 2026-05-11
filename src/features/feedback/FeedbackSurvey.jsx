@@ -10,7 +10,7 @@ export default function FeedbackSurvey({ setPage }) {
   const [answers, setAnswers] = useState({ module: "", confusion: "", missing: "", pay: "" });
   const [submitted, setSubmitted] = useState(false);
 
-  const modules = ["Dashboard","Tasks","Farm Layout","Farming","Seasonal Calendar","Livestock","Pantry","Financials","Manuals","Smart offline farm assistant"];
+  const modules = ["Today","Tasks","Farm","Seasonal","Animals","Pantry","Financials","Manuals","Farm Assistant"];
 
   const update = (key, val) => setAnswers(prev => ({ ...prev, [key]: val }));
 

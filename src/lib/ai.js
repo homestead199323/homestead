@@ -254,7 +254,7 @@ function farmKnowledgeEngine(query, data) {
       });
     } else { r += "No crops planted yet.\n"; }
     if (userAnimals.length > 0) {
-      r += `\nLivestock:\n`;
+      r += `\nAnimals:\n`;
       userAnimals.forEach(a => {
         const db = LDB[a.type];
         r += `${db?.e || "🐄"} ${a.count}x ${a.type}${a.breed ? ` (${a.breed})` : ""}\n`;
@@ -271,7 +271,7 @@ function farmKnowledgeEngine(query, data) {
   if (q.match(/what.*do|today|task|todo|should i|next step|what now|action/)) {
     const tasks = buildTaskQueue(data);
     if (tasks.length === 0) {
-      return "No tasks right now! Here's what you can do:\n\n1. Plant a new crop (go to Farming)\n2. Add livestock (go to Livestock)\n3. Check the Seasonal Calendar for what's in season\n4. Set up your farm layout in Farm Designer";
+      return "No tasks right now! Here's what you can do:\n\n1. Plant a new crop (go to Farm)\n2. Add animals (go to Animals)\n3. Check the Seasonal page for what's in season\n4. Set up your farm layout (Farm → Layout)";
     }
     let r = "Today's Priority Tasks\n\n";
     tasks.slice(0, 8).forEach((t, i) => {

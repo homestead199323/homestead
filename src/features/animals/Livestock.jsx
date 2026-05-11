@@ -42,7 +42,7 @@ function Livestock({data, setData}) {
 
   return (
     <div className="page-enter" style={SX.mw800}>
-      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>🐄 Livestock</h2><p style={SX.pageSubHead}>Manage your animals, collect produce, track care</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
+      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>🐄 Animals</h2><p style={SX.pageSubHead}>Manage your animals, collect produce, track care</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
       <Stat label="Total" value={data.livestock.animals.reduce((s,a)=>s+a.count,0)}/>
       <div style={{marginTop:16,display:"grid",gap:8}}>{data.livestock.animals.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🐄</div><div style={SX.s15Bold}>No animals yet</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Add chickens, goats, or any livestock to track them</div></Card>:data.livestock.animals.map(a=>{const db=LDB[a.type];return (
         <Card key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>

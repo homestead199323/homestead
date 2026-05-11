@@ -13,7 +13,7 @@ export const PROJECT_GUIDES = {
     tip: "Cardboard under the weed membrane smothers grass even better. Lay overlapping, wet down, then membrane on top. By spring the cardboard is decomposed and the grass is dead."
   },
   chicken_coop: {
-    name: "Chicken Coop (6–8 hens)", cat: "Livestock", icon: "🐔",
+    name: "Chicken Coop (6–8 hens)", cat: "Animals", icon: "🐔",
     difficulty: "Intermediate", time: "2–3 days", cost: "€150–400",
     ref: "Based on Ussery's The Small-Scale Poultry Flock & Storey's Guide to Raising Chickens",
     overview: "A proper coop protects from predators, provides ventilation without drafts, and makes cleaning easy. Ussery's key insight: a raised floor with a removable cleanout tray cuts coop cleaning from an hour to ten minutes. Most beginner coops fail on ventilation — ammonia from droppings causes respiratory disease. The #1 rule: ventilation holes go ABOVE the birds' heads, never at perch level.",

@@ -431,7 +431,7 @@ function Projects({embedded}) {
 
   const CAT_COLOR = {
     "Growing":        { bg: "#e8f5e9", c: "#2e7d32", accent: "#66bb6a" },
-    "Livestock":      { bg: "#fff3e0", c: "#e65100", accent: "#ffa726" },
+    "Animals":        { bg: "#fff3e0", c: "#e65100", accent: "#ffa726" },
     "Soil":           { bg: "#efebe9", c: "#4e342e", accent: "#8d6e63" },
     "Water":          { bg: "#e3f2fd", c: "#1565c0", accent: "#42a5f5" },
     "Infrastructure": { bg: "#eceff1", c: "#37474f", accent: "#78909c" },
