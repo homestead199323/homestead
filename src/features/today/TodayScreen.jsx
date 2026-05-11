@@ -4,7 +4,7 @@ import { C, F, SX } from "../../lib/theme";
 import { ZT_MAP } from "../../data/zones";
 import { CROPS, CROP_COLORS } from "../../data/crops";
 import { BADGES } from "../../data/badges";
-import { todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "../../lib/utils";
+import { toLocalDateKey, todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
 import { buildZoneSpaceMap } from "../../lib/farm-calc";
 import { fetchWeather } from "../../lib/weather";
