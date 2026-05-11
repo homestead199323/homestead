@@ -32,6 +32,25 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
     fetchWeather(data.city).then(w => { if (mounted) setWeather(w); });
     return () => { mounted = false; };
   }, [data.city]);
+  // ── Week-strip data: last 7 days, active=true when there's a completion on that date ──
+  const last7Days = useMemo(() => {
+    const days = [];
+    const today = new Date();
+    const dayLetters = ["S","M","T","W","T","F","S"];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = toLocalDateKey(d);
+      const entries = (data.completions && data.completions[key]) || [];
+      days.push({
+        key,
+        dayLetter: dayLetters[d.getDay()],
+        active: entries.length > 0,
+        isToday: i === 0,
+      });
+    }
+    return days;
+  }, [data.completions]);
   const totalKg=data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0);
   const costs=useMemo(() => data.costs?.items || [], [data.costs?.items]);
   const {exp,inc}=useMemo(()=>{let e=0,r=0;costs.forEach(i=>i.type==="expense"?e+=i.amount:r+=i.amount);return{exp:e,inc:r};},[costs]);
@@ -199,10 +218,6 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                 )}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                <div style={{textAlign:"center",padding:"5px 10px",background:g.streak>=7?C.harvestBg:C.surface,borderRadius:10}}>
-                  <div style={{fontSize:20,fontWeight:800,fontFamily:F.head,color:g.streak>=7?C.orange:C.green,lineHeight:1}}>{g.streak}</div>
-                  <div style={{fontSize:8,color:C.t2,fontWeight:600,marginTop:1}}>streak{g.streak>=7?" 🔥":""}</div>
-                </div>
                 {g.badges.length > 0 && (
                   <div style={{display:"flex",gap:2}}>
                     {g.badges.slice(-3).map(b => {
@@ -211,6 +226,43 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* ── Streak band: hero-sized streak + last-7-days strip ── */}
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:C.surface,borderRadius:C.rs,border:`1px solid ${C.bdr}`,marginBottom:16,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                <span style={{fontSize:26,lineHeight:1}}>{g.streak >= 7 ? "🔥" : "🌱"}</span>
+                <div>
+                  <div style={{fontSize:18,fontWeight:800,fontFamily:F.head,color:g.streak >= 7 ? C.orange : C.green,lineHeight:1.05}}>
+                    {g.streak === 0 ? "Start your streak" : `${g.streak} day${g.streak === 1 ? "" : "s"}`}
+                  </div>
+                  <div style={{fontSize:10,color:C.t2,fontWeight:500,marginTop:2}}>
+                    {g.streak === 0
+                      ? "Touch any task today to begin"
+                      : g.bestStreak > g.streak
+                        ? `Best ${g.bestStreak} days`
+                        : "Personal best 🎉"}
+                  </div>
+                </div>
+              </div>
+              <div style={{flex:1,minWidth:170,display:"flex",justifyContent:"flex-end",gap:6}}>
+                {last7Days.map(function(d) {
+                  return (
+                    <div key={d.key} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                      <div style={{
+                        width:24,height:24,borderRadius:"50%",
+                        background:d.active ? C.green : "transparent",
+                        border:d.active ? "none" : `1.5px solid ${C.bdr}`,
+                        boxShadow:d.isToday ? `0 0 0 2px ${C.gp}` : "none",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        color:d.active ? "#fff" : C.t2,
+                        fontSize:12,fontWeight:700,
+                      }}>{d.active ? "✓" : ""}</div>
+                      <div style={{fontSize:9,color:d.isToday ? C.green : C.t2,fontWeight:d.isToday ? 700 : 500}}>{d.dayLetter}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
