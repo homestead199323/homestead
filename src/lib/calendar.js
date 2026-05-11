@@ -67,7 +67,8 @@ export const CROP_DIFFICULTY = {
 };
 
 export function getCropDifficulty(name) {
-  if (CROP_DIFFICULTY.easy.includes(name))   return { l:"Easy",     c:"#27ae60", bg:"#e8f5e9", e:"🟢" };
-  if (CROP_DIFFICULTY.hard.includes(name))   return { l:"Advanced", c:"#e74c3c", bg:"#fce4ec", e:"🔴" };
-  return                                            { l:"Medium",   c:"#f39c12", bg:"#fff3e0", e:"🟡" };
+  /* bg = accent + 13% opacity so the tint renders correctly on both light cards (white) and dark cards (#192419) */
+  if (CROP_DIFFICULTY.easy.includes(name))   return { l:"Easy",     c:"#27ae60", bg:"#27ae6022", e:"🟢" };
+  if (CROP_DIFFICULTY.hard.includes(name))   return { l:"Advanced", c:"#e74c3c", bg:"#e74c3c22", e:"🔴" };
+  return                                            { l:"Medium",   c:"#f39c12", bg:"#f39c1222", e:"🟡" };
 }

@@ -88,7 +88,7 @@ function Preserving({embedded}) {
   const DIFF_COLOR = { Easy: C.green, Intermediate: C.orange, Advanced: C.red, "Easy (once set up)": C.green, "Easy (with hive access)": C.green, "Intermediate–Advanced": C.orange, "Easy–Intermediate": "#27ae60" };
 
   const InfoBlock = ({ label, color, bg, children }) => (
-    <div style={{ background: bg || "#f5f5f5", borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
+    <div style={{ background: bg || C.soft, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: color || C.green, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
       <div style={SX.bodyText}>{children}</div>
     </div>
@@ -136,15 +136,15 @@ function Preserving({embedded}) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>{r.name}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap", alignItems: "center" }}>
-                    <Pill sm c={cc.c} bg={cc.bg}>{r.cat}</Pill>
-                    <Pill sm bg="#f5f5f5" c={dc}>{r.difficulty}</Pill>
+                    <Pill sm c={cc.accent} bg={cc.accent + "22"}>{r.cat}</Pill>
+                    <Pill sm bg={dc + "22"} c={dc}>{r.difficulty}</Pill>
                   </div>
                 </div>
               </div>
               {/* Shelf life + teaser */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontSize: 11, color: C.t2 }}>📦 {r.shelf}</span>
-                <span style={{ fontSize: 11, color: cc.c, fontWeight: 600 }}>Read manual →</span>
+                <span style={{ fontSize: 11, color: cc.accent, fontWeight: 600 }}>Read manual →</span>
               </div>
               <div style={{ fontSize: 12, color: C.t2, lineHeight: 1.5 }}>{r.overview.slice(0, 110)}…</div>
             </div>
@@ -159,13 +159,13 @@ function Preserving({embedded}) {
         return (
           <Overlay title="" onClose={() => setSel(null)} wide>
             {/* Hero header */}
-            <div style={{ background: `linear-gradient(135deg, ${cc.accent}22, ${cc.bg})`, borderRadius: C.rs, padding: "20px 20px 16px", marginBottom: 16 }}>
+            <div style={{ background: `linear-gradient(135deg, ${cc.accent}26, ${cc.accent}0a)`, borderRadius: C.rs, padding: "20px 20px 16px", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 44 }}>{sel.icon}</span>
                 <div>
                   <h2 style={{ margin: 0, fontFamily: F.head, fontSize: 22, lineHeight: 1.2 }}>{sel.name}</h2>
                   <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <Pill c={cc.c} bg={cc.bg}>{sel.cat}</Pill>
+                    <Pill c={cc.accent} bg={cc.accent + "22"}>{sel.cat}</Pill>
                     <Pill bg={C.card} c={dc} border={dc}>{sel.difficulty === "Easy" || sel.difficulty.startsWith("Easy") ? "✓ " : sel.difficulty.startsWith("Advanced") ? "⚠ " : "◎ "}{sel.difficulty}</Pill>
                     <Pill bg={C.card} c={C.t2}>📦 {sel.shelf}</Pill>
                   </div>
@@ -174,20 +174,20 @@ function Preserving({embedded}) {
             </div>
 
             {/* Overview */}
-            <InfoBlock label="📖 Overview" color={cc.c} bg={cc.bg}>
+            <InfoBlock label="📖 Overview" color={cc.accent} bg={cc.accent + "1a"}>
               {sel.overview}
             </InfoBlock>
 
             {/* Ratio */}
             {sel.ratio && (
-              <InfoBlock label="📏 Ratios & Quantities" color="#1565c0" bg="#e3f2fd">
+              <InfoBlock label="📏 Ratios & Quantities" color={C.blue} bg={C.tBlue}>
                 {sel.ratio}
               </InfoBlock>
             )}
 
             {/* What you need */}
             {sel.what_you_need && (
-              <InfoBlock label="🛠 What You Need" color="#37474f" bg="#eceff1">
+              <InfoBlock label="🛠 What You Need" color={C.t2} bg={C.soft}>
                 {sel.what_you_need}
               </InfoBlock>
             )}
@@ -208,33 +208,33 @@ function Preserving({embedded}) {
 
             {/* Best for */}
             {sel.best_for && (
-              <InfoBlock label="✅ Best For" color={C.green} bg="#e8f5e9">
+              <InfoBlock label="✅ Best For" color={C.green} bg={C.tGreen}>
                 {sel.best_for}
               </InfoBlock>
             )}
 
             {/* Storage */}
-            <InfoBlock label="📦 Storage & Shelf Life" color="#6a1b9a" bg="#f3e5f5">
+            <InfoBlock label="📦 Storage & Shelf Life" color={C.red} bg={C.tPink}>
               {sel.storage}
             </InfoBlock>
 
             {/* Troubleshooting */}
             {sel.troubleshooting && (
-              <InfoBlock label="🔧 Troubleshooting" color={C.orange} bg="#fff3e0">
+              <InfoBlock label="🔧 Troubleshooting" color={C.orange} bg={C.tOrange}>
                 {sel.troubleshooting}
               </InfoBlock>
             )}
 
             {/* Science */}
             {sel.science && (
-              <InfoBlock label="🔬 The Science" color="#1565c0" bg="#e3f2fd">
+              <InfoBlock label="🔬 The Science" color={C.blue} bg={C.tBlue}>
                 {sel.science}
               </InfoBlock>
             )}
 
             {/* Tip */}
             {sel.tip && (
-              <div style={{ background: "#f0f7f4", border: `1px solid ${C.gm}`, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
+              <div style={{ background: C.tGreen2, border: `1px solid ${C.gm}`, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 4 }}>💡 PRO TIP</div>
                 <div style={SX.bodyText}>{sel.tip}</div>
               </div>
@@ -304,13 +304,13 @@ export function SeasonalCalendar({data, setPage}) {
         <div style={SX.flex1}>
           <div style={SX.rowCenterG6}>
             <span style={{fontSize:15,fontWeight:600}}>{c.name}</span>
-            {c.planted && <Pill c={C.blue} bg="#e3f2fd">Already planted</Pill>}
+            {c.planted && <Pill c={C.blue} bg={C.tBlue}>Already planted</Pill>}
           </div>
           <div style={SX.t2_12mt2}>{c.cat} · {c.days}d to harvest · {c.spacing}cm spacing</div>
           <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
             <Pill sm c={c.diff.c} bg={c.diff.bg}>{c.diff.e} {c.diff.l}</Pill>
-            <Pill sm c={C.blue} bg="#e3f2fd">☀ {c.sun}</Pill>
-            <Pill sm c={C.green} bg="#e8f5e9">💧 {c.waterFreq}</Pill>
+            <Pill sm c={C.blue} bg={C.tBlue}>☀ {c.sun}</Pill>
+            <Pill sm c={C.green} bg={C.tGreen}>💧 {c.waterFreq}</Pill>
           </div>
         </div>
         {!c.planted && <Btn sm onClick={() => setPage("farm", {crop: c.name, plantDate: todayLocalKey()})}>+ Plant</Btn>}
@@ -439,7 +439,7 @@ function Projects({embedded}) {
   const DIFF_COLOR = { Easy: C.green, Intermediate: C.orange, Advanced: C.red };
 
   const InfoBlock = ({ label, color, bg, children }) => (
-    <div style={{ background: bg || "#f5f5f5", borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
+    <div style={{ background: bg || C.soft, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: color || C.green, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
       <div style={SX.bodyText}>{children}</div>
     </div>
@@ -475,14 +475,14 @@ function Projects({embedded}) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>{r.name}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
-                    <Pill sm c={cc.c} bg={cc.bg}>{r.cat}</Pill>
-                    <Pill sm bg="#f5f5f5" c={dc}>{r.difficulty}</Pill>
+                    <Pill sm c={cc.accent} bg={cc.accent + "22"}>{r.cat}</Pill>
+                    <Pill sm bg={dc + "22"} c={dc}>{r.difficulty}</Pill>
                   </div>
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontSize: 11, color: C.t2 }}>⏱ {r.time} · 💰 {r.cost}</span>
-                <span style={{ fontSize: 11, color: cc.c, fontWeight: 600 }}>Read guide →</span>
+                <span style={{ fontSize: 11, color: cc.accent, fontWeight: 600 }}>Read guide →</span>
               </div>
               <div style={{ fontSize: 12, color: C.t2, lineHeight: 1.5 }}>{r.overview.slice(0, 120)}…</div>
             </div>
@@ -496,25 +496,25 @@ function Projects({embedded}) {
         const dc = DIFF_COLOR[sel.difficulty] || C.t2;
         return (
           <Overlay title="" onClose={() => setSelKey(null)} wide>
-            <div style={{ background: `linear-gradient(135deg, ${cc.accent}22, ${cc.bg})`, borderRadius: C.rs, padding: "20px 20px 16px", marginBottom: 16 }}>
+            <div style={{ background: `linear-gradient(135deg, ${cc.accent}26, ${cc.accent}0a)`, borderRadius: C.rs, padding: "20px 20px 16px", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 44 }}>{sel.icon}</span>
                 <div>
                   <h2 style={{ margin: 0, fontFamily: F.head, fontSize: 22, lineHeight: 1.2 }}>{sel.name}</h2>
                   <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <Pill c={cc.c} bg={cc.bg}>{sel.cat}</Pill>
+                    <Pill c={cc.accent} bg={cc.accent + "22"}>{sel.cat}</Pill>
                     <Pill bg={C.card} c={dc} border={dc}>{sel.difficulty === "Easy" ? "✓ " : "◎ "}{sel.difficulty}</Pill>
                     <Pill bg={C.card} c={C.t2}>⏱ {sel.time}</Pill>
                     <Pill bg={C.card} c={C.t2}>💰 {sel.cost}</Pill>
                   </div>
                 </div>
               </div>
-              {sel.ref && <div style={{ fontSize: 11, color: cc.c, marginTop: 10, fontStyle: "italic", opacity: 0.7 }}>📚 {sel.ref}</div>}
+              {sel.ref && <div style={{ fontSize: 11, color: cc.accent, marginTop: 10, fontStyle: "italic", opacity: 0.7 }}>📚 {sel.ref}</div>}
             </div>
 
-            <InfoBlock label="📖 Overview" color={cc.c} bg={cc.bg}>{sel.overview}</InfoBlock>
+            <InfoBlock label="📖 Overview" color={cc.accent} bg={cc.accent + "1a"}>{sel.overview}</InfoBlock>
             <Blueprint type={selKey}/>
-            <InfoBlock label="🛠 Materials & Tools" color="#37474f" bg="#eceff1">{sel.materials}</InfoBlock>
+            <InfoBlock label="🛠 Materials & Tools" color={C.t2} bg={C.soft}>{sel.materials}</InfoBlock>
 
             <div style={{ background: C.card, border: `1px solid ${C.bdr}`, borderRadius: C.rs, padding: "14px 16px", marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".04em" }}>🔧 Step-by-Step Method</div>
@@ -523,10 +523,10 @@ function Projects({embedded}) {
               ))}
             </div>
 
-            <InfoBlock label="🔧 Ongoing Maintenance" color={C.orange} bg="#fff3e0">{sel.maintenance}</InfoBlock>
+            <InfoBlock label="🔧 Ongoing Maintenance" color={C.orange} bg={C.tOrange}>{sel.maintenance}</InfoBlock>
 
             {sel.tip && (
-              <div style={{ background: "#f0f7f4", border: `1px solid ${C.gm}`, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
+              <div style={{ background: C.tGreen2, border: `1px solid ${C.gm}`, borderRadius: C.rs, padding: "12px 14px", marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 4 }}>💡 PRO TIP</div>
                 <div style={SX.bodyText}>{sel.tip}</div>
               </div>
