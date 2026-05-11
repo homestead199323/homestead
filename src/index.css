@@ -219,6 +219,18 @@ body {
   .g2, .g3, .g5 { grid-template-columns: 1fr; }
 }
 
+/* Bento grid for mixed-size tiles. Wide tiles use .bento-wide. */
+.bento { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.bento-wide { grid-column: span 2; }
+@media (max-width: 767px) {
+  .bento { grid-template-columns: repeat(2, 1fr); }
+  .bento-wide { grid-column: span 2; }
+}
+@media (max-width: 479px) {
+  .bento { grid-template-columns: 1fr; }
+  .bento-wide { grid-column: auto; }
+}
+
 .page-enter { animation: fadeUp 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
 .card-enter { animation: fadeUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }

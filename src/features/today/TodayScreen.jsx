@@ -267,9 +267,9 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
             </div>
 
             {/* Info boxes — what a farmer reads first */}
-            <div className="g5" style={{gap:10}}>
+            <div className="bento" style={{gap:10}}>
               {/* TODAY'S WORK */}
-              <Card onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?C.grdTask:C.grdCrops,border:_durgent>0?`1px solid ${C.orange}`:`1px solid ${C.bdr}`}}>
+              <Card className="bento-wide" onClick={function(){setPage("tasks");}} style={{padding:"14px 16px",background:_durgent>0?C.grdTask:C.grdCrops,border:_durgent>0?`1px solid ${C.orange}`:`1px solid ${C.bdr}`}}>
                 <div style={SX.capHeader}>Today's Work</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_durgent>0?C.orange:C.text,lineHeight:1,marginTop:4}}>{enrichedTasks.length}</div>
                 <div style={SX.t2_11mt4}>
@@ -308,7 +308,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </Card>
 
               {/* WHAT'S GROWING — crop categories */}
-              <Card style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
+              <Card className="bento-wide" style={{padding:"14px 16px",background:"linear-gradient(135deg,#f8faf5,#f0f4eb)",border:"1px solid rgba(45,106,79,.08)"}}>
                 <div style={SX.capHeader}>Growing</div>
                 <>
                     <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dCropCats.length}</div>
@@ -320,7 +320,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </Card>
 
               {/* MONEY */}
-              <Card style={{padding:"14px 16px",background:_dnet>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:_dnet>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
+              <Card className="bento-wide" style={{padding:"14px 16px",background:_dnet>=0?"linear-gradient(135deg,#f0faf5,#e5f5ed)":"linear-gradient(135deg,#fdf5f5,#f5eaea)",border:_dnet>=0?`1px solid rgba(45,106,79,.08)`:`1px solid rgba(220,60,60,.08)`}}>
                 <div style={SX.capHeader}>Money</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:_dnet>=0?C.green:C.red,lineHeight:1,marginTop:4}}>€{_dnet.toFixed(0)}</div>
                 <div style={SX.t2_11mt4}>
