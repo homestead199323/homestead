@@ -104,7 +104,7 @@ function Setup({data, setData}) {
               }}
               onFocus={function() { if (cityResults.length > 0) setShowCityDropdown(true); }}
               onBlur={function() { setTimeout(function() { setShowCityDropdown(false); }, 200); }}
-              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:14,fontFamily:F.body,background:C.card,color:C.text,outline:"none",boxSizing:"border-box"}}/>
+              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:16,fontFamily:F.body,background:C.card,color:C.text,outline:"none",boxSizing:"border-box"}}/>
             {showCityDropdown && cityResults.length > 0 && (
               <div style={{position:"absolute",top:"100%",left:0,right:0,background:C.card,border:`1px solid ${C.bdr}`,borderRadius:10,boxShadow:C.shL,zIndex:50,maxHeight:220,overflowY:"auto",marginTop:4}}>
                 {cityResults.map(function(c, idx) {
@@ -131,7 +131,7 @@ function Setup({data, setData}) {
             <label style={{fontSize:11,fontWeight:600,color:C.t2,display:"block",marginBottom:3}}>Or pick a region</label>
             <select value={data.region || "western_europe"}
               onChange={function(e) { setData({...data, region: e.target.value}); }}
-              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:13,fontFamily:F.body,background:C.card,color:C.text,cursor:"pointer",boxSizing:"border-box"}}>
+              style={{width:"100%",padding:"8px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:16,fontFamily:F.body,background:C.card,color:C.text,cursor:"pointer",boxSizing:"border-box"}}>
               {REGIONS.map(function(r) {
                 return <option key={r.id} value={r.id}>{r.emoji} {r.name} — {r.examples}</option>;
               })}
@@ -149,14 +149,14 @@ function Setup({data, setData}) {
             <label style={SX.t2_12}>Width</label>
             <input type="number" min="10" max="2000" value={farmW}
               onChange={e => { const v = +e.target.value||100; setFarmW(v); setData({...data, farmW:v}); }}
-              style={{width:70,padding:"4px 8px",border:`1px solid ${C.bdr}`,borderRadius:6,fontSize:13,fontFamily:F.mono}}/>
+              style={{width:70,padding:"4px 8px",border:`1px solid ${C.bdr}`,borderRadius:6,fontSize:16,fontFamily:F.mono}}/>
             <span style={SX.t2_12}>m</span>
           </div>
           <div style={SX.rowCenterG6}>
             <label style={SX.t2_12}>Height</label>
             <input type="number" min="10" max="2000" value={farmH}
               onChange={e => { const v = +e.target.value||60; setFarmH(v); setData({...data, farmH:v}); }}
-              style={{width:70,padding:"4px 8px",border:`1px solid ${C.bdr}`,borderRadius:6,fontSize:13,fontFamily:F.mono}}/>
+              style={{width:70,padding:"4px 8px",border:`1px solid ${C.bdr}`,borderRadius:6,fontSize:16,fontFamily:F.mono}}/>
             <span style={SX.t2_12}>m</span>
           </div>
           <span style={{fontSize:11,color:C.t3,fontFamily:F.mono}}>{farmW}m × {farmH}m = {(farmW*farmH).toLocaleString()} m²</span>
@@ -750,7 +750,7 @@ function Farming({data, setData, pageData, clearPageData}) {
                 onFocus={function(){setCropDropdownOpen(true);setCropSearch("");}}
                 onChange={function(e){setCropSearch(e.target.value);setCropDropdownOpen(true);}}
                 onBlur={function(){setTimeout(function(){setCropDropdownOpen(false);},150);}}
-                style={{width:"100%",padding:"10px 14px",paddingRight:36,border:`1.5px solid ${cropDropdownOpen?C.green:C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}
+                style={{width:"100%",padding:"10px 14px",paddingRight:36,border:`1.5px solid ${cropDropdownOpen?C.green:C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}
               />
               <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:12,color:C.t2}}>{cropDropdownOpen?"▲":"▼"}</div>
               {cropDropdownOpen && (
@@ -793,7 +793,7 @@ function Farming({data, setData, pageData, clearPageData}) {
             <div style={SX.mb12}>
               <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>Zone</label>
               <select value={form.zone} onChange={e=>setForm({...form,zone:e.target.value})}
-                style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:14,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}>
+                style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}>
                 <option value="">Select zone...</option>
                 {vegZ.map(z=>{
                   const sp=zoneSpace[z.id]||{totalM2:0,freeM2:0,pct:0};
