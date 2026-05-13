@@ -14,14 +14,22 @@
        kind:      "plot" | "animal-zone" | "animal-virtual" | "misc"
        icon:      string? — fallback emoji for virtual stops
        speciesType: string? — animal species when applicable
-       tasks:     Task[]  — at least one task, attention-first
+       tasks:     Task[]  — at least one task, in task-queue insertion order
      }
 
    Order:
-     1. Attention stops (anything with at least one non-routine task) come first.
-     2. Routine-only stops come last.
-     Within each pass we do a greedy nearest-neighbour walk starting from
-     (0, 50) — the left edge of the map, as if the user enters from the gate.
+     The walk visits EVERY today task, ordered purely by where it sits on
+     the farm — not by urgency or priority. We do one greedy nearest-
+     neighbour pass starting from the gate (0, 50, the left edge), so the
+     route reflects "walk into the farm and visit each section in turn".
+
+   Filter parity with task-queue:
+     We MUST mirror buildTaskQueue's step-task semantics — step completion
+     is tracked via plot.steps[i].done (persistent), NOT the daily
+     completions map. If we filtered steps by completions here we'd hide
+     a step the moment the user clicks Done in the walk, even though
+     TaskQueue still shows it. (That mismatch was the original "Nothing
+     for today" bug.)
    ═══════════════════════════════════════════ */
 
 const AUTO_PLACE = {
@@ -55,10 +63,13 @@ export function buildWalkStops(tasks, data) {
   const tKey = todayKey();
   const doneToday = new Set((data.completions && data.completions[tKey]) || []);
 
+  // Same filter as buildTaskQueue: include every today-due actionable task,
+  // skip the info-only upcoming/forecast, and only filter completed keys
+  // for NON-step tasks (step completion is tracked persistently on the plot).
   const todayTasks = tasks.filter(function(t) {
     if (t.daysOut !== 0) return false;
     if (t.type === "upcoming" || t.type === "forecast") return false;
-    if (t.key && doneToday.has(t.key)) return false;
+    if (t.type !== "step" && t.key && doneToday.has(t.key)) return false;
     return true;
   });
   if (todayTasks.length === 0) return [];
@@ -130,6 +141,10 @@ export function buildWalkStops(tasks, data) {
     return { stopKey: "misc", label: task.loc || "Farm", cx: 50, cy: 50, kind: "misc" };
   }
 
+  // Group tasks by physical stop. Insertion order within each stop is
+  // task-queue order (already pri-sorted) — we deliberately do NOT re-sort
+  // by urgency, because the walk's design is "visit by location, do whatever
+  // needs doing there".
   const stopMap = new Map();
   todayTasks.forEach(function(task) {
     const meta = stopMetaForTask(task);
@@ -139,18 +154,10 @@ export function buildWalkStops(tasks, data) {
     stopMap.get(meta.stopKey).tasks.push(task);
   });
 
-  stopMap.forEach(function(stop) {
-    stop.tasks.sort(function(a, b) {
-      const aRout = a.routine ? 1 : 0;
-      const bRout = b.routine ? 1 : 0;
-      if (aRout !== bRout) return aRout - bRout;
-      return (a.pri || 0) - (b.pri || 0);
-    });
-  });
-
+  // Single geographic order: greedy nearest-neighbour from the gate.
+  // No attention-vs-routine split — every today task is visited in the
+  // order it sits on the map.
   const all = Array.from(stopMap.values());
-  const attention = all.filter(function(s) { return s.tasks.some(function(t) { return !t.routine; }); });
-  const routine = all.filter(function(s) { return s.tasks.every(function(t) { return t.routine; }); });
 
   function nearestNeighbour(stops, startX, startY) {
     if (stops.length === 0) return [];
@@ -172,12 +179,7 @@ export function buildWalkStops(tasks, data) {
     return out;
   }
 
-  const orderedAttention = nearestNeighbour(attention, 0, 50);
-  const startX = orderedAttention.length > 0 ? orderedAttention[orderedAttention.length - 1].cx : 0;
-  const startY = orderedAttention.length > 0 ? orderedAttention[orderedAttention.length - 1].cy : 50;
-  const orderedRoutine = nearestNeighbour(routine, startX, startY);
-
-  return orderedAttention.concat(orderedRoutine);
+  return nearestNeighbour(all, 0, 50);
 }
 
 /**

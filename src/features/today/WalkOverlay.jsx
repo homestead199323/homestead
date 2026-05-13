@@ -152,6 +152,27 @@ function applyTaskCompletion(data, task, logValue) {
     return markTaskDone(next, task.key);
   }
 
+  // Step task — set the plot's persistent steps[i].done flag, so the step
+  // doesn't reappear on next reload. (task-queue tracks step completion via
+  // this flag, NOT via the daily completions map; we must update both.)
+  if (task.type === "step" && task.plotId && task.stepIdx != null) {
+    const plots = (data.garden && data.garden.plots) || [];
+    const plot = plots.find(function(p) { return p.id === task.plotId; });
+    if (plot && plot.steps && plot.steps[task.stepIdx]) {
+      const newSteps = plot.steps.map(function(s, i) {
+        return i === task.stepIdx ? { ...s, done: true } : s;
+      });
+      const next = {
+        ...data,
+        garden: {
+          ...(data.garden || {}),
+          plots: plots.map(function(x) { return x.id === plot.id ? { ...x, steps: newSteps } : x; }),
+        },
+      };
+      return markTaskDone(next, task.key);
+    }
+  }
+
   // Everything else — pure check-off.
   return markTaskDone(data, task.key);
 }
