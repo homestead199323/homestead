@@ -48,23 +48,31 @@ export const Txt = React.memo(function Txt({label,...p}) {
 
 export function Overlay({title,onClose,children,wide}) {
   useEffect(function() {
-    const scrollY = window.scrollY;
-    const body = document.body;
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
+    // Simple overflow lock (works on Android/desktop)
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    // iOS Safari: touchmove prevention. Walk the DOM from the touch target —
+    // if a scrollable ancestor exists inside the sheet, allow the gesture.
+    // Otherwise preventDefault stops the background page from scrolling.
+    function blockOuterScroll(e) {
+      let el = e.target;
+      while (el && el !== document.body) {
+        if (el.classList && el.classList.contains("overlay-sheet")) {
+          return; // inside sheet — let it scroll naturally
+        }
+        el = el.parentElement;
+      }
+      e.preventDefault();
+    }
+    document.addEventListener("touchmove", blockOuterScroll, {passive:false});
     return function() {
-      body.style.overflow = "";
-      body.style.position = "";
-      body.style.top = "";
-      body.style.width = "";
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = prev;
+      document.removeEventListener("touchmove", blockOuterScroll);
     };
   }, []);
   return createPortal(
-    <div className="overlay-backdrop" style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}} onClick={onClose}>
-      <div onClick={function(e){e.stopPropagation();}} className="overlay-sheet page-enter" style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"85vh",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",touchAction:"pan-y",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
+    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
+      <div onClick={function(e){e.stopPropagation();}} className="overlay-sheet page-enter" style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
         <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
           <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
