@@ -47,6 +47,10 @@ const ANIM_CSS = `
   0%, 100% { transform: translate(-50%, -50%) rotate(-3deg); }
   50%      { transform: translate(-50%, -50%) rotate(3deg); }
 }
+@keyframes walk-popup-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 .walk-walker      { animation: walk-bob 1.1s ease-in-out infinite; }
 .walk-current-pulse { animation: walk-pulse-ring 1.8s ease-out infinite; }
 .walk-trail       { animation: walk-trail-fade 1.2s linear infinite; }
@@ -63,7 +67,7 @@ function timeOfDayGradient() {
   return                       "linear-gradient(135deg, #3a3a2e 0%, #1e1d14 100%)";          // dusk warm
 }
 
-export default function WalkMap({ stops, currentStopIdx, completedStopKeys, zones, plotIcons, farmW, farmH }) {
+export default function WalkMap({ stops, currentStopIdx, completedStopKeys, zones, plotIcons, farmW, farmH, onStopClick }) {
   const W = farmW || 100;
   const H = farmH || 60;
   const safeStops = stops || [];
@@ -82,16 +86,47 @@ export default function WalkMap({ stops, currentStopIdx, completedStopKeys, zone
   const zoneById = new Map();
   safeZones.forEach(function(z) { zoneById.set(z.id, z); });
 
-  // Future path: from walker forward to remaining stops (dashed trail).
-  const futurePath = [];
-  if (currentStopIdx < safeStops.length - 1) {
-    let prevX = walkerX, prevY = walkerY;
-    for (let i = Math.max(0, currentStopIdx + 1); i < safeStops.length; i++) {
-      const s = safeStops[i];
-      futurePath.push({ x1: prevX, y1: prevY, x2: s.cx, y2: s.cy });
-      prevX = s.cx; prevY = s.cy;
-    }
+  // ── Continuous walk path ─────────────────────────────────────────────────
+  // The route from the gate (0, 50) through every stop, in order. Drawn as
+  // ONE smooth path with quadratic-Bezier corners (rather than separate
+  // line segments), so it reads as a single continuous walking route.
+  // Past portion = solid; future portion = dashed/faded — drawn from two
+  // <path> elements that share a common waypoint at the walker.
+  const waypoints = [{ x: 0, y: 50 }];
+  for (let i = 0; i < safeStops.length; i++) {
+    waypoints.push({ x: safeStops[i].cx, y: safeStops[i].cy });
   }
+  // Convert all to viewBox coords (path is rendered inside the SVG)
+  const wpts = waypoints.map(function(w) { return { x: w.x / 100 * W, y: w.y / 100 * H }; });
+
+  function buildSmoothD(points) {
+    if (points.length < 2) return "";
+    let d = "M " + points[0].x.toFixed(2) + " " + points[0].y.toFixed(2);
+    if (points.length === 2) {
+      d += " L " + points[1].x.toFixed(2) + " " + points[1].y.toFixed(2);
+      return d;
+    }
+    // Smooth corners: for each interior point, draw a quadratic curve to
+    // the midpoint of the segment to the next point, using the interior
+    // point itself as the control. This rounds the route's corners.
+    for (let i = 1; i < points.length - 1; i++) {
+      const curr = points[i];
+      const next = points[i + 1];
+      const mx = (curr.x + next.x) / 2;
+      const my = (curr.y + next.y) / 2;
+      d += " Q " + curr.x.toFixed(2) + " " + curr.y.toFixed(2) + " " + mx.toFixed(2) + " " + my.toFixed(2);
+    }
+    const last = points[points.length - 1];
+    d += " L " + last.x.toFixed(2) + " " + last.y.toFixed(2);
+    return d;
+  }
+
+  // walker index in wpts: -1 -> gate (idx 0), 0 -> first stop (idx 1), etc.
+  const splitIdx = Math.max(0, currentStopIdx + 1);
+  const pastPts = wpts.slice(0, splitIdx + 1);
+  const futurePts = wpts.slice(splitIdx);
+  const pastPathD = pastPts.length >= 2 ? buildSmoothD(pastPts) : "";
+  const futurePathD = futurePts.length >= 2 ? buildSmoothD(futurePts) : "";
 
   return (
     <div style={{
@@ -105,7 +140,7 @@ export default function WalkMap({ stops, currentStopIdx, completedStopKeys, zone
     }}>
       <style>{ANIM_CSS}</style>
 
-      {/* ── SVG: zones + future path ── */}
+      {/* ── SVG: zones + walk path ── */}
       <svg viewBox={"0 0 " + W + " " + H}
            preserveAspectRatio="none"
            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}>
@@ -139,20 +174,27 @@ export default function WalkMap({ stops, currentStopIdx, completedStopKeys, zone
         {/* Vignette overlay for game-like depth */}
         <rect x="0" y="0" width={W} height={H} fill="url(#walk-vignette)" pointerEvents="none" />
 
-        {/* Future path */}
-        {futurePath.map(function(seg, i) {
-          const x1 = seg.x1 / 100 * W;
-          const y1 = seg.y1 / 100 * H;
-          const x2 = seg.x2 / 100 * W;
-          const y2 = seg.y2 / 100 * H;
-          return (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke="rgba(127,201,127,.5)"
-                  strokeWidth="0.45"
-                  strokeDasharray="1.5 1.5"
-                  className="walk-trail" />
-          );
-        })}
+        {/* Past route — solid green, behind future trail */}
+        {pastPathD && (
+          <path d={pastPathD}
+                stroke="rgba(127,201,127,.7)"
+                strokeWidth="0.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none" />
+        )}
+
+        {/* Future route — single dashed path; animates as one piece */}
+        {futurePathD && (
+          <path d={futurePathD}
+                stroke="rgba(127,201,127,.45)"
+                strokeWidth="0.5"
+                strokeDasharray="1.5 1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                className="walk-trail" />
+        )}
       </svg>
 
       {/* ── Plot icons inside zones — game-like sense of "there's stuff there" ── */}
@@ -179,32 +221,42 @@ export default function WalkMap({ stops, currentStopIdx, completedStopKeys, zone
         );
       })}
 
-      {/* ── Stop markers ── current = pulsing ring + emoji, past = check, future = small dot ── */}
+      {/* ── Stop markers — tappable; current = pulsing ring, past = check, future = emoji ── */}
       {safeStops.map(function(s, i) {
         const isCurrent = i === currentStopIdx;
         const isPast = i < currentStopIdx;
         const isDoneStop = completed.has(s.stopKey);
+        const stopEmoji = (s.tasks && s.tasks[0] && s.tasks[0].emoji) || s.icon || "📍";
 
-        const baseSize = isCurrent ? 36 : isPast ? 22 : 24;
+        const baseSize = isCurrent ? 38 : isPast ? 22 : 28;
         const bg = isCurrent
           ? "#7fc97f"
           : (isPast || isDoneStop)
             ? "rgba(127,201,127,.7)"
-            : "rgba(255,255,255,.22)";
+            : "rgba(15, 36, 24, 0.92)";
         const border = isCurrent
           ? "3px solid #fff"
           : (isPast || isDoneStop)
             ? "1px solid rgba(255,255,255,.6)"
-            : "1px solid rgba(255,255,255,.4)";
+            : "1.5px solid rgba(127,201,127,.5)";
         const content = isCurrent
-          ? (s.icon || s.tasks[0]?.emoji || "📍")
+          ? stopEmoji
           : (isPast || isDoneStop)
             ? "✓"
-            : "•";
+            : stopEmoji;
+
+        const stopBoxShadow = isCurrent
+          ? "none"
+          : (isPast || isDoneStop)
+            ? "0 1px 4px rgba(0,0,0,.5)"
+            : "0 2px 8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08)";
 
         return (
           <div key={s.stopKey}
                className={isCurrent ? "walk-current-pulse" : ""}
+               onClick={onStopClick ? function() { onStopClick(i); } : undefined}
+               role={onStopClick ? "button" : undefined}
+               aria-label={onStopClick ? ("Jump to " + (s.label || "stop")) : undefined}
                style={{
                  position: "absolute",
                  left: s.cx + "%",
@@ -219,11 +271,14 @@ export default function WalkMap({ stops, currentStopIdx, completedStopKeys, zone
                  display: "flex",
                  alignItems: "center",
                  justifyContent: "center",
-                 fontSize: isCurrent ? 18 : 11,
-                 color: isCurrent ? "#0f2418" : "#fff",
+                 fontSize: isCurrent ? 20 : (isPast || isDoneStop) ? 11 : 15,
+                 color: (isCurrent ? "#0f2418" : "#fff"),
                  fontWeight: 700,
                  zIndex: isCurrent ? 4 : 3,
-                 transition: "all 0.4s ease",
+                 transition: "all 0.3s ease",
+                 cursor: onStopClick ? "pointer" : "default",
+                 boxShadow: stopBoxShadow,
+                 WebkitTapHighlightColor: "transparent",
                }}>
             {content}
           </div>
