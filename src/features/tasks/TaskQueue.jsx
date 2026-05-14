@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { C, F, SX } from "../../lib/theme";
-import { Card, SwipeableRow } from "../../components/ui";
+import { Card, SwipeableRow, TaskCheckbox } from "../../components/ui";
 import PlotOverlay from "../farm/PlotOverlay";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../../data/livestock";
@@ -11,8 +11,17 @@ import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, markTaskDone } fro
 
 /* ═══════════════════════════════════════════
    TASK ROW — extracted outside TaskQueue to prevent remount on every render
+
+   Things-3-style pattern (Phase 6.1.1 + 6.1.2):
+     - Left-side circular checkbox replaces the right-side "Done" pill
+     - Tap fills the checkbox green, the row fades + slides 8px down + 3% shrink
+       (~280ms), then the parent removes it from its section
+     - prefers-reduced-motion: instant complete, no animation
+     - Harvest tasks keep the right-side "🧺 Harvest" CTA — it's a goto action,
+       not a completion (harvest happens in PlotOverlay)
    ═══════════════════════════════════════════ */
 const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone, onGoToFarm}) {
+  const [completing, setCompleting] = useState(false);
   const borderC = t.pri === 0 ? C.red : t.pri === 1 ? "#ff6b35" : t.pri === 2 ? C.orange : C.blue;
   const bg = t.pri === 0 ? C.dangerBg : t.pri === 1 ? C.warm : t.pri === 2 ? C.harvestBg : C.waterBg;
   const clickable = !!(t.plotId || t.animalId);
@@ -20,46 +29,60 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
     ? (t.daysOut === 0 ? "Today" : t.dueDate.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))
     : (t.daysOut === 0 ? "Today" : t.daysOut > 0 ? `In ${t.daysOut}d` : null);
   const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
-  // Pick the swipe-right action based on task type — step tasks toggle the
-  // step, regular tasks mark done. Steps/upcoming/forecast/harvest with no
-  // applicable action get no swipe (undefined disables that direction).
-  const swipeRightAction = (t.stepIdx != null && onToggleStep)
+  const isStep = t.stepIdx != null;
+  // Pick the single completion action: step → toggle step, otherwise → mark done.
+  // Harvest/upcoming/forecast get no checkbox (no completable action from here).
+  const completeAction = (isStep && onToggleStep)
     ? function() { onToggleStep(t.plotId, t.stepIdx); }
     : (canMarkDone && onMarkDone)
     ? function() { onMarkDone(t.key); }
-    : undefined;
+    : null;
+  // Animated-then-commit completion. Reduce-motion skips the delay.
+  const handleComplete = () => {
+    if (!completeAction || completing) return;
+    const reduce = typeof window !== "undefined"
+      && window.matchMedia
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      completeAction();
+      return;
+    }
+    setCompleting(true);
+    setTimeout(completeAction, 280);
+  };
+  const swipeRightAction = completeAction ? handleComplete : undefined;
+  const strikethrough = completing ? "line-through" : "none";
   return (
     <SwipeableRow onSwipeRight={swipeRightAction} style={{marginBottom:6,borderRadius:C.rs}}>
       <div
-        onClick={clickable && onOpen ? onOpen : undefined}
+        onClick={clickable && onOpen && !completing ? onOpen : undefined}
         style={{
           display:"flex",alignItems:"center",gap:12,
           padding:"12px 14px",
           background:bg,borderRadius:C.rs,
           borderLeft:`4px solid ${borderC}`,
-          cursor:clickable && onOpen ? "pointer" : "default",
-          transition:"all .15s",
+          cursor:clickable && onOpen && !completing ? "pointer" : "default",
+          opacity: completing ? 0 : 1,
+          transform: completing ? "translateY(8px) scale(0.97)" : "translateY(0) scale(1)",
+          transition: "opacity 280ms ease-out, transform 280ms ease-out",
         }}
       >
-        <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{t.emoji}</span>
+        {completeAction && (
+          <TaskCheckbox checked={completing} onToggle={handleComplete} />
+        )}
+        <span style={{fontSize:22,flexShrink:0,lineHeight:1,textDecoration:strikethrough}}>{t.emoji}</span>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4}}>{t.title}</div>
+          <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4,textDecoration:strikethrough}}>{t.title}</div>
           <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
             <span>📍 {t.loc}</span>
             {dateLabel && <span style={{color:t.daysOut === 0 ? C.red : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
           </div>
         </div>
-        <div style={{display:"flex",gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
-          {t.stepIdx != null && onToggleStep && (
-            <button onClick={()=>onToggleStep(t.plotId, t.stepIdx)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
-          )}
-          {canMarkDone && onMarkDone && (
-            <button onClick={()=>onMarkDone(t.key)} style={{background:C.green,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Done</button>
-          )}
-          {t.type === "harvest" && onGoToFarm && (
+        {t.type === "harvest" && onGoToFarm && (
+          <div style={{display:"flex",gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
             <button onClick={onGoToFarm} style={{background:C.orange,color:"#fff",border:"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🧺 Harvest</button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </SwipeableRow>
   );
@@ -77,6 +100,10 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const [doneCollapsed, setDoneCollapsed] = useState(true);
   const [farmWeekCollapsed, setFarmWeekCollapsed] = useState(true);
   const [animalsWeekCollapsed, setAnimalsWeekCollapsed] = useState(true);
+  // Phase 6.1.3 — all group sections collapsible. Attention + Daily Routine
+  // default to expanded since they're the high-signal "today" sections.
+  const [attentionCollapsed, setAttentionCollapsed] = useState(false);
+  const [routineCollapsed, setRoutineCollapsed] = useState(false);
 
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
@@ -391,17 +418,28 @@ function TaskQueue({data, setData, setPage, tasks}) {
   };
 
   const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Calendar grid
+  // Calendar grid — Monday-first week (Western Europe convention).
+  // getDay() returns 0=Sun..6=Sat; we map to 0=Mon..6=Sun via (d + 6) % 7.
   const calStart = new Date(viewYear, viewMonth, 1);
   const calEnd = new Date(viewYear, viewMonth+1, 0);
-  const firstDow = calStart.getDay();
+  const firstDow = (calStart.getDay() + 6) % 7;
   const daysInMonth = calEnd.getDate();
   const cells = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  // Is today's date inside the viewed month?
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const viewingCurrentMonth = (viewMonth === currentMonth && viewYear === currentYear);
+  const jumpToToday = () => {
+    setViewMonth(currentMonth);
+    setViewYear(currentYear);
+    setSelectedDate(toLocalDateKey(new Date()));
+  };
 
   // todayStr already computed at top of function (for completions); reused for calendar grid below
 
@@ -416,28 +454,36 @@ function TaskQueue({data, setData, setPage, tasks}) {
       {/* ── Section 1: NEEDS ATTENTION — harvests, steps, periodic animal care ── */}
       {attentionTasks.length > 0 && (
         <Card p={false} style={{overflow:"hidden",marginBottom:16,border:`1px solid ${C.red}`}}>
-          <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`,background:C.dangerBg}}>
+          <button
+            onClick={()=>setAttentionCollapsed(v=>!v)}
+            style={{width:"100%",display:"block",textAlign:"left",padding:"14px 18px 10px",borderBottom: attentionCollapsed ? "none" : `1px solid ${C.bdr}`,background:C.dangerBg,border:"none",cursor:"pointer"}}
+          >
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <span style={{fontSize:18}}>⚠️</span>
                 <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.red,letterSpacing:"-0.01em"}}>Needs Attention</div>
               </div>
-              <span style={{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:12}}>{attentionTasks.length}</span>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:12}}>{attentionTasks.length}</span>
+                <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{attentionCollapsed ? "Show ▾" : "Hide ▴"}</span>
+              </div>
             </div>
             <div style={{fontSize:12,color:C.t2,marginTop:3}}>Do these today — miss the window and plants bolt, fail, or spoil</div>
-          </div>
-          <div style={{padding:"12px 14px"}}>
-            {attentionTasks.map((t,i) => (
-              <TaskRow
-                key={t.key || `att-${i}`}
-                t={t}
-                onOpen={()=>openTask(t)}
-                onToggleStep={togStep}
-                onMarkDone={markDone}
-                onGoToFarm={goToFarm}
-              />
-            ))}
-          </div>
+          </button>
+          {!attentionCollapsed && (
+            <div style={{padding:"12px 14px"}}>
+              {attentionTasks.map((t,i) => (
+                <TaskRow
+                  key={t.key || `att-${i}`}
+                  t={t}
+                  onOpen={()=>openTask(t)}
+                  onToggleStep={togStep}
+                  onMarkDone={markDone}
+                  onGoToFarm={goToFarm}
+                />
+              ))}
+            </div>
+          )}
         </Card>
       )}
 
@@ -517,14 +563,20 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
       {/* ── Section 3: DAILY ROUTINE — grouped by location, same every day ── */}
       <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
-        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.bdr}`,background:C.soft}}>
+        <button
+          onClick={()=>setRoutineCollapsed(v=>!v)}
+          style={{width:"100%",display:"block",textAlign:"left",padding:"14px 18px 10px",borderBottom: routineCollapsed ? "none" : `1px solid ${C.bdr}`,background:C.soft,border:"none",cursor:"pointer"}}
+        >
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:18}}>☀️</span>
               <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text,letterSpacing:"-0.01em"}}>Daily Routine</div>
             </div>
-            <div style={{fontSize:12,color:C.t2,fontFamily:F.mono,fontWeight:600}}>
-              {new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{fontSize:12,color:C.t2,fontFamily:F.mono,fontWeight:600}}>
+                {new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
+              </div>
+              <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{routineCollapsed ? "Show ▾" : "Hide ▴"}</span>
             </div>
           </div>
           <div style={{fontSize:12,color:C.t2,marginTop:3}}>
@@ -532,9 +584,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
               ? "No routine tasks set up yet"
               : `${routineTasks.length} task${routineTasks.length === 1 ? "" : "s"} · your daily walk`}
           </div>
-        </div>
+        </button>
 
-        {routineLocations.length > 0 ? (
+        {!routineCollapsed && (routineLocations.length > 0 ? (
           <div style={{padding:"14px"}}>
             {routineLocations.map(loc => (
               <div key={loc} style={{marginBottom:14}}>
@@ -562,7 +614,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           <div style={{textAlign:"center",padding:"28px 20px",color:C.t2,fontSize:13}}>
             ✨ All routine done for today
           </div>
-        )}
+        ))}
       </Card>
 
       {/* ── Done today — collapsible, stands on its own ── */}
@@ -594,13 +646,31 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
       {/* ── Section 4: Calendar — full width ── */}
       <Card p={false} style={SX.overflowHidden}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`}}>
-          <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}><ChevronLeft size={20} strokeWidth={2}/></button>
-          <div style={{fontFamily:F.head,fontSize:17,fontWeight:700}}>{MN[viewMonth]} {viewYear}</div>
-          <button onClick={()=>{let m=viewMonth+1,y=viewYear;if(m>11){m=0;y++;}setViewMonth(m);setViewYear(y);}} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center"}}><ChevronRight size={20} strokeWidth={2}/></button>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`,gap:8}}>
+          <button onClick={()=>{let m=viewMonth-1,y=viewYear;if(m<0){m=11;y--;}setViewMonth(m);setViewYear(y);}} aria-label="Previous month" style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><ChevronLeft size={20} strokeWidth={2}/></button>
+          <div style={{display:"flex",alignItems:"center",gap:10,flex:1,justifyContent:"center"}}>
+            <div style={{fontFamily:F.head,fontSize:17,fontWeight:700}}>{MN[viewMonth]} {viewYear}</div>
+            {!viewingCurrentMonth && (
+              <button
+                onClick={jumpToToday}
+                aria-label="Jump to today"
+                style={{
+                  background:C.gp,color:C.green,border:"none",borderRadius:14,
+                  padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",
+                  fontFamily:F.body,letterSpacing:"0.02em",minHeight:0,
+                }}
+              >
+                Today
+              </button>
+            )}
+          </div>
+          <button onClick={()=>{let m=viewMonth+1,y=viewYear;if(m>11){m=0;y++;}setViewMonth(m);setViewYear(y);}} aria-label="Next month" style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><ChevronRight size={20} strokeWidth={2}/></button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"10px 16px 4px",gap:2}}>
-          {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:C.t2,fontFamily:F.mono}}>{d}</div>)}
+          {DAYS.map((d,di)=>{
+            const isWeekend = di >= 5; // Sat/Sun under Monday-first layout
+            return <div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:isWeekend?C.t2:C.text,fontFamily:F.mono,opacity:isWeekend?0.6:1}}>{d}</div>;
+          })}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"4px 16px 16px",gap:4}}>
           {cells.map((d,i) => {
@@ -611,9 +681,24 @@ function TaskQueue({data, setData, setPage, tasks}) {
             const isSel = dateStr === selectedDate;
             const hasHarvest = evts.some(e=>e.type==="harvest");
             const hasStep = evts.some(e=>e.type==="step");
+            // Friendlier styling (Phase 6.1.3):
+            //   selected → full green fill + white text
+            //   today    → soft ring + bold green number (no heavy fill)
+            //   events   → soft cream background, no border
+            //   empty    → transparent
+            let bgColor = "transparent";
+            if (isSel) bgColor = C.green;
+            else if (evts.length > 0 && !isToday) bgColor = C.soft;
+            const borderStyle = isSel
+              ? `2px solid ${C.green}`
+              : isToday
+              ? `2px solid ${C.green}`
+              : "2px solid transparent";
+            const numberColor = isSel ? "#fff" : isToday ? C.green : C.text;
+            const numberWeight = (isSel || isToday) ? 700 : 400;
             return (
-              <div key={i} onClick={()=>setSelectedDate(isSel?null:dateStr)} style={{textAlign:"center",padding:"6px 2px",borderRadius:10,background:isSel?C.green:isToday?C.green:evts.length>0?C.soft:"transparent",minHeight:52,cursor:"pointer",border:isSel?`2px solid ${C.green}`:"2px solid transparent",transition:"all 0.15s ease"}}>
-                <div style={{fontSize:13,fontWeight:(isToday||isSel)?700:400,color:(isToday||isSel)?"#fff":C.text}}>{d}</div>
+              <div key={i} onClick={()=>setSelectedDate(isSel?null:dateStr)} style={{textAlign:"center",padding:"6px 2px",borderRadius:10,background:bgColor,minHeight:52,cursor:"pointer",border:borderStyle,transition:"all 0.15s ease"}}>
+                <div style={{fontSize:13,fontWeight:numberWeight,color:numberColor}}>{d}</div>
                 {evts.length > 0 && (
                   <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:3,flexWrap:"wrap"}}>
                     {hasHarvest && <div style={{width:7,height:7,borderRadius:4,background:isSel?"#ffb347":C.orange}} title="Harvest"/>}
@@ -621,7 +706,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                   </div>
                 )}
                 {evts.length > 0 && (
-                  <div style={{fontSize:10,color:(isToday||isSel)?"rgba(255,255,255,.8)":C.t2,marginTop:2,lineHeight:1.1}}>
+                  <div style={{fontSize:10,color:isSel?"rgba(255,255,255,.8)":C.t2,marginTop:2,lineHeight:1.1}}>
                     {evts.slice(0,1).map(e=>e.emoji).join("")}{evts.length>1?`+${evts.length-1}`:""}
                   </div>
                 )}

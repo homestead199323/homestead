@@ -88,6 +88,65 @@ export const Pill = React.memo(function Pill({children,c=C.green,bg=C.gp,sm=fals
   return <span style={{fontSize:sm?10:11,padding:sm?"2px 8px":"3px 10px",borderRadius:20,background:bg,color:c,fontWeight:600,fontFamily:F.body,whiteSpace:"nowrap",...(border?{border:`1px solid ${border}`}:{})}}>{children}</span>;
 });
 
+/* ═══════════════════════════════════════════
+   TaskCheckbox — Things-3-style circular checkbox
+
+   Empty circle → tap → fills green with white check. Scales up briefly
+   to feel responsive. Used in task lists to replace the older "Done" pill
+   button pattern. The caller is responsible for the row-level fade/slide
+   transition that follows; this component only renders the box itself.
+
+   Props:
+     checked          when true, renders filled + check icon
+     onToggle         tap handler. Receives no args.
+     size             outer diameter in px (default 22)
+     stopPropagation  default true. Stops click bubbling so the surrounding
+                      row's onClick (detail-open) doesn't fire.
+     disabled         renders muted, no pointer events
+   ════════════════════════════════════════════ */
+export const TaskCheckbox = React.memo(function TaskCheckbox({checked, onToggle, size=22, stopPropagation=true, disabled=false}) {
+  const handleClick = (e) => {
+    if (stopPropagation) e.stopPropagation();
+    if (disabled) return;
+    if (onToggle) onToggle();
+  };
+  const borderColor = disabled ? C.bdr : checked ? C.green : C.bdr;
+  const bgColor = checked ? C.green : "transparent";
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={checked ? "Mark as not done" : "Mark as done"}
+      aria-pressed={checked}
+      disabled={disabled}
+      style={{
+        width: size,
+        height: size,
+        minHeight: size,
+        flexShrink: 0,
+        border: `2px solid ${borderColor}`,
+        borderRadius: "50%",
+        background: bgColor,
+        color: "#fff",
+        cursor: disabled ? "default" : "pointer",
+        padding: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "background 180ms ease-out, border-color 180ms ease-out, transform 180ms ease-out",
+        transform: checked ? "scale(1.08)" : "scale(1)",
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {checked && (
+        <svg width={Math.round(size*0.55)} height={Math.round(size*0.55)} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="3 8.5 7 12 13 4.5"/>
+        </svg>
+      )}
+    </button>
+  );
+});
+
 // Hover tooltip — shows a floating info card on mouse enter, hides on leave
 export const Tooltip = React.memo(function Tooltip({children, content, width=220}) {
   const [show, setShow] = useState(false);
