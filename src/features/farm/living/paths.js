@@ -6,7 +6,7 @@
    ═══════════════════════════════════════════ */
 
 export const ZONE_PNG_BASE = "/zones";
-export const BACKGROUND_PNG = ZONE_PNG_BASE + "/background.png";
+export const BACKGROUND_PNG = ZONE_PNG_BASE + "/background.jpg";
 
 export function zonePngPath(type) {
   return ZONE_PNG_BASE + "/" + (type || "veg") + ".png";
