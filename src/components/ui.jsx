@@ -46,7 +46,7 @@ export const Txt = React.memo(function Txt({label,...p}) {
   </div>;
 });
 
-export function Overlay({title,onClose,children,wide}) {
+export function Overlay({title,onClose,children,wide,sheet}) {
   useEffect(function() {
     // Simple overflow lock (works on Android/desktop)
     const prev = document.body.style.overflow;
@@ -70,10 +70,12 @@ export function Overlay({title,onClose,children,wide}) {
       document.removeEventListener("touchmove", blockOuterScroll);
     };
   }, []);
+  const isSheet = !!sheet;
   return createPortal(
-    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
-      <div onClick={function(e){e.stopPropagation();}} className="overlay-sheet page-enter" style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
-        <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
+    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:isSheet?"flex-end":"center",justifyContent:"center",zIndex:9999,padding:isSheet?0:16,boxSizing:"border-box",overflowX:"hidden"}}>
+      <div onClick={function(e){e.stopPropagation();}} className="overlay-sheet page-enter" style={{background:C.card,borderRadius:isSheet?"20px 20px 0 0":C.r+4,maxWidth:isSheet?"100%":wide?720:520,width:"100%",maxHeight:isSheet?"90dvh":"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:isSheet?"0 -4px 32px rgba(0,0,0,.18)":"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)",paddingBottom:isSheet?"env(safe-area-inset-bottom, 16px)":0}}>
+        {isSheet && <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 0",flexShrink:0}}/>}
+        <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:isSheet?"20px 20px 0 0":`${C.r+4}px ${C.r+4}px 0 0`}}>
           <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
         </div>

@@ -16,7 +16,7 @@ import PlotOverlay from "./PlotOverlay";
 /* ═══════════════════════════════════════════
    FARM SETUP — simplified editing
    ═══════════════════════════════════════════ */
-function Setup({data, setData}) {
+function Setup({data, setData, onPlantInZone}) {
   const [showAdd, setShowAdd] = useState(false);
   const [sel, setSel] = useState(null);
   const [saved, setSaved] = useState(false);
@@ -28,6 +28,7 @@ function Setup({data, setData}) {
   const [cropDrag, setCropDrag] = useState(null); // {plotId, zoneId, startX, startY, origPx, origPy}
   const [cropResize, setCropResize] = useState(null); // {plotId, zoneId, startX, startY, origPw, origPh, frac}
   const [hoverInfo, setHoverInfo] = useState(null); // zone hover tooltip
+  const [tutorialDismissed, setTutorialDismissed] = useState(!!data.designerTutorialSeen);
   const svgRef = useRef(null);
   const [cityQuery, setCityQuery] = useState(data.city || "");
   const [cityResults, setCityResults] = useState([]);
@@ -500,15 +501,69 @@ function Setup({data, setData}) {
                     <div style={{fontSize:11,color:"#ffcc00"}}>🐄 {animalCount2} animal{animalCount2>1?"s":""}</div>
                   </div>
                 )}
-                <div style={{marginTop:10,fontSize:10,color:"rgba(255,255,255,.3)",textAlign:"center",fontStyle:"italic"}}>Click zone to edit below ↓</div>
+                {onPlantInZone && ["veg","orchard","herbs","greenhouse"].includes(sz2.type) && (
+                  <button onClick={function(e){e.stopPropagation();onPlantInZone(sz2.id);}}
+                    style={{marginTop:10,width:"100%",padding:"7px 0",background:C.green,color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.01em"}}>
+                    + Plant in {sz2.name}
+                  </button>
+                )}
+                <div style={{marginTop:6,fontSize:10,color:"rgba(255,255,255,.3)",textAlign:"center",fontStyle:"italic"}}>Click zone to edit below ↓</div>
               </div>
             </div>
           );
         })()}
 
+      {/* First-visit tutorial — shown until dismissed */}
+      {!tutorialDismissed && (
+        <div style={{
+          position:"absolute",inset:0,zIndex:80,
+          background:"rgba(0,0,0,.55)",backdropFilter:"blur(3px)",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          borderRadius:16,
+        }}>
+          <div style={{
+            background:C.card,borderRadius:16,padding:"28px 32px",
+            maxWidth:360,width:"90%",textAlign:"center",
+            boxShadow:"0 24px 64px rgba(0,0,0,.3)",
+          }}>
+            <div style={{fontSize:36,marginBottom:10}}>🗺️</div>
+            <div style={{fontSize:18,fontWeight:800,fontFamily:F.head,marginBottom:6}}>Design your farm</div>
+            <div style={{fontSize:13,color:C.t2,lineHeight:1.6,marginBottom:20}}>
+              Three steps to get started:
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24,textAlign:"left"}}>
+              {[
+                {n:"1",icon:"➕",label:"Add a zone","sub":"Hit \"+ Zone\" or pick a template below"},
+                {n:"2",icon:"✋",label:"Drag to position","sub":"Move zones around the map to match your real farm"},
+                {n:"3",icon:"📐",label:"Set real measurements","sub":"Enter actual metres so spacing and yield estimates are accurate"},
+              ].map(function(step){
+                return (
+                  <div key={step.n} style={{display:"flex",gap:14,alignItems:"flex-start",background:C.bg,borderRadius:12,padding:"10px 14px"}}>
+                    <div style={{width:32,height:32,borderRadius:16,background:C.green,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{step.icon}</div>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700,color:C.text}}>{step.label}</div>
+                      <div style={{fontSize:12,color:C.t2,marginTop:2}}>{step.sub}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={function(){
+                setTutorialDismissed(true);
+                setData({...data, designerTutorialSeen: true});
+              }}
+              style={{width:"100%",padding:"12px 0",background:C.green,color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",letterSpacing:"0.01em"}}>
+              Got it — let me design my farm
+            </button>
+          </div>
+        </div>
+      )}
+
         {/* Helper text */}
         <div style={{position:"absolute",bottom:6,left:10,fontSize:9,color:"rgba(80,95,80,.45)",fontFamily:F.mono,pointerEvents:"none"}}>Drag zones to reposition · Click to select</div>
       </div>
+
       {/* Crop color legend */}
       {(()=>{
         const LCC = CROP_COLORS.slice(0, 8);
@@ -586,11 +641,17 @@ function Setup({data, setData}) {
 
       {/* Zone list */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8,marginTop:14}}>
-        {zones.map(z=>{const zt=ZT.find(t=>t.id===z.type);return(
+        {zones.map(z=>{const zt=ZT.find(t=>t.id===z.type);const isPlantZone=["veg","orchard","herbs","greenhouse"].includes(z.type);return(
           <Card key={z.id} onClick={()=>setSel(z.id)} active={sel===z.id} style={{borderLeft:`4px solid ${zt?.fill||C.bdr}`}}>
             <div style={{fontSize:13,fontWeight:600}}>{zt?.icon} {z.name}</div>
             <div style={SX.t2_11}>{zt?.label}</div>
             <div style={{fontSize:10,color:C.t3,fontFamily:F.mono,marginTop:2}}>{(z.wM||0).toFixed(0)}m × {(z.hM||0).toFixed(0)}m</div>
+            {isPlantZone && onPlantInZone && (
+              <button onClick={function(e){e.stopPropagation();onPlantInZone(z.id);}}
+                style={{marginTop:8,width:"100%",padding:"5px 0",background:C.green,color:"#fff",border:"none",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                + Plant
+              </button>
+            )}
           </Card>
         );})}
       </div>
@@ -627,8 +688,12 @@ function Farming({data, setData, pageData, clearPageData}) {
 
   // Auto-open add form when arriving from Seasonal Calendar with a specific crop
   useEffect(() => {
-    if (pageData?.crop) {
-      setForm(f => ({...f, crop: pageData.crop, plantDate: pageData.plantDate || ""}));
+    if (pageData?.crop || pageData?.zone) {
+      setForm(f => ({...f,
+        ...(pageData.crop ? {crop: pageData.crop} : {}),
+        ...(pageData.plantDate ? {plantDate: pageData.plantDate} : {}),
+        ...(pageData.zone ? {zone: pageData.zone} : {}),
+      }));
       setShowAdd(true);
       if (clearPageData) clearPageData();
     }
@@ -979,11 +1044,20 @@ function FarmTab({data, setData, pageData, clearPageData}) {
   const [subTab, setSubTab] = useState(function() {
     return (pageData && pageData.tab) ? pageData.tab : "map";
   });
+  const [plantZoneId, setPlantZoneId] = useState(null);
   const noopClearPageData = useCallback(function(){}, []);
 
   useEffect(function() { clearPageData(); }, [clearPageData]);
 
   const farmPageData = (pageData && !pageData.tab) ? pageData : null;
+
+  function handlePlantInZone(zoneId) {
+    setPlantZoneId(zoneId);
+    setSubTab("crops");
+  }
+
+  const cropPageData = plantZoneId ? {zone: plantZoneId, ...(farmPageData || {})} : farmPageData;
+  function clearCropPageData() { setPlantZoneId(null); }
 
   const FARM_TABS = [
     {id:"map",   l:"🗺️  Map"},
@@ -1007,8 +1081,8 @@ function FarmTab({data, setData, pageData, clearPageData}) {
         })}
       </div>
       {subTab==="map"   && <FarmMapHero data={data} onEditLayout={function(){setSubTab("setup");}}/>}
-      {subTab==="crops" && <Farming data={data} setData={setData} pageData={farmPageData} clearPageData={noopClearPageData}/>}
-      {subTab==="setup" && <Setup data={data} setData={setData}/>}
+      {subTab==="crops" && <Farming data={data} setData={setData} pageData={cropPageData} clearPageData={clearCropPageData}/>}
+      {subTab==="setup" && <Setup data={data} setData={setData} onPlantInZone={handlePlantInZone}/>}
     </div>
   );
 }

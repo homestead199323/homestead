@@ -55,14 +55,14 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
 
   if (!crop) {
     return (
-      <Overlay title={`${plot.name || plot.crop}`} onClose={onClose} wide>
+      <Overlay title={`${plot.name || plot.crop}`} onClose={onClose} sheet>
         <div style={{padding:"24px 12px",color:C.t2,fontSize:13}}>Crop data not found for this plot.</div>
       </Overlay>
     );
   }
 
   return (
-    <Overlay title={`${crop.emoji} ${plot.name || plot.crop}`} onClose={onClose} wide>
+    <Overlay title={`${crop.emoji} ${plot.name || plot.crop}`} onClose={onClose} sheet>
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
         <Pill>{plot.status}</Pill>
         <Pill>☀ {crop.sun}</Pill>
