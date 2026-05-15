@@ -29,6 +29,7 @@ import TodayScreen from "./features/today/TodayScreen";
 import AIAssistant from "./features/assistant/AIAssistant";
 import FeedbackSurvey, { FeedbackPrompt } from "./features/feedback/FeedbackSurvey";
 import { BadgeCelebration } from "./components/BadgeCelebration";
+import Onboarding from "./features/onboarding/Onboarding";
 import { NAV, BOTTOM_TABS, MORE_ITEMS } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
 /* ═══════════════════════════════════════════
@@ -324,12 +325,13 @@ function AppInner() {
     reader.readAsText(file);
   }, [setData]);
 
-  // Auto-redirect to setup ONLY on very first visit
-  // Defensive null guards: do nothing if data or data.zones is missing.
-  useEffect(()=>{
-    if(!data || !Array.isArray(data.zones)) return;
-    if(!data.setupDone && data.zones.length===0) setPageRaw("setup");
-  },[data]);
+  // Show onboarding on first visit AND after data reset
+  // Condition: no zones and setupDone not set — same as old setup redirect but uses overlay now
+  const showOnboarding = !!(data && !data.setupDone && Array.isArray(data.zones) && data.zones.length === 0);
+
+  const handleOnboardingComplete = useCallback((updates) => {
+    setData({ ...data, ...updates });
+  }, [data, setData]);
 
   // Compute tasks ONCE — passed down to Dashboard + TaskQueue
   // Null guard: if data hasn't initialized yet, return empty tasks rather than crashing buildTaskQueue.
@@ -402,6 +404,7 @@ function AppInner() {
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       <AIAssistant data={data} setData={setData}/>
+      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}/>}
     </>
     </MotionConfig>
   );
