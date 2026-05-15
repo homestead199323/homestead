@@ -11,6 +11,7 @@ import { plotAreaM2, buildZoneSpaceMap } from "../../lib/farm-calc";
    PLOT OVERLAY — shared popup used from Farming, TaskQueue, Dashboard
    ═══════════════════════════════════════════ */
 function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
+  const layoutId = plot ? `crop-card-${plot.id}` : undefined;
   const crop = rCM(data.region).get(plot.crop);
   const zone = plot.zone ? data.zones.find(z => z.id === plot.zone) : null;
   const zoneSpace = useMemo(
@@ -55,14 +56,14 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
 
   if (!crop) {
     return (
-      <Overlay title={`${plot.name || plot.crop}`} onClose={onClose} sheet>
+      <Overlay title={`${plot.name || plot.crop}`} onClose={onClose} sheet layoutId={layoutId}>
         <div style={{padding:"24px 12px",color:C.t2,fontSize:13}}>Crop data not found for this plot.</div>
       </Overlay>
     );
   }
 
   return (
-    <Overlay title={`${crop.emoji} ${plot.name || plot.crop}`} onClose={onClose} sheet>
+    <Overlay title={`${crop.emoji} ${plot.name || plot.crop}`} onClose={onClose} sheet layoutId={layoutId}>
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
         <Pill>{plot.status}</Pill>
         <Pill>☀ {crop.sun}</Pill>

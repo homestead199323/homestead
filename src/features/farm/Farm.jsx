@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Pill, Ring, Stat } from "../../components/ui";
+import { LAYOUT_SPRING } from "../../lib/use-spring-drag";
 import { COMP } from "../../data/companions";
 import { CROP_COLORS } from "../../data/crops";
 import { LDB } from "../../data/livestock";
@@ -779,7 +781,8 @@ function Farming({data, setData, pageData, clearPageData}) {
         const zone=data.zones.find(z=>z.id===p.zone);
         const hasQty = p.plantCount || p.qty;
         return (
-          <Card key={p.id} onClick={()=>setSelP(p.id)} style={isR?{boxShadow:`0 0 0 2px ${C.orange}`}:{}}>
+          <motion.div key={p.id} layoutId={`crop-card-${p.id}`} transition={LAYOUT_SPRING}>
+          <Card onClick={()=>setSelP(p.id)} style={isR?{boxShadow:`0 0 0 2px ${C.orange}`}:{}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <Ring pct={pct} color={isR?C.orange:C.green}>{c?.emoji||"🌱"}</Ring>
               <div style={SX.flex1}>
@@ -798,6 +801,7 @@ function Farming({data, setData, pageData, clearPageData}) {
               </div>
             </div>
           </Card>
+          </motion.div>
         );
       })}</div>}
 

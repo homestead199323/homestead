@@ -1,9 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { X } from "lucide-react";
 import { C, F, SX } from "../lib/theme";
 import { localDateFromKey, addDaysToLocalKey } from "../lib/utils";
 import { useSwipe } from "../lib/use-swipe";
+import { SPRING, LAYOUT_SPRING } from "../lib/use-spring-drag";
+
+// Re-export for consumers that want the spring config
+export { LAYOUT_SPRING };
 
 /* ═══════════════════════════════════════════
    UI COMPONENTS
@@ -46,20 +51,20 @@ export const Txt = React.memo(function Txt({label,...p}) {
   </div>;
 });
 
-export function Overlay({title,onClose,children,wide,sheet}) {
+export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
+  const isSheet = !!sheet;
+  // Spring drag-to-dismiss for sheet variant
+  const y = useMotionValue(0);
+  const opacity = useTransform(y, [0, 300], [1, 0]);
+  const backdropOpacity = useTransform(y, [0, 300], [1, 0]);
+
   useEffect(function() {
-    // Simple overflow lock (works on Android/desktop)
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    // iOS Safari: touchmove prevention. Walk the DOM from the touch target —
-    // if a scrollable ancestor exists inside the sheet, allow the gesture.
-    // Otherwise preventDefault stops the background page from scrolling.
     function blockOuterScroll(e) {
       let el = e.target;
       while (el && el !== document.body) {
-        if (el.classList && el.classList.contains("overlay-sheet")) {
-          return; // inside sheet — let it scroll naturally
-        }
+        if (el.classList && el.classList.contains("overlay-sheet")) return;
         el = el.parentElement;
       }
       e.preventDefault();
@@ -70,17 +75,77 @@ export function Overlay({title,onClose,children,wide,sheet}) {
       document.removeEventListener("touchmove", blockOuterScroll);
     };
   }, []);
-  const isSheet = !!sheet;
+
+  function handleDragEnd(_, info) {
+    // Dismiss if dragged down fast or far enough
+    if (info.velocity.y > 500 || info.offset.y > 180) {
+      animate(y, 600, { duration: 0.22, ease: "easeOut" });
+      setTimeout(onClose, 200);
+    } else {
+      animate(y, 0, SPRING.sheet);
+    }
+  }
+
+  if (!isSheet) {
+    return createPortal(
+      <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
+        <motion.div
+          onClick={function(e){e.stopPropagation();}}
+          layoutId={layoutId}
+          transition={LAYOUT_SPRING}
+          className="overlay-sheet page-enter"
+          style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
+          <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
+            <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
+            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
+          </div>
+          <div style={{padding:"16px 24px 24px"}}>{children}</div>
+        </motion.div>
+      </div>,
+      document.body
+    );
+  }
+
+  // Sheet variant — spring drag-to-dismiss
   return createPortal(
-    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:isSheet?"flex-end":"center",justifyContent:"center",zIndex:9999,padding:isSheet?0:16,boxSizing:"border-box",overflowX:"hidden"}}>
-      <div onClick={function(e){e.stopPropagation();}} className="overlay-sheet page-enter" style={{background:C.card,borderRadius:isSheet?"20px 20px 0 0":C.r+4,maxWidth:isSheet?"100%":wide?720:520,width:"100%",maxHeight:isSheet?"90dvh":"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:isSheet?"0 -4px 32px rgba(0,0,0,.18)":"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)",paddingBottom:isSheet?"env(safe-area-inset-bottom, 16px)":0}}>
-        {isSheet && <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 0",flexShrink:0}}/>}
-        <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:isSheet?"20px 20px 0 0":`${C.r+4}px ${C.r+4}px 0 0`}}>
+    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",overflowX:"hidden"}}>
+      {/* Backdrop fades as sheet is dragged down */}
+      <motion.div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",opacity:backdropOpacity}} onClick={onClose}/>
+      <motion.div
+        onClick={function(e){e.stopPropagation();}}
+        layoutId={layoutId}
+        transition={LAYOUT_SPRING}
+        drag="y"
+        dragConstraints={{top:0}}
+        dragElastic={{top:0, bottom:0.25}}
+        onDragEnd={handleDragEnd}
+        style={{
+          y,
+          position:"relative",
+          background:C.card,
+          borderRadius:"20px 20px 0 0",
+          width:"100%",
+          maxHeight:"90dvh",
+          overflowY:"scroll",
+          overflowX:"hidden",
+          WebkitOverflowScrolling:"touch",
+          overscrollBehavior:"contain",
+          boxSizing:"border-box",
+          boxShadow:"0 -4px 32px rgba(0,0,0,.18)",
+          paddingBottom:"env(safe-area-inset-bottom, 16px)",
+          cursor:"grab",
+          touchAction:"none",
+        }}
+        className="overlay-sheet"
+      >
+        {/* Drag handle pill */}
+        <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 0",flexShrink:0}}/>
+        <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:"20px 20px 0 0",cursor:"default"}} onPointerDown={function(e){e.stopPropagation();}}>
           <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
         </div>
-        <div style={{padding:"16px 24px 24px"}}>{children}</div>
-      </div>
+        <div style={{padding:"16px 24px 24px",cursor:"default"}} onPointerDown={function(e){e.stopPropagation();}}>{children}</div>
+      </motion.div>
     </div>,
     document.body
   );
@@ -286,21 +351,27 @@ export const SwipeableRow = React.memo(function SwipeableRow({
   style: outerStyle,
 }) {
   const { bind, offset, dragging, committed } = useSwipe({ onSwipeRight, onSwipeLeft, disabled });
+  const x = useMotionValue(0);
+
+  // Keep Framer motion value in sync with touch-tracked offset
+  // so spring physics handle the snap-back / commit slide-off
+  useEffect(function() {
+    if (dragging) {
+      // While finger is down: track exactly, no spring
+      x.set(offset);
+    } else if (committed) {
+      // Commit: slide off screen with spring
+      animate(x, offset > 0 ? 400 : -400, SPRING.swipe);
+    } else {
+      // Release without commit: spring back to 0
+      animate(x, 0, SPRING.swipe);
+    }
+  }, [offset, dragging, committed]); // eslint-disable-line
 
   const showingRight = offset > 4 && !!onSwipeRight;
   const showingLeft = offset < -4 && !!onSwipeLeft;
   const pastRight = offset >= 80;
   const pastLeft = offset <= -80;
-
-  // Transition rules:
-  //   while dragging → no transition (track the finger exactly)
-  //   during commit → 220ms slide-off
-  //   on release without commit → 150ms snap-back
-  const tx = dragging
-    ? "transform 0ms"
-    : committed
-    ? "transform 220ms ease-out"
-    : "transform 150ms ease-out";
 
   return (
     <div style={{ position: "relative", overflow: "hidden", borderRadius: 10, ...outerStyle }}>
@@ -354,17 +425,16 @@ export const SwipeableRow = React.memo(function SwipeableRow({
           {leftActionLabel || "🗑 Delete"}
         </div>
       )}
-      <div
+      <motion.div
         {...bind}
         style={{
           position: "relative",
-          transform: `translateX(${offset}px)`,
-          transition: tx,
+          x,
           touchAction: "pan-y",
         }}
       >
         {children}
-      </div>
+      </motion.div>
     </div>
   );
 });
