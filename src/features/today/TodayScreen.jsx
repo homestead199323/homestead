@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 import { C, F, SX } from "../../lib/theme";
 import { ZT_MAP } from "../../data/zones";
@@ -8,10 +8,80 @@ import { toLocalDateKey, todayLocalKey, localDateFromKey, addDaysToLocalKey, day
 import { rCM } from "../../lib/regional";
 import { buildZoneSpaceMap } from "../../lib/farm-calc";
 import { fetchWeather } from "../../lib/weather";
-import { Card, Pill, Tooltip, Ring, SwipeableRow } from "../../components/ui";
+import { Card, Pill, Tooltip, Ring, SwipeableRow, TaskCheckbox } from "../../components/ui";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import PlotOverlay from "../farm/PlotOverlay";
 import WalkOverlay from "./WalkOverlay";
+
+/* ═══════════════════════════════════════════
+   TODAY TASK ROW — compact row used in the home-screen Task Pipeline.
+
+   This is the mobile-first task list (visible immediately on app open).
+   Visually denser than TaskQueue's TaskRow: priority-as-dot instead of
+   left-border, single-line truncated title, no date label, zone Pill on
+   the right edge. Phase 6.1 pattern still applies though — tap the
+   left-side TaskCheckbox to complete with the same 280ms fade + 8px
+   slide + 0.97 scale + strikethrough animation, swipe-right uses the
+   same path, prefers-reduced-motion skips the delay. Harvest tasks
+   keep their right-side 🧺 button (goto Farm/PlotOverlay), no checkbox.
+   ═══════════════════════════════════════════ */
+const TodayTaskRow = React.memo(function TodayTaskRow({
+  t, isActive, zoneInitials, priColor, priBg,
+  onOpenContext, onToggleStep, onMarkDone, onHarvest,
+}) {
+  const [completing, setCompleting] = useState(false);
+  const canOpen = !!(t.plotId || t.animalId);
+  const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
+  const isStep = t.stepIdx != null;
+  const completeAction = (isStep && t.plotId)
+    ? function() { onToggleStep(t.plotId, t.stepIdx); }
+    : (canMarkDone && t.key)
+    ? function() { onMarkDone(t.key); }
+    : null;
+  const handleComplete = () => {
+    if (!completeAction || completing) return;
+    const reduce = typeof window !== "undefined"
+      && window.matchMedia
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { completeAction(); return; }
+    setCompleting(true);
+    setTimeout(completeAction, 280);
+  };
+  const swipeRightAction = completeAction ? handleComplete : undefined;
+  const strikethrough = completing ? "line-through" : "none";
+  const cols = completeAction ? "auto auto 1fr auto" : "auto 1fr auto";
+  return (
+    <SwipeableRow onSwipeRight={swipeRightAction} style={{marginBottom:4,borderRadius:12}}>
+      <div
+        onClick={canOpen && !completing ? onOpenContext : (t.zoneId && !completing ? onOpenContext : undefined)}
+        style={{
+          display:"grid",gridTemplateColumns:cols,gap:10,alignItems:"center",
+          padding:"10px 12px",
+          border:`1px solid ${isActive ? C.gm : C.bdr}`,
+          borderRadius:12,background:isActive ? C.soft : C.raised,
+          cursor: (canOpen || t.zoneId) && !completing ? "pointer" : "default",
+          opacity: completing ? 0 : 1,
+          transform: completing ? "translateY(8px) scale(0.97)" : "translateY(0) scale(1)",
+          transition: "opacity 280ms ease-out, transform 280ms ease-out",
+        }}>
+        {completeAction && (
+          <TaskCheckbox checked={completing} onToggle={handleComplete} />
+        )}
+        <span style={{width:9,height:9,borderRadius:"50%",background:priColor(t.pri),flexShrink:0}}/>
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:strikethrough}}>{t.emoji} {t.title}</div>
+          <div style={{fontSize:11,color:C.t2,marginTop:1}}>{t.loc}{t.daysOut > 0 ? ` · in ${t.daysOut}d` : t.daysOut === 0 && t.type !== "water" ? " · now" : ""}</div>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+          {t.type === "harvest" && (
+            <button onClick={(e)=>{e.stopPropagation();onHarvest();}} style={{background:C.orange,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer",minHeight:0}}>Harvest</button>
+          )}
+          <Pill c={priColor(t.pri)} bg={priBg(t.pri)}>{zoneInitials}</Pill>
+        </div>
+      </div>
+    </SwipeableRow>
+  );
+});
 
 export default function TodayScreen({data, setData, setPage, tasks}) {
   const [selZone,setSelZone]=useState(null);
@@ -413,47 +483,29 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </div>
             ) : enrichedTasks.slice(0, 12).map((t, i) => {
               const isActive = t.zoneId === activeZone;
-              const canOpen = !!(t.plotId || t.animalId);
-              const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
-              // Pick swipe-right action — step toggles its done state, regular
-              // tasks call markTaskDone. Harvest/upcoming/forecast tasks (and
-              // those with no key) get no swipe.
-              const swipeRightAction = (t.stepIdx != null && t.plotId)
-                ? function() { togStep(t.plotId, t.stepIdx); }
-                : (canMarkDone && t.key)
-                ? function() { setData(markTaskDone(data, t.key)); }
-                : undefined;
+              const zoneInitials = t.zoneId
+                ? (data.zones.find(z=>z.id===t.zoneId)?.name?.split(" ").map(w=>w[0]).join("").slice(0,3) || "—")
+                : "Farm";
               return (
-                <SwipeableRow key={t.key || i} onSwipeRight={swipeRightAction} style={{marginBottom:4,borderRadius:12}}>
-                <div
-                  onClick={() => {
+                <TodayTaskRow
+                  key={t.key || i}
+                  t={t}
+                  isActive={isActive}
+                  zoneInitials={zoneInitials}
+                  priColor={priColor}
+                  priBg={priBg}
+                  onOpenContext={() => {
                     if (t.zoneId) setSelZone(t.zoneId);
                     if (t.plotId) setOpenPlotId(t.plotId);
                     else if (t.animalId) setOpenAnimalId(t.animalId);
                   }}
-                  style={{
-                    display:"grid",gridTemplateColumns:"auto 1fr auto",gap:10,alignItems:"center",
-                    padding:"10px 12px",
-                    border:`1px solid ${isActive ? C.gm : C.bdr}`,
-                    borderRadius:12,background:isActive ? C.soft : C.raised,
-                    cursor: canOpen ? "pointer" : (t.zoneId?"pointer":"default"),
-                    transition:"all .15s"
-                  }}>
-                  <span style={{width:9,height:9,borderRadius:"50%",background:priColor(t.pri),flexShrink:0}}/>
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.emoji} {t.title}</div>
-                    <div style={{fontSize:11,color:C.t2,marginTop:1}}>{t.loc}{t.daysOut > 0 ? ` · in ${t.daysOut}d` : t.daysOut === 0 && t.type !== "water" ? " · now" : ""}</div>
-                  </div>
-                  <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-                    {t.stepIdx != null && <button onClick={e=>{e.stopPropagation();togStep(t.plotId,t.stepIdx);}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
-                    {canMarkDone && <button onClick={e=>{e.stopPropagation();setData(markTaskDone(data,t.key));}} style={{background:C.green,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Done</button>}
-                    {t.type==="harvest" && <button onClick={e=>{e.stopPropagation();if(t.plotId)setOpenPlotId(t.plotId);else setPage("farm");}} style={{background:C.orange,color:"#fff",border:"none",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer"}}>Harvest</button>}
-                    <Pill c={priColor(t.pri)} bg={priBg(t.pri)}>
-                      {t.zoneId ? (data.zones.find(z=>z.id===t.zoneId)?.name?.split(" ").map(w=>w[0]).join("").slice(0,3) || "—") : "Farm"}
-                    </Pill>
-                  </div>
-                </div>
-                </SwipeableRow>
+                  onToggleStep={togStep}
+                  onMarkDone={(key) => setData(markTaskDone(data, key))}
+                  onHarvest={() => {
+                    if (t.plotId) setOpenPlotId(t.plotId);
+                    else setPage("farm");
+                  }}
+                />
               );
             })}
           </div>

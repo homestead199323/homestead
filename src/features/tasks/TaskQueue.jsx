@@ -657,7 +657,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                 style={{
                   background:C.gp,color:C.green,border:"none",borderRadius:14,
                   padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",
-                  fontFamily:F.body,letterSpacing:"0.02em",minHeight:0,
+                  fontFamily:F.body,letterSpacing:"0.02em",minHeight:36,
                 }}
               >
                 Today

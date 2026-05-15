@@ -96,10 +96,17 @@ export const Pill = React.memo(function Pill({children,c=C.green,bg=C.gp,sm=fals
    button pattern. The caller is responsible for the row-level fade/slide
    transition that follows; this component only renders the box itself.
 
+   Mobile note: the visible circle stays at `size` (default 22px) but the
+   button hit target is 44px (WCAG 2.5.5 / Apple HIG minimum). Negative
+   margins absorb the extra width so the surrounding flex row's layout
+   doesn't shift on desktop — the visible circle stays anchored where a
+   22px element would sit, while thumbs on mobile get a 44px tappable area.
+
    Props:
      checked          when true, renders filled + check icon
      onToggle         tap handler. Receives no args.
-     size             outer diameter in px (default 22)
+     size             outer diameter of the VISIBLE circle in px (default 22).
+                      Hit target is always max(size, 44).
      stopPropagation  default true. Stops click bubbling so the surrounding
                       row's onClick (detail-open) doesn't fire.
      disabled         renders muted, no pointer events
@@ -112,6 +119,8 @@ export const TaskCheckbox = React.memo(function TaskCheckbox({checked, onToggle,
   };
   const borderColor = disabled ? C.bdr : checked ? C.green : C.bdr;
   const bgColor = checked ? C.green : "transparent";
+  const hit = Math.max(size, 44);
+  const gutter = (hit - size) / 2;
   return (
     <button
       type="button"
@@ -120,29 +129,44 @@ export const TaskCheckbox = React.memo(function TaskCheckbox({checked, onToggle,
       aria-pressed={checked}
       disabled={disabled}
       style={{
-        width: size,
-        height: size,
-        minHeight: size,
+        width: hit,
+        height: hit,
+        minHeight: hit,
         flexShrink: 0,
-        border: `2px solid ${borderColor}`,
-        borderRadius: "50%",
-        background: bgColor,
+        margin: `-${gutter}px`,
+        background: "transparent",
+        border: "none",
         color: "#fff",
         cursor: disabled ? "default" : "pointer",
         padding: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        transition: "background 180ms ease-out, border-color 180ms ease-out, transform 180ms ease-out",
-        transform: checked ? "scale(1.08)" : "scale(1)",
         opacity: disabled ? 0.5 : 1,
+        WebkitTapHighlightColor: "transparent",
       }}
     >
-      {checked && (
-        <svg width={Math.round(size*0.55)} height={Math.round(size*0.55)} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="3 8.5 7 12 13 4.5"/>
-        </svg>
-      )}
+      <span
+        aria-hidden="true"
+        style={{
+          width: size,
+          height: size,
+          border: `2px solid ${borderColor}`,
+          borderRadius: "50%",
+          background: bgColor,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "background 180ms ease-out, border-color 180ms ease-out, transform 180ms ease-out",
+          transform: checked ? "scale(1.08)" : "scale(1)",
+        }}
+      >
+        {checked && (
+          <svg width={Math.round(size*0.55)} height={Math.round(size*0.55)} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="3 8.5 7 12 13 4.5"/>
+          </svg>
+        )}
+      </span>
     </button>
   );
 });
