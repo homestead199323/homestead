@@ -5,7 +5,7 @@ import { appendLog, todayLocalKey } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
 import { LDB } from "../../data/livestock";
 import { C, SX } from "../../lib/theme";
-import { Btn, Card, Inp, Sel, Overlay, Pill, Stat, SwipeableRow } from "../../components/ui";
+import { Btn, Card, Inp, Sel, Overlay, Pill, SwipeableRow } from "../../components/ui";
 
 /* ═══════════════════════════════════════════
    PANTRY
@@ -19,6 +19,20 @@ export default function Pantry({data, setData}) {
   const eat=(item,q)=>{setData({...data,pantry:{items:data.pantry.items.map(i=>i.id===item.id?(i.qty-q<=0?null:{...i,qty:Math.round((i.qty-q)*10)/10}):i).filter(Boolean)},log:appendLog(data.log,{text:`Ate ${q}${item.unit} ${item.name}`})});};
   const cats=["All","Fresh Produce","Meat","Eggs","Dairy","Preserved","Grain","Other"];
   const fil=cat==="All"?data.pantry.items:data.pantry.items.filter(i=>i.category===cat);
+
+  // 6.5.1 — hero tile data, pre-computed (no IIFE in render path)
+  const _totalKg = Math.round(data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0));
+  const _freshKg = Math.round(data.pantry.items.filter(i=>i.source==="harvest" && i.unit==="kg").reduce((s,i)=>s+i.qty,0));
+  const pantryHero = {
+    itemCount: data.pantry.items.length,
+    totalKg: _totalKg,
+    tagline:
+      data.pantry.items.length === 0
+        ? "Your harvest will live here"
+        : _freshKg > 0
+          ? `${_freshKg} kg fresh from your farm — your shelf is starting to fill`
+          : "Stocked and ready",
+  };
   const itemIcon = (item) => {
     if (item.source === "farm") {
       const crop = rCM(data.region).get(item.name);
@@ -46,11 +60,28 @@ export default function Pantry({data, setData}) {
   return (
     <div className="page-enter" style={SX.mw800}>
       <div style={SX.pageHead}><div><h2 style={SX.headerH2}>📦 Pantry</h2><p style={SX.pageSubHead}>Everything you've harvested and stored</p></div><Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Manual</Btn></div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:16}}>
-        <Stat label="Items" value={data.pantry.items.length}/><Stat label="kg" value={Math.round(data.pantry.items.filter(i=>i.unit==="kg").reduce((s,i)=>s+i.qty,0))}/>
-      </div>
+      {/* 6.5.1 — hero count tile (replaces the two equal Stat tiles) */}
+      {pantryHero.itemCount > 0 && (
+        <Card style={{background:`linear-gradient(135deg, ${C.tGreen2}, ${C.card})`,border:`1px solid ${C.gm}`,marginBottom:16}}>
+          <div style={SX.rowCenterG10}>
+            <div style={{fontSize:40,lineHeight:1}}>🫙</div>
+            <div style={SX.flex1}>
+              <div style={{fontSize:20,fontWeight:800,letterSpacing:"-0.02em"}}>{pantryHero.itemCount} {pantryHero.itemCount === 1 ? "item" : "items"}{pantryHero.totalKg > 0 ? `, ${pantryHero.totalKg} kg total` : ""}</div>
+              <div style={{fontSize:13,color:C.t2,marginTop:2}}>{pantryHero.tagline}</div>
+            </div>
+          </div>
+        </Card>
+      )}
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>{cats.map(c=><button key={c} onClick={()=>setCat(c)} style={{padding:"6px 14px",borderRadius:20,border:"none",background:cat===c?C.green:C.card,color:cat===c?"#fff":C.t2,fontSize:12,fontWeight:600,cursor:"pointer",boxShadow:cat===c?"none":C.sh}}>{c}</button>)}</div>
-      {fil.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdWarm}}><div style={SX.emptyIcon}>📦</div><div style={SX.s15Bold}>Pantry is empty</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Harvest crops or collect produce to stock up</div></Card>:
+      {fil.length===0?<Card style={{textAlign:"center",padding:"64px 24px",background:C.grdWarm}}>
+        <div style={{fontSize:72,marginBottom:12,lineHeight:1}}>🫙</div>
+        <div style={SX.s15Bold}>{data.pantry.items.length === 0 ? "Your shelf is bare" : `No ${cat.toLowerCase()} yet`}</div>
+        <div style={{color:C.t2,marginTop:8,fontSize:13,maxWidth:300,marginLeft:"auto",marginRight:"auto",lineHeight:1.5}}>
+          {data.pantry.items.length === 0
+            ? "Your harvest will live here — plant something or add an item manually to get started."
+            : `Switch the filter above or harvest some ${cat.toLowerCase()} from your farm.`}
+        </div>
+      </Card>:
       <div style={{display:"grid",gap:6}}>{fil.map(item=>(
         <SwipeableRow key={item.id} onSwipeLeft={function(){del(item.id);}} leftActionLabel="🗑 Remove">
         <Card><div style={SX.rowCenterG10}>

@@ -27,12 +27,59 @@ export default function Financials({data, setData}) {
   // catT computed in useMemo above
   const last5=items.slice(-5).reverse();
 
+  // 6.6.2 — chart gating: monthly needs ≥2 months with data, daily needs ≥2 days
+  const monthsWithData = mData.filter(d => d.e > 0 || d.r > 0).length;
+  const daysWithData = dData.filter(d => d.e > 0 || d.r > 0).length;
+  const chartHasEnough = chartMode === "monthly" ? monthsWithData >= 2 : daysWithData >= 2;
+
+  // 6.6.3 — pie-chart geometry, pre-computed (no IIFE in render path)
+  const CAT_COLORS = {
+    Seeds: "#27ae60", Tools: "#8d6e63", Feed: "#ffa726",
+    Animals: "#e65100", Fuel: "#5e35b1", Infrastructure: "#37474f",
+    "Produce Sales": "#42a5f5", Other: "#90a4ae",
+  };
+  const catEntries = Object.entries(catT).sort((a,b)=>b[1]-a[1]);
+  const pieSlices = useMemo(() => {
+    if (exp <= 0) return [];
+    let acc = 0;
+    return catEntries.map(([cat, amt]) => {
+      const frac = amt / exp;
+      const start = acc;
+      acc += frac;
+      // Convert two fractions on [0,1] to SVG arc path on a 100px circle centered at 60,60 with r=50
+      const a0 = start * Math.PI * 2 - Math.PI / 2;
+      const a1 = acc   * Math.PI * 2 - Math.PI / 2;
+      const x0 = 60 + 50 * Math.cos(a0);
+      const y0 = 60 + 50 * Math.sin(a0);
+      const x1 = 60 + 50 * Math.cos(a1);
+      const y1 = 60 + 50 * Math.sin(a1);
+      const largeArc = frac > 0.5 ? 1 : 0;
+      const d = `M 60 60 L ${x0.toFixed(2)} ${y0.toFixed(2)} A 50 50 0 ${largeArc} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`;
+      return { cat, amt, frac, d, color: CAT_COLORS[cat] || "#90a4ae" };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catT, exp]);
+
   return (
     <div className="page-enter" style={SX.mw800}>
       <div style={SX.pageHead}>
         <div><h2 style={SX.headerH2}>💰 Financials</h2><p style={SX.pageSubHead}>Income, expenses, and profitability</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Add Entry</Btn>
       </div>
+      {/* 6.6.1 — empty state replaces the body when there are zero entries */}
+      {items.length === 0 ? (
+        <Card style={{textAlign:"center",padding:"64px 24px",background:C.grdWarm,marginBottom:16}}>
+          <div style={{fontSize:72,marginBottom:12,lineHeight:1}}>🧾</div>
+          <div style={SX.s15Bold}>No money tracked yet</div>
+          <div style={{color:C.t2,marginTop:8,fontSize:13,maxWidth:340,marginLeft:"auto",marginRight:"auto",lineHeight:1.5}}>
+            Add your first seed packet to start tracking. We'll handle the math — categories, monthly trends, profit and loss.
+          </div>
+          <div style={{marginTop:18}}>
+            <Btn onClick={()=>setShowAdd(true)}>+ Add your first entry</Btn>
+          </div>
+        </Card>
+      ) : (
+      <>
       <div className="g3" style={{gap:10,marginBottom:20}}>
         <Stat label="Spent" value={E+exp.toFixed(0)} color={C.red}/>
         <Stat label="Revenue" value={E+inc.toFixed(0)} color={C.green}/>
@@ -46,6 +93,13 @@ export default function Financials({data, setData}) {
           </div>
         </div>
         {chartMode==="daily"&&<div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:12}}><button onClick={()=>setChartM(Math.max(0,chartM-1))} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.t2}}>{"<"}</button><span style={{fontSize:13,fontWeight:600}}>{mN[chartM]}</span><button onClick={()=>setChartM(Math.min(11,chartM+1))} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.t2}}>{">"}</button></div>}
+        {/* 6.6.2 — only render the chart when we have at least 2 data points in the active view */}
+        {!chartHasEnough ? (
+          <div style={{textAlign:"center",padding:"36px 16px",color:C.t2,fontSize:13,lineHeight:1.5}}>
+            Not enough data yet for a {chartMode==="monthly"?"monthly":"daily"} chart.<br/>
+            Add a second entry {chartMode==="monthly"?"in a different month":"on a different day"} to see the trend.
+          </div>
+        ) : (
         <div style={{overflowX:"auto"}}>
           <svg viewBox={"0 0 "+(chartMode==="monthly"?360:Math.max(360,dim*14))+" 140"} style={{width:"100%",display:"block"}}>
             {(chartMode==="monthly"?mData:dData).map((d,i)=>{const bw=chartMode==="monthly"?22:8;const gap=chartMode==="monthly"?8:6;const x=i*(bw*2+gap)+20;const mv=chartMode==="monthly"?maxM:maxD;const eH=(d.e/mv)*100;const rH=(d.r/mv)*100;return(
@@ -58,9 +112,39 @@ export default function Financials({data, setData}) {
             <line x1="16" y1="120" x2={chartMode==="monthly"?"350":String(dim*14+10)} y2="120" stroke={C.bdr} strokeWidth="1"/>
           </svg>
         </div>
+        )}
         <div style={{display:"flex",gap:12,marginTop:8,justifyContent:"center"}}><span style={{fontSize:10,color:C.red}}>{"■"} Expenses</span><span style={{fontSize:10,color:C.green}}>{"■"} Income</span></div>
       </Card>
-      {Object.keys(catT).length>0&&<Card style={{marginBottom:16}}><div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Expense Breakdown</div>{Object.entries(catT).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=><div key={cat} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{flex:1,fontSize:13}}>{cat}</div><div style={{width:100,height:6,background:C.bdr,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:(amt/exp*100)+"%",background:C.green,borderRadius:3}}/></div><div style={{fontSize:13,fontWeight:600,fontFamily:F.mono,width:60,textAlign:"right"}}>{E}{amt.toFixed(0)}</div></div>)}</Card>}
+      {/* 6.6.3 — categorized spending as a donut with a category legend */}
+      {pieSlices.length>0 && (
+        <Card style={{marginBottom:16}}>
+          <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,marginBottom:12}}>Expense Breakdown</div>
+          <div style={{display:"flex",gap:20,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{flexShrink:0,position:"relative"}}>
+              <svg viewBox="0 0 120 120" style={{width:140,height:140,display:"block"}} role="img" aria-label="Expense category pie chart">
+                {pieSlices.length === 1
+                  ? <circle cx="60" cy="60" r="50" fill={pieSlices[0].color}/>
+                  : pieSlices.map(s => <path key={s.cat} d={s.d} fill={s.color}/>)
+                }
+                {/* donut hole */}
+                <circle cx="60" cy="60" r="28" fill={C.card}/>
+                <text x="60" y="58" textAnchor="middle" fontSize="9" fill={C.t2} fontFamily={F.body}>Total</text>
+                <text x="60" y="72" textAnchor="middle" fontSize="13" fontWeight="700" fill={C.text} fontFamily={F.mono}>{E}{exp.toFixed(0)}</text>
+              </svg>
+            </div>
+            <div style={{flex:1,minWidth:180}}>
+              {pieSlices.map(s => (
+                <div key={s.cat} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <span style={{display:"inline-block",width:12,height:12,borderRadius:3,background:s.color,flexShrink:0}}/>
+                  <div style={{flex:1,fontSize:13}}>{s.cat}</div>
+                  <div style={{fontSize:12,color:C.t2,fontFamily:F.mono,width:48,textAlign:"right"}}>{Math.round(s.frac*100)}%</div>
+                  <div style={{fontSize:13,fontWeight:600,fontFamily:F.mono,width:56,textAlign:"right"}}>{E}{s.amt.toFixed(0)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
       <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,marginBottom:10}}>Recent Transactions</div>
       {last5.length===0?<Card style={{textAlign:"center",padding:32}}><div style={{color:C.t2}}>No transactions yet</div></Card>:
       <div style={{display:"grid",gap:6}}>{last5.map(i=>(
@@ -71,6 +155,8 @@ export default function Financials({data, setData}) {
           <Btn sm v="ghost" onClick={()=>del(i.id)}><Trash2 size={14} strokeWidth={1.8}/></Btn>
         </div></Card>
       ))}</div>}
+      </>
+      )}
       {showAdd&&<Overlay title="Add Entry" onClose={()=>setShowAdd(false)}>
         <div style={{display:"flex",gap:8,marginBottom:14}}>{["expense","income"].map(t=><Card key={t} onClick={()=>setForm({...form,type:t})} active={form.type===t} style={{flex:1,textAlign:"center",cursor:"pointer"}}><div style={SX.s20}>{t==="expense"?"📤":"📥"}</div><div style={{fontSize:13,fontWeight:600,marginTop:4}}>{t==="expense"?"Expense":"Income"}</div></Card>)}</div>
         <Inp label="Amount" type="number" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
