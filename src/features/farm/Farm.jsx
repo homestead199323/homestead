@@ -934,6 +934,32 @@ function Farming({data, setData, pageData, clearPageData}) {
    FARM MAP HERO — full-width zone map view
    ═══════════════════════════════════════════ */
 function FarmMapHero({data, onEditLayout}) {
+  // ── Phase 8.5: living map state ──
+  const [mapHour, setMapHour] = useState(function(){ return new Date().getHours(); });
+  useEffect(function() {
+    const id = setInterval(function() { setMapHour(new Date().getHours()); }, 60000);
+    return function() { clearInterval(id); };
+  }, []);
+
+  const wateredPlotIds = useMemo(function() {
+    const todayKey = todayLocalKey();
+    const done = new Set((data.completions && data.completions[todayKey]) || []);
+    const ids = new Set();
+    done.forEach(function(k) {
+      const m = k.match(/^plot-(.+)-water$/);
+      if (m) ids.add(m[1]);
+    });
+    return ids;
+  }, [data.completions]);
+
+  const mapTintOverlay = useMemo(function() {
+    const h = mapHour;
+    if (h >= 8 && h <= 17) return null;
+    if (h === 6 || h === 7) return "rgba(255,180,80,.10)";
+    if (h === 18 || h === 19) return "rgba(255,140,60,.13)";
+    return "rgba(15,30,60,.22)";
+  }, [mapHour]);
+
   const cropColorMap = useMemo(function() {
     const m = new Map();
     let idx = 0;
@@ -948,6 +974,7 @@ function FarmMapHero({data, onEditLayout}) {
 
   const zoneBlocks = useMemo(function() {
     const fW = data.farmW || 100, fH = data.farmH || 60;
+    const today = todayLocalKey();
     return data.zones.map(function(z) {
       const xPct = ((z.xM||0)/fW*100).toFixed(1);
       const yPct = ((z.yM||0)/fH*100).toFixed(1);
@@ -956,6 +983,7 @@ function FarmMapHero({data, onEditLayout}) {
       const zt = ZT_MAP.get(z.type);
       const isPlant = ["veg","orchard","herbs","greenhouse"].includes(z.type);
       const zPlots = isPlant ? data.garden.plots.filter(function(p){return p.zone===z.id&&p.status!=="harvested";}) : [];
+      const isUrgentZone = zPlots.some(function(p){ return p.harvestDate && p.harvestDate <= today; });
       const zoneTotalM2 = (z.wM||10)*(z.hM||8);
       const patches = [];
       if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
@@ -978,14 +1006,25 @@ function FarmMapHero({data, onEditLayout}) {
               pw=Math.min(1,side*1.2);ph=Math.min(1,frac/pw);
               px=0.03;py=Math.max(0,autoY-ph);autoY-=ph+0.02;
             }
-            patches.push({name:p.name||p.crop,pctLabel:Math.round(frac*100),cc,pw,ph,px,py});
+            let growthPct = 0;
+            if (p.plantDate && p.harvestDate) {
+              const crop = rCM(data.region).get(p.crop);
+              const totalDays = (crop && crop.days) ? crop.days : 60;
+              const plantMs = new Date(p.plantDate.replace(/-/g,"/")).getTime();
+              const todayMs = new Date(today.replace(/-/g,"/")).getTime();
+              const dSince = Math.max(0, Math.floor((todayMs - plantMs) / 864e5));
+              growthPct = Math.min(1, dSince / totalDays);
+            }
+            const isWatered = wateredPlotIds.has(p.id);
+            const isPlotUrgent = !!(p.harvestDate && p.harvestDate <= today);
+            patches.push({plotId:p.id,name:p.name||p.crop,pctLabel:Math.round(frac*100),cc,pw,ph,px,py,growthPct,isWatered,isPlotUrgent});
           }
         });
         patches.sort(function(a,b){return b.pctLabel-a.pctLabel;});
       }
-      return {z,zt,xPct,yPct,wPct,hPct,patches};
+      return {z,zt,xPct,yPct,wPct,hPct,patches,isUrgentZone};
     });
-  }, [data.zones, data.garden.plots, data.farmW, data.farmH, data.region, cropColorMap]);
+  }, [data.zones, data.garden.plots, data.farmW, data.farmH, data.region, cropColorMap, wateredPlotIds]);
 
   const legendEntries = useMemo(function(){return [...cropColorMap.entries()];},[cropColorMap]);
 
@@ -1004,25 +1043,42 @@ function FarmMapHero({data, onEditLayout}) {
     <div>
       <div style={{position:"relative",background:C.tMap,border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
         <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
-        {zoneBlocks.map(function({z,zt,xPct,yPct,wPct,hPct,patches}) {
+        {mapTintOverlay && (
+          <div style={{position:"absolute",inset:0,background:mapTintOverlay,zIndex:20,pointerEvents:"none",transition:"background 2s ease"}}/>
+        )}
+        {zoneBlocks.map(function({z,zt,xPct,yPct,wPct,hPct,patches,isUrgentZone}) {
           return (
-            <div key={z.id} style={{position:"absolute",left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,borderRadius:10,border:"1.5px solid rgba(35,50,35,.15)",background:zt?.fill?`${zt.fill}88`:"#ddd8",overflow:"hidden"}}>
+            <div key={z.id}
+              className={isUrgentZone ? "urgent-zone-pulse" : ""}
+              style={{position:"absolute",left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,borderRadius:10,border:"1.5px solid rgba(35,50,35,.15)",background:zt?.fill?`${zt.fill}88`:"#ddd8",overflow:"hidden"}}>
               <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,textShadow:"0 1px 2px rgba(0,0,0,.18)"}}>{z.name}</div>
               {patches.map(function(cb,i) {
+                const growthBarW = Math.round(cb.growthPct * 100);
+                const growthColor = cb.isPlotUrgent ? "#ef4444" : cb.growthPct >= 0.8 ? "#f59e0b" : "rgba(100,210,140,.9)";
                 return (
-                  <div key={i} style={{position:"absolute",left:`${(cb.px*100).toFixed(1)}%`,top:`${(cb.py*100).toFixed(1)}%`,width:`${(cb.pw*100).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,borderRadius:4,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
+                  <div key={cb.plotId || i}
+                    className={cb.isWatered ? "map-glisten" : ""}
+                    style={{position:"absolute",left:`${(cb.px*100).toFixed(1)}%`,top:`${(cb.py*100).toFixed(1)}%`,width:`${(cb.pw*100).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,borderRadius:4,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1}}>
                     <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,filter:"blur(6px)",zIndex:0}}/>
                     <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.1}}>
                       <div style={{fontSize:8,fontWeight:900,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
                       <div style={{fontSize:6,fontWeight:700,color:"rgba(255,255,255,.85)",textShadow:"0 1px 2px rgba(0,0,0,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%",padding:"0 1px"}}>{cb.name}</div>
                     </div>
+                    {cb.growthPct > 0 && (
+                      <div style={{position:"absolute",bottom:0,left:0,right:0,height:3,background:"rgba(0,0,0,.15)",zIndex:2}}>
+                        <div style={{height:"100%",width:`${growthBarW}%`,background:growthColor,borderRadius:"0 2px 0 0",transition:"width .5s ease"}}/>
+                      </div>
+                    )}
+                    {cb.isWatered && (
+                      <div style={{position:"absolute",top:1,right:2,fontSize:6,zIndex:3,pointerEvents:"none"}}>💧</div>
+                    )}
                   </div>
                 );
               })}
             </div>
           );
         })}
-        <button onClick={onEditLayout} style={{position:"absolute",top:8,right:10,background:"rgba(255,255,255,.9)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.green,cursor:"pointer"}}>✏️ Edit Layout</button>
+        <button onClick={onEditLayout} style={{position:"absolute",top:8,right:10,background:"rgba(255,255,255,.9)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.green,cursor:"pointer",zIndex:25}}>✏️ Edit Layout</button>
       </div>
       {legendEntries.length > 0 && (
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"8px 0 0",alignItems:"center"}}>

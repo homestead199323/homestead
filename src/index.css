@@ -626,6 +626,52 @@ circle.ring-progress {
 }
 
 /* ═══════════════════════════════════════════
+   PHASE 8.5 — Living farm map animations
+   ═══════════════════════════════════════════ */
+
+/* Watered plot glisten — diagonal shimmer sweep, 3s, loops for 1h via JS class toggle */
+@keyframes mapGlisten {
+  0%   { background-position: -200% -200%; }
+  100% { background-position: 200% 200%; }
+}
+.map-glisten {
+  background-image: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(120, 200, 240, 0.35) 48%,
+    rgba(180, 230, 255, 0.55) 52%,
+    transparent 70%
+  ) !important;
+  background-size: 300% 300%;
+  animation: mapGlisten 2.8s ease-in-out infinite;
+}
+
+/* Urgent zone pulse — red expanding ring on zone border */
+@keyframes urgentZonePulse {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.7),  0 2px 8px rgba(0,0,0,.06); }
+  60%  { box-shadow: 0 0 0 8px rgba(239,68,68,0),  0 2px 8px rgba(0,0,0,.06); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0),   0 2px 8px rgba(0,0,0,.06); }
+}
+.urgent-zone-pulse {
+  border-color: #ef4444 !important;
+  animation: urgentZonePulse 1.8s ease-out infinite;
+}
+
+/* Reduced-motion: replace animations with static tints, keep the signal */
+@media (prefers-reduced-motion: reduce) {
+  .map-glisten {
+    background-image: none !important;
+    outline: 2px solid rgba(100, 180, 240, 0.5);
+    animation: none !important;
+  }
+  .urgent-zone-pulse {
+    animation: none !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.35) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
    REDUCED MOTION — accessibility
    ═══════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
