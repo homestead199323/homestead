@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { C, F, SX } from "../../lib/theme";
 import { Card, SwipeableRow, TaskCheckbox } from "../../components/ui";
@@ -8,6 +8,7 @@ import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } fr
 import { ZT_MAP } from "../../data/zones";
 import { rCM } from "../../lib/regional";
 import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, markTaskDone } from "../../lib/utils";
+import { useFlip } from "../../lib/use-flip";
 
 /* ═══════════════════════════════════════════
    TASK ROW — extracted outside TaskQueue to prevent remount on every render
@@ -20,7 +21,7 @@ import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, markTaskDone } fro
      - Harvest tasks keep the right-side "🧺 Harvest" CTA — it's a goto action,
        not a completion (harvest happens in PlotOverlay)
    ═══════════════════════════════════════════ */
-const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone, onGoToFarm}) {
+const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone, onGoToFarm, onRef}) {
   const [completing, setCompleting] = useState(false);
   const borderC = t.pri === 0 ? C.red : t.pri === 1 ? "#ff6b35" : t.pri === 2 ? C.orange : C.blue;
   const bg = t.pri === 0 ? C.dangerBg : t.pri === 1 ? C.warm : t.pri === 2 ? C.harvestBg : C.waterBg;
@@ -55,6 +56,7 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
   return (
     <SwipeableRow onSwipeRight={swipeRightAction} style={{marginBottom:6,borderRadius:C.rs}}>
       <div
+        ref={onRef || undefined}
         onClick={clickable && onOpen && !completing ? onOpen : undefined}
         style={{
           display:"flex",alignItems:"center",gap:12,
@@ -105,6 +107,13 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const [attentionCollapsed, setAttentionCollapsed] = useState(false);
   const [routineCollapsed, setRoutineCollapsed] = useState(false);
 
+  // Phase 8.1 — FLIP animation for task completion
+  // rowRefs: live DOM nodes for completable rows (keyed by task key) — used for snapshot (First)
+  // pendingFlips: keys waiting for their Done row to mount and trigger the Play phase
+  const { snapshot, flip } = useFlip();
+  const rowRefs = useRef({});
+  const pendingFlips = useRef(new Set());
+
   const togStep = (pid, si) => {
     const plots = data.garden.plots.map(p => {
       if (p.id === pid) { const st = [...p.steps]; st[si] = {...st[si], done: !st[si].done}; return {...p, steps: st}; }
@@ -113,7 +122,16 @@ function TaskQueue({data, setData, setPage, tasks}) {
     setData({...data, garden: {plots}});
   };
 
-  const markDone = (key) => setData(markTaskDone(data, key));
+  // markDone with FLIP: snapshot the source row → open Done section → commit state change
+  const markDone = useCallback((key) => {
+    const sourceEl = rowRefs.current[key];
+    if (sourceEl) {
+      snapshot(key, sourceEl);
+      pendingFlips.current.add(key);
+    }
+    setDoneCollapsed(false);
+    setData(markTaskDone(data, key));
+  }, [data, setData, snapshot]);
 
   const openTask = (t) => {
     if (t.plotId) setOpenPlotId(t.plotId);
@@ -480,6 +498,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                   onToggleStep={togStep}
                   onMarkDone={markDone}
                   onGoToFarm={goToFarm}
+                  onRef={t.key ? (el => { if (el) rowRefs.current[t.key] = el; else delete rowRefs.current[t.key]; }) : undefined}
                 />
               ))}
             </div>
@@ -605,6 +624,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                     onToggleStep={togStep}
                     onMarkDone={markDone}
                     onGoToFarm={goToFarm}
+                    onRef={t.key ? (el => { if (el) rowRefs.current[t.key] = el; else delete rowRefs.current[t.key]; }) : undefined}
                   />
                 ))}
               </div>
@@ -630,7 +650,15 @@ function TaskQueue({data, setData, setPage, tasks}) {
           {!doneCollapsed && (
             <div style={{padding:"0 14px 14px"}}>
               {doneTodayList.map((d,i) => (
-                <div key={d.key || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:C.card,borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
+                <div
+                  key={d.key || i}
+                  ref={el => {
+                    if (el && d.key && pendingFlips.current.has(d.key)) {
+                      pendingFlips.current.delete(d.key);
+                      flip(d.key, el);
+                    }
+                  }}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:C.card,borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
                   <span style={{fontSize:20,flexShrink:0}}>{d.emoji}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:C.t2,textDecoration:"line-through"}}>{d.title}</div>
