@@ -27,6 +27,7 @@ import TaskQueue from "./features/tasks/TaskQueue";
 import TodayScreen from "./features/today/TodayScreen";
 import AIAssistant from "./features/assistant/AIAssistant";
 import FeedbackSurvey, { FeedbackPrompt } from "./features/feedback/FeedbackSurvey";
+import { BadgeCelebration } from "./components/BadgeCelebration";
 import { NAV, BOTTOM_TABS, MORE_ITEMS } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
 /* ═══════════════════════════════════════════
@@ -202,6 +203,8 @@ function AppInner() {
   });
   const [isOffline,setIsOffline]=useState(typeof navigator !== "undefined" && !navigator.onLine);
   const [showFeedbackPrompt,setShowFeedbackPrompt]=useState(false);
+  // Phase 8.4 — queue of badge ids waiting to be shown in the celebration overlay
+  const [badgeQueue,setBadgeQueue]=useState([]);
 
   // 7-day feedback prompt — record first use, show prompt after 7 days (once)
   useEffect(() => {
@@ -263,10 +266,29 @@ function AppInner() {
   // Also runs gamification updates (streak, badges) on every data change
   const setData = useCallback((nd) => {
     const withGamify = updateGamify(nd);
-    dispatchData({type:'SET_ALL', data: withGamify});
-    saveFarm(withGamify);
+    // Phase 8.4 — extract transient _pendingCelebrations before persisting
+    const { _pendingCelebrations, ...persistable } = withGamify;
+    if (Array.isArray(_pendingCelebrations) && _pendingCelebrations.length > 0) {
+      setBadgeQueue(q => [...q, ..._pendingCelebrations]);
+    }
+    dispatchData({type:'SET_ALL', data: persistable});
+    saveFarm(persistable);
     // silent save — no UI indicator
   }, []);
+
+  // Phase 8.4 — when a badge is dismissed, mark it celebrated so it never
+  // shows again, then pop it off the queue. The next updateGamify pass will
+  // see this badge already in `badges` and produce no new _pendingCelebrations.
+  const dismissBadge = useCallback((badgeId) => {
+    setBadgeQueue(q => q.filter(id => id !== badgeId));
+    setData({
+      ...data,
+      gamify: {
+        ...data.gamify,
+        celebratedBadges: [...(data.gamify.celebratedBadges || []), badgeId],
+      },
+    });
+  }, [data, setData]);
 
   // Export farm data as JSON backup
   const exportData = useCallback(() => {
@@ -376,6 +398,7 @@ function AppInner() {
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
       {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline} darkMode={darkMode} setDarkMode={setDarkMode}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
+      <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       <AIAssistant data={data} setData={setData}/>
     </>
   );

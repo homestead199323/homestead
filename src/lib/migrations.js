@@ -6,13 +6,14 @@ import { todayLocalKey, toLocalDateKey } from "./utils";
 
 // Mirrors DEF.gamify — kept here to avoid a circular import with App.jsx.
 const DEFAULT_GAMIFY = {
-  streak:          0,
-  bestStreak:      0,
-  lastActiveDate:  null,
-  badges:          [],
-  totalHarvests:   0,
-  totalPlants:     0,
-  totalLogEntries: 0,
+  streak:            0,
+  bestStreak:        0,
+  lastActiveDate:    null,
+  badges:            [],
+  celebratedBadges:  [],  // Phase 8.4 — badge ids already shown in a celebration overlay
+  totalHarvests:     0,
+  totalPlants:       0,
+  totalLogEntries:   0,
 };
 
 // ---------------------------------------------------------------------------
@@ -33,9 +34,24 @@ export function migrateZones(data) {
 
 // ---------------------------------------------------------------------------
 // migrateGamify — bootstrap gamification state for users who predate it
+// Also backfills `celebratedBadges` (Phase 8.4) for users who earned badges
+// before the celebration overlay existed — they should not see a surprise
+// overlay on their next action.
 // ---------------------------------------------------------------------------
 export function migrateGamify(data) {
-  if (data.gamify) return data;
+  if (data.gamify) {
+    // Backfill: any badge already in `badges` is treated as already celebrated.
+    if (!Array.isArray(data.gamify.celebratedBadges)) {
+      return {
+        ...data,
+        gamify: {
+          ...data.gamify,
+          celebratedBadges: (data.gamify.badges || []).map(b => b.id),
+        },
+      };
+    }
+    return data;
+  }
   // Derive counts from existing data defensively
   const totalHarvests    = (data.garden?.plots || []).filter(p => p.status === "harvested").length;
   const totalPlants      = (data.garden?.plots || []).length;
@@ -100,12 +116,20 @@ export function updateGamify(data) {
   const testData  = { ...data, gamify: newG };
   const earned    = new Set(newG.badges.map(b => b.id));
   const newBadges = [...newG.badges];
+  const justEarnedIds = [];
   BADGES.forEach(b => {
     if (!earned.has(b.id) && b.check(testData)) {
       newBadges.push({ id: b.id, unlockedAt: today });
+      justEarnedIds.push(b.id);
     }
   });
   newG.badges = newBadges;
 
-  return { ...data, gamify: newG };
+  // Phase 8.4 — flag badges that have never been celebrated yet so the app
+  // shell can render the overlay. `celebratedBadges` is persisted, but
+  // `_pendingCelebrations` is a transient field App.jsx strips before saving.
+  const celebrated = new Set(newG.celebratedBadges || []);
+  const pending = justEarnedIds.filter(id => !celebrated.has(id));
+
+  return { ...data, gamify: newG, _pendingCelebrations: pending };
 }
