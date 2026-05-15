@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Leaf } from "lucide-react";
+import { Leaf, MessageCircle } from "lucide-react";
 
 import { C, F, SX } from "../../lib/theme";
 import { LDB } from "../../data/livestock";
 import { rCR } from "../../lib/regional";
 import { farmKnowledgeEngine, buildAISuggestions } from "../../lib/ai";
+import { daysBetweenLocalKeys, todayLocalKey } from "../../lib/utils";
 
 export default function AIAssistant({data}) {
   const [open, setOpen] = useState(false);
@@ -16,6 +17,48 @@ export default function AIAssistant({data}) {
   const [selIdx, setSelIdx] = useState(-1);
   const scrollRef = useRef(null);
   const sugRef = useRef(null);
+
+  // 6.8.3 — track viewport so the FAB can reposition above the mobile bottom-tab bar
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // 6.8.2 — pulse signal: count plots that are ready to harvest (over-ripe = real loss).
+  // This is the same "needs attention" intent as pri:0 in buildTaskQueue, but computed
+  // locally to keep the FAB cheap and dependency-light.
+  const urgentCount = useMemo(() => {
+    const plots = data?.garden?.plots || [];
+    const today = todayLocalKey();
+    let count = 0;
+    for (const p of plots) {
+      if (p.status === "harvested" || !p.plantDate) continue;
+      // crop.days is the days-to-harvest from the data layer; if elapsed >= days, it's ready
+      const crop = rCR(data.region).find(c => c.name === p.crop);
+      if (!crop) continue;
+      const elapsed = daysBetweenLocalKeys(p.plantDate, today);
+      if (elapsed >= crop.days) count += 1;
+    }
+    return count;
+  }, [data]);
+
+  // Pulse toggles every ~30s while there's something urgent AND the panel is closed.
+  // Pure CSS animation via a class would be lighter, but the 30s cadence per plan needs JS.
+  const [pulseOn, setPulseOn] = useState(false);
+  useEffect(() => {
+    if (open || urgentCount === 0) { setPulseOn(false); return; }
+    // Trigger a 1.4s pulse on mount, then every 30s
+    setPulseOn(true);
+    const off1 = setTimeout(() => setPulseOn(false), 1400);
+    const tick = setInterval(() => {
+      setPulseOn(true);
+      setTimeout(() => setPulseOn(false), 1400);
+    }, 30000);
+    return () => { clearTimeout(off1); clearInterval(tick); };
+  }, [open, urgentCount]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -89,29 +132,58 @@ export default function AIAssistant({data}) {
 
   return (
     <>
-      {/* Floating button */}
+      {/* 6.8.1 / 6.8.2 / 6.8.3 — Lucide icon, pulse on urgent, repositioned above mobile tab bar */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="emoji-bounce"
+        aria-label={open ? "Close farm assistant" : urgentCount > 0 ? `Open farm assistant — ${urgentCount} ${urgentCount === 1 ? "plot" : "plots"} need attention` : "Open farm assistant"}
         style={{
-          position:"fixed", bottom:24, right:24, zIndex:2000,
+          position:"fixed",
+          // 6.8.3 — clear the 56px bottom nav + safe-area on mobile; standard on desktop
+          bottom: isMobile ? "calc(72px + env(safe-area-inset-bottom))" : 24,
+          right: 24,
+          zIndex:2000,
           width:56, height:56, borderRadius:28,
           background:C.grd,
           border:"none", cursor:"pointer",
-          boxShadow:"0 4px 20px rgba(45,106,79,.5)",
+          // 6.8.2 — pulse rendered as an expanding ring via box-shadow, no extra DOM
+          boxShadow: pulseOn
+            ? `0 0 0 0 ${C.green}66, 0 4px 20px rgba(45,106,79,.5)`
+            : "0 4px 20px rgba(45,106,79,.5)",
+          animation: pulseOn ? "fabPulse 1.4s ease-out 1" : "none",
           display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:24, color:"#fff",
-          transition:"transform .2s, box-shadow .2s",
+          color:"#fff",
+          transition:"transform .2s, box-shadow .2s, bottom .2s",
         }}
         title="Farm Assistant"
       >
-        {open ? "\u2715" : "\uD83C\uDF3E"}
+        {open
+          ? <span style={{fontSize:20,lineHeight:1}}>{"\u2715"}</span>
+          : <span style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <MessageCircle size={26} strokeWidth={2} color="#fff" fill="rgba(255,255,255,.12)"/>
+              <Leaf size={12} strokeWidth={2.4} color="#fff" style={{position:"absolute",top:6,left:"50%",transform:"translateX(-50%)"}}/>
+            </span>
+        }
+        {/* Unread/attention badge — visible while panel is closed and there are urgent items */}
+        {!open && urgentCount > 0 && (
+          <span aria-hidden="true" style={{
+            position:"absolute", top:-2, right:-2,
+            minWidth:20, height:20, padding:"0 5px",
+            background:C.orange, color:"#fff",
+            borderRadius:10, fontSize:11, fontWeight:700,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            border:"2px solid #fff",
+            fontFamily:F.body,
+          }}>{urgentCount > 9 ? "9+" : urgentCount}</span>
+        )}
       </button>
 
       {/* Chat panel */}
       {open && (
         <div style={{
-          position:"fixed", bottom:92, right:24, zIndex:1999,
+          position:"fixed",
+          // 6.8.3 — anchor above the repositioned FAB on mobile (FAB bottom + 56 height + 12 gap)
+          bottom: isMobile ? "calc(140px + env(safe-area-inset-bottom))" : 92,
+          right:24, zIndex:1999,
           width:380, maxWidth:"calc(100vw - 32px)",
           height:540, maxHeight:"calc(100vh - 120px)",
           background:C.card, borderRadius:20,
