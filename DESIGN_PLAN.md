@@ -88,9 +88,9 @@ This screen is 80% of why someone keeps using MyTerra.
 
 ### Farm (was Farm Layout + Farming)
 - [x] **6.2.1** **Shipped under Phase 4.4 — already live.** `FarmTab` wrapper in `src/features/farm/Farm.jsx` exposes the Map / Crops / Layout segmented control; the legacy "Setup" route was folded in via the Layout tab when `setPage("farm", {tab:"setup"})` is invoked from elsewhere (TodayScreen "Edit Map" deep-links into it). Listed here for completeness — no separate ship needed.
-- [ ] **6.2.2** First-visit tutorial overlay on Farm Designer ("Drag a zone, name it, set its size").
-- [ ] **6.2.3** "+ Plant" CTA inside each zone card on the map — contextual.
-- [ ] **6.2.4** Crop detail opens as a bottom sheet, not full-screen.
+- [x] **6.2.2** First-visit tutorial overlay on Farm Designer ("Drag a zone, name it, set its size").
+- [x] **6.2.3** "+ Plant" CTA inside each zone card on the map — contextual.
+- [x] **6.2.4** Crop detail opens as a bottom sheet, not full-screen.
 
 ### Livestock → Animals
 - [x] **6.3.1** Renamed "Livestock" → "Animals" across all user-facing surfaces: desktop sidebar NAV (`src/app/navigation.js`), Animals page header (`Livestock.jsx`), Projects category color map (`Manuals.jsx`), Chicken Coop project category (`projects.js`), AI assistant output strings (`lib/ai.js`). FeedbackSurvey modules array also refreshed end-to-end (Dashboard→Today, Farm Layout+Farming→Farm, Seasonal Calendar→Seasonal, Livestock→Animals, "Smart offline farm assistant"→"Farm Assistant"). Component name `Livestock`, route id `"live"`, and code/data-file references kept unchanged.
