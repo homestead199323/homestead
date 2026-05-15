@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
+import { MotionConfig } from "framer-motion";
 import {
   Download, Upload, Leaf, Moon, Sun, User
 } from "lucide-react";
@@ -356,6 +357,7 @@ function AppInner() {
   };
 
   return (
+    <MotionConfig reducedMotion="user">
     <>
       {/* Fonts loaded via system fallback for offline use */}
       <div style={{display:"flex",height:"100vh",fontFamily:F.body,background:C.bg,color:C.text,overflow:"hidden",letterSpacing:"0.005em"}}>
@@ -401,6 +403,7 @@ function AppInner() {
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       <AIAssistant data={data} setData={setData}/>
     </>
+    </MotionConfig>
   );
 }
 

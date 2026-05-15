@@ -313,6 +313,9 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                     weather unavailable
                   </p>
                 )}
+                {!weather && data.city && (
+                  <div className="skeleton" style={{height:14,width:200,marginTop:4,borderRadius:6}}/>
+                )}
                 {!data.city && (
                   <p style={{color:C.t2,fontSize:11,margin:"3px 0 0",fontWeight:500,opacity:.75}}>
                     set your city for weather → Farm › Layout
