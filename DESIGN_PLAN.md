@@ -124,10 +124,10 @@ This screen is 80% of why someone keeps using MyTerra.
 
 ## Phase 7 — Onboarding (the first 90 seconds)
 
-- [ ] **7.1 Story-style 4-screen intro.** Welcome → Where do you live (region + city) → Sketch your farm (drag one zone, 30s) → Pick your first plants (we suggest 3 forgiving ones for your month/region).
-- [ ] **7.2 End on a win.** Drop user on Today screen with one task already there: "Water your basil today."
-- [ ] **7.3 Skip-friendly.** Every step skippable. Defaults sensible.
-- [ ] **7.4 No login wall.** Keep localStorage-only for the design phase. Account creation only gated to paid features later.
+- [x] **7.1 Story-style 4-screen intro.** Welcome → Where do you grow (region + city) → Your growing space (zone type + size, no drag) → Pick your first plants (up to 3 Easy-tier crops filtered by current month + region). New file `src/features/onboarding/Onboarding.jsx`. Triggered from `App.jsx` when `!data.setupDone && data.zones.length === 0` — fires on first visit AND after data reset. **Deviation from plan:** "drag one zone" simplified to card-picker (zone type + size selector); creates a real zone + plots in data on finish. `ScreenPlants` prefers crops sowable within ±2 months of current date, falls back to top 6 Easy crops off-season.
+- [x] **7.2 End on a win.** On finish, `handleFinish` writes the zone + plots into data with `setupDone:true`. `buildTaskQueue` immediately emits water/care tasks for the planted crops — Today screen shows them on first arrival. No artificial "Water your basil" hardcode needed; the real task engine generates it.
+- [x] **7.3 Skip-friendly.** "Skip — I'll set up manually" on screen 1 writes WE defaults with `setupDone:false` (clears the overlay, no zone created, user lands on the blank app and can use Farm Setup manually). Each subsequent screen has a Back button. No forced forward progression.
+- [x] **7.4 No login wall.** Pure localStorage path — no auth, no network, no gating. `onComplete` calls `setData` directly. Verified: bundle `index-BLqbc0kD.js`, all 6 markers present (Get started, Where do you grow, Your growing space, Pick your first plants, Start farming, Vegetable Bed).
 
 
 ## Phase 8 — Motion polish
