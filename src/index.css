@@ -15,6 +15,9 @@
   --color-bg: #f7f6f3;          /* warm neutral page bg — clean, not orange */
   --color-card: #ffffff;
 
+  /* ── Living Farm Map fallback ── */
+  --farm-bg-fallback: #d9e7d6;  /* sage tint shown when background.png missing */
+
   /* ── Brand green — sage-forest ── */
   --color-green: #2e6b52;       /* primary action */
   --color-green-dark: #1a4731;  /* hero gradient deep end */
@@ -668,6 +671,46 @@ circle.ring-progress {
     animation: none !important;
     border-color: #ef4444 !important;
     box-shadow: 0 0 0 3px rgba(239,68,68,.35) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   LIVING FARM MAP — responsive layout
+   Palette on right on desktop, on top on mobile.
+   The wrapper is .lf-wrap; canvas is .lf-canvas; palette is .lf-palette.
+   ═══════════════════════════════════════════ */
+.lf-wrap {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+}
+.lf-canvas { flex: 1 1 320px; min-width: 0; }
+.lf-palette {
+  /* Vertical column on desktop */
+  display: flex;
+  flex-direction: column;
+  width: 96px;
+  flex-shrink: 0;
+  max-height: 500px;
+  overflow: auto;
+}
+@media (max-width: 767px) {
+  .lf-wrap {
+    /* Palette FIRST (above canvas), canvas SECOND on mobile */
+    flex-direction: column-reverse;
+  }
+  .lf-palette {
+    /* Horizontal strip on mobile */
+    flex-direction: row;
+    width: 100%;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .lf-palette-title {
+    align-self: center;
+    white-space: nowrap;
   }
 }
 
