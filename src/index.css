@@ -709,8 +709,11 @@ circle.ring-progress {
   .lf-canvas {
     /* Override the inline minHeight:440 so the map fits on one screen */
     min-height: 280px !important;
-    max-height: 50vh;
-    height: 50vh;
+    max-height: 50vh !important;
+    height: 50vh !important;
+    /* DEBUG MOBILE-MAP: bright red border so we can see where the canvas
+       is actually drawn on the phone. Remove when bug is found. */
+    outline: 3px solid red !important;
   }
   .lf-palette {
     /* Horizontal strip on mobile */
