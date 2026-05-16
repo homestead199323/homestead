@@ -707,13 +707,16 @@ circle.ring-progress {
     flex-direction: column-reverse;
   }
   .lf-canvas {
-    /* Override the inline minHeight:440 so the map fits on one screen */
+    /* On mobile .lf-wrap is column-reverse, so the canvas's main flex axis
+       is now vertical. The desktop rule `flex: 1 1 320px; min-width: 0;`
+       makes the canvas collapse to zero width on the cross axis, which
+       made the whole map invisible (zones positioned at e.g. width:30%
+       of a 0-width parent rendered as 0px wide). Force full width here. */
     min-height: 280px !important;
     max-height: 50vh !important;
     height: 50vh !important;
-    /* DEBUG MOBILE-MAP: bright red border so we can see where the canvas
-       is actually drawn on the phone. Remove when bug is found. */
-    outline: 3px solid red !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
   }
   .lf-palette {
     /* Horizontal strip on mobile */

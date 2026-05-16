@@ -518,8 +518,6 @@ function Setup({data, setData, onPlantInZone}) {
                 <div style={{position:"absolute",inset:0,pointerEvents:"none",opacity:isSel?1:0.92,zIndex:0}}>
                   <ZoneImage type={z.type} name={z.name} rounded={8}/>
                 </div>
-                {/* DEBUG MOBILE-MAP: bright yellow background + dashed magenta border so we can see if the zone div is rendering at all on the phone. Remove when bug is found. */}
-                <div style={{position:"absolute",inset:0,background:"rgba(255,255,0,.35)",border:"2px dashed magenta",pointerEvents:"none",zIndex:0}} data-debug-zone-overlay={z.id}/>
                 {/* Zone name */}
                 <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none",textShadow:"0 1px 2px rgba(255,255,255,.6)"}}>{z.name}</div>
                 {/* Crop patches — draggable + resizable */}
