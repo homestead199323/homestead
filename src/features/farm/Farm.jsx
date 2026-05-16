@@ -70,7 +70,20 @@ function Setup({data, setData, onPlantInZone}) {
   const regionCropCount = getRegionalCrops(data.region || "western_europe").length;
 
   // Zones already migrated to meter coords on load (see migrateZones)
-  const zones = data.zones;
+  /* Heal zones created without map geometry (e.g. by Onboarding before
+     2026-05-16, or by older imports). A zone with no xM/yM/wM/hM is
+     invisible on the canvas. Derive geometry from areaM2 (square-ish
+     1.5:1 aspect) and stack them top-down along the left edge so multiple
+     unplaced zones don't overlap. This is render-only; we don't mutate
+     data.zones, so the user's storage stays clean until they actually
+     interact with the zone. */
+  const zones = (data.zones || []).map((z, i) => {
+    if (z.xM != null && z.yM != null && z.wM != null && z.hM != null) return z;
+    const area = +z.areaM2 || 6;
+    const wM = Math.max(1, Math.round(Math.sqrt(area * 1.5) * 10) / 10);
+    const hM = Math.max(1, Math.round((area / wM) * 10) / 10);
+    return { ...z, xM: 4, yM: 4 + i * (hM + 1), wM, hM };
+  });
 
   const upZ = (id, u) => setData({...data, zones: data.zones.map(z => z.id===id ? {...z,...u} : z)});
   const delZ = id => { setData({...data, zones: data.zones.filter(z => z.id !== id)}); setSel(null); };

@@ -320,9 +320,19 @@ export default function Onboarding({ onComplete }) {
     var today = todayLocalKey();
     var zoneId = uid();
 
+    // Derive map-placement dimensions from areaM2 so Setup can render the zone
+    // on the canvas. Without xM/yM/wM/hM the zone exists in data but is
+    // invisible on the farm map (0m × 0m). Shape is slightly rectangular
+    // (1.5:1 aspect), placed near the top-left of the default 100×60m farm.
+    var wM = Math.max(1, Math.round(Math.sqrt(areaM2 * 1.5) * 10) / 10);
+    var hM = Math.max(1, Math.round((areaM2 / wM) * 10) / 10);
+    var xM = 4; // 4m in from left edge of default 100m farm (clear of safe inset)
+    var yM = 4; // 4m down from top edge of default 60m farm
+
     var zone = {
       id:zoneId, name:zt.label, emoji:zt.emoji,
       type:zoneType, areaM2:areaM2, soilType:"loam", notes:"",
+      xM:xM, yM:yM, wM:wM, hM:hM,
     };
 
     var plots = selected.map(function(cropName) {
