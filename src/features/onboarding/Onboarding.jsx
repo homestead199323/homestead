@@ -3,6 +3,7 @@
    4-screen story intro. Shows on first visit and after data reset.
    Trigger: !data.setupDone && data.zones.length === 0
    ═══════════════════════════════════════════ */
+import { useState, useMemo } from "react";
 import { C, F } from "../../lib/theme";
 import { REGIONS } from "../../data/regions";
 import { CROPS } from "../../data/crops";
