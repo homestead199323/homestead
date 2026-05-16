@@ -218,6 +218,9 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* App-like: no horizontal pan, no rubber-band */
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -227,6 +230,9 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   overscroll-behavior: none;
+  overflow-x: hidden;
+  /* Lock max width to viewport so nothing can push the page sideways */
+  max-width: 100vw;
 }
 
 /* ── Scrollbar — thin, elegant ── */
@@ -699,6 +705,12 @@ circle.ring-progress {
   .lf-wrap {
     /* Palette FIRST (above canvas), canvas SECOND on mobile */
     flex-direction: column-reverse;
+  }
+  .lf-canvas {
+    /* Override the inline minHeight:440 so the map fits on one screen */
+    min-height: 280px !important;
+    max-height: 50vh;
+    height: 50vh;
   }
   .lf-palette {
     /* Horizontal strip on mobile */
