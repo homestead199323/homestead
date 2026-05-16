@@ -57,7 +57,7 @@ export default function ZoneImage({ type, name, rounded = 8, showLabel = false }
       style={{
         position: "absolute", inset: 0,
         width: "100%", height: "100%",
-        objectFit: "cover",
+        objectFit: "contain",
         borderRadius: rounded,
         pointerEvents: "none",
         userSelect: "none",
