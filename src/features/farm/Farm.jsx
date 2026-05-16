@@ -60,7 +60,6 @@ function Setup({data, setData, onPlantInZone}) {
   const [cropResize, setCropResize] = useState(null); // {plotId, zoneId, startX, startY, origPw, origPh, frac}
   const [hoverInfo, setHoverInfo] = useState(null); // zone hover tooltip
   const [tutorialDismissed, setTutorialDismissed] = useState(!!data.designerTutorialSeen);
-  const [armedType, setArmedType] = useState(null); // tap-to-place: id of armed palette type, or null
   const svgRef = useRef(null);
   const [cityQuery, setCityQuery] = useState(data.city || "");
   const [cityResults, setCityResults] = useState([]);
@@ -203,41 +202,9 @@ function Setup({data, setData, onPlantInZone}) {
         background:C.tMap,
         border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",
         minHeight:440,userSelect:"none",
-        cursor: dragging ? "grabbing" : (armedType ? "crosshair" : "default"),
+        cursor:dragging?"grabbing":"default",
       }}
-        onClick={e => {
-          /* Tap-to-place: if a palette type is armed, drop a zone at the tap point */
-          if (armedType && e.target === svgRef.current) {
-            const t = armedType;
-            if (!ZT_MAP.get(t)) { setArmedType(null); return; }
-            const rect = svgRef.current.getBoundingClientRect();
-            const cxPct = ((e.clientX - rect.left) / rect.width);
-            const cyPct = ((e.clientY - rect.top)  / rect.height);
-            const defaultWM = 10, defaultHM = 8;
-            const dropXM = Math.round(cxPct * farmW - defaultWM/2);
-            const dropYM = Math.round(cyPct * farmH - defaultHM/2);
-            const safeMinX = farmW * SAFE_INSET;
-            const safeMinY = farmH * SAFE_INSET;
-            const safeMaxX = farmW * (1 - SAFE_INSET) - defaultWM;
-            const safeMaxY = farmH * (1 - SAFE_INSET) - defaultHM;
-            const xM = Math.max(safeMinX, Math.min(Math.max(safeMinX, safeMaxX), dropXM));
-            const yM = Math.max(safeMinY, Math.min(Math.max(safeMinY, safeMaxY), dropYM));
-            const zt2 = ZT_MAP.get(t);
-            const baseName = zt2 ? zt2.label : t;
-            const existing = data.zones.filter(z => z.type === t).length;
-            const newZone = {
-              id: uid(),
-              name: existing > 0 ? `${baseName} ${existing+1}` : baseName,
-              type: t,
-              xM, yM, wM: defaultWM, hM: defaultHM,
-            };
-            setData({...data, zones: [...data.zones, newZone]});
-            setSel(newZone.id);
-            setArmedType(null);
-            return;
-          }
-          if (e.target === svgRef.current) setSel(null);
-        }}
+        onClick={e => { if (e.target === svgRef.current) setSel(null); }}
         onDragOver={e => {
           if (e.dataTransfer && Array.from(e.dataTransfer.types||[]).includes(PALETTE_DRAG_TYPE)) {
             e.preventDefault();
@@ -272,7 +239,6 @@ function Setup({data, setData, onPlantInZone}) {
           };
           setData({...data, zones: [...data.zones, newZone]});
           setSel(newZone.id);
-          setArmedType(null);
         }}
         onMouseMove={e => {
           const rect = svgRef.current.getBoundingClientRect();
@@ -377,46 +343,6 @@ function Setup({data, setData, onPlantInZone}) {
             </div>
             <div style={{width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"6px solid #1d1d1f",margin:"0 auto"}}/>
           </div>
-        )}
-
-        {/* Tap-to-place hint banner — shown when a palette type is armed */}
-        {armedType && (
-            <div style={{
-              position: "absolute", top: 8, left: 8, right: 8,
-              padding: "8px 12px",
-              background: C.green,
-              color: "#fff",
-              borderRadius: 10,
-              fontSize: 12, fontWeight: 700,
-              boxShadow: "0 4px 12px rgba(0,0,0,.25)",
-              zIndex: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-              pointerEvents: "auto",
-            }}
-              onClick={e => e.stopPropagation()}
-            >
-              <span style={{flex: 1, lineHeight: 1.3}}>
-                Tap map to place <strong>{ZT_MAP.get(armedType) ? ZT_MAP.get(armedType).label : armedType}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => setArmedType(null)}
-                style={{
-                  background: "rgba(255,255,255,.25)",
-                  border: "none",
-                  color: "#fff",
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >Cancel</button>
-            </div>
         )}
 
         {/* Zone blocks — with crop color patches (same as Dashboard) */}
@@ -713,10 +639,10 @@ function Setup({data, setData, onPlantInZone}) {
       )}
 
         {/* Helper text */}
-        <div style={{position:"absolute",bottom:6,left:10,fontSize:9,color:"rgba(80,95,80,.45)",fontFamily:F.mono,pointerEvents:"none"}}>Tap palette then tap map · Or drag zones from palette · Tap to select</div>
+        <div style={{position:"absolute",bottom:6,left:10,fontSize:9,color:"rgba(80,95,80,.45)",fontFamily:F.mono,pointerEvents:"none"}}>Drag zones to reposition · Click to select · Drag from palette to add</div>
       </div>
       {/* Palette — Living Map */}
-      <ZonePalette zones={data.zones} armedType={armedType} onArm={setArmedType}/>
+      <ZonePalette zones={data.zones}/>
       </div>
 
       {/* Crop color legend */}
