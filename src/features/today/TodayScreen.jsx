@@ -12,6 +12,7 @@ import { Card, Pill, Tooltip, Ring, SwipeableRow, TaskCheckbox } from "../../com
 import AnimalOverlay from "../animals/AnimalOverlay";
 import PlotOverlay from "../farm/PlotOverlay";
 import WalkOverlay from "./WalkOverlay";
+import LivingFarmMap from "../farm/living/LivingFarmMap";
 
 /* ═══════════════════════════════════════════
    TODAY TASK ROW — compact row used in the home-screen Task Pipeline.
@@ -620,118 +621,14 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
             </Card>
 
             {/* Mini Farm Map — preserves actual farm proportions */}
-            <div style={{position:"relative",background:C.tMap,border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",aspectRatio:`${data.farmW||100} / ${data.farmH||60}`,width:"100%"}}>
-              {/* Grid overlay */}
-              <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px"}}/>
-              {/* Zone blocks — with crop color overlays */}
-              {(()=>{
-                // Build crop color map for the mini map
-                const MINI_CROP_COLORS = CROP_COLORS;
-                const miniCropColorMap = new Map();
-                let colorIdx = 0;
-                data.garden.plots.forEach(p => {
-                  if (p.status !== "harvested" && !miniCropColorMap.has(p.crop)) {
-                    miniCropColorMap.set(p.crop, MINI_CROP_COLORS[colorIdx % MINI_CROP_COLORS.length]);
-                    colorIdx++;
-                  }
-                });
-                return data.zones.map(z => {
-                  const fW = data.farmW || 100, fH = data.farmH || 60;
-                  const xPct = ((z.xM || 0) / fW * 100).toFixed(1);
-                  const yPct = ((z.yM || 0) / fH * 100).toFixed(1);
-                  const wPct = ((z.wM || 10) / fW * 100).toFixed(1);
-                  const hPct = ((z.hM || 8) / fH * 100).toFixed(1);
-                  const zt = ZT_MAP.get(z.type);
-                  const isSel = z.id === activeZone;
-                  const isPlant = ["veg","orchard","herbs","greenhouse"].includes(z.type);
-
-                  // Calculate crop patches — use saved positions from Farm Layout
-                  const zPlots = isPlant ? data.garden.plots.filter(p => p.zone === z.id && p.status !== "harvested") : [];
-                  const zoneTotalM2 = (z.wM||10)*(z.hM||8);
-                  const patches = [];
-                  if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
-                    let autoFillY = 1;
-                    zPlots.forEach(p => {
-                      let area = 0;
-                      if (p.measureType === "area" && p.qty) area = +p.qty;
-                      else if (p.plantCount) {
-                        const crop = rCM(data.region).get(p.crop);
-                        if (crop) { const sp = crop.spacing/100; area = p.plantCount * sp * sp; }
-                      }
-                      if (area > 0) {
-                        const frac = Math.min(0.98, area / zoneTotalM2);
-                        const cc = miniCropColorMap.get(p.crop) || {r:100,g:140,b:60};
-                        let pw, ph, px, py;
-                        if (p.patchW !== undefined && p.patchH !== undefined) {
-                          pw = p.patchW; ph = p.patchH;
-                          px = p.patchX || 0.03; py = p.patchY || 0;
-                        } else {
-                          const side = Math.sqrt(frac);
-                          pw = Math.min(1, side * 1.2);
-                          ph = Math.min(1, frac / pw);
-                          px = 0.03;
-                          py = Math.max(0, autoFillY - ph);
-                          autoFillY -= ph + 0.02;
-                        }
-                        patches.push({crop:p.crop, name:p.name||p.crop, frac, pctLabel:Math.round(frac*100), cc, pw, ph, px, py});
-                      }
-                    });
-                    patches.sort((a,b) => b.frac - a.frac);
-                  }
-
-                  return (
-                    <div key={z.id}
-                      onClick={() => setSelZone(z.id)}
-                      style={{
-                        position:"absolute",
-                        left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
-                        borderRadius:10,
-                        border:`1.5px solid ${isSel ? C.green : "rgba(35,50,35,.15)"}`,
-                        boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.18)` : "none",
-                        background: zt?.fill ? `${zt.fill}88` : "#ddd8",
-                        cursor:"pointer",transition:"all .15s",overflow:"hidden",
-                      }}>
-                      {/* Zone name label — floating on top */}
-                      <div style={{position:"absolute",top:0,left:0,right:0,padding:"1px 3px",fontSize:8,fontWeight:700,
-                        color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-                        zIndex:3}}>
-                        {z.name}
-                      </div>
-                      {/* Crop patches — use saved positions from Farm Layout */}
-                      {patches.map((cb,i) => (
-                        <div key={i} style={{
-                          position:"absolute",
-                          left:`${(cb.px * 100).toFixed(1)}%`,
-                          top:`${(cb.py * 100).toFixed(1)}%`,
-                          width:`${(cb.pw * 100).toFixed(1)}%`,
-                          height:`${(cb.ph * 100).toFixed(1)}%`,
-                          background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,
-                          borderRadius:4,overflow:"hidden",
-                          display:"flex",alignItems:"center",justifyContent:"center",
-                          zIndex:1,
-                        }}>
-                          {/* Inner glow */}
-                          <div style={{position:"absolute",inset:"10%",borderRadius:"50%",
-                            background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,
-                            filter:"blur(6px)",zIndex:0}}/>
-                          {/* Label */}
-                          <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.1}}>
-                            <div style={{fontSize:8,fontWeight:900,color:"#fff",
-                              textShadow:"0 1px 3px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
-                            <div style={{fontSize:6,fontWeight:700,color:"rgba(255,255,255,.85)",
-                              textShadow:"0 1px 2px rgba(0,0,0,.4)",
-                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-                              maxWidth:"100%",padding:"0 1px"}}>{cb.name}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                });
-              })()}
-              {/* Edit link */}
-              <button onClick={function(){setPage("farm",{tab:"setup"});}} style={{position:"absolute",top:6,right:8,background:"rgba(255,255,255,.85)",border:`1px solid ${C.bdr}`,borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:600,color:C.green,cursor:"pointer"}}>Edit Map</button>
-            </div>
+            <LivingFarmMap
+              data={data}
+              showCropPatches
+              showHelperText={false}
+              showEditButton={false}
+              onZoneClick={function(z){ setSelZone(z.id); }}
+            />
+            <button onClick={function(){setPage("farm",{tab:"setup"});}} style={{marginTop:8,background:C.gp,border:`1px solid ${C.bdr}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.green,cursor:"pointer"}}>✏️ Edit Map</button>
             {/* Crop color legend */}
             {_miniColorMap.size > 0 && (
               <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"6px 0 0",alignItems:"center"}}>

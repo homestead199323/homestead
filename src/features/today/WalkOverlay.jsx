@@ -543,6 +543,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
                 farmW={data.farmW || 100}
                 farmH={data.farmH || 60}
                 onStopClick={jumpToStop}
+                data={data}
               />
               {step && (
                 <StopPopup
