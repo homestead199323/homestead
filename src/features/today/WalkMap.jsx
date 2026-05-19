@@ -4,13 +4,14 @@ import LivingFarmMap from "../farm/living/LivingFarmMap";
 /* ═══════════════════════════════════════════
    WalkMap — guided walk view.
 
-   Visual contract (changed 2026-05-17):
+   Visual contract (changed 2026-05-19):
      • Background is the LivingFarmMap PNG + zone artwork (same map the
-       user designs in Farm setup). Shown fully — no cropping, no extra
-       chrome (no edit button, no helper text, no time-of-day tint).
-     • A single cartoon persona (🚶) moves between zones as the user
-       progresses through the walk. Animated via CSS transition on
-       left/top.
+       user designs in Farm setup). Rendered at 2× viewport size inside
+       a clipping viewport, then translated so the walker's logical
+       position lands at viewport centre. Result: walker stays glued to
+       screen centre, map pans underneath like a farm-sim camera.
+     • A single cartoon persona (🚶) sits centred. The smooth pan comes
+       from the inner-map's transform transition, not the walker.
      • Tapping a zone jumps the walk to that zone's first stop, if the
        zone is part of the walk.
 
@@ -78,26 +79,67 @@ export default function WalkMap({ stops, currentStopIdx, data, onStopClick }) {
         borderRadius: 14, overflow: "hidden",
       }}>
         <style>{ANIM_CSS}</style>
-        <Walker x={walkerX} y={walkerY}/>
+        <Walker x={50} y={50}/>
       </div>
     );
   }
 
+  /* Camera-follow viewport.
+
+     We render the map at ZOOM× the viewport size, then translate it so
+     that the walker's logical position (walkerX%, walkerY% of the map)
+     lands at the viewport centre. The walker itself is drawn centred
+     and fixed — it does NOT move on screen; the map slides underneath.
+
+     Math:
+       inner size = 100% of viewport × ZOOM
+       to put logical point (wx%, wy%) of inner at viewport centre,
+       translate inner by:
+         tx = 50% (viewport) − wx% × ZOOM (of viewport)
+         ty = 50% (viewport) − wy% × ZOOM (of viewport)
+       expressed as a % of viewport:
+         tx% = 50 − wx × ZOOM
+         ty% = 50 − wy × ZOOM
+     The transition on transform makes the pan feel smooth, like a
+     camera tracking shot. */
+  const ZOOM = 2;
+  const tx = 50 - walkerX * ZOOM;
+  const ty = 50 - walkerY * ZOOM;
+
   return (
-    <>
+    <div style={{
+      position: "absolute", inset: 0,
+      borderRadius: 14, overflow: "hidden",
+      background: "#1a3d2e",
+    }}>
       <style>{ANIM_CSS}</style>
-      <LivingFarmMap
-        data={data}
-        fitMode="fill"
-        showTimeTint={false}
-        showEditButton={false}
-        showHelperText={false}
-        showCropPatches={false}
-        interactive={false}
-        onZoneClick={handleZoneClick}
-      />
-      <Walker x={walkerX} y={walkerY}/>
-    </>
+
+      {/* Inner: ZOOM× viewport size, panned so walker sits dead-centre. */}
+      <div style={{
+        position: "absolute",
+        left: 0, top: 0,
+        width: (ZOOM * 100) + "%",
+        height: (ZOOM * 100) + "%",
+        transform: "translate(" + tx + "%, " + ty + "%)",
+        transition: "transform 0.95s cubic-bezier(.4,.0,.2,1)",
+        willChange: "transform",
+      }}>
+        <LivingFarmMap
+          data={data}
+          fitMode="fill"
+          showTimeTint={false}
+          showEditButton={false}
+          showHelperText={false}
+          showCropPatches={false}
+          interactive={false}
+          onZoneClick={handleZoneClick}
+        />
+        {/* Walker is positioned on the INNER map (in inner-map %), so it
+            stays glued to its logical spot. Because the inner is translated
+            to put that spot at viewport centre, the walker appears centred. */}
+        <Walker x={walkerX} y={walkerY}/>
+      </div>
+    </div>
   );
 }
 
@@ -114,7 +156,6 @@ function Walker({ x, y }) {
            top: y + "%",
            width: 38, height: 38,
            transformOrigin: "center",
-           transition: "left 0.95s cubic-bezier(.4,.0,.2,1), top 0.95s cubic-bezier(.4,.0,.2,1)",
            zIndex: 30,
            pointerEvents: "none",
          }}>

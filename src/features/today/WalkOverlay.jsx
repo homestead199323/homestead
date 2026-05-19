@@ -360,6 +360,21 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
   const completedRef = useRef([]);
   const startStreakRef = useRef((data.gamify && data.gamify.streak) || 0);
 
+  // Lock body scroll while the walk is open. Without this, on desktop
+  // the page underneath remains scrollable and the dashboard bleeds
+  // through visually when the user scrolls (the overlay is fixed, but
+  // the body content slides under it). Restore prior overflow on close.
+  useEffect(function() {
+    const prevOverflow = document.body.style.overflow;
+    const prevTouch = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return function() {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouch;
+    };
+  }, []);
+
   const step = steps[stepIdx];
   const task = step ? step.task : null;
   const currentStopIdx = step ? step.stopIdx : -1;
