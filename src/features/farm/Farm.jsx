@@ -218,6 +218,7 @@ function Setup({data, setData, onPlantInZone}) {
         background:C.tMap,
         border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",
         minHeight:440,userSelect:"none",
+        touchAction:"none",
         cursor: dragging ? "grabbing" : (armedType ? "crosshair" : "default"),
       }}
         onClick={e => {
@@ -289,7 +290,7 @@ function Setup({data, setData, onPlantInZone}) {
           setSel(newZone.id);
           setArmedType(null);
         }}
-        onMouseMove={e => {
+        onPointerMove={e => {
           const rect = svgRef.current.getBoundingClientRect();
           const curX = e.clientX - rect.left;
           const curY = e.clientY - rect.top;
@@ -348,8 +349,9 @@ function Setup({data, setData, onPlantInZone}) {
           const newYM = Math.max(safeMinYd, Math.min(Math.max(safeMinYd, safeMaxYd), dragging.origYM + dyM));
           upZ(dragging.id, {xM: newXM, yM: newYM, x: newXM/farmW*100, y: newYM/farmH*100});
         }}
-        onMouseUp={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); }}
-        onMouseLeave={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); setHoverInfo(null); }}>
+        onPointerUp={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); }}
+        onPointerCancel={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); setHoverInfo(null); }}
+        onMouseLeave={() => setHoverInfo(null)}>
 
         {/* Background PNG (falls back to grid below on 404) — Living Map */}
         <BackgroundLayer/>
@@ -486,16 +488,18 @@ function Setup({data, setData, onPlantInZone}) {
 
             return (
               <div key={z.id} id={`zone-${z.id}`}
-                onMouseDown={e => {
+                onPointerDown={e => {
                   // Only start zone drag if not clicking a crop patch
                   if (e.target.closest('[data-crop-patch]')) return;
                   e.stopPropagation();
+                  e.currentTarget.setPointerCapture(e.pointerId);
                   const rect = svgRef.current.getBoundingClientRect();
                   const z2 = zones.find(zz => zz.id === z.id);
                   setDragging({id:z.id,startX:e.clientX-rect.left,startY:e.clientY-rect.top,origXM:z2.xM||0,origYM:z2.yM||0,rect});
                   setSel(z.id);
                 }}
-                onMouseMove={e => {
+                onPointerMove={e => {
+                  if (e.pointerType !== "mouse") return; // hover tooltips only on desktop
                   if (!dragging && !cropDrag && !cropResize) {
                     const rect = svgRef.current.getBoundingClientRect();
                     setHoverInfo({x:e.clientX-rect.left,y:e.clientY-rect.top,name:z.name,icon:zt?.icon||"",typeLabel:zt?.label||z.type,wM:(z.wM||10).toFixed(0),hM:(z.hM||8).toFixed(0),area:((z.wM||10)*(z.hM||8)).toFixed(0),cropCount:zPlots.length,animalCount});
@@ -528,8 +532,9 @@ function Setup({data, setData, onPlantInZone}) {
                   const isResizeThis = cropResize?.plotId === cb.plotId;
                   return (
                     <div key={cb.plotId} data-crop-patch="true"
-                      onMouseDown={e => {
+                      onPointerDown={e => {
                         e.stopPropagation();
+                        e.currentTarget.setPointerCapture(e.pointerId);
                         const zoneEl = document.getElementById(`zone-${z.id}`);
                         if (!zoneEl) return;
                         const zr = zoneEl.getBoundingClientRect();
@@ -547,6 +552,7 @@ function Setup({data, setData, onPlantInZone}) {
                         cursor: isDragThis ? "grabbing" : "grab",
                         border: (isDragThis||isResizeThis) ? `1.5px dashed rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.7)` : "1px solid transparent",
                         transition: (cropDrag||cropResize) ? "none" : "all .15s",
+                        touchAction: "none",
                       }}>
                       <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,filter:"blur(8px)",zIndex:0,pointerEvents:"none"}}/>
                       <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2,pointerEvents:"none"}}>
@@ -555,8 +561,9 @@ function Setup({data, setData, onPlantInZone}) {
                       </div>
                       {/* Resize handle — bottom-right corner */}
                       <div data-crop-patch="true"
-                        onMouseDown={e => {
+                        onPointerDown={e => {
                           e.stopPropagation();
+                          e.currentTarget.setPointerCapture(e.pointerId);
                           const zoneEl = document.getElementById(`zone-${z.id}`);
                           if (!zoneEl) return;
                           const zr = zoneEl.getBoundingClientRect();
@@ -570,6 +577,7 @@ function Setup({data, setData, onPlantInZone}) {
                           background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.7)`,
                           borderRadius:"0 6px 0 4px",cursor:"nwse-resize",zIndex:5,
                           border:"1.5px solid rgba(255,255,255,.6)",
+                          touchAction: "none",
                         }}/>
                     </div>
                   );
@@ -590,8 +598,9 @@ function Setup({data, setData, onPlantInZone}) {
                   const cursors = {r:"ew-resize",l:"ew-resize",t:"ns-resize",b:"ns-resize",rb:"nwse-resize",lt:"nwse-resize",rt:"nesw-resize",lb:"nesw-resize"};
                   return (
                     <div key={edge} data-crop-patch="true"
-                      onMouseDown={e => {
+                      onPointerDown={e => {
                         e.stopPropagation();
+                        e.currentTarget.setPointerCapture(e.pointerId);
                         const rect2 = svgRef.current.getBoundingClientRect();
                         setZoneResize({id:z.id, edge, startX:e.clientX-rect2.left, startY:e.clientY-rect2.top,
                           origXM:z.xM||0, origYM:z.yM||0, origWM:z.wM||10, origHM:z.hM||8});
@@ -599,6 +608,7 @@ function Setup({data, setData, onPlantInZone}) {
                       style={{position:"absolute",...pos, width:sz3, height:sz3,
                         background:"#fff", border:`2px solid ${C.green}`, borderRadius:isCorner?2:1,
                         cursor:cursors[edge], zIndex:10,
+                        touchAction: "none",
                       }}/>
                   );
                 })}
