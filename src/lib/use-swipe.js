@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* ═══════════════════════════════════════════
    useSwipe — touch-only horizontal swipe hook
@@ -24,6 +24,13 @@ export function useSwipe({ onSwipeRight, onSwipeLeft, threshold = 80, disabled =
   const startX = useRef(0);
   const startY = useRef(0);
   const axis = useRef(null); // "h" | "v" | null
+  const commitTimer = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (commitTimer.current) clearTimeout(commitTimer.current);
+    };
+  }, []);
 
   const onTouchStart = (e) => {
     if (disabled) return;
@@ -69,18 +76,20 @@ export function useSwipe({ onSwipeRight, onSwipeLeft, threshold = 80, disabled =
       if (offset >= threshold && onSwipeRight) {
         setCommitted("right");
         setOffset(600);
-        setTimeout(() => {
+        commitTimer.current = setTimeout(() => {
           try { onSwipeRight(); } catch (e) { /* swallow — caller handles errors */ }
           setOffset(0);
           setCommitted(null);
+          commitTimer.current = null;
         }, 200);
       } else if (offset <= -threshold && onSwipeLeft) {
         setCommitted("left");
         setOffset(-600);
-        setTimeout(() => {
+        commitTimer.current = setTimeout(() => {
           try { onSwipeLeft(); } catch (e) { /* swallow */ }
           setOffset(0);
           setCommitted(null);
+          commitTimer.current = null;
         }, 200);
       } else {
         setOffset(0);

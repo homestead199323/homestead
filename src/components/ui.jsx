@@ -7,6 +7,8 @@ import { localDateFromKey, addDaysToLocalKey } from "../lib/utils";
 import { useSwipe } from "../lib/use-swipe";
 import { SPRING, LAYOUT_SPRING } from "../lib/use-spring-drag";
 
+const MotionDiv = motion.div;
+
 // Re-export for consumers that want the spring config
 export { LAYOUT_SPRING };
 
@@ -89,7 +91,7 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
   if (!isSheet) {
     return createPortal(
       <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
-        <motion.div
+        <MotionDiv
           onClick={function(e){e.stopPropagation();}}
           layoutId={layoutId}
           transition={LAYOUT_SPRING}
@@ -100,7 +102,7 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
             <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
           </div>
           <div style={{padding:"16px 24px 24px"}}>{children}</div>
-        </motion.div>
+        </MotionDiv>
       </div>,
       document.body
     );
@@ -110,8 +112,8 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
   return createPortal(
     <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",overflowX:"hidden"}}>
       {/* Backdrop fades as sheet is dragged down */}
-      <motion.div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",opacity:backdropOpacity}} onClick={onClose}/>
-      <motion.div
+      <MotionDiv style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",opacity:backdropOpacity}} onClick={onClose}/>
+      <MotionDiv
         onClick={function(e){e.stopPropagation();}}
         layoutId={layoutId}
         transition={LAYOUT_SPRING}
@@ -121,6 +123,7 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
         onDragEnd={handleDragEnd}
         style={{
           y,
+          opacity,
           position:"relative",
           background:C.card,
           borderRadius:"20px 20px 0 0",
@@ -145,7 +148,7 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
         </div>
         <div style={{padding:"16px 24px 24px",cursor:"default"}} onPointerDown={function(e){e.stopPropagation();}}>{children}</div>
-      </motion.div>
+      </MotionDiv>
     </div>,
     document.body
   );
@@ -366,7 +369,7 @@ export const SwipeableRow = React.memo(function SwipeableRow({
       // Release without commit: spring back to 0
       animate(x, 0, SPRING.swipe);
     }
-  }, [offset, dragging, committed]); // eslint-disable-line
+  }, [offset, dragging, committed, x]);
 
   const showingRight = offset > 4 && !!onSwipeRight;
   const showingLeft = offset < -4 && !!onSwipeLeft;
@@ -425,7 +428,7 @@ export const SwipeableRow = React.memo(function SwipeableRow({
           {leftActionLabel || "🗑 Delete"}
         </div>
       )}
-      <motion.div
+      <MotionDiv
         {...bind}
         style={{
           position: "relative",
@@ -434,7 +437,7 @@ export const SwipeableRow = React.memo(function SwipeableRow({
         }}
       >
         {children}
-      </motion.div>
+      </MotionDiv>
     </div>
   );
 });

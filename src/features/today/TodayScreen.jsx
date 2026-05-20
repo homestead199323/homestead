@@ -8,6 +8,7 @@ import { toLocalDateKey, todayLocalKey, localDateFromKey, addDaysToLocalKey, day
 import { rCM } from "../../lib/regional";
 import { buildZoneSpaceMap } from "../../lib/farm-calc";
 import { fetchWeather } from "../../lib/weather";
+import { DEF } from "../../app/state";
 import { Card, Pill, Tooltip, Ring, SwipeableRow, TaskCheckbox } from "../../components/ui";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import PlotOverlay from "../farm/PlotOverlay";

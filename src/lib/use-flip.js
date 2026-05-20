@@ -67,9 +67,8 @@ export function useFlip() {
     el.style.transform  = `translate(${dx}px, ${dy}px)`;
     el.style.opacity    = "0.7";
 
-    // Force a reflow so the browser registers the Invert state
-    // eslint-disable-next-line no-unused-expressions
-    el.offsetHeight;
+    // Force a reflow so the browser registers the Invert state.
+    void el.offsetHeight;
 
     // Play: animate to Last (natural position)
     el.style.transition = `transform ${DURATION}ms ${EASING}, opacity ${DURATION}ms ease`;

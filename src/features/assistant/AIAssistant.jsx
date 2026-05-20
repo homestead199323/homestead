@@ -50,14 +50,20 @@ export default function AIAssistant({data}) {
   const [pulseOn, setPulseOn] = useState(false);
   useEffect(() => {
     if (open || urgentCount === 0) { setPulseOn(false); return; }
+    let pulseOffTimer = null;
     // Trigger a 1.4s pulse on mount, then every 30s
     setPulseOn(true);
     const off1 = setTimeout(() => setPulseOn(false), 1400);
     const tick = setInterval(() => {
       setPulseOn(true);
-      setTimeout(() => setPulseOn(false), 1400);
+      if (pulseOffTimer) clearTimeout(pulseOffTimer);
+      pulseOffTimer = setTimeout(() => setPulseOn(false), 1400);
     }, 30000);
-    return () => { clearTimeout(off1); clearInterval(tick); };
+    return () => {
+      clearTimeout(off1);
+      if (pulseOffTimer) clearTimeout(pulseOffTimer);
+      clearInterval(tick);
+    };
   }, [open, urgentCount]);
 
   useEffect(() => {

@@ -5,6 +5,12 @@ import { todayLocalKey } from "../../lib/utils";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Stat } from "../../components/ui";
 
+const CAT_COLORS = {
+  Seeds: "#27ae60", Tools: "#8d6e63", Feed: "#ffa726",
+  Animals: "#e65100", Fuel: "#5e35b1", Infrastructure: "#37474f",
+  "Produce Sales": "#42a5f5", Other: "#90a4ae",
+};
+
 /* ═══════════════════════════════════════════
    FINANCIALS
    ═══════════════════════════════════════════ */
@@ -33,12 +39,7 @@ export default function Financials({data, setData}) {
   const chartHasEnough = chartMode === "monthly" ? monthsWithData >= 2 : daysWithData >= 2;
 
   // 6.6.3 — pie-chart geometry, pre-computed (no IIFE in render path)
-  const CAT_COLORS = {
-    Seeds: "#27ae60", Tools: "#8d6e63", Feed: "#ffa726",
-    Animals: "#e65100", Fuel: "#5e35b1", Infrastructure: "#37474f",
-    "Produce Sales": "#42a5f5", Other: "#90a4ae",
-  };
-  const catEntries = Object.entries(catT).sort((a,b)=>b[1]-a[1]);
+  const catEntries = useMemo(() => Object.entries(catT).sort((a,b)=>b[1]-a[1]), [catT]);
   const pieSlices = useMemo(() => {
     if (exp <= 0) return [];
     let acc = 0;
@@ -57,8 +58,7 @@ export default function Financials({data, setData}) {
       const d = `M 60 60 L ${x0.toFixed(2)} ${y0.toFixed(2)} A 50 50 0 ${largeArc} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`;
       return { cat, amt, frac, d, color: CAT_COLORS[cat] || "#90a4ae" };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catT, exp]);
+  }, [catEntries, exp]);
 
   return (
     <div className="page-enter" style={SX.mw800}>

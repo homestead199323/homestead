@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { F } from "../../lib/theme";
 import { markTaskDone, todayLocalKey, appendLog } from "../../lib/utils";
 import { uid } from "../../lib/storage";
@@ -227,6 +227,10 @@ function StopPopup(props) {
     WebkitBackdropFilter: "blur(8px)",
     backdropFilter: "blur(8px)",
     color: "#fff",
+    transform: props.swipe ? "translateY(" + props.swipe.offsetY + "px)" : "translateY(0)",
+    opacity: props.swipe ? Math.max(0.3, 1 - Math.abs(props.swipe.offsetY) / 300) : 1,
+    transition: props.swipe && props.swipe.dragging ? "none" : "transform 180ms ease, opacity 180ms ease",
+    touchAction: "none",
   };
 
   // Tail centered horizontally but shifted by the clamp offset so it
@@ -251,7 +255,7 @@ function StopPopup(props) {
   return (
     <div style={containerStyle}>
       <div style={tailStyle} />
-      <div style={cardStyle}>
+      <div {...(props.swipe ? props.swipe.bind : {})} style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <div style={{ fontSize: 28, lineHeight: 1, flex: "0 0 auto" }}>{task.emoji || "🌱"}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -333,10 +337,9 @@ function StopPopup(props) {
 export default function WalkOverlay({ tasks, data, setData, onClose }) {
   // Snapshot stops on open. Re-running every render would shift the order
   // mid-walk (each completion shrinks the queue), which is jarring.
-  const stops = useMemo(function() {
+  const [stops] = useState(function() {
     return buildWalkStops(tasks, data);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   // Flatten to steps so we can advance one task at a time even when a stop
   // has several. Walker only animates on stopIdx change.
@@ -357,8 +360,8 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
   const [logVal, setLogVal] = useState(function() {
     return defaultLogValue(total > 0 ? steps[0].task : null, data);
   });
-  const completedRef = useRef([]);
-  const startStreakRef = useRef((data.gamify && data.gamify.streak) || 0);
+  const [completedKeys, setCompletedKeys] = useState([]);
+  const [startStreak] = useState((data.gamify && data.gamify.streak) || 0);
 
   // Lock body scroll while the walk is open. Without this, on desktop
   // the page underneath remains scrollable and the dashboard bleeds
@@ -384,14 +387,12 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
     const done = new Set();
     stops.forEach(function(s) {
       const allDone = s.tasks.every(function(t) {
-        return completedRef.current.indexOf(t.key) !== -1;
+        return completedKeys.indexOf(t.key) !== -1;
       });
       if (allDone) done.add(s.stopKey);
     });
     return done;
-    // stepIdx dep forces re-eval after each completion
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stops, stepIdx]);
+  }, [stops, completedKeys]);
 
   // Plot icons — visible crops inside zones for game-like feel. One icon
   // per active (non-harvested) plot at the plot's center within its zone.
@@ -411,14 +412,12 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
       });
     });
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [data.garden, data.region]);
 
   // Reset the quick-log input each time the active task changes.
   useEffect(function() {
     setLogVal(defaultLogValue(task, data));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIdx]);
+  }, [task, data]);
 
   // Lock body scroll
   useEffect(function() {
@@ -448,7 +447,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
   function jumpToStop(targetStopIdx) {
     let idx = steps.findIndex(function(s) {
       return s.stopIdx === targetStopIdx
-        && completedRef.current.indexOf(s.task.key) === -1;
+        && completedKeys.indexOf(s.task.key) === -1;
     });
     if (idx < 0) {
       idx = steps.findIndex(function(s) { return s.stopIdx === targetStopIdx; });
@@ -460,7 +459,9 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
 
   function completeCurrent() {
     if (!task) { advance(); return; }
-    completedRef.current.push(task.key);
+    setCompletedKeys(function(keys) {
+      return keys.indexOf(task.key) === -1 ? [...keys, task.key] : keys;
+    });
     setData(applyTaskCompletion(data, task, logVal));
     playChime();
     buzz();
@@ -476,42 +477,13 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
   const needsInput = task && (task.type === "harvest" || task.type === "eggs" || task.type === "water");
   const swipe = useSwipeUp({ onSwipeUp: completeCurrent, disabled: phase !== "walking" || needsInput });
 
-  const completedCount = completedRef.current.length;
+  const completedCount = completedKeys.length;
   const skippedCount = total - completedCount;
 
-  // Pre-compute type label (no nested ternaries in render path)
-  let typeLabel = "";
-  if (task) {
-    if (task.routine) typeLabel = "routine";
-    else if (task.type === "harvest") typeLabel = "harvest ready";
-    else if (task.type === "step") typeLabel = "growing step";
-    else if (task.type === "health") typeLabel = "health check";
-    else if (task.type === "hoof") typeLabel = "hoof check";
-    else if (task.type === "hive") typeLabel = "hive inspection";
-    else if (task.type === "clean") typeLabel = "housekeeping";
-    else if (task.type === "bedding") typeLabel = "bedding change";
-    else if (task.type === "paddock") typeLabel = "paddock rotation";
-    else typeLabel = "today";
-  }
-
   let inputUnit = "";
-  let inputHelp = "";
-  if (task && task.type === "harvest") { inputUnit = "kg"; inputHelp = "Weigh what you bring in"; }
-  else if (task && task.type === "water") { inputUnit = "L"; inputHelp = "Approx. amount today"; }
-  else if (task && task.type === "eggs") { inputUnit = "eggs"; inputHelp = "Count what's in the nest box"; }
-
-  let stopHeader = "";
-  let stopBadge = "";
-  if (step) {
-    stopHeader = step.stop.label;
-    const tasksAtStop = step.stop.tasks.length;
-    if (tasksAtStop > 1) {
-      stopBadge = (step.taskIdx + 1) + " / " + tasksAtStop + " here";
-    }
-  }
-
-  const cardTransform = phase === "walking" && !needsInput ? ("translateY(" + swipe.offsetY + "px)") : "translateY(0)";
-  const cardOpacity = phase === "walking" && !needsInput ? Math.max(0.3, 1 - Math.abs(swipe.offsetY) / 300) : 1;
+  if (task && task.type === "harvest") inputUnit = "kg";
+  else if (task && task.type === "water") inputUnit = "L";
+  else if (task && task.type === "eggs") inputUnit = "eggs";
 
   return (
     <div style={{
@@ -570,6 +542,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
                   setLogVal={setLogVal}
                   needsInput={needsInput}
                   inputUnit={inputUnit}
+                  swipe={needsInput ? null : swipe}
                   onSkip={skipCurrent}
                   onDone={completeCurrent}
                 />
@@ -608,7 +581,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
                   ? "No worries — come back when you're ready."
                   : skippedCount + " left for later."}
           </div>
-          {completedCount > 0 && startStreakRef.current === 0 && (
+          {completedCount > 0 && startStreak === 0 && (
             <div style={{ fontSize: 13, color: "#7fc97f", fontWeight: 600, marginBottom: 24, padding: "8px 14px", background: "rgba(127,201,127,.12)", borderRadius: 10, border: "1px solid rgba(127,201,127,.25)" }}>
               🌱 Streak started — day 1
             </div>

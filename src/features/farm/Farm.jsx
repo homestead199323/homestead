@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { motion } from "framer-motion";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Pill, Ring, Stat } from "../../components/ui";
 import { LAYOUT_SPRING } from "../../lib/use-spring-drag";
@@ -18,6 +18,8 @@ import LivingFarmMap from "./living/LivingFarmMap";
 import ZoneImage from "./living/ZoneImage";
 import { BACKGROUND_PNG } from "./living/paths";
 import ZonePalette, { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
+
+const MotionDiv = motion.div;
 
 /* BackgroundLayer — full-canvas <img> with onError fallback to transparent.
    Renders absolutely behind everything else inside Setup canvas. */
@@ -947,7 +949,7 @@ function Farming({data, setData, pageData, clearPageData}) {
         const zone=data.zones.find(z=>z.id===p.zone);
         const hasQty = p.plantCount || p.qty;
         return (
-          <motion.div key={p.id} layoutId={`crop-card-${p.id}`} transition={LAYOUT_SPRING}>
+          <MotionDiv key={p.id} layoutId={`crop-card-${p.id}`} transition={LAYOUT_SPRING}>
           <Card onClick={()=>setSelP(p.id)} style={isR?{boxShadow:`0 0 0 2px ${C.orange}`}:{}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <Ring pct={pct} color={isR?C.orange:C.green}>{c?.emoji||"🌱"}</Ring>
@@ -967,7 +969,7 @@ function Farming({data, setData, pageData, clearPageData}) {
               </div>
             </div>
           </Card>
-          </motion.div>
+          </MotionDiv>
         );
       })}</div>}
 
@@ -1104,7 +1106,6 @@ function FarmTab({data, setData, pageData, clearPageData}) {
     return (pageData && pageData.tab) ? pageData.tab : "map";
   });
   const [plantZoneId, setPlantZoneId] = useState(null);
-  const noopClearPageData = useCallback(function(){}, []);
 
   useEffect(function() { clearPageData(); }, [clearPageData]);
 

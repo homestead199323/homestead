@@ -10,6 +10,7 @@ import { LDB } from "../data/livestock";
 import { PRESERVATION } from "../data/preservation";
 import { VARIETIES } from "../data/varieties";
 import { buildTaskQueue } from "./task-queue";
+import { getCropDifficulty } from "./calendar";
 import { daysBetweenLocalKeys } from "./utils";
 import { rCR, rCM, getRegionalCalendar, getRegionalVarieties } from "./regional";
 

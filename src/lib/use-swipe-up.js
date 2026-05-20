@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* ═══════════════════════════════════════════
    useSwipeUp — touch-only vertical swipe-up hook
@@ -24,6 +24,13 @@ export function useSwipeUp({ onSwipeUp, threshold = 80, disabled = false } = {})
   const startX = useRef(0);
   const startY = useRef(0);
   const axis = useRef(null); // "h" | "v" | null
+  const commitTimer = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (commitTimer.current) clearTimeout(commitTimer.current);
+    };
+  }, []);
 
   const onTouchStart = (e) => {
     if (disabled) return;
@@ -65,9 +72,10 @@ export function useSwipeUp({ onSwipeUp, threshold = 80, disabled = false } = {})
     if (axis.current === "v" && offsetY <= -threshold && onSwipeUp) {
       // Commit: slide out and fire callback
       setOffsetY(-400);
-      setTimeout(() => {
+      commitTimer.current = setTimeout(() => {
         try { onSwipeUp(); } catch (e) { /* swallow — caller handles */ }
         setOffsetY(0);
+        commitTimer.current = null;
       }, 180);
     } else {
       setOffsetY(0);

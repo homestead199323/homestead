@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { C, F, SX } from "../../lib/theme";
 import { Card, SwipeableRow, TaskCheckbox } from "../../components/ui";
