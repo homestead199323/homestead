@@ -58,8 +58,7 @@ function Setup({data, setData, onPlantInZone}) {
   const [farmH, setFarmH] = useState(data.farmH || 60);  // total farm height in meters
   const [dragging, setDragging] = useState(null); // {id, startX, startY, origXM, origYM}
   const [zoneResize, setZoneResize] = useState(null); // {id, edge, startX, startY, origXM, origYM, origWM, origHM}
-  const [cropDrag, setCropDrag] = useState(null); // {plotId, zoneId, startX, startY, origPx, origPy}
-  const [cropResize, setCropResize] = useState(null); // {plotId, zoneId, startX, startY, origPw, origPh, frac}
+  const [cropDropdownOpen, setCropDropdownOpen] = useState(false);
   const [hoverInfo, setHoverInfo] = useState(null); // zone hover tooltip
   const [tutorialDismissed, setTutorialDismissed] = useState(!!data.designerTutorialSeen);
   const [armedType, setArmedType] = useState(null); // tap-to-place: id of armed palette type, or null
@@ -294,32 +293,6 @@ function Setup({data, setData, onPlantInZone}) {
           const rect = svgRef.current.getBoundingClientRect();
           const curX = e.clientX - rect.left;
           const curY = e.clientY - rect.top;
-          // Crop patch resize — adjust width/height while keeping same area fraction
-          if (cropResize) {
-            const zoneEl = document.getElementById(`zone-${cropResize.zoneId}`);
-            if (zoneEl) {
-              const zr = zoneEl.getBoundingClientRect();
-              const dx = (curX - (zr.left - rect.left) - cropResize.startX) / zr.width;
-              let newPw = Math.max(0.15, Math.min(1, cropResize.origPw + dx));
-              let newPh = Math.max(0.08, Math.min(1, cropResize.frac / newPw)); // keep area constant
-              newPh = Math.min(1, newPh);
-              upPlot(cropResize.plotId, {patchW: newPw, patchH: newPh});
-            }
-            return;
-          }
-          // Crop patch drag — move within zone
-          if (cropDrag) {
-            const zoneEl = document.getElementById(`zone-${cropDrag.zoneId}`);
-            if (zoneEl) {
-              const zr = zoneEl.getBoundingClientRect();
-              const dx = (curX - (zr.left - rect.left) - cropDrag.startX) / zr.width;
-              const dy = (curY - (zr.top - rect.top) - cropDrag.startY) / zr.height;
-              const newPx = Math.max(0, Math.min(1, cropDrag.origPx + dx));
-              const newPy = Math.max(0, Math.min(1, cropDrag.origPy + dy));
-              upPlot(cropDrag.plotId, {patchX: newPx, patchY: newPy});
-            }
-            return;
-          }
           // Zone resize — drag edges/corners to change size
           if (zoneResize) {
             const dxM = ((curX - zoneResize.startX) / rect.width) * farmW;
@@ -349,8 +322,8 @@ function Setup({data, setData, onPlantInZone}) {
           const newYM = Math.max(safeMinYd, Math.min(Math.max(safeMinYd, safeMaxYd), dragging.origYM + dyM));
           upZ(dragging.id, {xM: newXM, yM: newYM, x: newXM/farmW*100, y: newYM/farmH*100});
         }}
-        onPointerUp={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); }}
-        onPointerCancel={() => { setDragging(null); setZoneResize(null); setCropDrag(null); setCropResize(null); setHoverInfo(null); }}
+        onPointerUp={() => { setDragging(null); setZoneResize(null); }}
+        onPointerCancel={() => { setDragging(null); setZoneResize(null); setHoverInfo(null); }}
         onMouseLeave={() => setHoverInfo(null)}>
 
         {/* Background PNG (falls back to grid below on 404) — Living Map */}
@@ -455,35 +428,44 @@ function Setup({data, setData, onPlantInZone}) {
             const zAnimals = isAnimalZone ? data.livestock.animals.filter(a => LDB[a.type]) : [];
             const animalCount = zAnimals.reduce((s,a) => s + a.count, 0);
 
-            // Build crop patches — use saved positions if available, otherwise auto-layout
+            // Build crop patches — row-packed auto-layout (no manual positioning)
             const zoneTotalM2 = (z.wM||10)*(z.hM||8);
             const cropPatches = [];
             if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
-              let autoFillY = 1;
+              // Step 1: compute frac for each plot
+              const raw = [];
               zPlots.forEach(p => {
                 let area = 0;
                 if (p.measureType==="area"&&p.qty) area=+p.qty;
                 else if (p.plantCount) { const cr=rCM(data.region).get(p.crop); if(cr){const sp=cr.spacing/100;area=p.plantCount*sp*sp;} }
                 if (area>0) {
-                  const frac=Math.min(0.98,area/zoneTotalM2);
+                  const frac=Math.min(1,area/zoneTotalM2);
                   const cc=setupColorMap.get(p.crop)||{r:100,g:140,b:60};
-                  // Use saved patch position/size if the plot has them, else auto-layout
-                  let pw, ph, px, py;
-                  if (p.patchW !== undefined && p.patchH !== undefined) {
-                    pw = p.patchW; ph = p.patchH;
-                    px = p.patchX || 0.03; py = p.patchY || 0;
-                  } else {
-                    const side = Math.sqrt(frac);
-                    pw = Math.min(1, side * 1.2);
-                    ph = Math.min(1, frac / pw);
-                    px = 0.03;
-                    py = Math.max(0, autoFillY - ph);
-                    autoFillY -= ph + 0.02;
-                  }
-                  cropPatches.push({plotId:p.id,crop:p.crop,name:p.name||p.crop,frac,pctLabel:Math.round(frac*100),cc,pw,ph,px,py});
+                  raw.push({plotId:p.id,crop:p.crop,name:p.name||p.crop,frac,pctLabel:Math.round(frac*100),cc});
                 }
               });
-              cropPatches.sort((a,b)=>b.frac-a.frac);
+              // Step 2: sort desc by frac, then row-pack with width budget 1.0
+              raw.sort((a,b)=>b.frac-a.frac);
+              const sumFrac = raw.reduce((s,r)=>s+r.frac,0);
+              const scale = sumFrac > 1 ? 1/sumFrac : 1;
+              const rows = [];
+              let cur = []; let curW = 0;
+              raw.forEach(r => {
+                const pw = r.frac * scale;
+                if (curW + pw > 1.0001 && cur.length > 0) { rows.push(cur); cur = []; curW = 0; }
+                cur.push({...r, pw});
+                curW += pw;
+              });
+              if (cur.length > 0) rows.push(cur);
+              // Step 3: assign px/py/ph (equal-height rows)
+              const rowH = rows.length > 0 ? 1 / rows.length : 1;
+              rows.forEach((row, ri) => {
+                let x = 0;
+                row.forEach(p => {
+                  cropPatches.push({...p, ph: rowH, px: x, py: ri * rowH});
+                  x += p.pw;
+                });
+              });
             }
 
             return (
@@ -500,13 +482,13 @@ function Setup({data, setData, onPlantInZone}) {
                 }}
                 onPointerMove={e => {
                   if (e.pointerType !== "mouse") return; // hover tooltips only on desktop
-                  if (!dragging && !cropDrag && !cropResize) {
+                  if (!dragging && !zoneResize) {
                     const rect = svgRef.current.getBoundingClientRect();
                     setHoverInfo({x:e.clientX-rect.left,y:e.clientY-rect.top,name:z.name,icon:zt?.icon||"",typeLabel:zt?.label||z.type,wM:(z.wM||10).toFixed(0),hM:(z.hM||8).toFixed(0),area:((z.wM||10)*(z.hM||8)).toFixed(0),cropCount:zPlots.length,animalCount});
                   }
                 }}
                 onMouseLeave={() => setHoverInfo(null)}
-                onClick={() => { if (!dragging && !cropDrag && !cropResize) setSel(z.id); }}
+                onClick={() => { if (!dragging && !zoneResize) setSel(z.id); }}
                 style={{
                   position:"absolute",
                   left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
@@ -526,59 +508,25 @@ function Setup({data, setData, onPlantInZone}) {
                 </div>
                 {/* Zone name */}
                 <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none",textShadow:"0 1px 2px rgba(255,255,255,.6)"}}>{z.name}</div>
-                {/* Crop patches — draggable + resizable */}
+                {/* Crop patches — auto-laid-out, purely visual (no manipulation) */}
                 {cropPatches.map((cb) => {
-                  const isDragThis = cropDrag?.plotId === cb.plotId;
-                  const isResizeThis = cropResize?.plotId === cb.plotId;
                   return (
                     <div key={cb.plotId} data-crop-patch="true"
-                      onPointerDown={e => {
-                        e.stopPropagation();
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        const zoneEl = document.getElementById(`zone-${z.id}`);
-                        if (!zoneEl) return;
-                        const zr = zoneEl.getBoundingClientRect();
-                        setCropDrag({plotId:cb.plotId, zoneId:z.id,
-                          startX: e.clientX - zr.left, startY: e.clientY - zr.top,
-                          origPx: cb.px, origPy: cb.py});
-                      }}
                       style={{
                         position:"absolute",
                         left:`${(cb.px*100).toFixed(1)}%`,top:`${(cb.py*100).toFixed(1)}%`,
                         width:`${(cb.pw*100).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,
                         background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,
-                        borderRadius:6,overflow:"visible",
+                        borderRadius:6,overflow:"hidden",
                         display:"flex",alignItems:"center",justifyContent:"center",zIndex:1,
-                        cursor: isDragThis ? "grabbing" : "grab",
-                        border: (isDragThis||isResizeThis) ? `1.5px dashed rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.7)` : "1px solid transparent",
-                        transition: (cropDrag||cropResize) ? "none" : "all .15s",
-                        touchAction: "none",
+                        border:"1px solid transparent",
+                        pointerEvents:"none",
                       }}>
                       <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,filter:"blur(8px)",zIndex:0,pointerEvents:"none"}}/>
                       <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2,pointerEvents:"none"}}>
                         <div style={{fontSize:10,fontWeight:900,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
                         <div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,.9)",textShadow:"0 1px 2px rgba(0,0,0,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%",padding:"0 2px"}}>{cb.name}</div>
                       </div>
-                      {/* Resize handle — bottom-right corner */}
-                      <div data-crop-patch="true"
-                        onPointerDown={e => {
-                          e.stopPropagation();
-                          e.currentTarget.setPointerCapture(e.pointerId);
-                          const zoneEl = document.getElementById(`zone-${z.id}`);
-                          if (!zoneEl) return;
-                          const zr = zoneEl.getBoundingClientRect();
-                          setCropResize({plotId:cb.plotId, zoneId:z.id,
-                            startX: e.clientX - zr.left, startY: e.clientY - zr.top,
-                            origPw: cb.pw, origPh: cb.ph, frac: cb.frac});
-                          setCropDrag(null); // don't drag while resizing
-                        }}
-                        style={{
-                          position:"absolute",bottom:-3,right:-3,width:10,height:10,
-                          background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.7)`,
-                          borderRadius:"0 6px 0 4px",cursor:"nwse-resize",zIndex:5,
-                          border:"1.5px solid rgba(255,255,255,.6)",
-                          touchAction: "none",
-                        }}/>
                     </div>
                   );
                 })}
