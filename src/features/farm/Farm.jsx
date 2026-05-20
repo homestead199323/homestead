@@ -432,16 +432,29 @@ function Setup({data, setData, onPlantInZone}) {
             const zoneTotalM2 = (z.wM||10)*(z.hM||8);
             const cropPatches = [];
             if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
-              // Step 1: compute frac for each plot
+              // Step 1: compute frac + growth stage for each plot
               const raw = [];
+              const todayMs = localDateFromKey(todayLocalKey()).getTime();
               zPlots.forEach(p => {
                 let area = 0;
+                const cr = rCM(data.region).get(p.crop);
                 if (p.measureType==="area"&&p.qty) area=+p.qty;
-                else if (p.plantCount) { const cr=rCM(data.region).get(p.crop); if(cr){const sp=cr.spacing/100;area=p.plantCount*sp*sp;} }
+                else if (p.plantCount && cr) { const sp=cr.spacing/100; area=p.plantCount*sp*sp; }
                 if (area>0) {
                   const frac=Math.min(1,area/zoneTotalM2);
                   const cc=setupColorMap.get(p.crop)||{r:100,g:140,b:60};
-                  raw.push({plotId:p.id,crop:p.crop,name:p.name||p.crop,frac,pctLabel:Math.round(frac*100),cc});
+                  // Growth stage from plantDate + crop's `days` to harvest
+                  let growthPct = 0;
+                  let stage = "just_planted";
+                  if (p.plantDate && cr && cr.days > 0) {
+                    const plantedMs = localDateFromKey(p.plantDate).getTime();
+                    const elapsedDays = Math.max(0, (todayMs - plantedMs) / 864e5);
+                    growthPct = Math.max(0, Math.min(1, elapsedDays / cr.days));
+                    if (growthPct >= 0.85) stage = "ready";
+                    else if (growthPct >= 0.10) stage = "growing";
+                    else stage = "just_planted";
+                  }
+                  raw.push({plotId:p.id,crop:p.crop,name:p.name||p.crop,frac,pctLabel:Math.round(frac*100),cc,growthPct,stage});
                 }
               });
               // Step 2: sort desc by frac, then row-pack with width budget 1.0
@@ -508,24 +521,42 @@ function Setup({data, setData, onPlantInZone}) {
                 </div>
                 {/* Zone name */}
                 <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none",textShadow:"0 1px 2px rgba(255,255,255,.6)"}}>{z.name}</div>
-                {/* Crop patches — auto-laid-out, purely visual (no manipulation) */}
+                {/* Crop patches — auto-laid-out, stage-aware (purely visual, no manipulation) */}
                 {cropPatches.map((cb) => {
+                  // Stage drives opacity + bar color
+                  const stageBg = cb.stage === "ready" ? 0.62 : cb.stage === "growing" ? 0.45 : 0.26;
+                  const stageBlur = cb.stage === "ready" ? 0.4 : cb.stage === "growing" ? 0.28 : 0.18;
+                  // Progress-bar color: soil-brown → green → gold across stage
+                  const barColor = cb.stage === "ready" ? "rgba(245,180,50,.95)"
+                                 : cb.stage === "growing" ? `rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.95)`
+                                 : "rgba(140,100,60,.85)";
+                  const isReady = cb.stage === "ready";
                   return (
                     <div key={cb.plotId} data-crop-patch="true"
                       style={{
                         position:"absolute",
                         left:`${(cb.px*100).toFixed(1)}%`,top:`${(cb.py*100).toFixed(1)}%`,
                         width:`${(cb.pw*100).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,
-                        background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.38)`,
+                        background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},${stageBg})`,
                         borderRadius:6,overflow:"hidden",
                         display:"flex",alignItems:"center",justifyContent:"center",zIndex:1,
-                        border:"1px solid transparent",
+                        border: isReady ? "1.5px solid rgba(245,180,50,.7)" : "1px solid transparent",
+                        boxShadow: isReady ? "0 0 8px rgba(245,180,50,.35)" : "none",
                         pointerEvents:"none",
                       }}>
-                      <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,filter:"blur(8px)",zIndex:0,pointerEvents:"none"}}/>
-                      <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2,pointerEvents:"none"}}>
+                      <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},${stageBlur})`,filter:"blur(8px)",zIndex:0,pointerEvents:"none"}}/>
+                      <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2,pointerEvents:"none",padding:"0 4px 6px"}}>
                         <div style={{fontSize:10,fontWeight:900,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
-                        <div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,.9)",textShadow:"0 1px 2px rgba(0,0,0,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%",padding:"0 2px"}}>{cb.name}</div>
+                        <div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,.9)",textShadow:"0 1px 2px rgba(0,0,0,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{cb.name}</div>
+                        <div style={{fontSize:6.5,fontWeight:700,color:"rgba(255,255,255,.78)",textShadow:"0 1px 2px rgba(0,0,0,.4)",marginTop:1,fontFamily:F.mono}}>{Math.round(cb.growthPct*100)}%→🌾</div>
+                      </div>
+                      {/* Ready badge */}
+                      {isReady && (
+                        <div style={{position:"absolute",top:2,right:2,fontSize:9,lineHeight:1,zIndex:3,pointerEvents:"none",filter:"drop-shadow(0 1px 2px rgba(0,0,0,.4))"}}>🌾</div>
+                      )}
+                      {/* Growth progress bar — bottom edge */}
+                      <div style={{position:"absolute",left:0,right:0,bottom:0,height:3,background:"rgba(0,0,0,.18)",zIndex:2,pointerEvents:"none"}}>
+                        <div style={{height:"100%",width:`${(cb.growthPct*100).toFixed(0)}%`,background:barColor,transition:"width .3s ease"}}/>
                       </div>
                     </div>
                   );
