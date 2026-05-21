@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, createPortal } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 
 import { C, F, SX } from "../../lib/theme";
 import { ZT_MAP } from "../../data/zones";
