@@ -128,68 +128,67 @@ export default function LivingFarmMap({
     if (!showCropPatches) return [];
     if (!isPlantZone(z.type)) return [];
     const plots = (data.garden && data.garden.plots ? data.garden.plots : [])
-      .filter(p => p.zone === z.id && p.status !== "harvested");
+      .filter(function(p) { return p.zone === z.id && p.status !== "harvested"; });
     if (plots.length === 0) return [];
     const zoneTotalM2 = (z.wM || 10) * (z.hM || 8);
     if (zoneTotalM2 <= 0) return [];
+    const todayMs = localDateFromKey(today).getTime();
 
-    const out = [];
-    let autoFillY = 1;
-    plots.forEach(p => {
+    // Step 1: frac + growth stage — identical to Farm Designer (Setup)
+    const raw = [];
+    plots.forEach(function(p) {
       let area = 0;
+      const crop = cropMap.get(p.crop);
       if (p.measureType === "area" && p.qty) area = +p.qty;
-      else if (p.plantCount) {
-        const crop = cropMap.get(p.crop);
-        if (crop) { const sp = crop.spacing / 100; area = p.plantCount * sp * sp; }
-      }
+      else if (p.plantCount && crop) { const sp = crop.spacing / 100; area = p.plantCount * sp * sp; }
       if (area <= 0) return;
-      const frac = Math.min(0.98, area / zoneTotalM2);
+      const frac = Math.min(1, area / zoneTotalM2);
       const cc = cropColorMap.get(p.crop) || { r: 100, g: 140, b: 60 };
       let growthPct = 0;
       let stage = "just_planted";
-      const crop = cropMap.get(p.crop);
       if (p.plantDate && crop && crop.days > 0) {
         const plantedMs = localDateFromKey(p.plantDate).getTime();
-        const todayMs = localDateFromKey(today).getTime();
         const elapsedDays = Math.max(0, (todayMs - plantedMs) / 864e5);
         growthPct = Math.max(0, Math.min(1, elapsedDays / crop.days));
         if (growthPct >= 0.85 || (p.harvestDate && p.harvestDate <= today)) stage = "ready";
         else if (growthPct >= 0.10) stage = "growing";
       } else if (p.harvestDate && p.harvestDate <= today) {
-        growthPct = 1;
-        stage = "ready";
+        growthPct = 1; stage = "ready";
       }
-      let pw, ph, px, py;
-      if (p.patchW !== undefined && p.patchH !== undefined) {
-        pw = p.patchW; ph = p.patchH;
-        px = p.patchX || 0.03; py = p.patchY || 0;
-      } else {
-        const side = Math.sqrt(frac);
-        pw = Math.min(1, side * 1.2);
-        ph = Math.min(1, frac / pw);
-        px = 0.03;
-        py = Math.max(0, autoFillY - ph);
-        autoFillY -= ph + 0.02;
-      }
-      out.push({
-        plotId: p.id,
-        crop: p.crop,
-        variety: p.variety || "",
-        name: p.name || p.crop,
-        pctLabel: Math.round(frac * 100),
-        cc,
-        pw,
-        ph,
-        px,
-        py,
-        growthPct,
-        stage,
-        plantDate: p.plantDate || "",
-        harvestDate: p.harvestDate || "",
+      raw.push({
+        plotId: p.id, crop: p.crop, variety: p.variety || "",
+        name: p.name || p.crop, frac,
+        pctLabel: Math.round(frac * 100), cc,
+        growthPct, stage,
+        plantDate: p.plantDate || "", harvestDate: p.harvestDate || "",
         zoneName: z.name,
       });
     });
-    out.sort((a, b) => b.pctLabel - a.pctLabel);
+
+    // Step 2: sort desc, greedy row-pack at width budget 1.0 — identical to Farm Designer
+    raw.sort(function(a, b) { return b.frac - a.frac; });
+    const sumFrac = raw.reduce(function(s, r) { return s + r.frac; }, 0);
+    const scale = sumFrac > 1 ? 1 / sumFrac : 1;
+    const rows = [];
+    let cur = []; let curW = 0;
+    raw.forEach(function(r) {
+      const pw = r.frac * scale;
+      if (curW + pw > 1.0001 && cur.length > 0) { rows.push(cur); cur = []; curW = 0; }
+      cur.push({ ...r, pw });
+      curW += pw;
+    });
+    if (cur.length > 0) rows.push(cur);
+
+    // Step 3: equal-height rows — identical to Farm Designer
+    const rowH = rows.length > 0 ? 1 / rows.length : 1;
+    const out = [];
+    rows.forEach(function(row, ri) {
+      let x = 0;
+      row.forEach(function(p) {
+        out.push({ ...p, ph: rowH, px: x, py: ri * rowH });
+        x += p.pw;
+      });
+    });
     return out;
   }
 
