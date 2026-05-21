@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, createPortal } from "react";
 
 import { C, F, SX } from "../../lib/theme";
 import { ZT_MAP } from "../../data/zones";
@@ -702,7 +702,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
       </div>
       {openPlot && <PlotOverlay plot={openPlot} data={data} setData={setData} onClose={()=>setOpenPlotId(null)} setPage={setPage}/>}
       {openAnimal && <AnimalOverlay animal={openAnimal} data={data} setData={setData} onClose={()=>setOpenAnimalId(null)}/>}
-      {walkOpen && <WalkOverlay tasks={tasks} data={data} setData={setData} onClose={()=>setWalkOpen(false)}/>}
+      {walkOpen && createPortal(<WalkOverlay tasks={tasks} data={data} setData={setData} onClose={()=>setWalkOpen(false)}/>, document.body)}
     </div>
   );
 }

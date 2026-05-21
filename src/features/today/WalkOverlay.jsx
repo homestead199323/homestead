@@ -519,7 +519,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
       {phase === "walking" && task && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
           {/* Map takes all available space above the task card */}
-          <div style={{ flex: 1, minHeight: 0, position: "relative", margin: "8px 10px 0", overflow: "hidden" }}>
+          <div style={{ flex: 1, minHeight: 0, height: 0, position: "relative", margin: "8px 10px 0", overflow: "hidden" }}>
             <WalkMap
               stops={stops}
               currentStopIdx={currentStopIdx}

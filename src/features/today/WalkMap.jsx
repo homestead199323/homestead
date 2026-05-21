@@ -58,7 +58,7 @@ export default function WalkMap({ stops, currentStopIdx, data, onStopClick }) {
       <style>{WALKER_CSS}</style>
       <LivingFarmMap
         data={data}
-        fitMode="aspect"
+        fitMode="fill"
         showTimeTint={false}
         showEditButton={false}
         showHelperText={false}
