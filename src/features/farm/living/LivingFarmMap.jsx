@@ -81,6 +81,7 @@ export default function LivingFarmMap({
 
   /* ── Selected zone (opens overlay) ── */
   const [selZoneId, setSelZoneId] = useState(null);
+  const [selPatch, setSelPatch] = useState(null);
   const selZone = data.zones.find(z => z.id === selZoneId) || null;
 
   /* ── Urgent-zone detection (any plot ready to harvest) ── */
@@ -170,7 +171,23 @@ export default function LivingFarmMap({
         py = Math.max(0, autoFillY - ph);
         autoFillY -= ph + 0.02;
       }
-      out.push({ crop: p.crop, name: p.name || p.crop, pctLabel: Math.round(frac * 100), cc, pw, ph, px, py, growthPct, stage });
+      out.push({
+        plotId: p.id,
+        crop: p.crop,
+        variety: p.variety || "",
+        name: p.name || p.crop,
+        pctLabel: Math.round(frac * 100),
+        cc,
+        pw,
+        ph,
+        px,
+        py,
+        growthPct,
+        stage,
+        plantDate: p.plantDate || "",
+        harvestDate: p.harvestDate || "",
+        zoneName: z.name,
+      });
     });
     out.sort((a, b) => b.pctLabel - a.pctLabel);
     return out;
@@ -255,8 +272,8 @@ export default function LivingFarmMap({
              - else: no-op (decorative only)
           */
           const handleClick = onZoneClick
-            ? function() { onZoneClick(z); }
-            : (interactive ? function() { setSelZoneId(z.id); } : undefined);
+            ? function() { setSelPatch(null); onZoneClick(z); }
+            : (interactive ? function() { setSelPatch(null); setSelZoneId(z.id); } : undefined);
 
           return (
             <div
@@ -280,12 +297,30 @@ export default function LivingFarmMap({
 
               {/* Crop-stage patches — useful overview only; details stay in the sheet. */}
               {patches.map(function(cb, i) {
-                return <CropStagePatch key={i} patch={cb} compact={!showHelperText} showText={!showHelperText || patches.length <= 4}/>;
+                return (
+                  <CropStagePatch
+                    key={i}
+                    patch={cb}
+                    compact={!showHelperText}
+                    showText={!showHelperText || patches.length <= 4}
+                    interactive={interactive}
+                    selected={selPatch && selPatch.plotId === cb.plotId}
+                    onClick={function(e) {
+                      e.stopPropagation();
+                      setSelZoneId(null);
+                      setSelPatch(cb);
+                    }}
+                  />
+                );
               })}
 
               {/* Name label — compact, no icons or prop art */}
               <div style={{
-                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+                position: "absolute",
+                top: patches.length > 0 ? "auto" : "50%",
+                bottom: patches.length > 0 ? 3 : "auto",
+                left: "50%",
+                transform: patches.length > 0 ? "translateX(-50%)" : "translate(-50%, -50%)",
                 padding: "4px 8px", borderRadius: 9,
                 background: "rgba(25,35,25,.37)", backdropFilter: "blur(3px)",
                 fontSize: 10, fontWeight: 850, color: "#fff",
@@ -323,6 +358,72 @@ export default function LivingFarmMap({
             fontFamily: F.mono, pointerEvents: "none",
             zIndex: 25,
           }}>Click a zone to open details</div>
+        )}
+
+        {selPatch && interactive && (
+          <div
+            onClick={function(e) { e.stopPropagation(); }}
+            style={{
+              position: "absolute",
+              left: 12,
+              right: 12,
+              bottom: 12,
+              zIndex: 28,
+              padding: 14,
+              borderRadius: 16,
+              background: "rgba(255,252,245,.95)",
+              border: `1px solid ${C.bdr}`,
+              boxShadow: "0 16px 34px rgba(47,55,34,.17)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={function() { setSelPatch(null); }}
+              aria-label="Close crop details"
+              style={{
+                position: "absolute",
+                top: 9,
+                right: 10,
+                border: "none",
+                background: "transparent",
+                color: C.t2,
+                fontSize: 18,
+                fontWeight: 800,
+                cursor: "pointer",
+                lineHeight: 1,
+              }}
+            >×</button>
+            <div style={{ paddingRight: 22 }}>
+              <div style={{ fontSize: 17, fontWeight: 850, color: C.text }}>
+                {selPatch.crop}{selPatch.variety ? ` · ${selPatch.variety}` : ""}
+              </div>
+              <div style={{ fontSize: 12, color: C.t2, marginTop: 3 }}>
+                {selPatch.zoneName} · {selPatch.pctLabel}% of zone
+              </div>
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 8,
+              marginTop: 12,
+            }}>
+              <div style={{ padding: 8, borderRadius: 11, background: C.bg }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: C.t2, textTransform: "uppercase" }}>Planted</div>
+                <div style={{ fontSize: 12, fontWeight: 800, marginTop: 2 }}>{selPatch.plantDate || "—"}</div>
+              </div>
+              <div style={{ padding: 8, borderRadius: 11, background: C.bg }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: C.t2, textTransform: "uppercase" }}>Harvest</div>
+                <div style={{ fontSize: 12, fontWeight: 800, marginTop: 2 }}>{selPatch.harvestDate || "—"}</div>
+              </div>
+              <div style={{ padding: 8, borderRadius: 11, background: C.bg }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: C.t2, textTransform: "uppercase" }}>Stage</div>
+                <div style={{ fontSize: 12, fontWeight: 800, marginTop: 2 }}>
+                  {selPatch.stage === "ready" ? "Ready" : selPatch.stage === "growing" ? "Growing" : "Just planted"}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 

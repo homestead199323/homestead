@@ -129,7 +129,18 @@ Stages:
 | Ready to harvest | Produce/warm-color cue or small urgent badge; should catch attention first |
 | Empty | Unfilled zone base remains visible |
 
-Avoid putting all crop names on the map if it gets crowded. Names and exact percentages belong in `ZoneOverlay`.
+Crop patches should use the approved G2/G3 visibility model:
+
+- Default map state uses G2: the crop patch itself is the progress gauge.
+- The darker/lusher fill rises through the crop patch as `growthPct` increases.
+- The crop name is written inside the planted area.
+- The variety can appear under the crop name when there is enough space.
+- A small percent tag shows growth progress.
+- The stage label stays compact inside the patch.
+- The patch texture remains procedural and subtle, not an illustration or emoji.
+- Clicking a crop patch opens the G3 detail sheet with plant date, harvest date, and current stage.
+
+Do not put plant date or harvest date directly on the normal map. Those details belong in the selected crop sheet so the map stays readable.
 
 ## Automatic Roads
 
@@ -236,8 +247,8 @@ Do:
    - flourishing
    - ready to harvest
    - empty/unfilled base
-7. Keep exact crop details in ZoneOverlay/bottom sheet, not crowded on the map.
+7. Keep exact crop dates in the selected crop sheet, not crowded on the map.
+8. Render crop patches as progress gauges: the patch fills darker/lusher as the crop advances.
 
 The final look should be simple, minimal, warm, premium, and editable. It should not look like an Excel grid, and it should not look like a busy game scene.
 ```
-

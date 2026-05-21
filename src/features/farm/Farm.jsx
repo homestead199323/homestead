@@ -449,7 +449,20 @@ function Setup({data, setData, onPlantInZone}) {
                     else if (growthPct >= 0.10) stage = "growing";
                     else stage = "just_planted";
                   }
-                  raw.push({plotId:p.id,crop:p.crop,name:p.name||p.crop,frac,pctLabel:Math.round(frac*100),cc,growthPct,stage});
+                  raw.push({
+                    plotId:p.id,
+                    crop:p.crop,
+                    variety:p.variety||"",
+                    name:p.name||p.crop,
+                    frac,
+                    pctLabel:Math.round(frac*100),
+                    cc,
+                    growthPct,
+                    stage,
+                    plantDate:p.plantDate||"",
+                    harvestDate:p.harvestDate||"",
+                    zoneName:z.name,
+                  });
                 }
               });
               // Step 2: sort desc by frac, then row-pack with width budget 1.0
@@ -513,7 +526,7 @@ function Setup({data, setData, onPlantInZone}) {
                 }}>
                 <ZoneSurface type={z.type} rounded={zoneRadius(z.type)}/>
                 {/* Zone name */}
-                <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%, -50%)",padding:"4px 8px",fontSize:10,fontWeight:850,color:"#fff",background:"rgba(25,35,25,.37)",borderRadius:9,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"88%",zIndex:8,pointerEvents:"none",textShadow:"0 1px 3px rgba(0,0,0,.38)",backdropFilter:"blur(3px)"}}>{z.name}</div>
+                <div style={{position:"absolute",top:cropPatches.length>0?"auto":"50%",bottom:cropPatches.length>0?3:"auto",left:"50%",transform:cropPatches.length>0?"translateX(-50%)":"translate(-50%, -50%)",padding:"4px 8px",fontSize:10,fontWeight:850,color:"#fff",background:"rgba(25,35,25,.37)",borderRadius:9,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"88%",zIndex:8,pointerEvents:"none",textShadow:"0 1px 3px rgba(0,0,0,.38)",backdropFilter:"blur(3px)"}}>{z.name}</div>
                 {/* Crop patches — auto-laid-out, stage-aware (purely visual, no manipulation) */}
                 {cropPatches.map((cb) => {
                   return <CropStagePatch key={cb.plotId} patch={cb} showText={cropPatches.length <= 4}/>;
