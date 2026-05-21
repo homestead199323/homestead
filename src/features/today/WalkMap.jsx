@@ -1,15 +1,15 @@
 import React from "react";
 import LivingFarmMap from "../farm/living/LivingFarmMap";
 
-/* ═════════════════════════════════════════════
+/*
    WalkMap — guided walk map view.
 
-   DESIGN CONTRACT (immutable — do not change):
-     • The entire farm ALWAYS fits on screen. Zero scroll. Zero pan. Zero zoom.
-     • map box = object-fit:contain via CSS aspectRatio + flex centering.
-     • LivingFarmMap fills the box with fitMode="fill".
-     • Walker token is absolutely positioned inside the box at cx/cy%.
-   ═════════════════════════════════════════════ */
+   LOCKED BEHAVIOUR — do not change:
+   - Map fills its container exactly. No scroll, no overflow, no pan, no zoom.
+   - Uses fitMode="fill" so LivingFarmMap fills position:absolute inset:0.
+   - Walker token is positioned at cx/cy % of the same container.
+   - aspectRatio is NOT used here — it causes overflow. Container controls size.
+*/
 
 const WALKER_CSS = `
 @keyframes walk-bob {
@@ -45,43 +45,29 @@ export default function WalkMap({ stops, currentStopIdx, data, onStopClick }) {
     );
   }
 
-  const fW = data.farmW || 100;
-  const fH = data.farmH || 60;
-
+  /* Fill the container completely. No aspectRatio — that causes overflow.
+     The parent (WalkOverlay) controls the height via flex:1 + minHeight:0.
+     overflow:hidden ensures nothing bleeds out. */
   return (
     <div style={{
       position: "absolute",
       inset: 0,
       overflow: "hidden",
-      background: "#1a3d2e",
-      borderRadius: 14,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
+      borderRadius: 12,
     }}>
       <style>{WALKER_CSS}</style>
-      <div style={{
-        position: "relative",
-        width: "100%",
-        maxHeight: "100%",
-        aspectRatio: `${fW} / ${fH}`,
-        overflow: "hidden",
-        borderRadius: 12,
-        flexShrink: 0,
-      }}>
-        <LivingFarmMap
-          data={data}
-          fitMode="fill"
-          showTimeTint={false}
-          showEditButton={false}
-          showHelperText={false}
-          showCropPatches={false}
-          interactive={false}
-          noBorder={true}
-          onZoneClick={handleZoneClick}
-        />
-        <WalkerToken x={walkerX} y={walkerY} />
-      </div>
+      <LivingFarmMap
+        data={data}
+        fitMode="fill"
+        showTimeTint={false}
+        showEditButton={false}
+        showHelperText={false}
+        showCropPatches={false}
+        interactive={false}
+        noBorder={true}
+        onZoneClick={handleZoneClick}
+      />
+      <WalkerToken x={walkerX} y={walkerY} />
     </div>
   );
 }
