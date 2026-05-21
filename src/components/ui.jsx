@@ -1,16 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { X } from "lucide-react";
 import { C, F, SX } from "../lib/theme";
 import { localDateFromKey, addDaysToLocalKey } from "../lib/utils";
 import { useSwipe } from "../lib/use-swipe";
-import { SPRING, LAYOUT_SPRING } from "../lib/use-spring-drag";
-
-const MotionDiv = motion.div;
 
 // Re-export for consumers that want the spring config
-export { LAYOUT_SPRING };
 
 /* ═══════════════════════════════════════════
    UI COMPONENTS
@@ -55,10 +50,10 @@ export const Txt = React.memo(function Txt({label,...p}) {
 
 export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
   const isSheet = !!sheet;
-  // Spring drag-to-dismiss for sheet variant
-  const y = useMotionValue(0);
-  const opacity = useTransform(y, [0, 300], [1, 0]);
-  const backdropOpacity = useTransform(y, [0, 300], [1, 0]);
+  // Touch drag-to-dismiss for sheet variant
+  const [dragY, setDragY] = React.useState(0);
+  const [startY, setStartY] = React.useState(null);
+  const opacity = Math.max(0, 1 - dragY / 300);
 
   useEffect(function() {
     const prev = document.body.style.overflow;
@@ -78,23 +73,27 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
     };
   }, []);
 
-  function handleDragEnd(_, info) {
-    // Dismiss if dragged down fast or far enough
-    if (info.velocity.y > 500 || info.offset.y > 180) {
-      animate(y, 600, { duration: 0.22, ease: "easeOut" });
-      setTimeout(onClose, 200);
-    } else {
-      animate(y, 0, SPRING.sheet);
+  function handleTouchStart(e) {
+    setStartY(e.touches[0].clientY);
+  }
+  function handleTouchMove(e) {
+    if (startY === null) return;
+    const dy = Math.max(0, e.touches[0].clientY - startY);
+    setDragY(dy);
+  }
+  function handleTouchEnd() {
+    if (dragY > 180) {
+      onClose();
     }
+    setDragY(0);
+    setStartY(null);
   }
 
   if (!isSheet) {
     return createPortal(
       <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
-        <MotionDiv
+        <div
           onClick={function(e){e.stopPropagation();}}
-          layoutId={layoutId}
-          transition={LAYOUT_SPRING}
           className="overlay-sheet page-enter"
           style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
           <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
@@ -102,7 +101,7 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
             <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
           </div>
           <div style={{padding:"16px 24px 24px"}}>{children}</div>
-        </MotionDiv>
+        </div>
       </div>,
       document.body
     );
@@ -112,18 +111,16 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
   return createPortal(
     <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",overflowX:"hidden"}}>
       {/* Backdrop fades as sheet is dragged down */}
-      <MotionDiv style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",opacity:backdropOpacity}} onClick={onClose}/>
-      <MotionDiv
+      <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",opacity}} onClick={onClose}/>
+      <div
         onClick={function(e){e.stopPropagation();}}
-        layoutId={layoutId}
-        transition={LAYOUT_SPRING}
-        drag="y"
-        dragConstraints={{top:0}}
-        dragElastic={{top:0, bottom:0.25}}
-        onDragEnd={handleDragEnd}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
-          y,
+          transform:`translateY(${dragY}px)`,
           opacity,
+          transition: startY === null ? "transform .25s ease, opacity .25s ease" : "none",
           position:"relative",
           background:C.card,
           borderRadius:"20px 20px 0 0",
@@ -137,7 +134,7 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
           boxShadow:"0 -4px 32px rgba(0,0,0,.18)",
           paddingBottom:"env(safe-area-inset-bottom, 16px)",
           cursor:"grab",
-          touchAction:"none",
+          touchAction:"pan-x",
         }}
         className="overlay-sheet"
       >
@@ -148,7 +145,7 @@ export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
         </div>
         <div style={{padding:"16px 24px 24px",cursor:"default"}} onPointerDown={function(e){e.stopPropagation();}}>{children}</div>
-      </MotionDiv>
+      </div>
     </div>,
     document.body
   );
@@ -354,22 +351,8 @@ export const SwipeableRow = React.memo(function SwipeableRow({
   style: outerStyle,
 }) {
   const { bind, offset, dragging, committed } = useSwipe({ onSwipeRight, onSwipeLeft, disabled });
-  const x = useMotionValue(0);
-
-  // Keep Framer motion value in sync with touch-tracked offset
-  // so spring physics handle the snap-back / commit slide-off
-  useEffect(function() {
-    if (dragging) {
-      // While finger is down: track exactly, no spring
-      x.set(offset);
-    } else if (committed) {
-      // Commit: slide off screen with spring
-      animate(x, offset > 0 ? 400 : -400, SPRING.swipe);
-    } else {
-      // Release without commit: spring back to 0
-      animate(x, 0, SPRING.swipe);
-    }
-  }, [offset, dragging, committed, x]);
+  // x: while dragging track exactly; on commit slide off; on release spring back via CSS
+  const x = dragging ? offset : committed ? (offset > 0 ? 400 : -400) : 0;
 
   const showingRight = offset > 4 && !!onSwipeRight;
   const showingLeft = offset < -4 && !!onSwipeLeft;
@@ -428,16 +411,17 @@ export const SwipeableRow = React.memo(function SwipeableRow({
           {leftActionLabel || "🗑 Delete"}
         </div>
       )}
-      <MotionDiv
+      <div
         {...bind}
         style={{
           position: "relative",
-          x,
+          transform: `translateX(${x}px)`,
+          transition: dragging ? "none" : "transform .25s cubic-bezier(.25,.46,.45,.94)",
           touchAction: "pan-y",
         }}
       >
         {children}
-      </MotionDiv>
+      </div>
     </div>
   );
 });

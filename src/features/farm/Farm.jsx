@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { motion } from "framer-motion";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Pill, Ring, Stat } from "../../components/ui";
-import { LAYOUT_SPRING } from "../../lib/use-spring-drag";
 import { COMP } from "../../data/companions";
 import { CROP_COLORS } from "../../data/crops";
 import { LDB } from "../../data/livestock";
@@ -20,8 +18,6 @@ import RoadLayer from "./living/RoadLayer";
 import ZoneSurface from "./living/ZoneSurface";
 import ZonePalette, { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
 import { mapBackgroundStyle, mapVignetteStyle, zoneRadius } from "./living/visuals";
-
-const MotionDiv = motion.div;
 
 function BackgroundLayer() {
   return (
@@ -908,7 +904,7 @@ function Farming({data, setData, pageData, clearPageData}) {
         const zone=data.zones.find(z=>z.id===p.zone);
         const hasQty = p.plantCount || p.qty;
         return (
-          <MotionDiv key={p.id} layoutId={`crop-card-${p.id}`} transition={LAYOUT_SPRING}>
+          <div key={p.id}>
           <Card onClick={()=>setSelP(p.id)} style={isR?{boxShadow:`0 0 0 2px ${C.orange}`}:{}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <Ring pct={pct} color={isR?C.orange:C.green}>{c?.emoji||"🌱"}</Ring>
@@ -928,7 +924,7 @@ function Farming({data, setData, pageData, clearPageData}) {
               </div>
             </div>
           </Card>
-          </MotionDiv>
+          </div>
         );
       })}</div>}
 
