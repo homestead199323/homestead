@@ -15,31 +15,27 @@ import { getRegionalCrops, getRegionalVarieties, rCM, rCR } from "../../lib/regi
 import { cropMeasureType, plantsFromArea, expectedYield, buildZoneSpaceMap } from "../../lib/farm-calc";
 import PlotOverlay from "./PlotOverlay";
 import LivingFarmMap from "./living/LivingFarmMap";
-import ZoneImage from "./living/ZoneImage";
-import { BACKGROUND_PNG } from "./living/paths";
+import CropStagePatch from "./living/CropStagePatch";
+import RoadLayer from "./living/RoadLayer";
+import ZoneSurface from "./living/ZoneSurface";
 import ZonePalette, { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
+import { mapBackgroundStyle, mapVignetteStyle, zoneRadius } from "./living/visuals";
 
 const MotionDiv = motion.div;
 
-/* BackgroundLayer — full-canvas <img> with onError fallback to transparent.
-   Renders absolutely behind everything else inside Setup canvas. */
 function BackgroundLayer() {
-  const [errored, setErrored] = useState(false);
-  if (errored) return null;
   return (
-    <img
-      src={BACKGROUND_PNG}
-      alt=""
-      draggable={false}
-      onError={() => setErrored(true)}
+    <div
+      aria-hidden="true"
       style={{
-        position:"absolute",inset:0,
-        width:"100%",height:"100%",
-        objectFit:"cover",
-        pointerEvents:"none",userSelect:"none",
+        position:"absolute", inset:0,
+        ...mapBackgroundStyle(),
+        pointerEvents:"none",
         zIndex:0,
       }}
-    />
+    >
+      <div style={mapVignetteStyle()}/>
+    </div>
   );
 }
 
@@ -58,7 +54,6 @@ function Setup({data, setData, onPlantInZone}) {
   const [farmH, setFarmH] = useState(data.farmH || 60);  // total farm height in meters
   const [dragging, setDragging] = useState(null); // {id, startX, startY, origXM, origYM}
   const [zoneResize, setZoneResize] = useState(null); // {id, edge, startX, startY, origXM, origYM, origWM, origHM}
-  const [cropDropdownOpen, setCropDropdownOpen] = useState(false);
   const [hoverInfo, setHoverInfo] = useState(null); // zone hover tooltip
   const [tutorialDismissed, setTutorialDismissed] = useState(!!data.designerTutorialSeen);
   const [armedType, setArmedType] = useState(null); // tap-to-place: id of armed palette type, or null
@@ -88,7 +83,6 @@ function Setup({data, setData, onPlantInZone}) {
 
   const upZ = (id, u) => setData({...data, zones: data.zones.map(z => z.id===id ? {...z,...u} : z)});
   const delZ = id => { setData({...data, zones: data.zones.filter(z => z.id !== id)}); setSel(null); };
-  const upPlot = (plotId, u) => setData({...data, garden:{...data.garden, plots: data.garden.plots.map(p => p.id===plotId ? {...p,...u} : p)}});
   const sz = zones.find(z => z.id === sel);
 
   const doSave = () => {
@@ -326,11 +320,12 @@ function Setup({data, setData, onPlantInZone}) {
         onPointerCancel={() => { setDragging(null); setZoneResize(null); setHoverInfo(null); }}
         onMouseLeave={() => setHoverInfo(null)}>
 
-        {/* Background PNG (falls back to grid below on 404) — Living Map */}
+        {/* Minimal living planner background */}
         <BackgroundLayer/>
+        <RoadLayer zones={zones} farmW={farmW} farmH={farmH}/>
 
-        {/* Grid overlay */}
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",backgroundSize:"24px 24px",pointerEvents:"none"}}/>
+        {/* Measurement grid stays very faint in edit mode only */}
+        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.045) 1px, transparent 1px)",backgroundSize:"24px 24px",pointerEvents:"none",zIndex:3}}/>
 
         {/* Grid labels — X axis (every 10m) */}
         <div style={{position:"absolute",bottom:2,left:0,right:0,display:"flex",pointerEvents:"none"}}>
@@ -359,7 +354,7 @@ function Setup({data, setData, onPlantInZone}) {
               background:"#1d1d1f", color:"#fff", borderRadius:10, padding:"10px 14px",
               fontSize:12, lineHeight:1.5, fontFamily:F.body, boxShadow:"0 8px 24px rgba(0,0,0,.25)",
             }}>
-              <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>{hoverInfo.icon} {hoverInfo.name}</div>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>{hoverInfo.name}</div>
               <div style={{opacity:.7,fontSize:11,marginBottom:2}}>{hoverInfo.typeLabel}</div>
               <div style={{opacity:.7,fontSize:11}}>{hoverInfo.wM}×{hoverInfo.hM}m · {hoverInfo.area} m²</div>
               {hoverInfo.cropCount > 0 && <div style={{marginTop:4,fontSize:11,color:"#95d5b2"}}>{hoverInfo.cropCount} crop{hoverInfo.cropCount>1?"s":""} planted</div>}
@@ -497,7 +492,7 @@ function Setup({data, setData, onPlantInZone}) {
                   if (e.pointerType !== "mouse") return; // hover tooltips only on desktop
                   if (!dragging && !zoneResize) {
                     const rect = svgRef.current.getBoundingClientRect();
-                    setHoverInfo({x:e.clientX-rect.left,y:e.clientY-rect.top,name:z.name,icon:zt?.icon||"",typeLabel:zt?.label||z.type,wM:(z.wM||10).toFixed(0),hM:(z.hM||8).toFixed(0),area:((z.wM||10)*(z.hM||8)).toFixed(0),cropCount:zPlots.length,animalCount});
+                    setHoverInfo({x:e.clientX-rect.left,y:e.clientY-rect.top,name:z.name,typeLabel:zt?.label||z.type,wM:(z.wM||10).toFixed(0),hM:(z.hM||8).toFixed(0),area:((z.wM||10)*(z.hM||8)).toFixed(0),cropCount:zPlots.length,animalCount});
                   }
                 }}
                 onMouseLeave={() => setHoverInfo(null)}
@@ -505,61 +500,23 @@ function Setup({data, setData, onPlantInZone}) {
                 style={{
                   position:"absolute",
                   left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
-                  borderRadius:10,
-                  border:`2px solid ${isSel ? C.green : C.bdr}`,
-                  boxShadow: isSel ? `0 0 0 3px rgba(45,106,79,.25), 0 0 16px rgba(45,106,79,.15), inset 0 0 20px rgba(45,106,79,.08)` : "0 2px 8px rgba(0,0,0,.06)",
+                  borderRadius:zoneRadius(z.type),
+                  border:`1px solid ${isSel ? "rgba(241,223,69,.96)" : "rgba(24,44,27,.13)"}`,
+                  boxShadow: isSel ? `0 0 0 3px rgba(255,255,255,.96), 0 0 0 6px rgba(241,223,69,.96), 0 10px 24px rgba(35,45,26,.2)` : "0 8px 18px rgba(40,60,30,.13)",
                   background: "transparent",
                   cursor: isDraggingThis ? "grabbing" : "pointer",
                   opacity: isDraggingThis ? 0.75 : 1,
                   transition: dragging ? "none" : "all .2s ease",
                   transform: isSel && !isDraggingThis ? "scale(1.02)" : "scale(1)",
                   overflow:"hidden",
+                  zIndex:5,
                 }}>
-                {/* PNG fill (with placeholder fallback) — Living Map */}
-                <div style={{position:"absolute",inset:0,pointerEvents:"none",opacity:isSel?1:0.92,zIndex:0}}>
-                  <ZoneImage type={z.type} name={z.name} rounded={8}/>
-                </div>
+                <ZoneSurface type={z.type} rounded={zoneRadius(z.type)}/>
                 {/* Zone name */}
-                <div style={{position:"absolute",top:0,left:0,right:0,padding:"2px 4px",fontSize:10,fontWeight:700,color:C.text,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",zIndex:3,pointerEvents:"none",textShadow:"0 1px 2px rgba(255,255,255,.6)"}}>{z.name}</div>
+                <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%, -50%)",padding:"4px 8px",fontSize:10,fontWeight:850,color:"#fff",background:"rgba(25,35,25,.37)",borderRadius:9,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"88%",zIndex:8,pointerEvents:"none",textShadow:"0 1px 3px rgba(0,0,0,.38)",backdropFilter:"blur(3px)"}}>{z.name}</div>
                 {/* Crop patches — auto-laid-out, stage-aware (purely visual, no manipulation) */}
                 {cropPatches.map((cb) => {
-                  // Stage drives opacity + bar color
-                  const stageBg = cb.stage === "ready" ? 0.62 : cb.stage === "growing" ? 0.45 : 0.26;
-                  const stageBlur = cb.stage === "ready" ? 0.4 : cb.stage === "growing" ? 0.28 : 0.18;
-                  // Progress-bar color: soil-brown → green → gold across stage
-                  const barColor = cb.stage === "ready" ? "rgba(245,180,50,.95)"
-                                 : cb.stage === "growing" ? `rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.95)`
-                                 : "rgba(140,100,60,.85)";
-                  const isReady = cb.stage === "ready";
-                  return (
-                    <div key={cb.plotId} data-crop-patch="true"
-                      style={{
-                        position:"absolute",
-                        left:`${(cb.px*100).toFixed(1)}%`,top:`${(cb.py*100).toFixed(1)}%`,
-                        width:`${(cb.pw*100).toFixed(1)}%`,height:`${(cb.ph*100).toFixed(1)}%`,
-                        background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},${stageBg})`,
-                        borderRadius:6,overflow:"hidden",
-                        display:"flex",alignItems:"center",justifyContent:"center",zIndex:1,
-                        border: isReady ? "1.5px solid rgba(245,180,50,.7)" : "1px solid transparent",
-                        boxShadow: isReady ? "0 0 8px rgba(245,180,50,.35)" : "none",
-                        pointerEvents:"none",
-                      }}>
-                      <div style={{position:"absolute",inset:"10%",borderRadius:"50%",background:`rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},${stageBlur})`,filter:"blur(8px)",zIndex:0,pointerEvents:"none"}}/>
-                      <div style={{position:"relative",zIndex:1,textAlign:"center",lineHeight:1.2,pointerEvents:"none",padding:"0 4px 6px"}}>
-                        <div style={{fontSize:10,fontWeight:900,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,.55)"}}>{cb.pctLabel}%</div>
-                        <div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,.9)",textShadow:"0 1px 2px rgba(0,0,0,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{cb.name}</div>
-                        <div style={{fontSize:6.5,fontWeight:700,color:"rgba(255,255,255,.78)",textShadow:"0 1px 2px rgba(0,0,0,.4)",marginTop:1,fontFamily:F.mono}}>{Math.round(cb.growthPct*100)}%→🌾</div>
-                      </div>
-                      {/* Ready badge */}
-                      {isReady && (
-                        <div style={{position:"absolute",top:2,right:2,fontSize:9,lineHeight:1,zIndex:3,pointerEvents:"none",filter:"drop-shadow(0 1px 2px rgba(0,0,0,.4))"}}>🌾</div>
-                      )}
-                      {/* Growth progress bar — bottom edge */}
-                      <div style={{position:"absolute",left:0,right:0,bottom:0,height:3,background:"rgba(0,0,0,.18)",zIndex:2,pointerEvents:"none"}}>
-                        <div style={{height:"100%",width:`${(cb.growthPct*100).toFixed(0)}%`,background:barColor,transition:"width .3s ease"}}/>
-                      </div>
-                    </div>
-                  );
+                  return <CropStagePatch key={cb.plotId} patch={cb} showText={cropPatches.length <= 4}/>;
                 })}
                 {/* Size label */}
                 <span style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",fontSize:8,fontFamily:F.mono,color:"rgba(35,50,35,.4)",whiteSpace:"nowrap",pointerEvents:"none",zIndex:2}}>{(z.wM||0).toFixed(0)}×{(z.hM||0).toFixed(0)}m</span>
@@ -623,7 +580,7 @@ function Setup({data, setData, onPlantInZone}) {
                 backdropFilter:"blur(8px)", border:"1px solid rgba(100,180,100,.2)",
               }}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                  <div style={{fontSize:18}}>{zt2?.icon || "📍"}</div>
+                  <div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",color:"rgba(255,255,255,.45)",textTransform:"uppercase"}}>{zt2?.label || sz2.type}</div>
                   <div onClick={(e) => { e.stopPropagation(); setSel(null); }}
                     style={{width:20,height:20,borderRadius:10,background:"rgba(255,255,255,.1)",
                       display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",
@@ -1129,7 +1086,7 @@ function FarmTab({data, setData, pageData, clearPageData}) {
           );
         })}
       </div>
-      {subTab==="map"   && <LivingFarmMap data={data} onEditLayout={function(){setSubTab("setup");}} onPlantInZone={handlePlantInZone}/>}
+      {subTab==="map"   && <LivingFarmMap data={data} showCropPatches onEditLayout={function(){setSubTab("setup");}} onPlantInZone={handlePlantInZone}/>}
       {subTab==="crops" && <Farming data={data} setData={setData} pageData={cropPageData} clearPageData={clearCropPageData}/>}
       {subTab==="setup" && <Setup data={data} setData={setData} onPlantInZone={handlePlantInZone}/>}
     </div>

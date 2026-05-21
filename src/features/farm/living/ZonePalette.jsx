@@ -27,7 +27,8 @@
 import React from "react";
 import { C, F } from "../../../lib/theme";
 import { ZT } from "../../../data/zones";
-import ZoneImage from "./ZoneImage";
+import ZoneSurface from "./ZoneSurface";
+import { zoneRadius } from "./visuals";
 
 export const PALETTE_DRAG_TYPE = "application/x-myterra-zone-type";
 
@@ -105,7 +106,7 @@ export default function ZonePalette({ zones, armedType, onArm }) {
             onMouseEnter={e => { if (!isArmed) { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 3px 10px rgba(0,0,0,.12)"; } }}
             onMouseLeave={e => { if (!isArmed) { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; } }}
           >
-            <ZoneImage type={t.id} name={t.label} rounded={10}/>
+            <ZoneSurface type={t.id} rounded={zoneRadius(t.id)} style={{ opacity: 0.92 }}/>
             {/* Label */}
             <div style={{
               position: "absolute", bottom: 2, left: 2, right: 2,

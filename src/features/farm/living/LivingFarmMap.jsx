@@ -18,13 +18,14 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { C, F } from "../../../lib/theme";
-import { ZT_MAP } from "../../../data/zones";
 import { CROP_COLORS } from "../../../data/crops";
 import { rCM } from "../../../lib/regional";
-import { todayLocalKey } from "../../../lib/utils";
-import ZoneImage from "./ZoneImage";
-import { BACKGROUND_PNG } from "./paths";
+import { localDateFromKey, todayLocalKey } from "../../../lib/utils";
+import CropStagePatch from "./CropStagePatch";
+import RoadLayer from "./RoadLayer";
+import ZoneSurface from "./ZoneSurface";
 import ZoneOverlay from "./ZoneOverlay";
+import { isPlantZone, mapBackgroundStyle, mapVignetteStyle, zoneRadius } from "./visuals";
 
 /* Props
    ─────
@@ -78,9 +79,6 @@ export default function LivingFarmMap({
     return "rgba(15,30,60,.22)";
   }, [mapHour, showTimeTint]);
 
-  /* ── Background PNG with fallback to sage tint ── */
-  const [bgErrored, setBgErrored] = useState(false);
-
   /* ── Selected zone (opens overlay) ── */
   const [selZoneId, setSelZoneId] = useState(null);
   const selZone = data.zones.find(z => z.id === selZoneId) || null;
@@ -123,12 +121,11 @@ export default function LivingFarmMap({
   /* Per-zone patch geometry: uses saved patch positions if present,
      otherwise auto-fills bottom-up by area share. Mirrors the previous
      dashboard logic so existing plots render the same patches. */
-  const PLANT_ZONE_TYPES = new Set(["veg", "orchard", "herbs", "greenhouse"]);
   const cropMap = useMemo(() => rCM(data.region), [data.region]);
 
   function patchesForZone(z) {
     if (!showCropPatches) return [];
-    if (!PLANT_ZONE_TYPES.has(z.type)) return [];
+    if (!isPlantZone(z.type)) return [];
     const plots = (data.garden && data.garden.plots ? data.garden.plots : [])
       .filter(p => p.zone === z.id && p.status !== "harvested");
     if (plots.length === 0) return [];
@@ -147,6 +144,20 @@ export default function LivingFarmMap({
       if (area <= 0) return;
       const frac = Math.min(0.98, area / zoneTotalM2);
       const cc = cropColorMap.get(p.crop) || { r: 100, g: 140, b: 60 };
+      let growthPct = 0;
+      let stage = "just_planted";
+      const crop = cropMap.get(p.crop);
+      if (p.plantDate && crop && crop.days > 0) {
+        const plantedMs = localDateFromKey(p.plantDate).getTime();
+        const todayMs = localDateFromKey(today).getTime();
+        const elapsedDays = Math.max(0, (todayMs - plantedMs) / 864e5);
+        growthPct = Math.max(0, Math.min(1, elapsedDays / crop.days));
+        if (growthPct >= 0.85 || (p.harvestDate && p.harvestDate <= today)) stage = "ready";
+        else if (growthPct >= 0.10) stage = "growing";
+      } else if (p.harvestDate && p.harvestDate <= today) {
+        growthPct = 1;
+        stage = "ready";
+      }
       let pw, ph, px, py;
       if (p.patchW !== undefined && p.patchH !== undefined) {
         pw = p.patchW; ph = p.patchH;
@@ -159,7 +170,7 @@ export default function LivingFarmMap({
         py = Math.max(0, autoFillY - ph);
         autoFillY -= ph + 0.02;
       }
-      out.push({ crop: p.crop, name: p.name || p.crop, pctLabel: Math.round(frac * 100), cc, pw, ph, px, py });
+      out.push({ crop: p.crop, name: p.name || p.crop, pctLabel: Math.round(frac * 100), cc, pw, ph, px, py, growthPct, stage });
     });
     out.sort((a, b) => b.pctLabel - a.pctLabel);
     return out;
@@ -192,14 +203,14 @@ export default function LivingFarmMap({
     ? {
         position: "absolute",
         inset: 0,
-        background: bgErrored ? "var(--farm-bg-fallback, #d9e7d6)" : "transparent",
+        ...mapBackgroundStyle(),
         border: noBorder ? "none" : `1px solid ${C.bdr}`,
         borderRadius: noBorder ? 0 : 16,
         overflow: "hidden",
       }
     : {
         position: "relative",
-        background: bgErrored ? "var(--farm-bg-fallback, #d9e7d6)" : "transparent",
+        ...mapBackgroundStyle(),
         border: noBorder ? "none" : `1px solid ${C.bdr}`,
         borderRadius: noBorder ? 0 : 16,
         overflow: "hidden",
@@ -217,29 +228,8 @@ export default function LivingFarmMap({
   return (
     <Wrapper {...wrapperProps}>
       <div style={containerStyle} data-living-zone-marker={fitMode === "fill" ? "map-root" : undefined}>
-        {/* Background PNG (falls back to sage tint) */}
-        {!bgErrored && (
-          <img
-            src={BACKGROUND_PNG}
-            alt=""
-            draggable={false}
-            onError={() => setBgErrored(true)}
-            style={{
-              position: "absolute", inset: 0,
-              width: "100%", height: "100%",
-              objectFit: "cover", pointerEvents: "none", userSelect: "none",
-            }}
-          />
-        )}
-
-        {/* Faint grid overlay (only when no background image) */}
-        {bgErrored && (
-          <div style={{
-            position: "absolute", inset: 0,
-            backgroundImage: "linear-gradient(to right, rgba(80,95,80,.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.06) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}/>
-        )}
+        <div style={mapVignetteStyle()}/>
+        <RoadLayer zones={data.zones} farmW={fW} farmH={fH}/>
 
         {/* Time-of-day tint */}
         {mapTintOverlay && (
@@ -256,7 +246,6 @@ export default function LivingFarmMap({
           const yPct = ((z.yM || 0) / fH * 100).toFixed(1);
           const wPct = ((z.wM || 10) / fW * 100).toFixed(1);
           const hPct = ((z.hM || 8) / fH * 100).toFixed(1);
-          const zt = ZT_MAP.get(z.type);
           const isUrgent = urgentZoneIds.has(z.id);
           const patches = patchesForZone(z);
 
@@ -280,57 +269,32 @@ export default function LivingFarmMap({
                 width: `${wPct}%`, height: `${hPct}%`,
                 cursor: handleClick ? "pointer" : "default",
                 transition: "transform .15s ease, box-shadow .15s ease",
-                borderRadius: 10,
+                borderRadius: zoneRadius(z.type),
                 overflow: "hidden",
+                zIndex: 5,
               }}
               onMouseEnter={interactive && handleClick ? function(e){ e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.18)"; } : undefined}
               onMouseLeave={interactive && handleClick ? function(e){ e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; } : undefined}
             >
-              <ZoneImage type={z.type} name={z.name} rounded={10}/>
+              <ZoneSurface type={z.type} rounded={zoneRadius(z.type)}/>
 
-              {/* Crop colour patches (Dashboard mode only) — sit on top of the
-                  zone artwork, beneath the name pill. */}
+              {/* Crop-stage patches — useful overview only; details stay in the sheet. */}
               {patches.map(function(cb, i) {
-                return (
-                  <div key={i} style={{
-                    position: "absolute",
-                    left: `${(cb.px * 100).toFixed(1)}%`,
-                    top: `${(cb.py * 100).toFixed(1)}%`,
-                    width: `${(cb.pw * 100).toFixed(1)}%`,
-                    height: `${(cb.ph * 100).toFixed(1)}%`,
-                    background: `rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.42)`,
-                    borderRadius: 4, overflow: "hidden",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    pointerEvents: "none",
-                    zIndex: 2,
-                  }}>
-                    <div style={{ position: "absolute", inset: "10%", borderRadius: "50%",
-                      background: `rgba(${cb.cc.r},${cb.cc.g},${cb.cc.b},.25)`,
-                      filter: "blur(6px)", zIndex: 0 }}/>
-                    <div style={{ position: "relative", zIndex: 1, textAlign: "center", lineHeight: 1.1 }}>
-                      <div style={{ fontSize: 9, fontWeight: 900, color: "#fff",
-                        textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{cb.pctLabel}%</div>
-                      <div style={{ fontSize: 7, fontWeight: 700, color: "rgba(255,255,255,.9)",
-                        textShadow: "0 1px 2px rgba(0,0,0,.5)",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        maxWidth: "100%", padding: "0 1px" }}>{cb.name}</div>
-                    </div>
-                  </div>
-                );
+                return <CropStagePatch key={i} patch={cb} compact={!showHelperText} showText={!showHelperText || patches.length <= 4}/>;
               })}
 
-              {/* Name label — frosted pill at top */}
+              {/* Name label — compact, no icons or prop art */}
               <div style={{
-                position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)",
-                padding: "2px 8px", borderRadius: 8,
-                background: "rgba(255,255,255,.85)", backdropFilter: "blur(4px)",
-                fontSize: 10, fontWeight: 700, color: "#1a2e1a",
-                whiteSpace: "nowrap", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis",
+                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+                padding: "4px 8px", borderRadius: 9,
+                background: "rgba(25,35,25,.37)", backdropFilter: "blur(3px)",
+                fontSize: 10, fontWeight: 850, color: "#fff",
+                whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis",
                 pointerEvents: "none",
-                boxShadow: "0 1px 3px rgba(0,0,0,.12)",
-                zIndex: 3,
+                textShadow: "0 1px 3px rgba(0,0,0,.38)",
+                zIndex: 8,
               }}>
-                {(zt && zt.icon) ? zt.icon + " " : ""}{z.name}
+                {z.name}
               </div>
             </div>
           );
