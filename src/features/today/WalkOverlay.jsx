@@ -520,7 +520,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
           {/* Map fills nearly all remaining space; the task popup floats over it. */}
           <div style={{ flex: 1, padding: "8px 10px calc(8px + env(safe-area-inset-bottom)) 10px", display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+            <div style={{ flex: 1, minHeight: 0, height: 0, overflow: "hidden", position: "relative" }}>
               <WalkMap
                 stops={stops}
                 currentStopIdx={currentStopIdx}
