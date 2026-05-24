@@ -4,7 +4,7 @@
 
 This is the living checklist for architecture work. When a task is finished, change `[ ]` to `[x]` and add a short note if needed.
 
-**Last updated:** 2026-05-21 — Phases 0–4 still FINAL; App.jsx grew slightly (386 → 412 lines) during Living Farm Map work. UX/UI design phases 1–8 effectively complete (see `DESIGN_PLAN.md`). **Phase 5 (Supabase auth + cloud backup) is the next priority and has not been started.**
+**Last updated:** 2026-05-24 — **Phase 5 (Supabase auth + cloud backup) SHIPPED & VERIFIED LIVE.** Mandatory sign-in wall before `/app`, email signup working, farm data persisting to Supabase per-user with RLS. Verified end-to-end on production (signup → onboarding → farm written to cloud). Phases 0–4 still FINAL. **Remaining for Phase 5: Google OAuth not yet configured (button errors on click).** Next priority after that: Phase 6 (offline sync refinements — largely already covered by `sync.js`).
 
 ---
 
@@ -368,31 +368,25 @@ Follow-up close-out (2026-05-09): `DB` shim deleted — 12 lines of dead code re
 
 ## Phase 5 — Add Accounts And Cloud Backup
 
-**Status: NOT STARTED.** Architecture decision made 2026-05-09: Supabase is the backend. Phase 4 storage layer is now behind a clean API and ready for the swap.
+**Status: SHIPPED & VERIFIED LIVE (2026-05-24).** Mandatory sign-in wall before `/app`, email signup working end-to-end on production, farm data persisting to Supabase per-user behind RLS. Commits `c426672` (auth wall + lib files) + `a6acc18` (CSP fix). **One piece outstanding: Google OAuth not configured — the "Continue with Google" button errors on click until a Google Cloud OAuth client is set up in Supabase.**
 
-Agreed architecture:
-- Online-first PWA with offline write queue
-- Supabase as source of truth
-- localStorage as local cache
-- Optimistic writes with mutation queue draining on reconnect
-- Last-write-wins via `updated_at`
-- Auth: email + Google OAuth
+Architecture as built:
+- Document model — whole farm-data blob stored as a single JSONB column in `farms` (one row per user), not relational tables. Chosen for speed + matches the app's single-object data shape. Tradeoff: last-write-wins at document level (multi-device clobber risk, acceptable for solo users).
+- One farm per user (`user_id` PK on `farms`).
+- `profiles` + `farms` tables; `handle_new_user` trigger auto-provisions both rows on signup; RLS scopes select/insert/update to `auth.uid()`.
+- `src/lib/db.js` (Supabase client, VITE_ env), `src/lib/auth.js` (signUp/signIn/Google/signOut/session), `src/lib/sync.js` (pull-on-login reconcile + debounced offline-aware push, last-write-wins via `updated_at`).
+- `AuthGate` in App.jsx: Option X — reconcile cloud vs local before mount, 3s timeout fallback to local. Local-only escape hatch when Supabase env absent.
+- Onboarding gated purely on `setupDone` flag (no mid-onboarding resume — deferred as post-launch follow-up).
 
-Three open decisions (pending):
-1. Do real production users exist whose data must be preserved on migration?
-2. Should sign-in be mandatory or optional? (recommended: 7-day trial before requiring it)
-3. Extract data/sync layer now or keep monolithic App.jsx temporarily?
-   (recommended: hybrid — extract to `src/lib/db.js`, `src/lib/sync.js`, `src/lib/auth.js`; leave UI as one file)
-
-- [ ] Create `src/services/auth/`.
-- [ ] Create `src/services/database/`.
-- [ ] Create Supabase project.
-- [ ] Design database tables: users, farms, zones, plots, animals, pantry, costs, log.
-- [ ] Add email login.
-- [ ] Add Google login.
-- [ ] Let users keep using app without login.
-- [ ] Add cloud backup for logged-in users.
-- [ ] Keep local offline data as source of truth.
+- [x] Create `src/services/auth/`. *(done as `src/lib/auth.js` per hybrid-extraction decision)*
+- [x] Create `src/services/database/`. *(done as `src/lib/db.js` + `src/lib/sync.js`)*
+- [x] Create Supabase project. *(project `fosqnppqcsoowqvrlkul`)*
+- [x] Design database tables: users, farms, zones, plots, animals, pantry, costs, log. *(document model instead — single JSONB `data` column on `farms` holds zones/plots/animals/pantry/costs/log; `profiles` for user/tier. Relational split deferred unless query needs arise.)*
+- [x] Add email login. *(verified live: signup → session → farm persisted)*
+- [ ] Add Google login. *(NOT DONE — button wired + UI present, but no Google Cloud OAuth client configured; clicking it errors. Independent of everything else, can be done anytime.)*
+- [x] ~~Let users keep using app without login.~~ *(OVERRIDDEN by 2026-05-09 decision — mandatory sign-in wall.)*
+- [x] Add cloud backup for logged-in users. *(pushFarm on every setData + initial push on mount + flush on beforeunload)*
+- [x] Keep local offline data as source of truth. *(storage.js localStorage path untouched; sync rides alongside, 3s reconcile timeout falls back to local)*
 
 ---
 
@@ -522,3 +516,4 @@ Agreed: Open-Meteo API (free, no key, 7-day forecast). No push notifications nee
 | 2026-05-11 | **Sandbox mishap during Phase 3.11 deployment:** While editing App.jsx on the Mac with a one-liner pipeline `awk 'NR<=386' src/App.jsx > /tmp/x && mv /tmp/x src/App.jsx`, the redirect emptied src/App.jsx to 0 bytes because the shell opened the output file (truncating it) before awk could finish reading the input. Recovered immediately with `git restore src/App.jsx` (last commit was Phase 3.10's `2fdc02b`, so no work was lost). The earlier in-process import edits had to be re-applied, which I did by writing the validated full sandbox file directly over the Mac copy via Desktop Commander:write_file. Lesson: never use `cmd > file && mv file orig` on the file being read — always write to a temp path first, then rename atomically with `mv`, OR use a different output path entirely. Direct file overwrite via the file-writer tool is safer than shell pipelines for files-with-spaces-in-the-path. |
 | 2026-05-12–05-21 | **Architecture work paused while UX/UI shipped.** Phase 5 (Supabase) was the documented "next step" after Phase 3.11 but did not start. Instead, ~30 commits landed against the design phases tracked in `DESIGN_PLAN.md`: Phase 7 (onboarding), Phase 8 (motion polish — `framer-motion` added then removed again 4 days later in commit `1db4515`), Phase 6.9 (PNG-based Living Farm Map), and an unplanned Phase 6.10 polish loop (Living Farm Map redesigned to "minimal living planner" + stage-aware crop patches + Walk Overlay portal fixes). `App.jsx` grew slightly from 386 to 412 lines as a result. No architectural regression — `src/lib/` brain + `src/data/` constants + storage adapter all untouched. New feature subfolder `src/features/farm/living/` (6 files) cleanly slots under the existing feature-folder pattern. **Cosmetic gap:** `DESIGN_PLAN.md` was accidentally deleted in commit `bf92dee` ("Clean up codecheck findings", 2026-05-20) and restored on 2026-05-21 with corrections for stale 8.2/8.3/6.9.6 entries. |
 | 2026-05-21 | **Phase 5 starts.** Audit pass complete (DESIGN_PLAN restored + ARCHITECTURE_PLAN refreshed). All three Phase 5 inputs locked from the 2026-05-09 decision still hold: no production users to migrate (clean-slate Supabase), mandatory sign-in (auth wall before `/app`), hybrid extraction (`src/lib/db.js` + `src/lib/sync.js` + `src/lib/auth.js`, UI stays in features/). Next action: create Supabase project and design the database tables (users, farms, zones, plots, animals, pantry, costs, log). |
+| 2026-05-24 | **Phase 5 SHIPPED & VERIFIED LIVE.** Commits `c426672` (auth wall + db.js/auth.js/sync.js + AuthScreen + AuthGate) and `a6acc18` (CSP fix — added Supabase https+wss to connect-src; the pre-Phase-5 CSP was silently blocking all auth/sync requests, caught by inspecting live response headers not just the bundle). Schema applied directly to Supabase via MCP: `profiles` + `farms` (single JSONB `data` column, one row per user, `updated_at` for last-write-wins), `handle_new_user` trigger auto-provisions rows on signup, RLS scoped to `auth.uid()` (read+write isolation tested live via throwaway users — 0 lint advisories after hardening). **Decisions made this session:** document model over relational (Option 1), one farm per user (Option A), Option X reconcile (gate app mount on cloud pull, 3s timeout → local fallback), onboarding gated purely on `setupDone` (mid-onboarding resume deferred post-launch). Verified end-to-end on production `myterra-sigma.vercel.app/app`: signup → session → onboarding → farm written to `farms` table under the new user (confirmed by direct SQL query of the live row), then test user cleaned up (DB pristine: 0 users, 0 farms). Bundle grew 733 → 943 kB (gz 216 → 270 kB) from `@supabase/supabase-js` — code-split is a possible follow-up, not urgent. **Vercel env vars** `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` added to Production (newer Vercel UI nests env vars inside each Environment's detail page, not a separate sidebar item). **Gotcha for testers:** `npm run dev` (:5173) crashes with `$RefreshSig$ is not defined` when a wallet extension's SES lockdown freezes globals before Vite Fast Refresh defines them — production build + `npm run preview` (:4173) are immune; test there. **Still outstanding:** (1) Google OAuth not configured — button errors on click until a Google Cloud OAuth client is created and pasted into Supabase; (2) Supabase "Confirm email" set OFF (signup → immediate session) — fine for now, revisit before scale; (3) mid-onboarding resume deferred. |
