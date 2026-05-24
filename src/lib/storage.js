@@ -34,6 +34,7 @@ export const kvRemove = (key) => {
 // One source of truth for every key we read/write.
 const KEYS = {
   FARM: "hfm_data_v7",
+  FARM_OWNER: "hfm_farm_owner", // user id the local FARM cache belongs to (Phase 5 multi-account guard)
   PAGE: "hfm_page",
   THEME: "hfm_theme",
   FEEDBACK_DONE: "hfm_feedback_done",
@@ -67,6 +68,23 @@ export const saveFarmImmediate = (data) => {
 
 export const flushFarm = () => {
   if (_latestData) saveFarmImmediate(_latestData);
+};
+
+// ─── Multi-account guard (Phase 5) ──────────────────────────
+// The local FARM cache is a single localStorage key shared by everyone who
+// uses this browser. To stop one signed-in user from seeing another's
+// cached farm, we stamp the cache with the owning user id and clear it on
+// sign-out / account switch. AuthGate is the only caller.
+export const loadFarmOwner = () => kvGet(KEYS.FARM_OWNER);
+export const saveFarmOwner = (userId) => kvSet(KEYS.FARM_OWNER, String(userId || ""));
+
+// Wipe the local farm cache + owner stamp. Cancels any pending debounced
+// save so it can't resurrect the cleared data a moment later.
+export const clearFarm = () => {
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+  _latestData = null;
+  kvRemove(KEYS.FARM);
+  kvRemove(KEYS.FARM_OWNER);
 };
 
 // Returns the raw JSON string (or null). Used by the ErrorBoundary

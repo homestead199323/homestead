@@ -6,6 +6,7 @@ import {
 
 import {
   loadFarm, saveFarm, flushFarm, exportFarm,
+  loadFarmOwner, saveFarmOwner, clearFarm,
   loadPage, savePage,
   loadTheme, saveTheme,
   loadFeedbackDone,
@@ -176,16 +177,21 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
   );
 });
 
-function AppInner({ cloudData, onSignOut }) {
+function AppInner({ cloudData, allowLocal, onSignOut }) {
   // Lazy initializer — loads data synchronously, no loading flash
   // Wrapped in try-catch: if storage is corrupt or migration throws, fall back to DEF
   // instead of crashing the reducer with undefined state.
-  // cloudData (when present) is the reconciled cloud farm from AuthGate — it
-  // takes precedence over local. When null, fall back to the local copy (offline
-  // or the 3s pull timeout fired).
+  // Seed priority:
+  //   1. cloudData (reconciled cloud farm from AuthGate) — always wins.
+  //   2. local cache — ONLY when allowLocal is true (this browser's local
+  //      farm belongs to the current user, or we're in local-only mode).
+  //      When false (fresh account / different owner), local is ignored so
+  //      one user never inherits another's cached farm.
+  //   3. DEF — clean slate.
   const initData = () => {
     try {
-      const d = cloudData || loadFarm();
+      const local = allowLocal ? loadFarm() : null;
+      const d = cloudData || local;
       let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
       if (!initial.schemaVersion) initial = {...initial, schemaVersion: 7};
       initial = migrateZones(initial);
@@ -452,54 +458,84 @@ function AppInner({ cloudData, onSignOut }) {
 function AuthGate() {
   const [phase, setPhase] = useState("checking"); // checking | signedout | reconciling | ready
   const [cloudData, setCloudData] = useState(null);
+  // When true, AppInner's initData may seed from the local cache; when false
+  // it ignores local and starts from DEF. Set per-account by reconcileAndReady
+  // so a fresh user on a shared browser never inherits a prior user's farm.
+  const [allowLocal, setAllowLocal] = useState(false);
   // bump remounts AppInner cleanly on each fresh sign-in so its reducer
   // re-seeds from the new user's reconciled data.
   const [sessionKey, setSessionKey] = useState(0);
 
-  // Local-only escape hatch: if env vars are absent, never gate.
+  // Local-only escape hatch: if env vars are absent, never gate, and allow
+  // the local cache (single-user, no accounts — original pre-Phase-5 behavior).
   useEffect(() => {
     if (!isSupabaseConfigured) {
+      setAllowLocal(true);
       setPhase("ready");
     }
   }, []);
 
   // Reconcile cloud vs local for a freshly-detected session, then go ready.
+  // Multi-account guard: the local farm cache is shared across everyone who
+  // signs in on this browser. We stamp it with the owning user id. If the
+  // current user differs from the stamp, local belongs to someone else and
+  // must be ignored (and cleared) — otherwise user B would inherit user A's
+  // cached farm.
   const reconcileAndReady = useCallback(async () => {
     setPhase("reconciling");
     let settled = false;
-    // 3s timeout fallback — mount from local if the pull is slow/broken.
+    // 3s timeout fallback — mount from local ONLY if it belongs to this user.
     const timer = setTimeout(() => {
       if (!settled) {
         settled = true;
-        setCloudData(null); // null → AppInner seeds from local
+        // We don't have the user id resolved here (pull timed out), so the
+        // safest fallback is to honour the existing owner stamp: AppInner's
+        // initData reads local only when allowLocal is true. On timeout we
+        // can't verify ownership, so disallow local to avoid cross-account
+        // leakage; AppInner seeds DEF and the user's next pull/edit syncs.
+        setCloudData(null);
+        setAllowLocal(false);
         setSessionKey(k => k + 1);
         setPhase("ready");
       }
     }, 3000);
 
     try {
+      const session = await getSession();
+      const userId = session && session.user ? session.user.id : null;
+
+      // Owner check BEFORE deciding what to seed.
+      let localBelongsToUser = false;
+      try {
+        const owner = loadFarmOwner();
+        localBelongsToUser = !!userId && owner === userId;
+      } catch (e) { localBelongsToUser = false; }
+
+      // If local belongs to a different (or no) user, wipe it now so a stale
+      // cache can't leak into this account or get pushed up under the wrong id.
+      if (!localBelongsToUser) {
+        try { clearFarm(); } catch (e) { /* ignore */ }
+      }
+
       const pulled = await pullFarm(); // { data, source, updatedAt } | null
       if (settled) return; // timeout already won
       settled = true;
       clearTimeout(timer);
 
+      // Stamp the cache as belonging to this user from here on.
+      if (userId) { try { saveFarmOwner(userId); } catch (e) { /* ignore */ } }
+
       if (pulled && pulled.source === "cloud" && pulled.data) {
-        // Cloud has a real farm. Compare against local; newer wins.
-        let localUpdatedAt = 0;
-        try {
-          const local = loadFarm();
-          // Local has no per-doc timestamp; treat presence of a built farm
-          // (setupDone) as "real". When both exist, cloud wins by default
-          // (it's the shared source of truth); local-newer only matters for
-          // offline edits, which push up on next change anyway.
-          localUpdatedAt = local ? 1 : 0;
-        } catch (e) { localUpdatedAt = 0; }
-        void localUpdatedAt;
+        // Cloud has a real saved farm — it's the source of truth. Use it.
         setCloudData(pulled.data);
+        setAllowLocal(false);
       } else {
-        // Cloud empty (fresh signup) → seed from local/DEF; the initial
-        // push in AppInner populates the cloud row.
+        // Cloud empty (fresh signup, or row exists but data === {}).
+        // Seed from local ONLY if that local farm belongs to THIS user
+        // (e.g. they built offline before their first successful push).
+        // Otherwise start clean from DEF.
         setCloudData(null);
+        setAllowLocal(localBelongsToUser);
       }
       setSessionKey(k => k + 1);
       setPhase("ready");
@@ -507,8 +543,9 @@ function AuthGate() {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      console.warn("[auth] reconcile failed, using local:", e);
+      console.warn("[auth] reconcile failed, starting clean:", e);
       setCloudData(null);
+      setAllowLocal(false);
       setSessionKey(k => k + 1);
       setPhase("ready");
     }
@@ -550,6 +587,10 @@ function AuthGate() {
       flushFarm();
       await flushPush(); // push any pending change before dropping the session
       await signOut();
+      // Wipe the local farm cache + owner stamp so the next account that
+      // signs in on this browser starts clean instead of inheriting this
+      // user's farm. (Cloud copy is already saved by the flush above.)
+      clearFarm();
     } catch (e) {
       console.warn("[auth] sign-out error:", e);
     }
@@ -572,7 +613,7 @@ function AuthGate() {
   }
 
   // ready
-  return <AppInner key={sessionKey} cloudData={cloudData} onSignOut={isSupabaseConfigured ? handleSignOut : null}/>;
+  return <AppInner key={sessionKey} cloudData={cloudData} allowLocal={allowLocal} onSignOut={isSupabaseConfigured ? handleSignOut : null}/>;
 }
 
 export default function App() {
