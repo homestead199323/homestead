@@ -13,7 +13,7 @@ import React, { useState } from "react";
 import { Leaf } from "lucide-react";
 import { C, F } from "../../lib/theme";
 import { Btn, Inp } from "../../components/ui";
-import { signUpEmail, signInEmail, signInGoogle } from "../../lib/auth";
+import { signUpEmail, signInEmail } from "../../lib/auth";
 
 export default function AuthScreen() {
   const [mode, setMode] = useState("signin"); // "signin" | "signup"
@@ -60,22 +60,25 @@ export default function AuthScreen() {
     }
   }
 
-  async function handleGoogle() {
-    setErr("");
-    setNotice("");
-    setBusy(true);
-    try {
-      const { error } = await signInGoogle();
-      if (error) {
-        setErr(error.message || "Could not start Google sign-in.");
-        setBusy(false);
-      }
-      // On success the browser redirects to Google — no further code runs here.
-    } catch (e) {
-      setErr(String(e && e.message ? e.message : e));
-      setBusy(false);
-    }
-  }
+  // Google sign-in — hidden until a Google Cloud OAuth client is configured
+  // in Supabase. Re-enable by uncommenting this, restoring the signInGoogle
+  // import, and uncommenting the divider + Google button in the JSX below.
+  // async function handleGoogle() {
+  //   setErr("");
+  //   setNotice("");
+  //   setBusy(true);
+  //   try {
+  //     const { error } = await signInGoogle();
+  //     if (error) {
+  //       setErr(error.message || "Could not start Google sign-in.");
+  //       setBusy(false);
+  //     }
+  //     // On success the browser redirects to Google — no further code runs here.
+  //   } catch (e) {
+  //     setErr(String(e && e.message ? e.message : e));
+  //     setBusy(false);
+  //   }
+  // }
 
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.bg,fontFamily:F.body,padding:20}}>
@@ -124,27 +127,9 @@ export default function AuthScreen() {
             </Btn>
           </div>
 
-          {/* Divider */}
-          <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0"}}>
-            <div style={{flex:1,height:1,background:C.bdr}}/>
-            <span style={{fontSize:11,color:C.t2,fontWeight:600}}>OR</span>
-            <div style={{flex:1,height:1,background:C.bdr}}/>
-          </div>
-
-          {/* Google */}
-          <button onClick={handleGoogle} disabled={busy}
-            style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:10,
-              padding:"11px 16px",borderRadius:12,border:`1.5px solid ${C.bdr}`,background:C.card,
-              cursor:busy?"default":"pointer",fontSize:14,fontWeight:600,color:C.text,fontFamily:F.body,
-              opacity:busy?0.6:1,minHeight:44}}>
-            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 0 0 9 18z"/>
-              <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.94H.96a9 9 0 0 0 0 8.12l3.01-2.34z"/>
-              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.94l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
-            </svg>
-            Continue with Google
-          </button>
+          {/* Google sign-in hidden until OAuth is configured in Supabase.
+              To restore: uncomment handleGoogle + its import above, then
+              re-add the OR divider and the Google <button> here. */}
 
           {/* Toggle mode */}
           <div style={{textAlign:"center",marginTop:20,fontSize:13,color:C.t2}}>
