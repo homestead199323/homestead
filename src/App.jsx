@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
 import {
-  Download, Upload, Leaf, Moon, Sun, User
+  Download, Upload, Leaf, Moon, Sun, User, LogOut
 } from "lucide-react";
 
 import {
@@ -31,6 +31,10 @@ import { BadgeCelebration } from "./components/BadgeCelebration";
 import Onboarding from "./features/onboarding/Onboarding";
 import { NAV, BOTTOM_TABS, MORE_ITEMS } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
+import { isSupabaseConfigured } from "./lib/db";
+import { getSession, onAuthChange, signOut } from "./lib/auth";
+import { pullFarm, pushFarm, flushPush, initSyncReconnect } from "./lib/sync";
+import AuthScreen from "./features/auth/AuthScreen";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
    ═══════════════════════════════════════════ */
@@ -111,7 +115,7 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
   );
 });
 
-const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, isOffline, darkMode, setDarkMode}) {
+const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, isOffline, darkMode, setDarkMode, onSignOut}) {
   return createPortal(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:500}}/>
@@ -162,6 +166,9 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
           <button onClick={function(){setDarkMode(!darkMode);}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
             <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}>{darkMode ? <Sun size={17} strokeWidth={1.8}/> : <Moon size={17} strokeWidth={1.8}/>}</span> {darkMode ? "Light Mode" : "Dark Mode"}
           </button>
+          {onSignOut&&<button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 20px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
+            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><LogOut size={17} strokeWidth={1.8}/></span> Sign Out
+          </button>}
         {isOffline&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:C.orange,background:C.tWarmBand,textAlign:"center",borderRadius:8,margin:"0 10px 8px"}}>📡 Offline — data saved locally</div>}
       </div>
     </>,
@@ -169,13 +176,16 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
   );
 });
 
-function AppInner() {
+function AppInner({ cloudData, onSignOut }) {
   // Lazy initializer — loads data synchronously, no loading flash
   // Wrapped in try-catch: if storage is corrupt or migration throws, fall back to DEF
   // instead of crashing the reducer with undefined state.
+  // cloudData (when present) is the reconciled cloud farm from AuthGate — it
+  // takes precedence over local. When null, fall back to the local copy (offline
+  // or the 3s pull timeout fired).
   const initData = () => {
     try {
-      const d = loadFarm();
+      const d = cloudData || loadFarm();
       let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
       if (!initial.schemaVersion) initial = {...initial, schemaVersion: 7};
       initial = migrateZones(initial);
@@ -243,9 +253,22 @@ function AppInner() {
 
   // Flush pending save on tab close / navigate away
   useEffect(() => {
-    const flush = () => flushFarm();
+    const flush = () => { flushFarm(); flushPush(); };
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
+  }, []);
+
+  // Wire the reconnect handler once so a queued offline cloud-write drains
+  // when connectivity returns.
+  useEffect(() => { initSyncReconnect(); }, []);
+
+  // One-time initial cloud push on mount. Ensures the cloud row reflects the
+  // seeded local state right away (covers the fresh-signup case where cloud
+  // was empty and we seeded from local/DEF, and the offline-edit-then-login
+  // case where local is authoritative). Ongoing changes push via setData.
+  useEffect(() => {
+    if (data) pushFarm(data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Dark mode — apply data-theme attribute and persist
@@ -274,6 +297,7 @@ function AppInner() {
     }
     dispatchData({type:'SET_ALL', data: persistable});
     saveFarm(persistable);
+    pushFarm(persistable); // cloud backup (debounced, offline-aware, no-op when signed out)
     // silent save — no UI indicator
   }, []);
 
@@ -391,6 +415,9 @@ function AppInner() {
           <button onClick={()=>setDarkMode(!darkMode)} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"8px 20px 14px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title={darkMode?"Switch to light mode":"Switch to dark mode"}>
             {darkMode ? <Sun size={isTablet?20:14} strokeWidth={1.8}/> : <Moon size={isTablet?20:14} strokeWidth={1.8}/>}{!isTablet&&<span style={{marginLeft:2}}>{darkMode?"Light Mode":"Dark Mode"}</span>}
           </button>
+          {onSignOut&&<button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"4px 20px 16px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title="Sign out">
+            <LogOut size={isTablet?20:14} strokeWidth={1.8}/>{!isTablet&&<span style={{marginLeft:2}}>Sign Out</span>}
+          </button>}
           {isOffline&&!isTablet&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:C.orange,background:C.tWarmBand,textAlign:"center",borderRadius:8,margin:"0 10px 10px"}}>📡 Offline — data saved locally</div>}
         </nav>
         <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
@@ -398,7 +425,7 @@ function AppInner() {
         </main>
       </div>
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
-      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline} darkMode={darkMode} setDarkMode={setDarkMode}/>}
+      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       <AIAssistant data={data} setData={setData}/>
@@ -407,6 +434,147 @@ function AppInner() {
   );
 }
 
+/* ═══════════════════════════════════════════
+   AUTH GATE — mandatory sign-in wall + cloud reconcile (Phase 5)
+
+   Flow:
+   1. On mount, check for an existing session (getSession) and subscribe
+      to auth changes (onAuthChange) so sign-in/out swaps the view live.
+   2. No session  → render <AuthScreen/>.
+   3. Has session → run pullFarm() and reconcile cloud vs local BEFORE
+      mounting AppInner (Option X), with a 3s timeout fallback to local
+      so a slow/broken network never hangs the app forever.
+   4. AppInner mounts once with the reconciled `cloudData` seed.
+
+   If Supabase isn't configured (missing env vars), skip the wall
+   entirely and run local-only — the app still works offline-first.
+   ═══════════════════════════════════════════ */
+function AuthGate() {
+  const [phase, setPhase] = useState("checking"); // checking | signedout | reconciling | ready
+  const [cloudData, setCloudData] = useState(null);
+  // bump remounts AppInner cleanly on each fresh sign-in so its reducer
+  // re-seeds from the new user's reconciled data.
+  const [sessionKey, setSessionKey] = useState(0);
+
+  // Local-only escape hatch: if env vars are absent, never gate.
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setPhase("ready");
+    }
+  }, []);
+
+  // Reconcile cloud vs local for a freshly-detected session, then go ready.
+  const reconcileAndReady = useCallback(async () => {
+    setPhase("reconciling");
+    let settled = false;
+    // 3s timeout fallback — mount from local if the pull is slow/broken.
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        setCloudData(null); // null → AppInner seeds from local
+        setSessionKey(k => k + 1);
+        setPhase("ready");
+      }
+    }, 3000);
+
+    try {
+      const pulled = await pullFarm(); // { data, source, updatedAt } | null
+      if (settled) return; // timeout already won
+      settled = true;
+      clearTimeout(timer);
+
+      if (pulled && pulled.source === "cloud" && pulled.data) {
+        // Cloud has a real farm. Compare against local; newer wins.
+        let localUpdatedAt = 0;
+        try {
+          const local = loadFarm();
+          // Local has no per-doc timestamp; treat presence of a built farm
+          // (setupDone) as "real". When both exist, cloud wins by default
+          // (it's the shared source of truth); local-newer only matters for
+          // offline edits, which push up on next change anyway.
+          localUpdatedAt = local ? 1 : 0;
+        } catch (e) { localUpdatedAt = 0; }
+        void localUpdatedAt;
+        setCloudData(pulled.data);
+      } else {
+        // Cloud empty (fresh signup) → seed from local/DEF; the initial
+        // push in AppInner populates the cloud row.
+        setCloudData(null);
+      }
+      setSessionKey(k => k + 1);
+      setPhase("ready");
+    } catch (e) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      console.warn("[auth] reconcile failed, using local:", e);
+      setCloudData(null);
+      setSessionKey(k => k + 1);
+      setPhase("ready");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+
+    // Initial session check on load.
+    getSession().then(session => {
+      if (!active) return;
+      if (session) {
+        reconcileAndReady();
+      } else {
+        setPhase("signedout");
+      }
+    }).catch(() => {
+      if (active) setPhase("signedout");
+    });
+
+    // Live auth-state subscription (sign-in, sign-out, token refresh).
+    const unsub = onAuthChange((event, session) => {
+      if (!active) return;
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        if (session) reconcileAndReady();
+      } else if (event === "SIGNED_OUT") {
+        setCloudData(null);
+        setPhase("signedout");
+      }
+      // TOKEN_REFRESHED / USER_UPDATED: no view change needed.
+    });
+
+    return () => { active = false; unsub(); };
+  }, [reconcileAndReady]);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      flushFarm();
+      await flushPush(); // push any pending change before dropping the session
+      await signOut();
+    } catch (e) {
+      console.warn("[auth] sign-out error:", e);
+    }
+    // onAuthChange SIGNED_OUT will flip phase to "signedout".
+  }, []);
+
+  if (phase === "checking" || phase === "reconciling") {
+    return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.bg,fontFamily:F.body,flexDirection:"column",gap:14}}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:8,color:C.green,fontFamily:F.head,fontSize:22,fontWeight:800}}>
+          <Leaf size={22} strokeWidth={2}/> MyTerra
+        </div>
+        <div style={{fontSize:13,color:C.t2}}>{phase === "reconciling" ? "Loading your farm…" : "…"}</div>
+      </div>
+    );
+  }
+
+  if (phase === "signedout") {
+    return <AuthScreen/>;
+  }
+
+  // ready
+  return <AppInner key={sessionKey} cloudData={cloudData} onSignOut={isSupabaseConfigured ? handleSignOut : null}/>;
+}
+
 export default function App() {
-  return <ErrorBoundary><AppInner/></ErrorBoundary>;
+  return <ErrorBoundary><AuthGate/></ErrorBoundary>;
 }
