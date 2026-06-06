@@ -48,7 +48,7 @@ export const Txt = React.memo(function Txt({label,...p}) {
   </div>;
 });
 
-export function Overlay({title,onClose,children,wide,sheet,layoutId}) {
+export function Overlay({title,onClose,children,wide,sheet}) {
   const isSheet = !!sheet;
   // Touch drag-to-dismiss for sheet variant
   const [dragY, setDragY] = React.useState(0);
