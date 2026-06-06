@@ -34,7 +34,8 @@ import { NAV, BOTTOM_TABS, MORE_ITEMS } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
 import { isSupabaseConfigured } from "./lib/db";
 import { getSession, onAuthChange, signOut } from "./lib/auth";
-import { pullFarm, pushFarm, flushPush, initSyncReconnect } from "./lib/sync";
+import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt } from "./lib/sync";
+import { SyncStatus } from "./components/SyncStatus";
 import AuthScreen from "./features/auth/AuthScreen";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
@@ -116,7 +117,7 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
   );
 });
 
-const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, isOffline, darkMode, setDarkMode, onSignOut}) {
+const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, darkMode, setDarkMode, onSignOut}) {
   return createPortal(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:500}}/>
@@ -170,7 +171,7 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
           {onSignOut&&<button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 20px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
             <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><LogOut size={17} strokeWidth={1.8}/></span> Sign Out
           </button>}
-        {isOffline&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:C.orange,background:C.tWarmBand,textAlign:"center",borderRadius:8,margin:"0 10px 8px"}}>📡 Offline — data saved locally</div>}
+        <div style={{padding:"4px 20px 10px"}}><SyncStatus/></div>
       </div>
     </>,
     document.body
@@ -218,7 +219,6 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       return window.matchMedia("(prefers-color-scheme: dark)").matches;
     } catch(e) { return false; }
   });
-  const [isOffline,setIsOffline]=useState(typeof navigator !== "undefined" && !navigator.onLine);
   const [showFeedbackPrompt,setShowFeedbackPrompt]=useState(false);
   // Phase 8.4 — queue of badge ids waiting to be shown in the celebration overlay
   const [badgeQueue,setBadgeQueue]=useState([]);
@@ -236,15 +236,6 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       const daysSinceFirst = (Date.now() - parseInt(firstUse)) / (1000 * 60 * 60 * 24);
       if (daysSinceFirst >= 7) setShowFeedbackPrompt(true);
     } catch(e) {}
-  }, []);
-
-  // Online/offline detection
-  useEffect(() => {
-    const on = () => setIsOffline(false);
-    const off = () => setIsOffline(true);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
   // Responsive breakpoint listener
@@ -267,6 +258,34 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   // Wire the reconnect handler once so a queued offline cloud-write drains
   // when connectivity returns.
   useEffect(() => { initSyncReconnect(); }, []);
+
+  // Phase 6 — multi-device: when the tab regains focus/visibility, pull the
+  // cloud row if another device wrote a newer copy. pullIfRemoteNewer no-ops
+  // when offline, signed out, or when we have unpushed local edits (so an
+  // in-progress edit is never clobbered — last-write-wins favours it). The
+  // pulled blob runs the same migration chain as initData before dispatch.
+  useEffect(() => {
+    const maybePull = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      pullIfRemoteNewer().then((fresh) => {
+        if (!fresh) return;
+        try {
+          let migrated = {...DEF, ...fresh, log: fresh.log||[], costs: fresh.costs||{items:[]}};
+          if (!migrated.schemaVersion) migrated = {...migrated, schemaVersion: 7};
+          migrated = migrateCompletions(migrateGamify(migrateZones(migrated)));
+          dispatchData({ type: "SET_ALL", data: migrated });
+          saveFarm(migrated); // keep local cache aligned; do NOT re-push
+        } catch (e) { console.warn("[sync] hydrate from remote failed:", e); }
+      }).catch(() => { /* network hiccup — local stays authoritative */ });
+    };
+    const onVis = () => { if (document.visibilityState === "visible") maybePull(); };
+    window.addEventListener("focus", maybePull);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", maybePull);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   // One-time initial cloud push on mount. Ensures the cloud row reflects the
   // seeded local state right away (covers the fresh-signup case where cloud
@@ -424,14 +443,14 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
           {onSignOut&&<button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"4px 20px 16px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title="Sign out">
             <LogOut size={isTablet?20:14} strokeWidth={1.8}/>{!isTablet&&<span style={{marginLeft:2}}>Sign Out</span>}
           </button>}
-          {isOffline&&!isTablet&&<div style={{padding:"8px 20px",fontSize:11,fontWeight:600,color:C.orange,background:C.tWarmBand,textAlign:"center",borderRadius:8,margin:"0 10px 10px"}}>📡 Offline — data saved locally</div>}
+          <div style={{padding:isTablet?"6px 0 12px":"6px 20px 12px",display:"flex",justifyContent:isTablet?"center":"flex-start"}}><SyncStatus compact={isTablet}/></div>
         </nav>
         <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
           {pg()}
         </main>
       </div>
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
-      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} isOffline={isOffline} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut}/>}
+      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       <AIAssistant data={data} setData={setData}/>
@@ -524,6 +543,10 @@ function AuthGate() {
 
       // Stamp the cache as belonging to this user from here on.
       if (userId) { try { saveFarmOwner(userId); } catch (e) { /* ignore */ } }
+
+      // Tell sync which cloud revision we now hold, so a later focus-pull
+      // only hydrates when ANOTHER device has written something newer.
+      noteAppliedUpdatedAt(pulled ? (pulled.updatedAt || 0) : 0);
 
       if (pulled && pulled.source === "cloud" && pulled.data) {
         // Cloud has a real saved farm — it's the source of truth. Use it.
