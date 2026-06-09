@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
 import {
-  Download, Upload, Leaf, Moon, Sun, User, LogOut, MessageSquare
+  Leaf, User, MessageSquare, Settings
 } from "lucide-react";
 
 import {
@@ -14,9 +14,7 @@ import {
   loadFirstUse, saveFirstUse,
 } from "./lib/storage";
 import { C, F, SX } from "./lib/theme";
-import { LDB } from "./data/livestock";
 import { todayLocalKey } from "./lib/utils";
-import { rCR } from "./lib/regional";
 import { buildTaskQueue } from "./lib/task-queue";
 import { migrateZones, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
 import Pantry from "./features/pantry/Pantry";
@@ -37,6 +35,7 @@ import { getSession, onAuthChange, signOut } from "./lib/auth";
 import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt } from "./lib/sync";
 import { SyncStatus } from "./components/SyncStatus";
 import AuthScreen from "./features/auth/AuthScreen";
+import SettingsPanel from "./features/settings/SettingsPanel";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
    ═══════════════════════════════════════════ */
@@ -117,7 +116,7 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
   );
 });
 
-const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, exportData, importData, darkMode, setDarkMode, onSignOut}) {
+const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpenSettings}) {
   return createPortal(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:500}}/>
@@ -157,24 +156,13 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
           })}
         </div>
         <div style={{margin:"4px 20px",borderTop:`1px solid ${C.bdr}`,paddingTop:4}}>
-          <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
-            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><Download size={17} strokeWidth={1.8}/></span> Export Backup
-          </button>
-          <label style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",cursor:"pointer",fontSize:14,fontFamily:F.body,color:C.t2}}>
-            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><Upload size={17} strokeWidth={1.8}/></span> Import Backup
-            <input type="file" accept=".json" onChange={function(e){if(e.target.files[0])importData(e.target.files[0]);e.target.value="";}} style={{display:"none"}}/>
-          </label>
           <button onClick={function(){setPage("feedback");onClose();}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
             <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><MessageSquare size={17} strokeWidth={1.8}/></span> Give Feedback
           </button>
-        </div>
-          <button onClick={function(){setDarkMode(!darkMode);}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
-            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}>{darkMode ? <Sun size={17} strokeWidth={1.8}/> : <Moon size={17} strokeWidth={1.8}/>}</span> {darkMode ? "Light Mode" : "Dark Mode"}
+          <button onClick={function(){onOpenSettings();}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
+            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><Settings size={17} strokeWidth={1.8}/></span> Settings
           </button>
-          {onSignOut&&<button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 20px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
-            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><LogOut size={17} strokeWidth={1.8}/></span> Sign Out
-          </button>}
-        <div style={{padding:"4px 20px 10px"}}><SyncStatus/></div>
+        </div>
       </div>
     </>,
     document.body
@@ -215,6 +203,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
   const [viewW,setViewW]=useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [moreOpen,setMoreOpen]=useState(false);
+  const [settingsOpen,setSettingsOpen]=useState(false);
   const [darkMode,setDarkMode]=useState(() => {
     try {
       const saved = loadTheme();
@@ -436,37 +425,24 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
           })}
           </div>
           <div style={SX.flex1}/>
-          {/* Backup controls — hidden on tablet icon rail */}
-          {!isTablet&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.bdr}`,margin:"0 10px"}}>
-            <button onClick={exportData} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Download farm data as JSON backup">
-              <Download size={14} strokeWidth={1.8}/> Export Backup
-            </button>
-            <label style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:11.5,fontFamily:F.body,fontWeight:500,borderRadius:8,transition:"all .2s"}} title="Restore from a JSON backup file">
-              <Upload size={14} strokeWidth={1.8}/> Import Backup
-              <input type="file" accept=".json" onChange={e => { if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; }} style={{display:"none"}}/>
-            </label>
-          </div>}
-          {!isTablet&&<div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>}
-          <button onClick={()=>setPage("feedback")} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"8px 20px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title="Give feedback">
+          <div style={{borderTop:`1px solid ${C.bdr}`,margin:isTablet?"0 8px":"0 10px"}}/>
+          <button onClick={()=>setPage("feedback")} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"10px 20px 6px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title="Give feedback">
             <MessageSquare size={isTablet?20:14} strokeWidth={1.8}/>{!isTablet&&<span style={{marginLeft:2}}>Give Feedback</span>}
           </button>
-          <button onClick={()=>setDarkMode(!darkMode)} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"8px 20px 14px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title={darkMode?"Switch to light mode":"Switch to dark mode"}>
-            {darkMode ? <Sun size={isTablet?20:14} strokeWidth={1.8}/> : <Moon size={isTablet?20:14} strokeWidth={1.8}/>}{!isTablet&&<span style={{marginLeft:2}}>{darkMode?"Light Mode":"Dark Mode"}</span>}
+          <button onClick={()=>setSettingsOpen(true)} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"6px 20px 14px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title="Settings">
+            <Settings size={isTablet?20:14} strokeWidth={1.8}/>{!isTablet&&<span style={{marginLeft:2}}>Settings</span>}
           </button>
-          {onSignOut&&<button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"4px 20px 16px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title="Sign out">
-            <LogOut size={isTablet?20:14} strokeWidth={1.8}/>{!isTablet&&<span style={{marginLeft:2}}>Sign Out</span>}
-          </button>}
-          <div style={{padding:isTablet?"6px 0 12px":"6px 20px 12px",display:"flex",justifyContent:isTablet?"center":"flex-start"}}><SyncStatus compact={isTablet}/></div>
         </nav>
         <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
           {pg()}
         </main>
       </div>
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
-      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} exportData={exportData} importData={importData} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut}/>}
+      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} onOpenSettings={()=>{setMoreOpen(false);setSettingsOpen(true);}}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       <AIAssistant data={data} setData={setData}/>
+      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} importData={importData} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut}/>}
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}/>}
     </>
   );
