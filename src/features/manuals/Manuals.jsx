@@ -13,13 +13,13 @@ import { Btn, Card, Inp, Overlay, Pill, Stat } from "../../components/ui";
 /* ═══════════════════════════════════════════
    ENCYCLOPEDIA
    ═══════════════════════════════════════════ */
-function Manuals({data}) {
+function Manuals({data, setPage}) {
   const [s,setS]=useState("");const [sel,setSel]=useState(null);const [tab,setTab]=useState("crops");
   const rgCrops = rCR(data && data.region);
   const curRegion = REGION_MAP.get((data && data.region) || "western_europe");
   const fil=rgCrops.filter(c=>!s||c.name.toLowerCase().includes(s.toLowerCase()));
   const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const TABS=[{id:"crops",l:"🌱 Crops"},{id:"animals",l:"🐄 Animals"},{id:"preserving",l:"🫙 Preserving"},{id:"projects",l:"🔨 Projects"}];
+  const TABS=[{id:"crops",l:"🌱 Crops"},{id:"calendar",l:"🗓 Calendar"},{id:"animals",l:"🐄 Animals"},{id:"preserving",l:"🫙 Preserving"},{id:"projects",l:"🔨 Projects"}];
   return (
     <div className="page-enter" style={{maxWidth:960}}>
       <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📖 MyTerra Manuals</h2>
@@ -69,6 +69,7 @@ function Manuals({data}) {
         </Overlay>}
       </>}
 
+      {tab==="calendar"&&<SeasonalCalendar data={data} setPage={setPage} embedded/>}
       {tab==="preserving"&&<Preserving embedded/>}
       {tab==="projects"&&<Projects embedded/>}
     </div>
@@ -271,7 +272,7 @@ function Preserving({embedded}) {
    SEASONAL PLANTING CALENDAR
    Location-aware "what to plant this month"
    ═══════════════════════════════════════════ */
-export function SeasonalCalendar({data, setPage}) {
+export function SeasonalCalendar({data, setPage, embedded}) {
   const [month, setMonth] = useState(new Date().getMonth());
   const [filter, setFilter] = useState("sow"); // sow | harvest | all
   const [catFilter, setCatFilter] = useState("all");
@@ -358,8 +359,8 @@ export function SeasonalCalendar({data, setPage}) {
 
   return (
     <div className="page-enter" style={SX.mw800}>
-      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>🗓 Seasonal Calendar</h2>
-      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>What to plant and harvest each month — tailored to your farm</p>
+      {!embedded && <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>🗓 Seasonal Calendar</h2>}
+      {!embedded && <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>What to plant and harvest each month — tailored to your farm</p>}
 
       {/* Month selector — 6.4.1: horizontal scroll on mobile, auto-centers current month */}
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>

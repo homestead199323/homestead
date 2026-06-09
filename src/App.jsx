@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
 import {
-  Download, Upload, Leaf, Moon, Sun, User, LogOut
+  Download, Upload, Leaf, Moon, Sun, User, LogOut, MessageSquare
 } from "lucide-react";
 
 import {
@@ -21,7 +21,7 @@ import { buildTaskQueue } from "./lib/task-queue";
 import { migrateZones, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
-import Manuals, { SeasonalCalendar } from "./features/manuals/Manuals";
+import Manuals from "./features/manuals/Manuals";
 import Livestock from "./features/animals/Livestock";
 import MapScreen, { CropsScreen } from "./features/farm/Farm";
 import TaskQueue from "./features/tasks/TaskQueue";
@@ -164,6 +164,9 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, expor
             <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><Upload size={17} strokeWidth={1.8}/></span> Import Backup
             <input type="file" accept=".json" onChange={function(e){if(e.target.files[0])importData(e.target.files[0]);e.target.value="";}} style={{display:"none"}}/>
           </label>
+          <button onClick={function(){setPage("feedback");onClose();}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
+            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><MessageSquare size={17} strokeWidth={1.8}/></span> Give Feedback
+          </button>
         </div>
           <button onClick={function(){setDarkMode(!darkMode);}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
             <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}>{darkMode ? <Sun size={17} strokeWidth={1.8}/> : <Moon size={17} strokeWidth={1.8}/>}</span> {darkMode ? "Light Mode" : "Dark Mode"}
@@ -206,7 +209,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   };
 
   const [page,setPageRaw]=useState(() => {
-    try { const p = loadPage(); if (p === "farm") return "map"; return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
+    try { const p = loadPage(); if (p === "farm") return "map"; if (p === "season") return "manuals"; return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
   });
   const [pageData,setPageData]=useState(null);
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
@@ -397,11 +400,10 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       case "tasks": return <TaskQueue data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
       case "map": return <MapScreen data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData} setPage={setPage}/>;
       case "crops": return <CropsScreen data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData}/>;
-      case "season": return <SeasonalCalendar data={data} setPage={setPage}/>;
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
       case "fin": return <Financials data={data} setData={setData}/>;
-      case "manuals": return <Manuals data={data}/>;
+      case "manuals": return <Manuals data={data} setPage={setPage}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       default: return <TodayScreen data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
     }
@@ -418,13 +420,20 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
             {!isTablet&&<div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>}
           </div>
           <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
-          {NAV.map(n=>(
-            <button key={n.id} onClick={()=>{setPage(n.id);}} className="nav-item" style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
+          {NAV.map((n,idx)=>{
+            const showHeader = idx===0 || NAV[idx-1].group!==n.group;
+            return (
+            <React.Fragment key={n.id}>
+            {showHeader && !isTablet && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:C.t3,padding:"10px 14px 3px",marginTop:idx===0?0:6}}>{n.group}</div>}
+            {showHeader && isTablet && idx!==0 && <div style={{height:1,background:C.bdr,margin:"6px 12px"}}/>}
+            <button onClick={()=>{setPage(n.id);}} className="nav-item" style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
               <span style={{width:isTablet?undefined:24,display:"flex",alignItems:"center",justifyContent:"center",opacity:page===n.id?1:0.55,transition:"opacity .2s"}}><n.E size={isTablet?20:17} strokeWidth={page===n.id?2.2:1.8}/></span>{!isTablet&&n.l}
               {n.id==="home"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #ef4444, #dc2626)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,minWidth:18,textAlign:"center",boxShadow:"0 2px 6px rgba(239,68,68,.3)"}}>{taskCount}</span>}
               {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
             </button>
-          ))}
+            </React.Fragment>
+            );
+          })}
           </div>
           <div style={SX.flex1}/>
           {/* Backup controls — hidden on tablet icon rail */}
@@ -438,6 +447,9 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
             </label>
           </div>}
           {!isTablet&&<div style={{padding:"10px 24px 18px",fontSize:10.5,color:C.t3,fontWeight:500}}>{rCR(data.region).length} crops · {Object.keys(LDB).length} animals</div>}
+          <button onClick={()=>setPage("feedback")} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"8px 20px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title="Give feedback">
+            <MessageSquare size={isTablet?20:14} strokeWidth={1.8}/>{!isTablet&&<span style={{marginLeft:2}}>Give Feedback</span>}
+          </button>
           <button onClick={()=>setDarkMode(!darkMode)} style={{display:"flex",alignItems:"center",gap:isTablet?0:8,padding:isTablet?"10px 0":"8px 20px 14px",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.body,fontWeight:500,width:"100%",justifyContent:isTablet?"center":"flex-start"}} title={darkMode?"Switch to light mode":"Switch to dark mode"}>
             {darkMode ? <Sun size={isTablet?20:14} strokeWidth={1.8}/> : <Moon size={isTablet?20:14} strokeWidth={1.8}/>}{!isTablet&&<span style={{marginLeft:2}}>{darkMode?"Light Mode":"Dark Mode"}</span>}
           </button>
