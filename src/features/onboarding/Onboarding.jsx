@@ -178,7 +178,7 @@ function ScreenFarm({ zoneType, setZoneType, zoneSize, setZoneSize, onNext, onBa
   return (
     <>
       <h2 style={S.heading}>Your growing space</h2>
-      <p style={S.sub}>Pick your main area. You can add more zones later inside the Farm tab.</p>
+      <p style={S.sub}>Pick your main area. You can add more zones later from the Map (Edit Layout).</p>
       <div style={{marginBottom:4}}>
         <div style={S.label}>What kind of space?</div>
         <div style={{marginTop:8}}>

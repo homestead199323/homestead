@@ -201,7 +201,7 @@ export default function LivingFarmMap({
       }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🗺️</div>
         <div style={{ fontSize: 14, fontWeight: 600 }}>No zones yet</div>
-        <div style={{ fontSize: 12, marginTop: 4 }}>Go to Layout tab to design your farm</div>
+        <div style={{ fontSize: 12, marginTop: 4 }}>Tap "Design Farm Layout" below to get started</div>
         <button onClick={onEditLayout} style={{
           marginTop: 14, padding: "8px 20px", background: C.green, color: "#fff",
           border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",

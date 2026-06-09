@@ -351,7 +351,7 @@ export function SeasonalCalendar({data, setPage}) {
             <Pill sm c={C.green} bg={C.tGreen}>💧 {c.waterFreq}</Pill>
           </div>
         </div>
-        {!c.planted && <Btn sm onClick={() => setPage("farm", {crop: c.name, plantDate: todayLocalKey()})}>+ Plant</Btn>}
+        {!c.planted && <Btn sm onClick={() => setPage("crops", {crop: c.name, plantDate: todayLocalKey()})}>+ Plant</Btn>}
       </div>
     </Card>
   );

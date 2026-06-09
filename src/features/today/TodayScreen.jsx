@@ -321,7 +321,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                 )}
                 {!data.city && (
                   <p style={{color:C.t2,fontSize:11,margin:"3px 0 0",fontWeight:500,opacity:.75}}>
-                    set your city for weather → Farm › Layout
+                    set your city for weather → Map › Edit Layout
                   </p>
                 )}
               </div>
@@ -418,7 +418,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               </Card>
 
               {/* CROPS */}
-              <Card onClick={function(){setPage("farm");}} style={{padding:"14px 16px",background:C.tCrop,border:`1px solid ${C.tCropBd}`}}>
+              <Card onClick={function(){setPage("crops");}} style={{padding:"14px 16px",background:C.tCrop,border:`1px solid ${C.tCropBd}`}}>
                 <div style={SX.capHeader}>Crops</div>
                 <div style={{fontSize:28,fontWeight:800,fontFamily:F.head,color:C.text,lineHeight:1,marginTop:4}}>{_dap.length}</div>
                 <div style={SX.t2_11mt4}>
@@ -509,7 +509,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                   onMarkDone={(key) => setData(markTaskDone(data, key))}
                   onHarvest={() => {
                     if (t.plotId) setOpenPlotId(t.plotId);
-                    else setPage("farm");
+                    else setPage("crops");
                   }}
                 />
               );
@@ -630,7 +630,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               showEditButton={false}
               onZoneClick={function(z){ setSelZone(z.id); }}
             />
-            <button onClick={function(){setPage("farm",{tab:"setup"});}} style={{marginTop:8,background:C.gp,border:`1px solid ${C.bdr}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.green,cursor:"pointer"}}>✏️ Edit Map</button>
+            <button onClick={function(){setPage("map",{edit:true});}} style={{marginTop:8,background:C.gp,border:`1px solid ${C.bdr}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.green,cursor:"pointer"}}>✏️ Edit Map</button>
             {/* Crop color legend */}
             {_miniColorMap.size > 0 && (
               <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"6px 0 0",alignItems:"center"}}>

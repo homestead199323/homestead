@@ -38,7 +38,7 @@ function BackgroundLayer() {
 /* ═══════════════════════════════════════════
    FARM SETUP — simplified editing
    ═══════════════════════════════════════════ */
-function Setup({data, setData, onPlantInZone}) {
+function Setup({data, setData, onPlantInZone, onBack}) {
   /* Living Map: keep zones inside an 8% inset so they don't collide
      with background scenery painted around the edges. */
   const SAFE_INSET = 0.08;
@@ -113,6 +113,7 @@ function Setup({data, setData, onPlantInZone}) {
           <p style={{color:C.t2,fontSize:13,margin:"4px 0",fontWeight:500}}>Drag zones to position · Enter real measurements in metres</p>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {onBack && <Btn v="ghost" onClick={onBack}>← Map</Btn>}
           <Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Zone</Btn>
           {data.zones.length>0 && <Btn onClick={doSave}>{saved?"✓ Saved!":"Save Layout"}</Btn>}
         </div>
@@ -1053,53 +1054,47 @@ function Farming({data, setData, pageData, clearPageData}) {
   );
 }
 
-/* ═══════════════════════════════════════════
-   FARM TAB — merges Map + Crops + Layout
-   ═══════════════════════════════════════════ */
-function FarmTab({data, setData, pageData, clearPageData}) {
-  const [subTab, setSubTab] = useState(function() {
-    return (pageData && pageData.tab) ? pageData.tab : "map";
+/* ════════════════════════════════════════════
+   MAP SCREEN — read-only farm map ↔ Layout editor
+   "Map" is its own sidebar item: the map plus zone details and an
+   Edit Layout button. Editing opens the Farm Designer (Setup), which
+   has no nav item of its own (Onboarding owns the first-run setup).
+   Crops is now a separate top-level screen.
+   ════════════════════════════════════════════ */
+function MapScreen({data, setData, pageData, clearPageData, setPage}) {
+  const [editing, setEditing] = useState(function() {
+    return !!(pageData && pageData.edit);
   });
-  const [plantZoneId, setPlantZoneId] = useState(null);
 
   useEffect(function() { clearPageData(); }, [clearPageData]);
 
-  const farmPageData = (pageData && !pageData.tab) ? pageData : null;
-
   function handlePlantInZone(zoneId) {
-    setPlantZoneId(zoneId);
-    setSubTab("crops");
+    // Crops is its own page now — hand the zone over so the plant form pre-fills.
+    setPage("crops", {zone: zoneId});
   }
 
-  const cropPageData = plantZoneId ? {zone: plantZoneId, ...(farmPageData || {})} : farmPageData;
-  function clearCropPageData() { setPlantZoneId(null); }
-
-  const FARM_TABS = [
-    {id:"map",   l:"🗺️  Map"},
-    {id:"crops", l:"🌱 Crops"},
-    {id:"setup", l:"⚙️  Layout"},
-  ];
+  if (editing) {
+    return (
+      <div style={{maxWidth:1100}}>
+        <Setup data={data} setData={setData} onPlantInZone={handlePlantInZone} onBack={function(){setEditing(false);}}/>
+      </div>
+    );
+  }
 
   return (
     <div style={{maxWidth:1100}}>
-      <div style={{display:"flex",background:C.bg,borderRadius:10,padding:3,marginBottom:16,border:`1px solid ${C.bdr}`,width:"fit-content"}}>
-        {FARM_TABS.map(function(t) {
-          const active = subTab===t.id;
-          return (
-            <button key={t.id} onClick={function(){setSubTab(t.id);}}
-              style={{padding:"6px 18px",borderRadius:8,border:"none",background:active?C.card:"transparent",
-                color:active?C.green:C.t2,fontWeight:active?700:500,fontSize:13,fontFamily:F.body,
-                cursor:"pointer",transition:"all .15s",boxShadow:active?"0 1px 4px rgba(0,0,0,.08)":"none",whiteSpace:"nowrap"}}>
-              {t.l}
-            </button>
-          );
-        })}
-      </div>
-      {subTab==="map"   && <LivingFarmMap data={data} showCropPatches onEditLayout={function(){setSubTab("setup");}} onPlantInZone={handlePlantInZone}/>}
-      {subTab==="crops" && <Farming data={data} setData={setData} pageData={cropPageData} clearPageData={clearCropPageData}/>}
-      {subTab==="setup" && <Setup data={data} setData={setData} onPlantInZone={handlePlantInZone}/>}
+      <LivingFarmMap data={data} showCropPatches onEditLayout={function(){setEditing(true);}} onPlantInZone={handlePlantInZone}/>
     </div>
   );
 }
 
-export default FarmTab;
+/* ════════════════════════════════════════════
+   CROPS SCREEN — plant + track crops. Own sidebar item.
+   ════════════════════════════════════════════ */
+function CropsScreen(props) {
+  return <Farming {...props}/>;
+}
+
+export { MapScreen, CropsScreen };
+export default MapScreen;
+

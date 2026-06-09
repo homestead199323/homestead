@@ -1,6 +1,6 @@
 import {
   Home, ClipboardList, Sprout, CalendarDays, Package,
-  TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint,
+  TrendingUp, BookOpen, MessageSquare, MoreHorizontal, PawPrint, Map,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════
@@ -12,7 +12,8 @@ import {
 export const NAV = [
   {id:"home",    l:"Today",         E:Home},
   {id:"tasks",   l:"Tasks",         E:ClipboardList},
-  {id:"farm",    l:"Farm",          E:Sprout},
+  {id:"map",     l:"Map",           E:Map},
+  {id:"crops",   l:"Crops",         E:Sprout},
   {id:"live",    l:"Animals",       E:PawPrint},
   {id:"season",  l:"Seasonal",      E:CalendarDays},
   {id:"pantry",  l:"Pantry",        E:Package},
@@ -23,13 +24,14 @@ export const NAV = [
 
 export const BOTTOM_TABS = [
   {id:"home",   l:"Today",   E:Home},
-  {id:"farm",   l:"Farm",    E:Sprout},
+  {id:"map",    l:"Map",     E:Map},
   {id:"live",   l:"Animals", E:PawPrint},
   {id:"pantry", l:"Pantry",  E:Package},
   {id:"more",   l:"More",    E:MoreHorizontal},
 ];
 
 export const MORE_ITEMS = [
+  {id:"crops",   l:"Crops",         E:Sprout},
   {id:"tasks",   l:"Task Queue",    E:ClipboardList},
   {id:"season",  l:"Seasonal",      E:CalendarDays},
   {id:"fin",     l:"Financials",    E:TrendingUp},

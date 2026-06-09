@@ -461,7 +461,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
   // todayStr already computed at top of function (for completions); reused for calendar grid below
 
-  const goToFarm = useCallback(() => setPage("farm"), [setPage]);
+  const goToFarm = useCallback(() => setPage("crops"), [setPage]);
 
   return (
     <div className="page-enter" style={{maxWidth:1100}}>

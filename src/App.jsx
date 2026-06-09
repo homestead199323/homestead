@@ -23,7 +23,7 @@ import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
 import Manuals, { SeasonalCalendar } from "./features/manuals/Manuals";
 import Livestock from "./features/animals/Livestock";
-import FarmTab from "./features/farm/Farm";
+import MapScreen, { CropsScreen } from "./features/farm/Farm";
 import TaskQueue from "./features/tasks/TaskQueue";
 import TodayScreen from "./features/today/TodayScreen";
 import AIAssistant from "./features/assistant/AIAssistant";
@@ -206,7 +206,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   };
 
   const [page,setPageRaw]=useState(() => {
-    try { const p = loadPage(); return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
+    try { const p = loadPage(); if (p === "farm") return "map"; return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
   });
   const [pageData,setPageData]=useState(null);
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
@@ -395,7 +395,8 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   const pg = () => {
     switch(page) {
       case "tasks": return <TaskQueue data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
-      case "farm": return <FarmTab data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData}/>;
+      case "map": return <MapScreen data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData} setPage={setPage}/>;
+      case "crops": return <CropsScreen data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData}/>;
       case "season": return <SeasonalCalendar data={data} setPage={setPage}/>;
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
