@@ -19,13 +19,17 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { C, F } from "../../../lib/theme";
 import { CROP_COLORS } from "../../../data/crops";
+import { ZT_MAP } from "../../../data/zones";
+import { LDB } from "../../../data/livestock";
 import { rCM } from "../../../lib/regional";
+import { buildZoneSpaceMap } from "../../../lib/farm-calc";
+import FarmIcon from "../../../components/FarmIcon";
 import { localDateFromKey, todayLocalKey } from "../../../lib/utils";
 import CropStagePatch from "./CropStagePatch";
 import RoadLayer from "./RoadLayer";
 import ZoneSurface from "./ZoneSurface";
 import ZoneOverlay from "./ZoneOverlay";
-import { isPlantZone, mapBackgroundStyle, mapVignetteStyle, zoneRadius } from "./visuals";
+import { isPlantZone, mapBackgroundStyle, mapVignetteStyle, zoneRadius, zoneAnimalGroups, zoneFillColor } from "./visuals";
 
 /* Props
    ─────
@@ -118,6 +122,12 @@ export default function LivingFarmMap({
       onCropColorMap(cropColorMap);
     }
   }, [cropColorMap, showCropPatches, onCropColorMap]);
+
+  /* Zone fill % (plant zones) for the map pill */
+  const zoneSpace = useMemo(
+    () => buildZoneSpaceMap(data.zones, data.garden && data.garden.plots ? data.garden.plots : [], data.farmW || 100, data.farmH || 60, data.region),
+    [data.zones, data.garden, data.farmW, data.farmH, data.region]
+  );
 
   /* Per-zone patch geometry: uses saved patch positions if present,
      otherwise auto-fills bottom-up by area share. Mirrors the previous
@@ -264,6 +274,15 @@ export default function LivingFarmMap({
           const hPct = ((z.hM || 8) / fH * 100).toFixed(1);
           const isUrgent = urgentZoneIds.has(z.id);
           const patches = patchesForZone(z);
+          const zt = ZT_MAP.get(z.type);
+          const plantZone = isPlantZone(z.type);
+          const sp = plantZone ? zoneSpace[z.id] : null;
+          const fillPct = sp && sp.totalM2 > 0 ? Math.round((sp.pct || 0) * 100) : null;
+          const animalGroups = zoneAnimalGroups(z, data.livestock && data.livestock.animals);
+          const shownGroups = animalGroups.slice(0, 3);
+          const extraGroups = animalGroups.length - shownGroups.length;
+          const animalTotal = animalGroups.reduce(function(s, g) { return s + g.count; }, 0);
+          const pillAtBottom = patches.length > 0 || shownGroups.length > 0;
 
           /* Click behaviour:
              - if a custom onZoneClick is given, defer to it (Walk uses this to jump)
@@ -313,22 +332,67 @@ export default function LivingFarmMap({
                 );
               })}
 
-              {/* Name label — compact, no icons or prop art */}
-              <div style={{
+              {/* Animal tokens — species chips for barn/pasture zones */}
+              {shownGroups.length > 0 && (
+                <div style={{
+                  position: "absolute", left: 4, top: 4,
+                  display: "flex", flexWrap: "wrap", gap: 3,
+                  maxWidth: "92%",
+                  pointerEvents: "none", zIndex: 6,
+                }}>
+                  {shownGroups.map(function(gr) {
+                    const db = LDB[gr.type];
+                    return (
+                      <span key={gr.type} style={{
+                        display: "inline-flex", alignItems: "center", gap: 3,
+                        padding: "2px 6px", borderRadius: 999,
+                        background: "rgba(255,253,247,.9)",
+                        border: "1px solid rgba(43,58,46,.12)",
+                        boxShadow: "0 1px 3px rgba(38,50,30,.12)",
+                        fontSize: 9, fontWeight: 800, color: "#4a3b28",
+                      }}>
+                        <FarmIcon name={gr.type} emoji={db ? db.e : "🐾"} size={11}/>
+                        {gr.count}
+                      </span>
+                    );
+                  })}
+                  {extraGroups > 0 && (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center",
+                      padding: "2px 6px", borderRadius: 999,
+                      background: "rgba(255,253,247,.8)",
+                      border: "1px solid rgba(43,58,46,.12)",
+                      fontSize: 9, fontWeight: 800, color: "#6b5d49",
+                    }}>+{extraGroups}</span>
+                  )}
+                </div>
+              )}
+
+              {/* Zone pill — type icon + name + fill % / head count */}
+              <div data-zone-pill="v2" style={{
                 position: "absolute",
-                top: patches.length > 0 ? "auto" : "50%",
-                bottom: patches.length > 0 ? 3 : "auto",
+                top: pillAtBottom ? "auto" : "50%",
+                bottom: pillAtBottom ? 3 : "auto",
                 left: "50%",
-                transform: patches.length > 0 ? "translateX(-50%)" : "translate(-50%, -50%)",
-                padding: "4px 8px", borderRadius: 9,
-                background: "rgba(25,35,25,.37)", backdropFilter: "blur(3px)",
-                fontSize: 10, fontWeight: 850, color: "#fff",
-                whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis",
+                transform: pillAtBottom ? "translateX(-50%)" : "translate(-50%, -50%)",
+                display: "flex", alignItems: "center", gap: 4,
+                padding: "3px 8px", borderRadius: 999,
+                background: "rgba(252,250,243,.9)", backdropFilter: "blur(4px)",
+                border: "1px solid rgba(43,58,46,.14)",
+                boxShadow: "0 1px 4px rgba(38,50,30,.16)",
+                fontSize: 10, fontWeight: 800, color: "#2b3a2e",
+                whiteSpace: "nowrap", maxWidth: "92%", overflow: "hidden",
                 pointerEvents: "none",
-                textShadow: "0 1px 3px rgba(0,0,0,.38)",
                 zIndex: 8,
               }}>
-                {z.name}
+                {zt && <span style={{ fontSize: 9, lineHeight: 1 }}>{zt.icon}</span>}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{z.name}</span>
+                {fillPct != null && (
+                  <span style={{ color: zoneFillColor(fillPct), fontFamily: F.mono, fontWeight: 800 }}>{fillPct}%</span>
+                )}
+                {!plantZone && animalTotal > 0 && (
+                  <span style={{ color: "#6b5635", fontFamily: F.mono, fontWeight: 800 }}>{animalTotal}</span>
+                )}
               </div>
             </div>
           );

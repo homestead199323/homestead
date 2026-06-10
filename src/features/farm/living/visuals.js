@@ -1,3 +1,5 @@
+import { POULTRY_SPECIES, GRAZER_SPECIES } from "../../../data/livestock";
+
 export const PLANT_ZONE_TYPES = new Set(["veg", "orchard", "herbs", "greenhouse"]);
 
 export function isPlantZone(type) {
@@ -104,8 +106,8 @@ export function zoneSurfaceStyle(type) {
 export function mapBackgroundStyle() {
   return {
     background:
-      "radial-gradient(circle at 18% 12%, rgba(255,255,210,.34) 0 1px, transparent 2px), radial-gradient(circle at 74% 22%, rgba(255,237,180,.24) 0 1px, transparent 2px), linear-gradient(135deg, #b8c586, #829b60)",
-    backgroundSize: "34px 34px, 47px 43px, 100% 100%",
+      "radial-gradient(circle at 18% 12%, rgba(255,255,225,.20) 0 1px, transparent 2px), linear-gradient(160deg, #c3cf9b 0%, #a6ba7e 100%)",
+    backgroundSize: "38px 38px, 100% 100%",
   };
 }
 
@@ -114,8 +116,59 @@ export function mapVignetteStyle() {
     position: "absolute",
     inset: 0,
     background:
-      "radial-gradient(circle at 0 0, rgba(42,74,39,.18), transparent 31%), radial-gradient(circle at 100% 100%, rgba(42,73,36,.16), transparent 34%)",
+      "radial-gradient(circle at 0 0, rgba(42,74,39,.10), transparent 31%), radial-gradient(circle at 100% 100%, rgba(42,73,36,.09), transparent 34%)",
     pointerEvents: "none",
     zIndex: 1,
   };
+}
+
+/* ── Crop growth-stage design tokens (CropStagePatch v3 + legends) ── */
+export const STAGE_STYLE = {
+  just_planted: {
+    label: "Planted",
+    bg: "rgba(243,232,206,.93)",
+    border: "rgba(166,138,86,.45)",
+    ring: "#b08d57",
+    text: "#6b5635",
+  },
+  growing: {
+    label: "Growing",
+    bg: "rgba(224,239,215,.93)",
+    border: "rgba(86,140,96,.5)",
+    ring: "#3f8f5f",
+    text: "#2f6644",
+  },
+  ready: {
+    label: "Ready",
+    bg: "rgba(252,236,205,.96)",
+    border: "rgba(214,138,42,.7)",
+    ring: "#e08a2e",
+    text: "#9a5f14",
+    glow: "0 0 12px rgba(224,138,46,.4)",
+  },
+};
+
+/* Capacity → color for the zone fill-% pill */
+export function zoneFillColor(pct) {
+  if (pct >= 95) return "#c84b42";
+  if (pct >= 70) return "#e08a2e";
+  return "#3f8f5f";
+}
+
+/* Which species live in a barn/pasture zone. Animals aren't zone-linked
+   in data (v1), so this mirrors the housing rule used on the dashboard:
+   poultry + rabbits → barn/coop, grazers + pigs → pasture. */
+const BARN_EXTRA = new Set(["Rabbit"]);
+export function zoneAnimalGroups(zone, animals) {
+  if (!zone || (zone.type !== "barn" && zone.type !== "pasture")) return [];
+  const list = Array.isArray(animals) ? animals : [];
+  const match = list.filter(a => a && (zone.type === "barn"
+    ? (POULTRY_SPECIES.has(a.type) || BARN_EXTRA.has(a.type))
+    : (GRAZER_SPECIES.has(a.type) || a.type === "Pig")));
+  const byType = {};
+  match.forEach(a => { byType[a.type] = (byType[a.type] || 0) + (a.count || 0); });
+  return Object.entries(byType)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, count]) => ({ type, count }));
 }

@@ -12,12 +12,13 @@ import { appendLog, todayLocalKey, localDateFromKey, addDaysToLocalKey } from ".
 import { getRegionalCrops, getRegionalVarieties, rCM, rCR } from "../../lib/regional";
 import { cropMeasureType, plantsFromArea, expectedYield, buildZoneSpaceMap } from "../../lib/farm-calc";
 import PlotOverlay from "./PlotOverlay";
+import FarmIcon from "../../components/FarmIcon";
 import LivingFarmMap from "./living/LivingFarmMap";
 import CropStagePatch from "./living/CropStagePatch";
 import RoadLayer from "./living/RoadLayer";
 import ZoneSurface from "./living/ZoneSurface";
 import ZonePalette, { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
-import { mapBackgroundStyle, mapVignetteStyle, zoneRadius } from "./living/visuals";
+import { mapBackgroundStyle, mapVignetteStyle, zoneRadius, STAGE_STYLE } from "./living/visuals";
 
 function BackgroundLayer() {
   return (
@@ -523,7 +524,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
                 }}>
                 <ZoneSurface type={z.type} rounded={zoneRadius(z.type)}/>
                 {/* Zone name */}
-                <div style={{position:"absolute",top:cropPatches.length>0?"auto":"50%",bottom:cropPatches.length>0?3:"auto",left:"50%",transform:cropPatches.length>0?"translateX(-50%)":"translate(-50%, -50%)",padding:"4px 8px",fontSize:10,fontWeight:850,color:"#fff",background:"rgba(25,35,25,.37)",borderRadius:9,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"88%",zIndex:8,pointerEvents:"none",textShadow:"0 1px 3px rgba(0,0,0,.38)",backdropFilter:"blur(3px)"}}>{z.name}</div>
+                <div style={{position:"absolute",top:cropPatches.length>0?"auto":"50%",bottom:cropPatches.length>0?3:"auto",left:"50%",transform:cropPatches.length>0?"translateX(-50%)":"translate(-50%, -50%)",padding:"4px 8px",fontSize:10,fontWeight:850,color:"#2b3a2e",background:"rgba(252,250,243,.9)",borderRadius:999,border:"1px solid rgba(43,58,46,.14)",boxShadow:"0 1px 4px rgba(38,50,30,.16)",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"88%",zIndex:8,pointerEvents:"none",backdropFilter:"blur(4px)"}}>{z.name}</div>
                 {/* Crop patches — auto-laid-out, stage-aware (purely visual, no manipulation) */}
                 {cropPatches.map((cb) => {
                   return <CropStagePatch key={cb.plotId} patch={cb} showText={cropPatches.length <= 4}/>;
@@ -690,24 +691,17 @@ function Setup({data, setData, onPlantInZone, onBack}) {
       <ZonePalette zones={data.zones} armedType={armedType} onArm={setArmedType}/>
       </div>
 
-      {/* Crop color legend */}
-      {(()=>{
-        const LCC = CROP_COLORS.slice(0, 8);
-        const lm=new Map();let li=0;
-        data.garden.plots.filter(p=>p.status!=="harvested").forEach(p=>{if(!lm.has(p.crop)){lm.set(p.crop,LCC[li%LCC.length]);li++;}});
-        if(lm.size===0)return null;
-        return(
-          <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"8px 0 0",alignItems:"center"}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.t2}}>Crops:</span>
-            {[...lm.entries()].map(([name,cc])=>(
-              <div key={name} style={{display:"flex",alignItems:"center",gap:3}}>
-                <div style={{width:8,height:8,borderRadius:2,background:`rgba(${cc.r},${cc.g},${cc.b},.55)`,boxShadow:`0 0 4px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
-                <span style={{fontSize:10,color:C.t1}}>{name}</span>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+      {/* Growth-stage legend — matches CropStagePatch v3 */}
+      {data.garden.plots.some(p=>p.status!=="harvested") && (
+        <div style={{display:"flex",flexWrap:"wrap",gap:"4px 12px",padding:"8px 0 0",alignItems:"center"}}>
+          {Object.entries(STAGE_STYLE).map(function([key,st]){return (
+            <div key={key} style={{display:"flex",alignItems:"center",gap:4}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:st.ring}}/>
+              <span style={{fontSize:10,color:C.t2,fontWeight:600}}>{st.label}</span>
+            </div>
+          );})}
+        </div>
+      )}
 
       {/* Inline editor for selected zone */}
       {sz && (
@@ -966,7 +960,7 @@ function Farming({data, setData, pageData, clearPageData}) {
                               onMouseEnter={function(e){e.currentTarget.style.background=C.soft;}}
                               onMouseLeave={function(e){e.currentTarget.style.background=isSel?C.soft:"transparent";}}
                             >
-                              {c.emoji} {c.name}
+                              <FarmIcon name={c.name} emoji={c.emoji} size={17}/> {c.name}
                             </div>
                           );
                         })}

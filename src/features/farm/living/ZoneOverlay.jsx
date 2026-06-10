@@ -17,6 +17,9 @@ import { C, F } from "../../../lib/theme";
 import { Overlay, Btn } from "../../../components/ui";
 import { ZT_MAP } from "../../../data/zones";
 import { LDB } from "../../../data/livestock";
+import { CROP_MAP } from "../../../data/crops";
+import FarmIcon from "../../../components/FarmIcon";
+import { zoneAnimalGroups } from "./visuals";
 import { buildZoneSpaceMap } from "../../../lib/farm-calc";
 
 const PLANT_TYPES = ["veg", "orchard", "herbs", "greenhouse"];
@@ -47,9 +50,8 @@ export default function ZoneOverlay({ zone, data, onClose, onEditLayout, onPlant
     ? data.garden.plots.filter(p => p.zone === zone.id && p.status !== "harvested")
     : [];
 
-  const zAnimals = isAnimal && data.livestock && Array.isArray(data.livestock.animals)
-    ? data.livestock.animals.filter(a => a && a.zone === zone.id)
-    : [];
+  const zAnimalGroups = isAnimal ? zoneAnimalGroups(zone, data.livestock && data.livestock.animals) : [];
+  const zAnimalTotal = zAnimalGroups.reduce((s, g) => s + g.count, 0);
 
   const fillPct = Math.round((sp.pct || 0) * 100);
   const fillColor = fillPct >= 95 ? C.red : fillPct >= 70 ? C.orange : C.green;
@@ -113,7 +115,10 @@ export default function ZoneOverlay({ zone, data, onClose, onEditLayout, onPlant
                     padding: "5px 8px", background: C.bg, borderRadius: 6,
                     display: "flex", justifyContent: "space-between", gap: 8,
                   }}>
-                    <span>🌱 {p.name || p.crop}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <FarmIcon name={p.crop} emoji={(CROP_MAP.get(p.crop) || {}).emoji} size={15}/>
+                      {p.name || p.crop}
+                    </span>
                     <span style={{ color: C.t2, fontSize: 11 }}>
                       {p.status === "ready" ? "ready!" : p.status === "growing" ? "growing" : p.status}
                     </span>
@@ -131,22 +136,25 @@ export default function ZoneOverlay({ zone, data, onClose, onEditLayout, onPlant
         {isAnimal && (
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.t2, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
-              Animals · {zAnimals.length}
+              Animals · {zAnimalTotal}
             </div>
-            {zAnimals.length === 0 ? (
+            {zAnimalGroups.length === 0 ? (
               <div style={{ fontSize: 12, color: C.t3, fontStyle: "italic" }}>
-                No animals linked to this zone yet.
+                No animals housed here yet.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {zAnimals.slice(0, 6).map(a => {
-                  const k = LDB[a.type];
+                {zAnimalGroups.slice(0, 6).map(g => {
+                  const k = LDB[g.type];
                   return (
-                    <div key={a.id} style={{
+                    <div key={g.type} style={{
                       fontSize: 12, color: C.text,
                       padding: "5px 8px", background: C.bg, borderRadius: 6,
+                      display: "flex", alignItems: "center", gap: 6,
                     }}>
-                      {(k && k.icon) ? k.icon + " " : "🐄 "}{a.name || (k && k.label) || a.type}
+                      <FarmIcon name={g.type} emoji={k ? k.e : "🐾"} size={15}/>
+                      <span style={{ flex: 1 }}>{g.type}</span>
+                      <span style={{ color: C.t2, fontSize: 11 }}>×{g.count}</span>
                     </div>
                   );
                 })}

@@ -5,6 +5,7 @@ import { uid } from "../../lib/storage";
 import { rCM } from "../../lib/regional";
 import { useSwipeUp } from "../../lib/use-swipe-up";
 import WalkMap from "./WalkMap";
+import FarmIcon from "../../components/FarmIcon";
 import { buildWalkStops } from "./walk-stops";
 
 /* ═══════════════════════════════════════════
@@ -257,7 +258,7 @@ function StopPopup(props) {
       <div style={tailStyle} />
       <div {...(props.swipe ? props.swipe.bind : {})} style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ fontSize: 28, lineHeight: 1, flex: "0 0 auto" }}>{task.emoji || "🌱"}</div>
+          <div style={{ display: "flex", alignItems: "center", flex: "0 0 auto" }}><FarmIcon name={task.cropName || task.speciesType} emoji={task.emoji || "🌱"} size={26}/></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 800, fontFamily: F.head, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {task.title}
@@ -557,7 +558,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: task.desc ? 8 : 10 }}>
-                  <div style={{ fontSize: 28, lineHeight: 1, flex: "0 0 auto" }}>{task.emoji || "🌱"}</div>
+                  <div style={{ display: "flex", alignItems: "center", flex: "0 0 auto" }}><FarmIcon name={task.cropName || task.speciesType} emoji={task.emoji || "🌱"} size={26}/></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, fontFamily: F.head, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {task.title}

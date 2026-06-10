@@ -10,6 +10,7 @@ import { CROPS } from "../../data/crops";
 import { CROP_DIFFICULTY, parseSowMonths } from "../../lib/calendar";
 import { getRegionalCrop } from "../../lib/regional";
 import { uid } from "../../lib/storage";
+import FarmIcon from "../../components/FarmIcon";
 import { todayLocalKey, addDaysToLocalKey } from "../../lib/utils";
 
 /* ─── Constants ─────────────────────────────────────────── */
@@ -279,7 +280,7 @@ function ScreenPlants({ region, zoneType, selected, setSelected, onFinish, onBac
           return (
             <button key={c.name} style={S.cropCard(active)} onClick={function(){ toggle(c.name); }}>
               {active && <span style={S.checkBadge}>✓</span>}
-              <span style={{fontSize:28,marginBottom:6,display:"block"}}>{c.emoji}</span>
+              <span style={{marginBottom:6,display:"flex",justifyContent:"center"}}><FarmIcon name={c.name} emoji={c.emoji} size={28}/></span>
               <span style={{fontSize:12,fontWeight:700,color:C.text,lineHeight:1.3,display:"block"}}>{c.name}</span>
               <span style={{fontSize:10,color:C.t3,marginTop:2,display:"block"}}>{c.days}d</span>
             </button>

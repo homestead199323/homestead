@@ -3,6 +3,7 @@ import { C, SX } from "../../lib/theme";
 import { LDB } from "../../data/livestock";
 import { BREEDS } from "../../data/breeds";
 import { Btn, Card, Overlay, Pill } from "../../components/ui";
+import FarmIcon from "../../components/FarmIcon";
 
 /* ═══════════════════════════════════════════
    ANIMAL OVERLAY — shared popup used from Livestock, TaskQueue, Dashboard
@@ -23,7 +24,7 @@ function AnimalOverlay({animal, data, setData, onClose}) {
   const breedInfo = animal.breed ? (BREEDS[animal.type] || []).find(b => b.name === animal.breed) : null;
 
   return (
-    <Overlay title={`${db.e} ${animal.name || animal.type} Care Guide`} onClose={onClose} wide>
+    <Overlay title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={animal.type} emoji={db.e} size={24}/>{(animal.name || animal.type) + " Care Guide"}</span>} onClose={onClose} wide>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         <Pill>×{animal.count} head</Pill>
         {animal.breed && <Pill c={C.blue} bg={C.tBlue}>{animal.breed}</Pill>}

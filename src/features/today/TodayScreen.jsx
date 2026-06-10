@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 
 import { C, F, SX } from "../../lib/theme";
 import { ZT_MAP } from "../../data/zones";
-import { CROPS, CROP_COLORS } from "../../data/crops";
+import { CROPS } from "../../data/crops";
 import { BADGES } from "../../data/badges";
 import { toLocalDateKey, todayLocalKey, localDateFromKey, addDaysToLocalKey, daysBetweenLocalKeys, markTaskDone } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
@@ -15,6 +15,8 @@ import AnimalOverlay from "../animals/AnimalOverlay";
 import PlotOverlay from "../farm/PlotOverlay";
 import WalkOverlay from "./WalkOverlay";
 import LivingFarmMap from "../farm/living/LivingFarmMap";
+import FarmIcon from "../../components/FarmIcon";
+import { STAGE_STYLE } from "../farm/living/visuals";
 
 /* ═══════════════════════════════════════════
    TODAY TASK ROW — compact row used in the home-screen Task Pipeline.
@@ -195,7 +197,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
         if (!crop || !p.plantDate) return null;
         const dSince = daysBetweenLocalKeys(p.plantDate, new Date());
         const pct = Math.min(1, dSince / crop.days);
-        return { name: p.name || p.crop, pct, emoji: crop.emoji };
+        return { name: p.name || p.crop, crop: p.crop, pct, emoji: crop.emoji };
       }).filter(Boolean);
 
       intel[z.id] = {
@@ -278,7 +280,6 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
   const _dAnimalTypes=(function(){const t={};data.livestock.animals.forEach(function(a){t[a.type]=(t[a.type]||0)+a.count;});return Object.entries(t).sort(function(a,b){return b[1]-a[1];});})();
   const _dCropCats=(function(){const cats={};_dap.forEach(function(p){const cr=rCM(data.region).get(p.crop);if(cr)cats[cr.cat]=(cats[cr.cat]||0)+1;});return Object.entries(cats).sort(function(a,b){return b[1]-a[1];});})();
   const _catIcons={Fruit:"🍅",Vegetable:"🥬",Herb:"🌿",Legume:"🫘",Root:"🥕",Grain:"🌾",Flower:"🌻",Brassica:"🥦",Perennial:"🫐",Tuber:"🥔"};
-  const _miniColorMap=(function(){const m=new Map();let i=0;data.garden.plots.forEach(function(p){if(p.status!=="harvested"&&!m.has(p.crop)){m.set(p.crop,CROP_COLORS[i%CROP_COLORS.length]);i++;}});return m;})();
 
   // Overlay lookups — pre-computed to avoid IIFEs in JSX render path
   const openPlot = openPlotId ? data.garden.plots.find(x => x.id === openPlotId) : null;
@@ -572,7 +573,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                                 <div style={{fontSize:14,fontWeight:800,color:C.text,fontFamily:F.mono}}>{pct}%</div>
                               </div>
                             </div>
-                            <div style={{fontSize:11,fontWeight:600,color:C.text,marginTop:4}}>{cp.emoji} {cp.name}</div>
+                            <div style={{fontSize:11,fontWeight:600,color:C.text,marginTop:4,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><FarmIcon name={cp.crop} emoji={cp.emoji} size={13}/>{cp.name}</div>
                             <div style={{fontSize:9,color:C.t3,marginTop:1}}>{statusLabel}</div>
                           </div>
                         );
@@ -631,16 +632,15 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
               onZoneClick={function(z){ setSelZone(z.id); }}
             />
             <button onClick={function(){setPage("map",{edit:true});}} style={{marginTop:8,background:C.gp,border:`1px solid ${C.bdr}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.green,cursor:"pointer"}}>✏️ Edit Map</button>
-            {/* Crop color legend */}
-            {_miniColorMap.size > 0 && (
-              <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",padding:"6px 0 0",alignItems:"center"}}>
-                  <span style={{fontSize:10,fontWeight:700,color:C.t2}}>Crops:</span>
-                  {[..._miniColorMap.entries()].map(function([name,cc]){return (
-                    <div key={name} style={{display:"flex",alignItems:"center",gap:3}}>
-                      <div style={{width:8,height:8,borderRadius:2,background:`rgba(${cc.r},${cc.g},${cc.b},.55)`,boxShadow:`0 0 4px rgba(${cc.r},${cc.g},${cc.b},.3)`}}/>
-                      <span style={{fontSize:10,color:C.t1}}>{name}</span>
-                    </div>
-                  );})})
+            {/* Growth-stage legend — matches CropStagePatch v3 */}
+            {data.garden.plots.some(function(p){return p.status!=="harvested";}) && (
+              <div style={{display:"flex",flexWrap:"wrap",gap:"4px 12px",padding:"6px 0 0",alignItems:"center"}}>
+                {Object.entries(STAGE_STYLE).map(function([key,st]){return (
+                  <div key={key} style={{display:"flex",alignItems:"center",gap:4}}>
+                    <span style={{width:8,height:8,borderRadius:"50%",background:st.ring}}/>
+                    <span style={{fontSize:10,color:C.t2,fontWeight:600}}>{st.label}</span>
+                  </div>
+                );})}
               </div>
             )}
           </div>

@@ -17,9 +17,9 @@ function roadStyle(base) {
   return {
     position: "absolute",
     zIndex: 2,
-    background: "rgba(222,209,173,.92)",
+    background: "rgba(228,218,189,.72)",
     borderRadius: 999,
-    boxShadow: "inset 0 1px rgba(255,255,255,.35), 0 1px 1px rgba(93,76,42,.11)",
+    boxShadow: "inset 0 1px rgba(255,255,255,.3)",
     pointerEvents: "none",
     ...base,
   };
@@ -72,9 +72,9 @@ export default function RoadLayer({ zones, farmW, farmH }) {
     <div aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}>
       {roads.map(r => {
         if (r.type === "h") {
-          return <div key={r.key} style={roadStyle({ left: `${r.x}%`, top: `${r.y}%`, width: `${r.w}%`, height: 14, transform: "translateY(-50%)" })}/>;
+          return <div key={r.key} style={roadStyle({ left: `${r.x}%`, top: `${r.y}%`, width: `${r.w}%`, height: 9, transform: "translateY(-50%)" })}/>;
         }
-        return <div key={r.key} style={roadStyle({ left: `${r.x}%`, top: `${r.y}%`, height: `${r.h}%`, width: 14, transform: "translateX(-50%)" })}/>;
+        return <div key={r.key} style={roadStyle({ left: `${r.x}%`, top: `${r.y}%`, height: `${r.h}%`, width: 9, transform: "translateX(-50%)" })}/>;
       })}
     </div>
   );

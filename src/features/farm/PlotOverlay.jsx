@@ -6,6 +6,7 @@ import { uid } from "../../lib/storage";
 import { appendLog, todayLocalKey, localDateFromKey } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
 import { plotAreaM2, buildZoneSpaceMap } from "../../lib/farm-calc";
+import FarmIcon from "../../components/FarmIcon";
 
 /* ═══════════════════════════════════════════
    PLOT OVERLAY — shared popup used from Farming, TaskQueue, Dashboard
@@ -63,7 +64,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   }
 
   return (
-    <Overlay title={`${crop.emoji} ${plot.name || plot.crop}`} onClose={onClose} sheet layoutId={layoutId}>
+    <Overlay title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={plot.crop} emoji={crop.emoji} size={24}/>{plot.name || plot.crop}</span>} onClose={onClose} sheet layoutId={layoutId}>
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
         <Pill>{plot.status}</Pill>
         <Pill>☀ {crop.sun}</Pill>

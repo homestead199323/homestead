@@ -675,12 +675,12 @@ circle.ring-progress {
 
 /* Urgent zone pulse — red expanding ring on zone border */
 @keyframes urgentZonePulse {
-  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.7),  0 2px 8px rgba(0,0,0,.06); }
-  60%  { box-shadow: 0 0 0 8px rgba(239,68,68,0),  0 2px 8px rgba(0,0,0,.06); }
-  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0),   0 2px 8px rgba(0,0,0,.06); }
+  0%   { box-shadow: 0 0 0 0 rgba(224,138,46,.6),  0 2px 8px rgba(0,0,0,.06); }
+  60%  { box-shadow: 0 0 0 8px rgba(224,138,46,0),  0 2px 8px rgba(0,0,0,.06); }
+  100% { box-shadow: 0 0 0 0 rgba(224,138,46,0),   0 2px 8px rgba(0,0,0,.06); }
 }
 .urgent-zone-pulse {
-  border-color: #ef4444 !important;
+  border-color: #e08a2e !important;
   animation: urgentZonePulse 1.8s ease-out infinite;
 }
 
@@ -693,8 +693,8 @@ circle.ring-progress {
   }
   .urgent-zone-pulse {
     animation: none !important;
-    border-color: #ef4444 !important;
-    box-shadow: 0 0 0 3px rgba(239,68,68,.35) !important;
+    border-color: #e08a2e !important;
+    box-shadow: 0 0 0 3px rgba(224,138,46,.35) !important;
   }
 }
 
