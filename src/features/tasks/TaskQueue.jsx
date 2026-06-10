@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { C, F, SX } from "../../lib/theme";
 import { Card, SwipeableRow, TaskCheckbox } from "../../components/ui";
+import FarmIcon from "../../components/FarmIcon";
 import PlotOverlay from "../farm/PlotOverlay";
 import AnimalOverlay from "../animals/AnimalOverlay";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../../data/livestock";
@@ -72,7 +73,7 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
         {completeAction && (
           <TaskCheckbox checked={completing} onToggle={handleComplete} />
         )}
-        <span style={{fontSize:22,flexShrink:0,lineHeight:1,textDecoration:strikethrough}}>{t.emoji}</span>
+        <span style={{flexShrink:0,lineHeight:1,textDecoration:strikethrough,display:"flex"}}><FarmIcon name={t.cropName || t.speciesType} emoji={t.emoji} size={22}/></span>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4,textDecoration:strikethrough}}>{t.title}</div>
           <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
@@ -167,10 +168,10 @@ function TaskQueue({data, setData, setPage, tasks}) {
       const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
       const hKey = toLocalDateKey(hDate);
       if (!evts[hKey]) evts[hKey] = [];
-      evts[hKey].push({type:"harvest", emoji:crop.emoji, label:`Harvest ${p.name||p.crop}`, plotId:p.id, key:`plot-${p.id}-harvest`});
+      evts[hKey].push({type:"harvest", emoji:crop.emoji, cropName:p.crop, label:`Harvest ${p.name||p.crop}`, plotId:p.id, key:`plot-${p.id}-harvest`});
       const dLeft = Math.ceil((hDate - now) / 864e5);
       if (dLeft >= 0 && dLeft <= 60) {
-        timeline.push({daysOut: dLeft, dueDate: hDate, type:"harvest", emoji:crop.emoji, title:`Harvest ${p.name||p.crop}`, loc, plotId:p.id, key:`plot-${p.id}-harvest`});
+        timeline.push({daysOut: dLeft, dueDate: hDate, type:"harvest", emoji:crop.emoji, cropName:p.crop, title:`Harvest ${p.name||p.crop}`, loc, plotId:p.id, key:`plot-${p.id}-harvest`});
       }
 
       // Step dates
@@ -179,10 +180,10 @@ function TaskQueue({data, setData, setPage, tasks}) {
         const sDate = localDateFromKey(addDaysToLocalKey(p.plantDate, s.d));
         const sKey = toLocalDateKey(sDate);
         if (!evts[sKey]) evts[sKey] = [];
-        evts[sKey].push({type:"step", emoji:crop.emoji, label:`${p.name||p.crop}: ${s.l}`, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
+        evts[sKey].push({type:"step", emoji:crop.emoji, cropName:p.crop, label:`${p.name||p.crop}: ${s.l}`, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
         const sLeft = Math.ceil((sDate - now) / 864e5);
         if (sLeft >= -1 && sLeft <= 30) {
-          timeline.push({daysOut: Math.max(0,sLeft), dueDate: sDate, type:"step", emoji:crop.emoji, title:`${p.name||p.crop}: ${s.l}`, loc, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
+          timeline.push({daysOut: Math.max(0,sLeft), dueDate: sDate, type:"step", emoji:crop.emoji, cropName:p.crop, title:`${p.name||p.crop}: ${s.l}`, loc, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
         }
       });
     });
@@ -387,7 +388,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       let emoji = crop?.emoji || "🌱";
       if (typeSuffix === "harvest") title = `Harvest ${p.name || p.crop}`;
       else if (typeSuffix === "water") { title = `Water ${p.name || p.crop}`; emoji = "💧"; }
-      doneTodayList.push({ key: k, emoji, title, loc });
+      doneTodayList.push({ key: k, emoji, title, loc, cropName: p.crop });
     } else if (kind === "species") {
       // Grouped species task — id is the species type name (e.g. "Chicken")
       const speciesType = id;
@@ -405,7 +406,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       else if (typeSuffix === "clean"){ title = `Clean housing — ${speciesLabel}`; emoji = "🧹"; }
       else if (typeSuffix === "bedding"){title = `Full bedding change — ${speciesLabel}`; emoji = "🛏️"; }
       else if (typeSuffix === "paddock"){title = `Rotate paddock — ${speciesLabel}`; emoji = "🔄"; }
-      doneTodayList.push({ key: k, emoji, title, loc });
+      doneTodayList.push({ key: k, emoji, title, loc, speciesType });
     } else if (kind === "animal") {
       const a = (data.livestock?.animals || []).find(x => x.id === id);
       if (!a) return;
@@ -418,7 +419,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       if (typeSuffix === "health"){title = `Health check — ${label}`; emoji = "🩺"; }
       else if (typeSuffix === "hoof") { title = `Hoof check — ${label}`; emoji = "🦶"; }
       else if (typeSuffix === "hive") { title = `Hive inspection — ${label}`; emoji = "🐝"; }
-      doneTodayList.push({ key: k, emoji, title, loc });
+      doneTodayList.push({ key: k, emoji, title, loc, speciesType: a.type });
     }
   });
 
@@ -659,7 +660,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                     }
                   }}
                   style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",marginBottom:4,background:C.card,borderRadius:C.rs,border:`1px solid ${C.bdr}`,opacity:0.65}}>
-                  <span style={{fontSize:20,flexShrink:0}}>{d.emoji}</span>
+                  <span style={{flexShrink:0,display:"flex"}}><FarmIcon name={d.cropName || d.speciesType} emoji={d.emoji} size={20}/></span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:C.t2,textDecoration:"line-through"}}>{d.title}</div>
                     <div style={{fontSize:11,color:C.t2,marginTop:2}}>📍 {d.loc}</div>
@@ -735,7 +736,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                 )}
                 {evts.length > 0 && (
                   <div style={{fontSize:10,color:isSel?"rgba(255,255,255,.8)":C.t2,marginTop:2,lineHeight:1.1}}>
-                    {evts.slice(0,1).map(e=>e.emoji).join("")}{evts.length>1?`+${evts.length-1}`:""}
+                    <FarmIcon name={evts[0].cropName || evts[0].speciesType} emoji={evts[0].emoji} size={11}/>{evts.length>1?`+${evts.length-1}`:""}
                   </div>
                 )}
               </div>
@@ -781,7 +782,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                         key: evt.key,
                         pri,
                         type: evt.type,
-                        emoji: evt.emoji,
+                        emoji: evt.emoji, cropName: evt.cropName, speciesType: evt.speciesType,
                         title: evt.label,
                         loc,
                         plotId: evt.plotId,

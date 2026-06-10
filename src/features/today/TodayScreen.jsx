@@ -74,7 +74,7 @@ const TodayTaskRow = React.memo(function TodayTaskRow({
         )}
         <span style={{width:9,height:9,borderRadius:"50%",background:priColor(t.pri),flexShrink:0}}/>
         <div style={{minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:strikethrough}}>{t.emoji} {t.title}</div>
+          <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:strikethrough}}><FarmIcon name={t.cropName || t.speciesType} emoji={t.emoji} size={14} style={{marginRight:4}}/>{t.title}</div>
           <div style={{fontSize:11,color:C.t2,marginTop:1}}>{t.loc}{t.daysOut > 0 ? ` · in ${t.daysOut}d` : t.daysOut === 0 && t.type !== "water" ? " · now" : ""}</div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
