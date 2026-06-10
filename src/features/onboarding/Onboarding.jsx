@@ -341,14 +341,25 @@ export default function Onboarding({ onComplete }) {
       var sp   = (rc.spacing || 30) / 100;
       var plotShare = areaM2 / selected.length;
       var plantCount = Math.min(Math.max(1, Math.floor(plotShare / (sp * sp))), 20);
+      // Field names MUST match the canonical plot shape created in
+      // Farm.jsx (crop / plantDate / zone / status / plantCount / qty /
+      // measureType). The original onboarding wrote cropName / plantedDate /
+      // zoneId / plants, which no consumer (task-queue, TodayScreen, Farm)
+      // recognised — plots existed but generated no tasks, no growth, no yield.
       return {
         id: uid(),
-        zoneId: zoneId,
-        cropName: cropName,
-        plantedDate: today,
+        zone: zoneId,
+        crop: cropName,
+        variety: "",
+        name: cropName,
+        plantDate: today,
         harvestDate: addDaysToLocalKey(today, rc.days || crop.days || 60),
-        plants: plantCount,
+        status: "planted",
+        plantCount: plantCount,
+        qty: plantCount,
+        measureType: "plants",
         expectedYieldKg: Math.round((rc.yld || crop.yld || 1) * plantCount / 4 * 10) / 10,
+        varietyNote: "",
         notes: "",
         steps: (rc.steps || crop.steps || []).map(function(s){ return {...s, done:false}; }),
       };
@@ -359,6 +370,11 @@ export default function Onboarding({ onComplete }) {
       city: city.trim(),
       zones: [zone],
       garden: { plots },
+      // Starter canvas sized to the zone (resizable later in Map › Edit
+      // Layout). Without this the map falls back to the 100×60 m default
+      // and a 6 m² starter bed renders as a barely-visible speck.
+      farmW: Math.max(16, Math.ceil(xM + wM + 8)),
+      farmH: Math.max(10, Math.ceil(yM + hM + 6)),
       setupDone: true,
     });
   }

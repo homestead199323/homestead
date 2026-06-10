@@ -33,6 +33,43 @@ export function migrateZones(data) {
 }
 
 // ---------------------------------------------------------------------------
+// migratePlotSchema — fix plots written by the original onboarding wizard
+// (2026-05-15 → 2026-06-10), which used cropName / plantedDate / zoneId /
+// plants instead of the canonical crop / plantDate / zone / plantCount and
+// omitted `status`. No consumer recognised those fields, so the plots were
+// invisible: no tasks, no growth tracking, no yield. Both real production
+// users were affected. Renames in place, preserves any already-correct keys.
+// ---------------------------------------------------------------------------
+export function migratePlotSchema(data) {
+  const plots = data?.garden?.plots;
+  if (!Array.isArray(plots) || plots.length === 0) return data;
+  let changed = false;
+  const fixed = plots.map(p => {
+    if (!p || typeof p !== "object") return p;
+    const legacy = ("cropName" in p) || ("plantedDate" in p) || ("zoneId" in p) || ("plants" in p);
+    if (!legacy) return p;
+    changed = true;
+    const np = { ...p };
+    if (np.crop === undefined && np.cropName !== undefined) np.crop = np.cropName;
+    if (np.plantDate === undefined && np.plantedDate !== undefined) np.plantDate = np.plantedDate;
+    if (np.zone === undefined && np.zoneId !== undefined) np.zone = np.zoneId;
+    if (np.plantCount === undefined && np.plants !== undefined) np.plantCount = np.plants;
+    if (np.qty === undefined && np.plants !== undefined) np.qty = np.plants;
+    if (np.measureType === undefined) np.measureType = "plants";
+    if (np.status === undefined) np.status = np.plantDate ? "planted" : "planned";
+    if (np.name === undefined && np.crop) np.name = np.crop;
+    if (np.variety === undefined) np.variety = "";
+    if (np.varietyNote === undefined) np.varietyNote = "";
+    delete np.cropName;
+    delete np.plantedDate;
+    delete np.zoneId;
+    delete np.plants;
+    return np;
+  });
+  return changed ? { ...data, garden: { ...data.garden, plots: fixed } } : data;
+}
+
+// ---------------------------------------------------------------------------
 // migrateGamify — bootstrap gamification state for users who predate it
 // Also backfills `celebratedBadges` (Phase 8.4) for users who earned badges
 // before the celebration overlay existed — they should not see a surprise

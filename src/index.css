@@ -104,6 +104,14 @@
   --tint-crop-bd:          rgba(45,106,79,.08);
   --tint-animal-bd:        rgba(180,150,60,.08);
   --tint-money-neg-bd:     rgba(220,60,60,.08);
+
+  /* ── Skeleton shimmer (dark-mode override below) ── */
+  --skeleton-base:         #f0f0f0;
+  --skeleton-sheen:        #e0e0e0;
+
+  /* ── Empty-state gradients (dark-mode overrides below) ── */
+  --grd-light: linear-gradient(135deg, #f0faf4 0%, #e8f5ee 50%, #f0f9ff 100%);
+  --grd-warm:  linear-gradient(135deg, #fef9ef 0%, #fff7ed 50%, #fef3c7 100%);
 }
 
 /* ══════════════════════════════════════════════════
@@ -159,6 +167,10 @@
   --tint-crop-bd:          rgba(74,190,133,.18);
   --tint-animal-bd:        rgba(229,168,49,.20);
   --tint-money-neg-bd:     rgba(239,68,68,.20);
+  --skeleton-base:         #1f2c20;
+  --skeleton-sheen:        #2a3a2c;
+  --grd-light: linear-gradient(135deg, #1c2a1f 0%, #18261c 50%, #15212a 100%);
+  --grd-warm:  linear-gradient(135deg, #242117 0%, #211d13 50%, #2a2410 100%);
 }
 
 /* System-preference auto dark (no stored override) */
@@ -206,6 +218,10 @@
     --tint-crop-bd:          rgba(74,190,133,.18);
     --tint-animal-bd:        rgba(229,168,49,.20);
     --tint-money-neg-bd:     rgba(239,68,68,.20);
+    --skeleton-base:         #1f2c20;
+    --skeleton-sheen:        #2a3a2c;
+    --grd-light: linear-gradient(135deg, #1c2a1f 0%, #18261c 50%, #15212a 100%);
+    --grd-warm:  linear-gradient(135deg, #242117 0%, #211d13 50%, #2a2410 100%);
   }
 }
 
@@ -476,7 +492,9 @@ button[data-icon] { min-height: unset; }
 /* ═══════════════════════════════════════════
    SIDEBAR
    ═══════════════════════════════════════════ */
-nav button:hover {
+/* Hover tint for nav buttons — but never wash out the active item's
+   green-pale background (the !important would otherwise override it). */
+nav button:hover:not([aria-current="page"]) {
   background: rgba(46, 107, 82, 0.06) !important;
 }
 
@@ -600,7 +618,7 @@ input[type="url"]:focus, select:focus, textarea:focus {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--skeleton-base, #f0f0f0) 25%, var(--skeleton-sheen, #e0e0e0) 50%, var(--skeleton-base, #f0f0f0) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-xs);

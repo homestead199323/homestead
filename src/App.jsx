@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useReducer } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Leaf, User, MessageSquare, Settings
@@ -16,7 +16,7 @@ import {
 import { C, F, SX } from "./lib/theme";
 import { todayLocalKey } from "./lib/utils";
 import { buildTaskQueue } from "./lib/task-queue";
-import { migrateZones, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
+import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
 import Manuals from "./features/manuals/Manuals";
@@ -95,7 +95,7 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
       {BOTTOM_TABS.map(function(tab) {
         const isActive = tab.id==="more" ? moreOpen : (page===tab.id && !moreOpen);
         return (
-          <button key={tab.id} aria-label={tab.l}
+          <button key={tab.id} aria-label={tab.l} aria-current={tab.id!=="more"&&isActive?"page":undefined}
             onClick={function(){ if(tab.id==="more"){setMoreOpen(!moreOpen);}else{setMoreOpen(false);setPage(tab.id);} }}
             style={{
               flex:1, display:"flex", flexDirection:"column", alignItems:"center",
@@ -142,7 +142,7 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpe
         <div style={{padding:"4px 0"}}>
           {MORE_ITEMS.map(function(item) {
             return (
-              <button key={item.id} onClick={function(){setPage(item.id);onClose();}}
+              <button key={item.id} onClick={function(){setPage(item.id);onClose();}} aria-current={page===item.id?"page":undefined}
                 style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px 20px",
                   border:"none",background:page===item.id?C.gp:"transparent",
                   color:page===item.id?C.green:C.text,cursor:"pointer",
@@ -187,6 +187,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       let initial = d ? {...DEF,...d,log:d.log||[],costs:d.costs||{items:[]}} : DEF;
       if (!initial.schemaVersion) initial = {...initial, schemaVersion: 7};
       initial = migrateZones(initial);
+      initial = migratePlotSchema(initial);
       initial = migrateGamify(initial);
       initial = migrateCompletions(initial);
       return initial;
@@ -264,7 +265,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
         try {
           let migrated = {...DEF, ...fresh, log: fresh.log||[], costs: fresh.costs||{items:[]}};
           if (!migrated.schemaVersion) migrated = {...migrated, schemaVersion: 7};
-          migrated = migrateCompletions(migrateGamify(migrateZones(migrated)));
+          migrated = migrateCompletions(migrateGamify(migratePlotSchema(migrateZones(migrated))));
           dispatchData({ type: "SET_ALL", data: migrated });
           saveFarm(migrated); // keep local cache aligned; do NOT re-push
         } catch (e) { console.warn("[sync] hydrate from remote failed:", e); }
@@ -336,11 +337,14 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   const exportData = useCallback(() => {
     try {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = `myterra-backup-${todayLocalKey()}.json`;
       a.click();
-      URL.revokeObjectURL(a.href);
+      // Delay revocation — revoking synchronously after click() cancels the
+      // download in Safari (and races in other browsers).
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
     } catch(e) { console.warn("Export failed:", e); }
   }, [data]);
 
@@ -358,7 +362,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
         )) {
           throw new Error("Backup file contains reserved keys and cannot be imported safely.");
         }
-        const merged = migrateCompletions(migrateGamify(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}})));
+        const merged = migrateCompletions(migrateGamify(migratePlotSchema(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}}))));
         setData(merged);
       } catch(err) { alert("Invalid backup file: " + err.message); }
     };
@@ -415,7 +419,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
             <React.Fragment key={n.id}>
             {showHeader && !isTablet && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:C.t3,padding:"10px 14px 3px",marginTop:idx===0?0:6}}>{n.group}</div>}
             {showHeader && isTablet && idx!==0 && <div style={{height:1,background:C.bdr,margin:"6px 12px"}}/>}
-            <button onClick={()=>{setPage(n.id);}} className="nav-item" style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
+            <button onClick={()=>{setPage(n.id);}} className="nav-item" aria-current={page===n.id?"page":undefined} style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
               <span style={{width:isTablet?undefined:24,display:"flex",alignItems:"center",justifyContent:"center",opacity:page===n.id?1:0.55,transition:"opacity .2s"}}><n.E size={isTablet?20:17} strokeWidth={page===n.id?2.2:1.8}/></span>{!isTablet&&n.l}
               {n.id==="home"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #ef4444, #dc2626)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,minWidth:18,textAlign:"center",boxShadow:"0 2px 6px rgba(239,68,68,.3)"}}>{taskCount}</span>}
               {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
@@ -473,6 +477,11 @@ function AuthGate() {
   // bump remounts AppInner cleanly on each fresh sign-in so its reducer
   // re-seeds from the new user's reconciled data.
   const [sessionKey, setSessionKey] = useState(0);
+  // Which user id we've already reconciled for. supabase-js v2 re-emits
+  // SIGNED_IN on tab focus/visibility; without this guard every focus ran
+  // reconcileAndReady → sessionKey bump → FULL AppInner remount (onboarding
+  // wizard reset to step 0, open overlays closed, "Loading your farm…" flash).
+  const reconciledFor = useRef(null);
 
   // Local-only escape hatch: if env vars are absent, never gate, and allow
   // the local cache (single-user, no accounts — original pre-Phase-5 behavior).
@@ -571,7 +580,10 @@ function AuthGate() {
     getSession().then(session => {
       if (!active) return;
       if (session) {
-        reconcileAndReady();
+        if (reconciledFor.current !== session.user.id) {
+          reconciledFor.current = session.user.id;
+          reconcileAndReady();
+        }
       } else {
         setPhase("signedout");
       }
@@ -583,8 +595,14 @@ function AuthGate() {
     const unsub = onAuthChange((event, session) => {
       if (!active) return;
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-        if (session) reconcileAndReady();
+        // Dedupe: SIGNED_IN re-fires on tab focus for an unchanged session.
+        // Only a genuinely new user id triggers a fresh reconcile + remount.
+        if (session && reconciledFor.current !== session.user.id) {
+          reconciledFor.current = session.user.id;
+          reconcileAndReady();
+        }
       } else if (event === "SIGNED_OUT") {
+        reconciledFor.current = null;
         setCloudData(null);
         setPhase("signedout");
       }

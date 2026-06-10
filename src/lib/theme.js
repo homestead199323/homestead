@@ -42,8 +42,8 @@ export const C = {
   /* gradients — hardcoded because CSS vars in gradient strings
      are valid CSS but lose IntelliSense; update if tokens change */
   grd:     "linear-gradient(135deg, #2e6b52 0%, #3d9970 100%)",
-  grdLight:"linear-gradient(135deg, #f0faf4 0%, #e8f5ee 50%, #f0f9ff 100%)",
-  grdWarm: "linear-gradient(135deg, #fef9ef 0%, #fff7ed 50%, #fef3c7 100%)",
+  grdLight:"var(--grd-light)",
+  grdWarm: "var(--grd-warm)",
   grdHero: "linear-gradient(160deg, #1a4731 0%, #2e6b52 40%, #3d9970 100%)",
 
   /* ── Tinted surfaces — dark-mode aware via CSS vars ──
