@@ -6,17 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:native": "vite build",
     "postbuild": "mv dist/index.html dist/app.html && mv dist/landing.html dist/index.html && node scripts/inject-build-id.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/core": "^8.4.0",
     "@supabase/supabase-js": "^2.106.1",
     "lucide-react": "^1.14.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
     "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
