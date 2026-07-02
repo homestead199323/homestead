@@ -12,7 +12,7 @@ import { useSwipe } from "../lib/use-swipe";
    ═══════════════════════════════════════════ */
 export const Btn = React.memo(function Btn({children,onClick,v="primary",sm,dis,style:s}) {
   const st={
-    primary:{bg:C.grd,c:"#fff",shadow:"0 2px 8px rgba(45,106,79,.25)"},
+    primary:{bg:C.grd,c:"#fff",shadow:"0 2px 8px color-mix(in srgb, var(--color-green-dark) 30%, transparent)"},
     secondary:{bg:"transparent",c:C.green,border:`1.5px solid ${C.bdr}`,shadow:"none"},
     danger:{bg:"linear-gradient(135deg, #ef4444, #dc2626)",c:"#fff",shadow:"0 2px 8px rgba(239,68,68,.25)"},
     ghost:{bg:"transparent",c:C.t2,shadow:"none"},

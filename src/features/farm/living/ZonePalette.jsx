@@ -98,7 +98,7 @@ export default function ZonePalette({ zones, armedType, onArm }) {
               background: t.fill + "22",
               transition: "transform .12s ease, box-shadow .12s ease, opacity .12s ease",
               transform: isArmed ? "scale(1.08)" : "scale(1)",
-              boxShadow: isArmed ? `0 0 0 3px rgba(45,106,79,.25), 0 4px 12px rgba(0,0,0,.18)` : "none",
+              boxShadow: isArmed ? `0 0 0 3px color-mix(in srgb, var(--color-green) 25%, transparent), 0 4px 12px rgba(0,0,0,.18)` : "none",
               opacity: isDimmed ? 0.45 : 1,
               outline: "none",
               WebkitTapHighlightColor: "transparent",

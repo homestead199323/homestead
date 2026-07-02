@@ -153,8 +153,8 @@ export default function AIAssistant({data}) {
           border:"none", cursor:"pointer",
           // 6.8.2 — pulse rendered as an expanding ring via box-shadow, no extra DOM
           boxShadow: pulseOn
-            ? `0 0 0 0 ${C.green}66, 0 4px 20px rgba(45,106,79,.5)`
-            : "0 4px 20px rgba(45,106,79,.5)",
+            ? `0 0 0 0 ${C.green}66, 0 4px 20px color-mix(in srgb, var(--color-green-dark) 50%, transparent)`
+            : "0 4px 20px color-mix(in srgb, var(--color-green-dark) 50%, transparent)",
           animation: pulseOn ? "fabPulse 1.4s ease-out 1" : "none",
           display:"flex", alignItems:"center", justifyContent:"center",
           color:"#fff",

@@ -395,7 +395,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
                   alignItems:"center",
                   justifyContent:"center",
                   gap:10,
-                  boxShadow:"0 2px 8px rgba(45,106,79,.25)",
+                  boxShadow:"0 2px 8px color-mix(in srgb, var(--color-green-dark) 30%, transparent)",
                 }}
               >
                 <span style={{fontSize:18,lineHeight:1}}>🌿</span>

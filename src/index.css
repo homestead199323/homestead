@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════
    MYTERRA — Design System
-   Phase 1: Tokenized. Notion × Planta lane.
+   Phase 11 reset 2026-07-02: Daylight system (Grove). One accent, de-tinted.
    ═══════════════════════════════════════════ */
 
-/* ── Google Fonts — 400 + 600 only ── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap');
+/* ── Google Fonts — Inter only; display voice = weight + tracking ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 
 /* ══════════════════════════════════════════════════
    DESIGN TOKENS — single source of truth
@@ -12,37 +12,37 @@
    ══════════════════════════════════════════════════ */
 :root {
   /* ── Surfaces ── */
-  --color-bg: #f7f6f3;          /* warm neutral page bg — clean, not orange */
+  --color-bg: #f4f6f4;          /* cool neutral paper — Daylight base */
   --color-card: #ffffff;
 
   /* ── Living Farm Map fallback ── */
-  --farm-bg-fallback: #d9e7d6;  /* sage tint shown when background.png missing */
+  --farm-bg-fallback: #e9efe6;
 
-  /* ── Brand green — sage-forest ── */
-  --color-green: #2e6b52;       /* primary action */
-  --color-green-dark: #1a4731;  /* hero gradient deep end */
-  --color-green-light: #3d9970; /* hover / lighter variant */
-  --color-green-pale: #e8f5ee;  /* tinted backgrounds */
-  --color-green-mid: #95d5b2;   /* mid-tone accents */
+  /* ── Brand green — the single accent ── */
+  --color-green: #128147;       /* primary action — white-text safe (4.9:1) */
+  --color-green-dark: #0c5e33;
+  --color-green-light: #1fa35c;
+  --color-green-pale: #e7f3ec;
+  --color-green-mid: #7acda0;
 
   /* ── Text ── */
-  --color-text: #1a2e1a;
-  --color-text-2: #6b7b6b;
-  --color-text-3: #b8c4b8;
+  --color-text: #161b17;
+  --color-text-2: #5d6a62;
+  --color-text-3: #98a49d;
 
-  /* ── Border ── */
-  --color-border: #e8ece8;
+  /* ── Border — hairlines ── */
+  --color-border: #e4e9e5;
 
-  /* ── Feedback ── */
-  --color-red: #ef4444;
-  --color-orange: #f59e0b;
-  --color-blue: #3b82f6;
-  --color-yellow: #eab308;
+  /* ── Feedback — muted, sparing ── */
+  --color-red: #ce4f45;
+  --color-orange: #c97f17;
+  --color-blue: #2f7de0;
+  --color-yellow: #c29a17;
 
-  /* ── Shadows ── */
-  --shadow: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
-  --shadow-l: 0 10px 25px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.04);
-  --shadow-xl: 0 20px 40px rgba(0,0,0,.08), 0 8px 16px rgba(0,0,0,.04);
+  /* ── Shadows — soft + diffuse ── */
+  --shadow: 0 1px 2px rgba(16,24,18,.05), 0 4px 14px rgba(16,24,18,.06);
+  --shadow-l: 0 10px 30px rgba(16,24,18,.10), 0 3px 10px rgba(16,24,18,.06);
+  --shadow-xl: 0 18px 44px rgba(16,24,18,.13), 0 6px 16px rgba(16,24,18,.07);
 
   /* ── Radius ── */
   --radius: 16px;
@@ -71,157 +71,171 @@
   --space-8: 32px;
   --space-10: 40px;
 
-  /* ── Tinted surfaces (light mode) ──
-     Used for inner cards/rows/banners. All have dark-mode overrides below. */
+  /* ── Tinted surfaces (light) — de-tinted: neutral elevation + accent ── */
   --surface-raised:        #ffffff;
-  --surface-soft:          #f1f7ee;
-  --surface-warm:          #fbf4e8;
-  --tint-danger:           #fef2f2;
-  --tint-harvest:          #fef3c7;
-  --tint-water:            #dbeafe;
+  --surface-soft:          #eff3f0;
+  --surface-warm:          #f3f2ee;
+  --tint-danger:           #faf0ee;
+  --tint-harvest:          #f8f3e7;
+  --tint-water:            #eef4fa;
 
-  --tint-blue-soft:        #e3f2fd;
-  --tint-yellow-soft:      #fffde7;
-  --tint-orange-soft:      #fff3e0;
-  --tint-pink-soft:        #fce4ec;
-  --tint-green-soft:       #e8f5e9;
-  --tint-green-soft-2:     #f0f7f4;
-  --tint-green-band:       linear-gradient(135deg,#e8f5e9,#f1f8e9);
-  --tint-green-band-bd:    #a5d6a7;
+  --tint-blue-soft:        #eef4fa;
+  --tint-yellow-soft:      #f6f4e9;
+  --tint-orange-soft:      #f8f2e9;
+  --tint-pink-soft:        #f6f0f1;
+  --tint-green-soft:       #ecf3ee;
+  --tint-green-soft-2:     #f0f5f1;
+  --tint-green-band:       linear-gradient(135deg,#edf4ef,#e9f1eb);
+  --tint-green-band-bd:    #cfe0d4;
 
-  --tint-crop-card:        linear-gradient(135deg,#f5fbf0,#edf5e5);
-  --tint-animal-card:      linear-gradient(135deg,#faf8f0,#f5f0e5);
-  --tint-grow-card:        linear-gradient(135deg,#f8faf5,#f0f4eb);
-  --tint-money-pos:        linear-gradient(135deg,#f0faf5,#e5f5ed);
-  --tint-money-neg:        linear-gradient(135deg,#fdf5f5,#f5eaea);
-  --tint-task-urgent:      linear-gradient(135deg,#fff7ed,#fef3c7);
-  --tint-task-calm:        linear-gradient(135deg,#f0faf4,#e8f5ee);
-  --tint-map:              linear-gradient(180deg,#f7faf5,#edf4e8);
+  --tint-crop-card:        linear-gradient(135deg,#fbfcfb,#f3f7f4);
+  --tint-animal-card:      linear-gradient(135deg,#fbfbfa,#f5f4f0);
+  --tint-grow-card:        linear-gradient(135deg,#fbfcfb,#f3f7f4);
+  --tint-money-pos:        linear-gradient(135deg,#f4faf6,#edf5f0);
+  --tint-money-neg:        linear-gradient(135deg,#fbf3f2,#f6ecea);
+  --tint-task-urgent:      linear-gradient(135deg,#faf5ea,#f7f0e0);
+  --tint-task-calm:        linear-gradient(135deg,#f2f7f3,#ecf3ee);
+  --tint-map:              linear-gradient(180deg,#f2f6f2,#ebf1ec);
 
-  --tint-progress-track:   #edf3e9;
-  --tint-progress-track-bd:#e0e9da;
+  --tint-progress-track:   #edf2ee;
+  --tint-progress-track-bd:#e0e7e1;
 
-  --tint-crop-bd:          rgba(45,106,79,.08);
-  --tint-animal-bd:        rgba(180,150,60,.08);
-  --tint-money-neg-bd:     rgba(220,60,60,.08);
+  --tint-crop-bd:          rgba(18,129,71,.10);
+  --tint-animal-bd:        rgba(22,27,23,.08);
+  --tint-money-neg-bd:     rgba(206,79,69,.14);
 
-  /* ── Skeleton shimmer (dark-mode override below) ── */
-  --skeleton-base:         #f0f0f0;
-  --skeleton-sheen:        #e0e0e0;
+  /* ── Skeleton shimmer ── */
+  --skeleton-base:         #eff1ef;
+  --skeleton-sheen:        #e3e6e3;
 
-  /* ── Empty-state gradients (dark-mode overrides below) ── */
-  --grd-light: linear-gradient(135deg, #f0faf4 0%, #e8f5ee 50%, #f0f9ff 100%);
-  --grd-warm:  linear-gradient(135deg, #fef9ef 0%, #fff7ed 50%, #fef3c7 100%);
+  /* ── Empty-state gradients ── */
+  --grd-light: linear-gradient(135deg, #f2f7f3 0%, #edf3ef 100%);
+  --grd-warm:  linear-gradient(135deg, #f7f4ec 0%, #f3efe4 100%);
 }
 
 /* ══════════════════════════════════════════════════
-   DARK MODE — "farm at night" warm dark greens
-   Triggered by [data-theme="dark"] on <html>
+   DARK MODE — forest-charcoal toggle theme.
+   One bright accent (#43d17f). Triggered by
+   [data-theme="dark"] on <html>.
    ══════════════════════════════════════════════════ */
 [data-theme="dark"] {
-  --color-bg:          #111a11;
-  --color-card:        #192419;
-  --color-green:       #4abe85;
-  --color-green-dark:  #2e6b52;
-  --color-green-light: #5fd19a;
-  --color-green-pale:  #1a2e1f;
-  --color-green-mid:   #3d7a5a;
-  --color-text:        #e4ede4;
-  --color-text-2:      #7fa67f;
-  --color-text-3:      #3d5a3d;
-  --color-border:      #22332a;
-  --shadow:    0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.35);
-  --shadow-l:  0 10px 25px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.25);
-  --shadow-xl: 0 20px 40px rgba(0,0,0,.5),  0 8px 16px rgba(0,0,0,.35);
+  --color-bg:          #0f1512;
+  --color-card:        #171e1a;
+  --farm-bg-fallback:  #16211b;
+  --color-green:       #43d17f;
+  --color-green-dark:  #2fa35f;
+  --color-green-light: #63de96;
+  --color-green-pale:  #182a1f;
+  --color-green-mid:   #2e6b4c;
+  --color-text:        #ecf2ee;
+  --color-text-2:      #94a39a;
+  --color-text-3:      #5a675f;
+  --color-border:      #242d28;
+  --color-red:         #e56458;
+  --color-orange:      #e8a13c;
+  --color-blue:        #5b9cf5;
+  --color-yellow:      #d9b23c;
+  --shadow:    0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.30);
+  --shadow-l:  0 10px 28px rgba(0,0,0,.45), 0 3px 10px rgba(0,0,0,.35);
+  --shadow-xl: 0 20px 48px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.40);
 
-  /* ── Tinted surfaces — dark mode ──
-     Subtle tinted dark surfaces preserve info hierarchy without glaring whites. */
-  --surface-raised:        #1f2c20;
-  --surface-soft:          #182519;
-  --surface-warm:          #1f1d15;
-  --tint-danger:           #2a181f;
-  --tint-harvest:          #2a2010;
-  --tint-water:            #15243a;
+  /* ── Tinted surfaces — dark: neutral elevation, whisper of hue ── */
+  --surface-raised:        #1c2420;
+  --surface-soft:          #141b17;
+  --surface-warm:          #1b1f1a;
+  --tint-danger:           #251b1a;
+  --tint-harvest:          #242013;
+  --tint-water:            #14202a;
 
-  --tint-blue-soft:        #15243a;
-  --tint-yellow-soft:      #2a2410;
-  --tint-orange-soft:      #2a1f12;
-  --tint-pink-soft:        #2a181f;
-  --tint-green-soft:       #1a2e1f;
-  --tint-green-soft-2:     #182519;
-  --tint-green-band:       linear-gradient(135deg,#1c2e1f,#1a2a1c);
-  --tint-green-band-bd:    #2e6b52;
+  --tint-blue-soft:        #14202a;
+  --tint-yellow-soft:      #221f13;
+  --tint-orange-soft:      #241d13;
+  --tint-pink-soft:        #221a1d;
+  --tint-green-soft:       #16211b;
+  --tint-green-soft-2:     #141c17;
+  --tint-green-band:       linear-gradient(135deg,#17231c,#141f18);
+  --tint-green-band-bd:    #27523c;
 
-  --tint-crop-card:        linear-gradient(135deg,#1c2a1f,#192319);
-  --tint-animal-card:      linear-gradient(135deg,#252217,#1f1d15);
-  --tint-grow-card:        linear-gradient(135deg,#1c2a1f,#192319);
-  --tint-money-pos:        linear-gradient(135deg,#1b2c22,#1a2419);
-  --tint-money-neg:        linear-gradient(135deg,#2a1c1c,#241919);
-  --tint-task-urgent:      linear-gradient(135deg,#2a1f10,#241a08);
-  --tint-task-calm:        linear-gradient(135deg,#1a2e1f,#192a1c);
-  --tint-map:              linear-gradient(180deg,#162115,#111a11);
+  --tint-crop-card:        linear-gradient(135deg,#1a2620,#161e19);
+  --tint-animal-card:      linear-gradient(135deg,#1e211b,#181b16);
+  --tint-grow-card:        linear-gradient(135deg,#1a2620,#161e19);
+  --tint-money-pos:        linear-gradient(135deg,#182721,#151f1a);
+  --tint-money-neg:        linear-gradient(135deg,#251c1b,#1d1717);
+  --tint-task-urgent:      linear-gradient(135deg,#262013,#1f1a0f);
+  --tint-task-calm:        linear-gradient(135deg,#17231c,#141f18);
+  --tint-map:              linear-gradient(180deg,#131a16,#0f1512);
 
-  --tint-progress-track:   #1a261c;
-  --tint-progress-track-bd:#22332a;
+  --tint-progress-track:   #1b231f;
+  --tint-progress-track-bd:#242d28;
 
-  --tint-crop-bd:          rgba(74,190,133,.18);
-  --tint-animal-bd:        rgba(229,168,49,.20);
-  --tint-money-neg-bd:     rgba(239,68,68,.20);
-  --skeleton-base:         #1f2c20;
-  --skeleton-sheen:        #2a3a2c;
-  --grd-light: linear-gradient(135deg, #1c2a1f 0%, #18261c 50%, #15212a 100%);
-  --grd-warm:  linear-gradient(135deg, #242117 0%, #211d13 50%, #2a2410 100%);
+  --tint-crop-bd:          rgba(67,209,127,.16);
+  --tint-animal-bd:        rgba(255,255,255,.07);
+  --tint-money-neg-bd:     rgba(229,100,88,.22);
+  --skeleton-base:         #1b231f;
+  --skeleton-sheen:        #26302a;
+  --grd-light: linear-gradient(135deg, #17231c 0%, #131c16 100%);
+  --grd-warm:  linear-gradient(135deg, #211e14 0%, #1b1910 100%);
 }
 
 /* System-preference auto dark (no stored override) */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
-    --color-bg:          #111a11;
-    --color-card:        #192419;
-    --color-green:       #4abe85;
-    --color-green-dark:  #2e6b52;
-    --color-green-light: #5fd19a;
-    --color-green-pale:  #1a2e1f;
-    --color-green-mid:   #3d7a5a;
-    --color-text:        #e4ede4;
-    --color-text-2:      #7fa67f;
-    --color-text-3:      #3d5a3d;
-    --color-border:      #22332a;
-    --shadow:    0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.35);
-    --shadow-l:  0 10px 25px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.25);
-    --shadow-xl: 0 20px 40px rgba(0,0,0,.5),  0 8px 16px rgba(0,0,0,.35);
+    --color-bg:          #0f1512;
+    --color-card:        #171e1a;
+    --farm-bg-fallback:  #16211b;
+    --color-green:       #43d17f;
+    --color-green-dark:  #2fa35f;
+    --color-green-light: #63de96;
+    --color-green-pale:  #182a1f;
+    --color-green-mid:   #2e6b4c;
+    --color-text:        #ecf2ee;
+    --color-text-2:      #94a39a;
+    --color-text-3:      #5a675f;
+    --color-border:      #242d28;
+    --color-red:         #e56458;
+    --color-orange:      #e8a13c;
+    --color-blue:        #5b9cf5;
+    --color-yellow:      #d9b23c;
+    --shadow:    0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.30);
+    --shadow-l:  0 10px 28px rgba(0,0,0,.45), 0 3px 10px rgba(0,0,0,.35);
+    --shadow-xl: 0 20px 48px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.40);
 
-    --surface-raised:        #1f2c20;
-    --surface-soft:          #182519;
-    --surface-warm:          #1f1d15;
-    --tint-danger:           #2a181f;
-    --tint-harvest:          #2a2010;
-    --tint-water:            #15243a;
-    --tint-blue-soft:        #15243a;
-    --tint-yellow-soft:      #2a2410;
-    --tint-orange-soft:      #2a1f12;
-    --tint-pink-soft:        #2a181f;
-    --tint-green-soft:       #1a2e1f;
-    --tint-green-soft-2:     #182519;
-    --tint-green-band:       linear-gradient(135deg,#1c2e1f,#1a2a1c);
-    --tint-green-band-bd:    #2e6b52;
-    --tint-crop-card:        linear-gradient(135deg,#1c2a1f,#192319);
-    --tint-animal-card:      linear-gradient(135deg,#252217,#1f1d15);
-    --tint-grow-card:        linear-gradient(135deg,#1c2a1f,#192319);
-    --tint-money-pos:        linear-gradient(135deg,#1b2c22,#1a2419);
-    --tint-money-neg:        linear-gradient(135deg,#2a1c1c,#241919);
-    --tint-task-urgent:      linear-gradient(135deg,#2a1f10,#241a08);
-    --tint-task-calm:        linear-gradient(135deg,#1a2e1f,#192a1c);
-    --tint-map:              linear-gradient(180deg,#162115,#111a11);
-    --tint-progress-track:   #1a261c;
-    --tint-progress-track-bd:#22332a;
-    --tint-crop-bd:          rgba(74,190,133,.18);
-    --tint-animal-bd:        rgba(229,168,49,.20);
-    --tint-money-neg-bd:     rgba(239,68,68,.20);
-    --skeleton-base:         #1f2c20;
-    --skeleton-sheen:        #2a3a2c;
-    --grd-light: linear-gradient(135deg, #1c2a1f 0%, #18261c 50%, #15212a 100%);
-    --grd-warm:  linear-gradient(135deg, #242117 0%, #211d13 50%, #2a2410 100%);
+    /* ── Tinted surfaces — dark: neutral elevation, whisper of hue ── */
+    --surface-raised:        #1c2420;
+    --surface-soft:          #141b17;
+    --surface-warm:          #1b1f1a;
+    --tint-danger:           #251b1a;
+    --tint-harvest:          #242013;
+    --tint-water:            #14202a;
+
+    --tint-blue-soft:        #14202a;
+    --tint-yellow-soft:      #221f13;
+    --tint-orange-soft:      #241d13;
+    --tint-pink-soft:        #221a1d;
+    --tint-green-soft:       #16211b;
+    --tint-green-soft-2:     #141c17;
+    --tint-green-band:       linear-gradient(135deg,#17231c,#141f18);
+    --tint-green-band-bd:    #27523c;
+
+    --tint-crop-card:        linear-gradient(135deg,#1a2620,#161e19);
+    --tint-animal-card:      linear-gradient(135deg,#1e211b,#181b16);
+    --tint-grow-card:        linear-gradient(135deg,#1a2620,#161e19);
+    --tint-money-pos:        linear-gradient(135deg,#182721,#151f1a);
+    --tint-money-neg:        linear-gradient(135deg,#251c1b,#1d1717);
+    --tint-task-urgent:      linear-gradient(135deg,#262013,#1f1a0f);
+    --tint-task-calm:        linear-gradient(135deg,#17231c,#141f18);
+    --tint-map:              linear-gradient(180deg,#131a16,#0f1512);
+
+    --tint-progress-track:   #1b231f;
+    --tint-progress-track-bd:#242d28;
+
+    --tint-crop-bd:          rgba(67,209,127,.16);
+    --tint-animal-bd:        rgba(255,255,255,.07);
+    --tint-money-neg-bd:     rgba(229,100,88,.22);
+    --skeleton-base:         #1b231f;
+    --skeleton-sheen:        #26302a;
+    --grd-light: linear-gradient(135deg, #17231c 0%, #131c16 100%);
+    --grd-warm:  linear-gradient(135deg, #211e14 0%, #1b1910 100%);
   }
 }
 
@@ -258,7 +272,7 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #86868b; }
 
 /* ── Selection highlight ── */
-::selection { background: rgba(46, 107, 82, 0.15); color: var(--color-text); }
+::selection { background: color-mix(in srgb, var(--color-green) 16%, transparent); color: var(--color-text); }
 
 /* ── Focus ring — modern accessible style ── */
 :focus-visible {
@@ -299,14 +313,14 @@ body {
 
 /* 6.8.2 — AI FAB attention pulse: expanding ring via box-shadow, no extra DOM */
 @keyframes fabPulse {
-  0%   { box-shadow: 0 0 0 0   rgba(46, 107, 82, .55), 0 4px 20px rgba(45,106,79,.5); }
-  70%  { box-shadow: 0 0 0 16px rgba(46, 107, 82, 0),   0 4px 20px rgba(45,106,79,.5); }
-  100% { box-shadow: 0 0 0 0   rgba(46, 107, 82, 0),   0 4px 20px rgba(45,106,79,.5); }
+  0%   { box-shadow: 0 0 0 0   color-mix(in srgb, var(--color-green) 55%, transparent), 0 4px 20px color-mix(in srgb, var(--color-green-dark) 50%, transparent); }
+  70%  { box-shadow: 0 0 0 16px transparent,   0 4px 20px color-mix(in srgb, var(--color-green-dark) 50%, transparent); }
+  100% { box-shadow: 0 0 0 0   transparent,   0 4px 20px color-mix(in srgb, var(--color-green-dark) 50%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
   /* Pulse becomes a soft no-op tint instead of motion */
   @keyframes fabPulse {
-    0%, 100% { box-shadow: 0 4px 20px rgba(45,106,79,.5); }
+    0%, 100% { box-shadow: 0 4px 20px color-mix(in srgb, var(--color-green-dark) 50%, transparent); }
   }
 }
 
@@ -495,7 +509,7 @@ button[data-icon] { min-height: unset; }
 /* Hover tint for nav buttons — but never wash out the active item's
    green-pale background (the !important would otherwise override it). */
 nav button:hover:not([aria-current="page"]) {
-  background: rgba(46, 107, 82, 0.06) !important;
+  background: color-mix(in srgb, var(--color-green) 6%, transparent) !important;
 }
 
 /* ═══════════════════════════════════════════
@@ -588,7 +602,7 @@ input[type="text"]:focus, input[type="number"]:focus,
 input[type="date"]:focus, input[type="email"]:focus,
 input[type="url"]:focus, select:focus, textarea:focus {
   border-color: var(--color-green-light) !important;
-  box-shadow: 0 0 0 3px rgba(61, 153, 112, 0.12) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-green-light) 14%, transparent) !important;
   outline: none;
 }
 

@@ -39,12 +39,11 @@ export const C = {
   r:  16,
   rs: 12,
 
-  /* gradients — hardcoded because CSS vars in gradient strings
-     are valid CSS but lose IntelliSense; update if tokens change */
-  grd:     "linear-gradient(135deg, #2e6b52 0%, #3d9970 100%)",
+  /* gradients — var-based so they re-skin with the tokens/theme */
+  grd:     "linear-gradient(135deg, var(--color-green-dark) 0%, var(--color-green) 100%)",
   grdLight:"var(--grd-light)",
   grdWarm: "var(--grd-warm)",
-  grdHero: "linear-gradient(160deg, #1a4731 0%, #2e6b52 40%, #3d9970 100%)",
+  grdHero: "linear-gradient(160deg, var(--color-green-dark) 0%, var(--color-green) 55%, var(--color-green-light) 100%)",
 
   /* ── Tinted surfaces — dark-mode aware via CSS vars ──
      Used for inner cards, banners, list rows, etc. */
@@ -87,7 +86,7 @@ export const C = {
 
 export const F = {
   body: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  head: "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  head: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
   mono: "'JetBrains Mono','SF Mono','Cascadia Code',monospace",
 };
 

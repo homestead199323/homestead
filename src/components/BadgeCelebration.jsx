@@ -146,7 +146,7 @@ export function BadgeCelebration({ queue, onDismiss }) {
             fontSize: 72,
             lineHeight: 1,
             marginBottom: 16,
-            filter: "drop-shadow(0 4px 12px rgba(45, 106, 79, 0.25))",
+            filter: "drop-shadow(0 4px 12px color-mix(in srgb, var(--color-green-dark) 25%, transparent))",
           }}
         >
           {badge.emoji}
