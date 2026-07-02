@@ -783,3 +783,27 @@ circle.ring-progress {
   main { padding: 0 !important; }
   .no-print { display: none !important; }
 }
+
+/* ── Grove scene motion (Phase 11.2–11.5) ── */
+@keyframes groveBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.grove-bob { animation: groveBob 2.4s ease-in-out infinite; }
+
+@keyframes groveHalo {
+  0% { box-shadow: 0 0 0 0 rgba(224,138,46,.45); }
+  70% { box-shadow: 0 0 0 9px rgba(224,138,46,0); }
+  100% { box-shadow: 0 0 0 0 rgba(224,138,46,0); }
+}
+.grove-ready-halo { animation: groveHalo 2s ease-out infinite; }
+
+@keyframes groveRing {
+  0%, 100% { stroke-opacity: 1; }
+  50% { stroke-opacity: .35; }
+}
+.grove-ready-ring { animation: groveRing 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .grove-bob, .grove-ready-halo, .grove-ready-ring { animation: none !important; }
+}
