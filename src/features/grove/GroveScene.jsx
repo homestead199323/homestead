@@ -32,6 +32,13 @@ const TYPE_COLORS = {
   water:      { top: "#8fc2cf", l: "#6fa4b3", r: "#5e93a2", detail: "#c9e6ec" },
   default:    { top: "#c2d3a0", l: "#a6b787", r: "#90a173", detail: "#a6b787" },
 };
+/* Patch fill per growth stage — planted soil → growing green → ready gold */
+const STAGE_FILL = {
+  just_planted: { fill: "#c9a97b", stroke: "#a9895c" },
+  growing:      { fill: "#8cbd71", stroke: "#6d9d55" },
+  ready:        { fill: "#e3b45c", stroke: "#e08a2e" },
+};
+
 const BUILDING_COLORS = {
   house:   { wl: "#d8ac7a", wr: "#b5854f", roof: "#8a5a38", ridge: "#9c6b45", door: "#6b4a2e" },
   barn:    { wl: "#c2795a", wr: "#a05c40", roof: "#7c4630", ridge: "#8f563c", door: "#5c3421" },
@@ -74,9 +81,11 @@ function spriteHash(id) {
 
 export default function GroveScene({
   data,
+  setData,
   tasksByZone = {},
   onEditLayout,
   onPlantInZone,
+  onShowCrops,
   onZoneClick,
   interactive = true,
   showEditButton = true,
@@ -367,6 +376,27 @@ export default function GroveScene({
                 <polygon points={polyPoints([T.bl, T.br, G.br, G.bl])} fill={cc.l}/>
                 <polygon points={polyPoints([T.tr, T.br, G.br, G.tr])} fill={cc.r}/>
                 <polygon points={polyPoints([T.tl, T.tr, T.br, T.bl])} fill={cc.top} stroke={cc.r} strokeWidth="1" opacity={hovered ? .93 : 1}/>
+                {patches.map(pt => {
+                  const pwM = pt.pw * w;
+                  const phM = pt.ph * h;
+                  const mIn = Math.min(0.15, pwM * 0.14, phM * 0.14);
+                  const px0 = x0 + pt.px * w + mIn;
+                  const px1 = x0 + (pt.px + pt.pw) * w - mIn;
+                  const py0 = y0 + pt.py * h + mIn;
+                  const py1 = y0 + (pt.py + pt.ph) * h - mIn;
+                  if (px1 <= px0 || py1 <= py0) return null;
+                  const sf = STAGE_FILL[pt.stage] || STAGE_FILL.growing;
+                  return (
+                    <polygon
+                      key={"patch" + pt.plotId}
+                      points={polyPoints([P(px0, py0, E), P(px1, py0, E), P(px1, py1, E), P(px0, py1, E)])}
+                      fill={sf.fill}
+                      stroke={sf.stroke}
+                      strokeWidth={pt.stage === "ready" ? 1.6 : 1}
+                      opacity=".96"
+                    />
+                  );
+                })}
                 {details}
                 {trees}
               </g>
@@ -513,9 +543,11 @@ export default function GroveScene({
         <GroveZoneCard
           zone={selZone}
           data={data}
+          setData={setData}
           onClose={() => setSelZoneId(null)}
           onEditLayout={onEditLayout}
           onPlantInZone={onPlantInZone}
+          onShowCrops={onShowCrops}
         />
       )}
     </div>

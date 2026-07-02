@@ -15,7 +15,8 @@ import { createPortal } from "react-dom";
 import { C, F } from "../../lib/theme";
 import { rCM } from "../../lib/regional";
 import FarmIcon from "../../components/FarmIcon";
-import { localDateFromKey, todayLocalKey } from "../../lib/utils";
+import { localDateFromKey, todayLocalKey, appendLog, markTaskDone } from "../../lib/utils";
+import { uid } from "../../lib/storage";
 import { ZT_MAP } from "../../data/zones";
 import { isPlantZone, zoneAnimalGroups } from "../farm/living/visuals";
 
@@ -25,7 +26,7 @@ const STAGE_CHIP = {
   ready:        { label: "Ready",   color: "#9a5f14", bg: "rgba(224,138,46,.16)" },
 };
 
-export default function GroveZoneCard({ zone, data, onClose, onPlantInZone, onEditLayout }) {
+export default function GroveZoneCard({ zone, data, setData, onClose, onPlantInZone, onEditLayout, onShowCrops }) {
   const today = todayLocalKey();
   const cropMap = useMemo(() => rCM(data.region), [data.region]);
   const zt = ZT_MAP.get(zone.type) || {};
@@ -61,6 +62,33 @@ export default function GroveZoneCard({ zone, data, onClose, onPlantInZone, onEd
     () => zoneAnimalGroups(zone, data.livestock && data.livestock.animals),
     [zone, data.livestock]
   );
+
+  /* Harvest — mirrors WalkOverlay's canonical flow exactly:
+     plot → harvested, yield → pantry, log entry, task cleared. */
+  function harvestPlot(r) {
+    if (!setData) return;
+    const plots = (data.garden && data.garden.plots) || [];
+    const plot = plots.find(x => x.id === r.plot.id);
+    if (!plot) return;
+    const kg = plot.expectedYieldKg || (r.crop && r.crop.yld) || 3;
+    const item = {
+      id: uid(),
+      name: plot.crop,
+      category: "Fresh Produce",
+      qty: kg,
+      unit: "kg",
+      source: "farm",
+      addedDate: todayLocalKey(),
+      storageNote: (r.crop && r.crop.storage) || "",
+    };
+    const next = {
+      ...data,
+      garden: { plots: plots.map(x => x.id === plot.id ? { ...x, status: "harvested" } : x) },
+      pantry: { items: [...((data.pantry && data.pantry.items) || []), item] },
+      log: appendLog(data.log, { text: "🧺 Harvested " + kg + "kg " + plot.crop }),
+    };
+    setData(markTaskDone(next, "plot-" + plot.id + "-harvest"));
+  }
 
   const body = (
     <div data-grove-zone-card="root" style={{ position: "fixed", inset: 0, zIndex: 5000 }}>
@@ -143,6 +171,22 @@ export default function GroveZoneCard({ zone, data, onClose, onPlantInZone, onEd
                     <span style={{ fontSize: 9.5, fontWeight: 700, color: chip.color, background: chip.bg, borderRadius: 99, padding: "2px 7px", flexShrink: 0 }}>
                       {r.stage === "ready" ? "Ready" : chip.label + " · ~" + r.daysLeft + "d"}
                     </span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "flex-end" }}>
+                    {r.stage === "ready" && setData && (
+                      <button onClick={() => harvestPlot(r)} style={{
+                        background: "linear-gradient(135deg,#e08a2e,#d9971f)", color: "#fff",
+                        border: "none", borderRadius: 9, padding: "7px 14px",
+                        fontSize: 12, fontWeight: 700, cursor: "pointer", minHeight: "unset",
+                      }} data-icon="true">🧺 Harvest</button>
+                    )}
+                    {onShowCrops && (
+                      <button onClick={() => { onClose(); onShowCrops(); }} style={{
+                        background: C.bg, color: C.t2, border: `1px solid ${C.bdr}`,
+                        borderRadius: 9, padding: "7px 12px",
+                        fontSize: 12, fontWeight: 600, cursor: "pointer", minHeight: "unset",
+                      }} data-icon="true">Show more →</button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -175,9 +175,11 @@ export default function GroveHome({ data, setData, setPage, tasks }) {
   const sceneBlock = (
     <GroveScene
       data={data}
+      setData={setData}
       tasksByZone={tasksByZone}
       onEditLayout={() => setPage("map", { edit: true })}
       onPlantInZone={zid => setPage("crops", { zone: zid })}
+      onShowCrops={() => setPage("crops")}
       showHelperText={false}
     />
   );
