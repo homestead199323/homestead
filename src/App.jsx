@@ -23,7 +23,7 @@ import Manuals from "./features/manuals/Manuals";
 import Livestock from "./features/animals/Livestock";
 import MapScreen, { CropsScreen } from "./features/farm/Farm";
 import TaskQueue from "./features/tasks/TaskQueue";
-import TodayScreen from "./features/today/TodayScreen";
+import GroveHome from "./features/grove/GroveHome";
 import AIAssistant from "./features/assistant/AIAssistant";
 import FeedbackSurvey, { FeedbackPrompt } from "./features/feedback/FeedbackSurvey";
 import { BadgeCelebration } from "./components/BadgeCelebration";
@@ -398,7 +398,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       case "fin": return <Financials data={data} setData={setData}/>;
       case "manuals": return <Manuals data={data} setPage={setPage}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
-      default: return <TodayScreen data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
+      default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
     }
   };
 
