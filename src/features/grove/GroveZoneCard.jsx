@@ -10,7 +10,7 @@
    z 5000 (above nav/drawer/FAB, below WalkOverlay).
    ═══════════════════════════════════════════ */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { C, F } from "../../lib/theme";
 import { rCM } from "../../lib/regional";
@@ -30,13 +30,6 @@ export default function GroveZoneCard({ zone, data, onClose, onPlantInZone, onEd
   const cropMap = useMemo(() => rCM(data.region), [data.region]);
   const zt = ZT_MAP.get(zone.type) || {};
   const plantable = isPlantZone(zone.type) || zone.type === "orchard";
-
-  /* animate progress bars in after mount */
-  const [barsOn, setBarsOn] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setBarsOn(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
 
   const rows = useMemo(() => {
     if (!plantable) return [];
@@ -138,12 +131,12 @@ export default function GroveZoneCard({ zone, data, onClose, onPlantInZone, onEd
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5 }}>
                     <div style={{ flex: 1, height: 6, borderRadius: 99, background: C.tProgress, border: `1px solid ${C.tProgressBd}`, overflow: "hidden" }}>
-                      <div style={{
+                      <div className="grove-bar-fill" style={{
                         height: "100%", borderRadius: 99,
                         background: r.stage === "ready" ? "linear-gradient(90deg,#e08a2e,#f0b45e)" : C.grd,
-                        transform: barsOn ? `scaleX(${Math.max(0.03, r.growthPct)})` : "scaleX(0.03)",
+                        transform: `scaleX(${Math.max(0.03, r.growthPct)})`,
                         transformOrigin: "left center",
-                        transition: `transform .8s cubic-bezier(.25,.8,.3,1) ${0.15 + Math.min(i, 8) * 0.06}s`,
+                        animationDelay: (0.15 + Math.min(i, 8) * 0.06) + "s",
                         willChange: "transform",
                       }}/>
                     </div>

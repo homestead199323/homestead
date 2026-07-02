@@ -841,11 +841,14 @@ circle.ring-progress {
 }
 .grove-row-in { animation: groveRowIn .38s cubic-bezier(.25,.8,.3,1) backwards; }
 
+@keyframes groveBarFill { from { transform: scaleX(.03); } }
+.grove-bar-fill { animation: groveBarFill .85s cubic-bezier(.25,.8,.3,1) backwards; }
+
 @keyframes groveFade { from { opacity: 0; } to { opacity: 1; } }
 .grove-fade { animation: groveFade .26s ease-out backwards; }
 
 @media (prefers-reduced-motion: reduce) {
   .grove-bob, .grove-ready-halo, .grove-ready-ring,
   .grove-sway, .grove-tree-sway, .grove-pop,
-  .grove-card-in, .grove-row-in, .grove-fade { animation: none !important; }
+  .grove-card-in, .grove-row-in, .grove-fade, .grove-bar-fill { animation: none !important; }
 }
