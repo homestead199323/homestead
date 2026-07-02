@@ -7,7 +7,7 @@ import { rCR } from "../../lib/regional";
 import { farmKnowledgeEngine, buildAISuggestions } from "../../lib/ai";
 import { daysBetweenLocalKeys, todayLocalKey } from "../../lib/utils";
 
-export default function AIAssistant({data}) {
+export default function AIAssistant({data, lift }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([
     {role:"assistant", content:`Hi! I'm your farm assistant. I know everything about the ${rCR(data.region).length} crops and ${Object.keys(LDB).length} animals in your database — and I work offline!\n\nStart typing a crop or animal name and pick from the dropdown, or tap a quick prompt below.`}
@@ -145,7 +145,7 @@ export default function AIAssistant({data}) {
         style={{
           position:"fixed",
           // 6.8.3 — clear the 56px bottom nav + safe-area on mobile; standard on desktop
-          bottom: isMobile ? "calc(72px + env(safe-area-inset-bottom))" : 24,
+          bottom: isMobile ? (lift ? "calc(210px + env(safe-area-inset-bottom))" : "calc(72px + env(safe-area-inset-bottom))") : 24,
           right: 24,
           zIndex:2000,
           width:56, height:56, borderRadius:28,
