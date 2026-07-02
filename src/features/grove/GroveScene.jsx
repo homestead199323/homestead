@@ -18,7 +18,7 @@ import { rCM } from "../../lib/regional";
 import { buildZoneSpaceMap } from "../../lib/farm-calc";
 import FarmIcon from "../../components/FarmIcon";
 import { localDateFromKey, todayLocalKey } from "../../lib/utils";
-import ZoneOverlay from "../farm/living/ZoneOverlay";
+import GroveZoneCard from "./GroveZoneCard";
 import { isPlantZone, zoneAnimalGroups, zoneFillColor } from "../farm/living/visuals";
 import { makeProjector, polyPoints, depthOf } from "./sceneMath";
 
@@ -63,6 +63,13 @@ function SproutGlyph({ size = 13 }) {
       <path fill="#7cc491" d="M12 14c0-4-2.6-6.5-6.5-6.5C5.5 11.5 8 14 12 14zm0 0c0-4 2.6-6.5 6.5-6.5C18.5 11.5 16 14 12 14z"/>
     </svg>
   );
+}
+
+function spriteHash(id) {
+  let h = 0;
+  const str = String(id || "");
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100000;
+  return h;
 }
 
 export default function GroveScene({
@@ -343,11 +350,13 @@ export default function GroveScene({
                 trees.push(
                   <g key={"tree" + i}>
                     <ellipse cx={base[0]} cy={base[1] + 2} rx={tr * 0.9} ry={tr * 0.32} fill="rgba(30,56,34,.2)"/>
-                    <rect x={base[0] - Math.max(1.6, U * 0.16)} y={base[1] - tr * 1.15} width={Math.max(3.2, U * 0.32)} height={tr * 1.2} rx="2" fill="#8a5a38"/>
-                    <circle cx={base[0]} cy={base[1] - tr * 1.6} r={tr} fill="#3e7a4a"/>
-                    <circle cx={base[0] + tr * 0.4} cy={base[1] - tr * 1.35} r={tr * 0.68} fill="#356a40" opacity=".92"/>
-                    <circle cx={base[0] - tr * 0.38} cy={base[1] - tr * 1.85} r={tr * 0.45} fill="#4e8f5a"/>
-                    {isReady && <circle cx={base[0]} cy={base[1] - tr * 1.6} r={tr + 3} fill="none" stroke="#e08a2e" strokeWidth="2" className="grove-ready-ring"/>}
+                    <g className="grove-tree-sway" style={{ animationDelay: "-" + ((i * 1300) % 4600) + "ms" }}>
+                      <rect x={base[0] - Math.max(1.6, U * 0.16)} y={base[1] - tr * 1.15} width={Math.max(3.2, U * 0.32)} height={tr * 1.2} rx="2" fill="#8a5a38"/>
+                      <circle cx={base[0]} cy={base[1] - tr * 1.6} r={tr} fill="#3e7a4a"/>
+                      <circle cx={base[0] + tr * 0.4} cy={base[1] - tr * 1.35} r={tr * 0.68} fill="#356a40" opacity=".92"/>
+                      <circle cx={base[0] - tr * 0.38} cy={base[1] - tr * 1.85} r={tr * 0.45} fill="#4e8f5a"/>
+                      {isReady && <circle cx={base[0]} cy={base[1] - tr * 1.6} r={tr + 3} fill="none" stroke="#e08a2e" strokeWidth="2" className="grove-ready-ring"/>}
+                    </g>
                   </g>
                 );
               }
@@ -388,15 +397,19 @@ export default function GroveScene({
                       position: "absolute", ...pos, transform: "translate(-50%,-92%)",
                       display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none",
                     }}>
-                      <div className={ready ? "grove-ready-halo" : ""} style={{
-                        borderRadius: 99, padding: ready ? 3 : 0,
-                        background: ready ? "rgba(255,244,220,.9)" : "transparent",
-                        border: ready ? "1.6px solid #e08a2e" : "none",
-                        display: "flex",
-                      }}>
-                        {ready || grown
-                          ? <FarmIcon name={pt.crop} emoji={(cropMap.get(pt.crop) || {}).emoji || "🌱"} size={ready ? 22 : 17}/>
-                          : <SproutGlyph size={pt.stage === "growing" ? 15 : 12}/>}
+                      <div className="grove-pop" style={{ animationDelay: (spriteHash(pt.plotId) % 5) * 0.07 + "s" }}>
+                        <div className={ready ? "grove-ready-halo" : ""} style={{
+                          borderRadius: 99, padding: ready ? 3 : 0,
+                          background: ready ? "rgba(255,244,220,.9)" : "transparent",
+                          border: ready ? "1.6px solid #e08a2e" : "none",
+                          display: "flex",
+                        }}>
+                          <span className="grove-sway" style={{ animationDelay: "-" + (spriteHash(pt.plotId) % 3900) + "ms" }}>
+                            {ready || grown
+                              ? <FarmIcon name={pt.crop} emoji={(cropMap.get(pt.crop) || {}).emoji || "🌱"} size={ready ? 22 : 17}/>
+                              : <SproutGlyph size={pt.stage === "growing" ? 15 : 12}/>}
+                          </span>
+                        </div>
                       </div>
                       <div style={{ width: ready ? 20 : 14, height: 4, borderRadius: 99, background: "rgba(30,56,34,.22)", marginTop: 1 }}/>
                     </div>
@@ -497,7 +510,7 @@ export default function GroveScene({
       )}
 
       {selZone && (
-        <ZoneOverlay
+        <GroveZoneCard
           zone={selZone}
           data={data}
           onClose={() => setSelZoneId(null)}

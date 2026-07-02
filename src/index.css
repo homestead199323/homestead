@@ -804,6 +804,48 @@ circle.ring-progress {
 }
 .grove-ready-ring { animation: groveRing 1.8s ease-in-out infinite; }
 
+@keyframes groveSway {
+  0%, 100% { transform: rotate(-2.6deg); }
+  50% { transform: rotate(2.6deg); }
+}
+.grove-sway {
+  display: inline-flex;
+  transform-origin: 50% 100%;
+  animation: groveSway 3.9s ease-in-out infinite;
+}
+.grove-tree-sway {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: groveSway 4.6s ease-in-out infinite;
+}
+
+@keyframes grovePop {
+  from { opacity: 0; transform: scale(.35); }
+  to { opacity: 1; transform: scale(1); }
+}
+.grove-pop {
+  display: inline-flex;
+  transform-origin: 50% 100%;
+  animation: grovePop .45s cubic-bezier(.22,1.2,.36,1) backwards;
+}
+
+@keyframes groveCardIn {
+  from { opacity: 0; transform: translate(-50%,-46%) scale(.86); }
+  to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+}
+.grove-card-in { animation: groveCardIn .34s cubic-bezier(.22,1.18,.34,1) backwards; }
+
+@keyframes groveRowIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.grove-row-in { animation: groveRowIn .38s cubic-bezier(.25,.8,.3,1) backwards; }
+
+@keyframes groveFade { from { opacity: 0; } to { opacity: 1; } }
+.grove-fade { animation: groveFade .26s ease-out backwards; }
+
 @media (prefers-reduced-motion: reduce) {
-  .grove-bob, .grove-ready-halo, .grove-ready-ring { animation: none !important; }
+  .grove-bob, .grove-ready-halo, .grove-ready-ring,
+  .grove-sway, .grove-tree-sway, .grove-pop,
+  .grove-card-in, .grove-row-in, .grove-fade { animation: none !important; }
 }
