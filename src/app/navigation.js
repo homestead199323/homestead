@@ -20,16 +20,16 @@ export const NAV = [
 ];
 
 export const BOTTOM_TABS = [
-  {id:"home",   l:"Farm",    E:Map},
-  {id:"live",   l:"Animals", E:PawPrint},
-  {id:"pantry", l:"Pantry",  E:Package},
-  {id:"more",   l:"More",    E:MoreHorizontal},
+  {id:"home",  l:"Farm",    E:Map},
+  {id:"tasks", l:"Tasks",   E:ClipboardList},
+  {id:"crops", l:"Crops",   E:Sprout},
+  {id:"live",  l:"Animals", E:PawPrint},
+  {id:"more",  l:"More",    E:MoreHorizontal},
 ];
 
 export const MORE_ITEMS = [
-  {id:"crops",   l:"Crops",         E:Sprout},
+  {id:"pantry",  l:"Pantry",        E:Package},
   {id:"map",     l:"Farm Layout",   E:Map},
-  {id:"tasks",   l:"Task Queue",    E:ClipboardList},
   {id:"fin",     l:"Financials",    E:TrendingUp},
   {id:"manuals", l:"Manuals",       E:BookOpen},
 ];
