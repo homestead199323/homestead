@@ -822,6 +822,22 @@ circle.ring-progress {
   transform-origin: 50% 100%;
   animation: groveSway 3.9s ease-in-out infinite;
 }
+/* ── Grove v2 top-down: water shimmer + animal graze idle ── */
+@keyframes groveShimmer {
+  0%, 100% { transform: translateX(0); opacity: .9; }
+  50% { transform: translateX(3px); opacity: .5; }
+}
+.grove-shimmer { animation: groveShimmer 2.8s ease-in-out infinite; }
+@keyframes groveGraze {
+  0%, 100% { transform: translate(0, 0); }
+  40% { transform: translate(1.5px, 0.5px); }
+  70% { transform: translate(-1px, 0); }
+}
+.grove-graze { animation: groveGraze 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .grove-shimmer, .grove-graze { animation: none; }
+}
+
 .grove-tree-sway {
   transform-box: fill-box;
   transform-origin: 50% 100%;
