@@ -11,7 +11,7 @@ import { appendLog, todayLocalKey, localDateFromKey, addDaysToLocalKey } from ".
 import { getRegionalCrops, getRegionalVarieties, rCM, rCR } from "../../lib/regional";
 import { cropMeasureType, plantsFromArea, expectedYield, buildZoneSpaceMap } from "../../lib/farm-calc";
 import PlotOverlay from "./PlotOverlay";
-import GroveScene from "../grove/GroveScene";
+import GroveScene, { ORNAMENT_TYPES, MAX_ORNAMENTS } from "../grove/GroveScene";
 import FarmIcon from "../../components/FarmIcon";
 import ZonePalette, { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
 
@@ -27,6 +27,9 @@ function Setup({data, setData, onPlantInZone, onBack}) {
   const [farmH, setFarmH] = useState(data.farmH || 60);  // total farm height in meters
   const [tutorialDismissed, setTutorialDismissed] = useState(!!data.designerTutorialSeen);
   const [armedType, setArmedType] = useState(null); // tap-to-place: id of armed palette type, or null
+  const [armedOrn, setArmedOrn] = useState(null);   // tap-to-place: id of armed ornament type, or null
+  const [selOrn, setSelOrn] = useState(null);       // selected ornament id (for move/delete)
+  const ORN_IDS = new Set(ORNAMENT_TYPES.map(o => o.id));
   const [cityQuery, setCityQuery] = useState(data.city || "");
   const [cityResults, setCityResults] = useState([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
@@ -54,7 +57,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
   const delZ = id => { setData({...data, zones: data.zones.filter(z => z.id !== id)}); setSel(null); };
 
   /* ── Grove editor plumbing (iso canvas) ── */
-  const groveData = {...data, zones, farmW, farmH};
+  const groveData = {...data, zones, farmW, farmH, ornaments: data.ornaments || []};
   function clampGeom(g) {
     const wM = Math.max(3, Math.min(farmW, g.wM));
     const hM = Math.max(3, Math.min(farmH, g.hM));
@@ -70,6 +73,8 @@ function Setup({data, setData, onPlantInZone, onBack}) {
     upZ(id, {...c, x: c.xM / farmW * 100, y: c.yM / farmH * 100, w: c.wM / farmW * 100, h: c.hM / farmH * 100});
   }
   function handlePlaceAt(xM, yM, type) {
+    // Ornament placement wins when an ornament type is armed (or dragged in)
+    if (armedOrn || (type && ORN_IDS.has(type))) { placeOrnamentAt(xM, yM, type); return; }
     const t = type || armedType;
     if (!t || !ZT_MAP.get(t)) { setArmedType(null); return; }
     const defaultWM = 10, defaultHM = 8;
@@ -87,6 +92,36 @@ function Setup({data, setData, onPlantInZone, onBack}) {
     setSel(newZone.id);
     setArmedType(null);
   }
+
+  /* ── Ornament plumbing (decorations; schema [{id,type,xM,yM}], max 10) ── */
+  const ornaments = data.ornaments || [];
+  function clampPt(xM, yM) {
+    return {
+      xM: Math.round(Math.max(0, Math.min(farmW, xM)) * 10) / 10,
+      yM: Math.round(Math.max(0, Math.min(farmH, yM)) * 10) / 10,
+    };
+  }
+  /* When an ornament type is armed, a map tap routes through handlePlaceAt's
+     path; we intercept in placeOrnamentAt instead by arming ornament mode. */
+  function placeOrnamentAt(xM, yM, type) {
+    const t = type || armedOrn;
+    if (!t) return;
+    if (ornaments.length >= MAX_ORNAMENTS) { setArmedOrn(null); return; }
+    const c = clampPt(xM, yM);
+    const newOrn = { id: uid(), type: t, xM: c.xM, yM: c.yM };
+    setData({...data, ornaments: [...ornaments, newOrn]});
+    setSelOrn(newOrn.id);
+    setArmedOrn(null);
+  }
+  function handleOrnamentMove(id, xM, yM) {
+    const c = clampPt(xM, yM);
+    setData({...data, ornaments: ornaments.map(o => o.id === id ? {...o, ...c} : o)});
+  }
+  function delOrn(id) {
+    setData({...data, ornaments: ornaments.filter(o => o.id !== id)});
+    setSelOrn(null);
+  }
+  const sOrn = ornaments.find(o => o.id === selOrn);
   const sz = zones.find(z => z.id === sel);
 
   const doSave = () => {
@@ -227,12 +262,37 @@ function Setup({data, setData, onPlantInZone, onBack}) {
               style={{background:"rgba(255,255,255,.25)",border:"none",color:"#fff",padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>Cancel</button>
           </div>
         )}
+        {armedOrn && (
+          <div style={{
+            position: "absolute", top: 8, left: 8, right: 8,
+            padding: "8px 12px", background: "#6b4f2e", color: "#fff",
+            borderRadius: 10, fontSize: 12, fontWeight: 700,
+            boxShadow: "0 4px 12px rgba(0,0,0,.25)", zIndex: 10,
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          }} onClick={function(e){e.stopPropagation();}}>
+            <span style={{flex:1,lineHeight:1.3}}>
+              Tap map to place <strong>{(ORNAMENT_TYPES.find(function(o){return o.id===armedOrn;})||{}).label || armedOrn}</strong>
+            </span>
+            <button type="button" onClick={function(){setArmedOrn(null);}}
+              style={{background:"rgba(255,255,255,.25)",border:"none",color:"#fff",padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>Cancel</button>
+          </div>
+        )}
         <GroveScene
           data={groveData}
           showEditButton={false}
           showHelperText={false}
           showTimeTint={false}
-          edit={{selectedId:sel,onSelect:setSel,onZoneGeom:handleZoneGeom,onPlaceAt:handlePlaceAt,armed:!!armedType,dragType:PALETTE_DRAG_TYPE}}
+          edit={{
+            selectedId:sel,
+            onSelect:function(id){ setSel(id); if(id) setSelOrn(null); },
+            onZoneGeom:handleZoneGeom,
+            onPlaceAt:handlePlaceAt,
+            armed:!!armedType || !!armedOrn,
+            dragType:PALETTE_DRAG_TYPE,
+            ornamentSelectedId:selOrn,
+            onOrnamentSelect:function(id){ setSelOrn(id); if(id) setSel(null); },
+            onOrnamentMove:handleOrnamentMove,
+          }}
         />
 
       {/* First-visit tutorial — shown until dismissed */}
@@ -288,6 +348,35 @@ function Setup({data, setData, onPlantInZone, onBack}) {
       </div>
       {/* Palette — Living Map */}
       <ZonePalette zones={data.zones} armedType={armedType} onArm={setArmedType}/>
+
+      {/* Ornament palette — decorations, max 10 */}
+      <div style={{marginTop:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:"0.04em"}}>Decorations</span>
+          <span style={{fontSize:11,fontWeight:700,color:ornaments.length>=MAX_ORNAMENTS?"#c0392b":C.t3}}>{ornaments.length}/{MAX_ORNAMENTS}</span>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {ORNAMENT_TYPES.map(function(o){
+            const armed = armedOrn===o.id;
+            const full = ornaments.length>=MAX_ORNAMENTS;
+            return (
+              <button key={o.id} type="button" disabled={full && !armed}
+                onClick={function(){ if(full && !armed) return; setArmedOrn(armed?null:o.id); setArmedType(null); }}
+                style={{
+                  display:"flex",alignItems:"center",gap:5,
+                  padding:"6px 10px",borderRadius:9,cursor:full&&!armed?"not-allowed":"pointer",
+                  border:armed?"1.5px solid #6b4f2e":`1px solid ${C.bdr}`,
+                  background:armed?"#6b4f2e":C.card,color:armed?"#fff":C.text,
+                  opacity:full&&!armed?0.4:1,
+                  fontSize:12,fontWeight:600,WebkitTapHighlightColor:"transparent",minHeight:"unset",
+                }}>
+                <span style={{fontSize:14}}>{o.icon}</span>{o.label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{fontSize:10.5,color:C.t3,marginTop:5}}>Tap a decoration then tap the map · Drag to move · Select to delete</div>
+      </div>
       </div>
 
       {/* Growth-stage legend — Grove stage colors */}
@@ -321,6 +410,31 @@ function Setup({data, setData, onPlantInZone, onBack}) {
             <Sel label="Zone Type" value={sz.type} onChange={e=>upZ(sz.id,{type:e.target.value})} options={ZT.map(t=>({value:t.id,label:`${t.icon} ${t.label}`}))}/>
           </div>
           <div style={{fontSize:12,color:C.t3,marginTop:6,fontStyle:"italic"}}>Drag to move · Drag edges to resize on the map above</div>
+          {sz.type!=="water" && sz.type!=="compost" && sz.type!=="house" && (
+            <label style={{display:"flex",alignItems:"center",gap:8,marginTop:10,cursor:"pointer",userSelect:"none"}}>
+              <input type="checkbox" checked={sz.road!==false}
+                onChange={function(e){ upZ(sz.id,{road:e.target.checked?true:false}); }}
+                style={{width:16,height:16,accentColor:C.green,cursor:"pointer"}}/>
+              <span style={{fontSize:13,fontWeight:600,color:C.text}}>Connect a path to this zone</span>
+            </label>
+          )}
+        </Card>
+      )}
+
+      {/* Inline editor for selected ornament */}
+      {sOrn && (
+        <Card style={{marginTop:10,boxShadow:"0 0 0 2px #6b4f2e"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:18}}>{(ORNAMENT_TYPES.find(function(o){return o.id===sOrn.type;})||{}).icon}</span>
+              {(ORNAMENT_TYPES.find(function(o){return o.id===sOrn.type;})||{}).label || "Decoration"}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <Btn v="danger" sm onClick={function(){delOrn(sOrn.id);}}>Delete</Btn>
+              <Btn v="ghost" sm onClick={function(){setSelOrn(null);}}>Done</Btn>
+            </div>
+          </div>
+          <div style={{fontSize:12,color:C.t3,marginTop:6,fontStyle:"italic"}}>Drag on the map above to reposition</div>
         </Card>
       )}
 
