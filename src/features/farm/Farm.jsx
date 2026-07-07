@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Pill, Ring, Stat } from "../../components/ui";
 import { COMP } from "../../data/companions";
-import { CROP_COLORS } from "../../data/crops";
 import { LDB } from "../../data/livestock";
 import { REGIONS, REGION_MAP } from "../../data/regions";
 import { ZT, ZT_MAP } from "../../data/zones";
@@ -12,49 +11,22 @@ import { appendLog, todayLocalKey, localDateFromKey, addDaysToLocalKey } from ".
 import { getRegionalCrops, getRegionalVarieties, rCM, rCR } from "../../lib/regional";
 import { cropMeasureType, plantsFromArea, expectedYield, buildZoneSpaceMap } from "../../lib/farm-calc";
 import PlotOverlay from "./PlotOverlay";
+import GroveScene from "../grove/GroveScene";
 import FarmIcon from "../../components/FarmIcon";
-import LivingFarmMap from "./living/LivingFarmMap";
-import CropStagePatch from "./living/CropStagePatch";
-import RoadLayer from "./living/RoadLayer";
-import ZoneSurface from "./living/ZoneSurface";
 import ZonePalette, { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
-import { mapBackgroundStyle, mapVignetteStyle, zoneRadius, STAGE_STYLE } from "./living/visuals";
-
-function BackgroundLayer() {
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        position:"absolute", inset:0,
-        ...mapBackgroundStyle(),
-        pointerEvents:"none",
-        zIndex:0,
-      }}
-    >
-      <div style={mapVignetteStyle()}/>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════
    FARM SETUP — simplified editing
    ═══════════════════════════════════════════ */
 function Setup({data, setData, onPlantInZone, onBack}) {
-  /* Living Map: keep zones inside an 8% inset so they don't collide
-     with background scenery painted around the edges. */
-  const SAFE_INSET = 0.08;
   const [showAdd, setShowAdd] = useState(false);
   const [sel, setSel] = useState(null);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({name:"", type:"veg", wM:"10", hM:"8"});
   const [farmW, setFarmW] = useState(data.farmW || 100); // total farm width in meters
   const [farmH, setFarmH] = useState(data.farmH || 60);  // total farm height in meters
-  const [dragging, setDragging] = useState(null); // {id, startX, startY, origXM, origYM}
-  const [zoneResize, setZoneResize] = useState(null); // {id, edge, startX, startY, origXM, origYM, origWM, origHM}
-  const [hoverInfo, setHoverInfo] = useState(null); // zone hover tooltip
   const [tutorialDismissed, setTutorialDismissed] = useState(!!data.designerTutorialSeen);
   const [armedType, setArmedType] = useState(null); // tap-to-place: id of armed palette type, or null
-  const svgRef = useRef(null);
   const [cityQuery, setCityQuery] = useState(data.city || "");
   const [cityResults, setCityResults] = useState([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
@@ -80,6 +52,41 @@ function Setup({data, setData, onPlantInZone, onBack}) {
 
   const upZ = (id, u) => setData({...data, zones: data.zones.map(z => z.id===id ? {...z,...u} : z)});
   const delZ = id => { setData({...data, zones: data.zones.filter(z => z.id !== id)}); setSel(null); };
+
+  /* ── Grove editor plumbing (iso canvas) ── */
+  const groveData = {...data, zones, farmW, farmH};
+  function clampGeom(g) {
+    const wM = Math.max(3, Math.min(farmW, g.wM));
+    const hM = Math.max(3, Math.min(farmH, g.hM));
+    const xM = Math.max(0, Math.min(farmW - wM, g.xM));
+    const yM = Math.max(0, Math.min(farmH - hM, g.yM));
+    return {
+      xM: Math.round(xM * 10) / 10, yM: Math.round(yM * 10) / 10,
+      wM: Math.round(wM * 10) / 10, hM: Math.round(hM * 10) / 10,
+    };
+  }
+  function handleZoneGeom(id, g) {
+    const c = clampGeom(g);
+    upZ(id, {...c, x: c.xM / farmW * 100, y: c.yM / farmH * 100, w: c.wM / farmW * 100, h: c.hM / farmH * 100});
+  }
+  function handlePlaceAt(xM, yM, type) {
+    const t = type || armedType;
+    if (!t || !ZT_MAP.get(t)) { setArmedType(null); return; }
+    const defaultWM = 10, defaultHM = 8;
+    const c = clampGeom({xM: xM - defaultWM / 2, yM: yM - defaultHM / 2, wM: defaultWM, hM: defaultHM});
+    const zt2 = ZT_MAP.get(t);
+    const baseName = zt2 ? zt2.label : t;
+    const existing = data.zones.filter(z => z.type === t).length;
+    const newZone = {
+      id: uid(),
+      name: existing > 0 ? baseName + " " + (existing + 1) : baseName,
+      type: t,
+      xM: c.xM, yM: c.yM, wM: c.wM, hM: c.hM,
+    };
+    setData({...data, zones: [...data.zones, newZone]});
+    setSel(newZone.id);
+    setArmedType(null);
+  }
   const sz = zones.find(z => z.id === sel);
 
   const doSave = () => {
@@ -202,440 +209,31 @@ function Setup({data, setData, onPlantInZone, onBack}) {
         </div>
       </Card>
 
-      {/* Draggable Farm Map — clean light style (matches Dashboard) */}
+      {/* Isometric Farm Designer — the SAME GroveScene engine as the home map */}
       <div className="lf-wrap">
-      <div ref={svgRef} className="lf-canvas" style={{
-        position:"relative",
-        background:C.tMap,
-        border:`1px solid ${C.bdr}`,borderRadius:16,overflow:"hidden",
-        minHeight:440,userSelect:"none",
-        touchAction:"none",
-        cursor: dragging ? "grabbing" : (armedType ? "crosshair" : "default"),
-      }}
-        onClick={e => {
-          /* Tap-to-place: if a palette type is armed, drop a zone at the tap point */
-          if (armedType && e.target === svgRef.current) {
-            const t = armedType;
-            if (!ZT_MAP.get(t)) { setArmedType(null); return; }
-            const rect = svgRef.current.getBoundingClientRect();
-            const cxPct = ((e.clientX - rect.left) / rect.width);
-            const cyPct = ((e.clientY - rect.top)  / rect.height);
-            const defaultWM = 10, defaultHM = 8;
-            const dropXM = Math.round(cxPct * farmW - defaultWM/2);
-            const dropYM = Math.round(cyPct * farmH - defaultHM/2);
-            const safeMinX = farmW * SAFE_INSET;
-            const safeMinY = farmH * SAFE_INSET;
-            const safeMaxX = farmW * (1 - SAFE_INSET) - defaultWM;
-            const safeMaxY = farmH * (1 - SAFE_INSET) - defaultHM;
-            const xM = Math.max(safeMinX, Math.min(Math.max(safeMinX, safeMaxX), dropXM));
-            const yM = Math.max(safeMinY, Math.min(Math.max(safeMinY, safeMaxY), dropYM));
-            const zt2 = ZT_MAP.get(t);
-            const baseName = zt2 ? zt2.label : t;
-            const existing = data.zones.filter(z => z.type === t).length;
-            const newZone = {
-              id: uid(),
-              name: existing > 0 ? `${baseName} ${existing+1}` : baseName,
-              type: t,
-              xM, yM, wM: defaultWM, hM: defaultHM,
-            };
-            setData({...data, zones: [...data.zones, newZone]});
-            setSel(newZone.id);
-            setArmedType(null);
-            return;
-          }
-          if (e.target === svgRef.current) setSel(null);
-        }}
-        onDragOver={e => {
-          if (e.dataTransfer && Array.from(e.dataTransfer.types||[]).includes(PALETTE_DRAG_TYPE)) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "copy";
-          }
-        }}
-        onDrop={e => {
-          const t = e.dataTransfer.getData(PALETTE_DRAG_TYPE) || e.dataTransfer.getData("text/plain");
-          if (!t || !ZT_MAP.get(t)) return;
-          e.preventDefault();
-          const rect = svgRef.current.getBoundingClientRect();
-          const cxPct = ((e.clientX - rect.left) / rect.width);
-          const cyPct = ((e.clientY - rect.top)  / rect.height);
-          // Default new-zone size (in meters), then snap & clamp with safe-area
-          const defaultWM = 10, defaultHM = 8;
-          const dropXM = Math.round(cxPct * farmW - defaultWM/2);
-          const dropYM = Math.round(cyPct * farmH - defaultHM/2);
-          const safeMinX = farmW * SAFE_INSET;
-          const safeMinY = farmH * SAFE_INSET;
-          const safeMaxX = farmW * (1 - SAFE_INSET) - defaultWM;
-          const safeMaxY = farmH * (1 - SAFE_INSET) - defaultHM;
-          const xM = Math.max(safeMinX, Math.min(Math.max(safeMinX, safeMaxX), dropXM));
-          const yM = Math.max(safeMinY, Math.min(Math.max(safeMinY, safeMaxY), dropYM));
-          const zt2 = ZT_MAP.get(t);
-          const baseName = zt2 ? zt2.label : t;
-          const existing = data.zones.filter(z => z.type === t).length;
-          const newZone = {
-            id: uid(),
-            name: existing > 0 ? `${baseName} ${existing+1}` : baseName,
-            type: t,
-            xM, yM, wM: defaultWM, hM: defaultHM,
-          };
-          setData({...data, zones: [...data.zones, newZone]});
-          setSel(newZone.id);
-          setArmedType(null);
-        }}
-        onPointerMove={e => {
-          const rect = svgRef.current.getBoundingClientRect();
-          const curX = e.clientX - rect.left;
-          const curY = e.clientY - rect.top;
-          // Zone resize — drag edges/corners to change size
-          if (zoneResize) {
-            const dxM = ((curX - zoneResize.startX) / rect.width) * farmW;
-            const dyM = ((curY - zoneResize.startY) / rect.height) * farmH;
-            const e2 = zoneResize.edge;
-            let {origXM, origYM, origWM, origHM} = zoneResize;
-            let newXM = origXM, newYM = origYM, newWM = origWM, newHM = origHM;
-            if (e2.includes("r")) newWM = Math.max(3, origWM + dxM);
-            if (e2.includes("b")) newHM = Math.max(3, origHM + dyM);
-            if (e2.includes("l")) { newXM = Math.max(0, origXM + dxM); newWM = Math.max(3, origWM - dxM); }
-            if (e2.includes("t")) { newYM = Math.max(0, origYM + dyM); newHM = Math.max(3, origHM - dyM); }
-            upZ(zoneResize.id, {xM:newXM, yM:newYM, wM:newWM, hM:newHM, x:newXM/farmW*100, y:newYM/farmH*100, w:newWM/farmW*100, h:newHM/farmH*100});
-            return;
-          }
-          // Zone drag
-          if (!dragging) return;
-          const dxPct = ((curX - dragging.startX) / rect.width) * 100;
-          const dyPct = ((curY - dragging.startY) / rect.height) * 100;
-          const dxM = dxPct / 100 * farmW;
-          const dyM = dyPct / 100 * farmH;
-          const z = zones.find(z => z.id === dragging.id);
-          const safeMinXd = farmW * SAFE_INSET;
-          const safeMinYd = farmH * SAFE_INSET;
-          const safeMaxXd = farmW * (1 - SAFE_INSET) - (z.wM||10);
-          const safeMaxYd = farmH * (1 - SAFE_INSET) - (z.hM||8);
-          const newXM = Math.max(safeMinXd, Math.min(Math.max(safeMinXd, safeMaxXd), dragging.origXM + dxM));
-          const newYM = Math.max(safeMinYd, Math.min(Math.max(safeMinYd, safeMaxYd), dragging.origYM + dyM));
-          upZ(dragging.id, {xM: newXM, yM: newYM, x: newXM/farmW*100, y: newYM/farmH*100});
-        }}
-        onPointerUp={() => { setDragging(null); setZoneResize(null); }}
-        onPointerCancel={() => { setDragging(null); setZoneResize(null); setHoverInfo(null); }}
-        onMouseLeave={() => setHoverInfo(null)}>
-
-        {/* Minimal living planner background */}
-        <BackgroundLayer/>
-        <RoadLayer zones={zones} farmW={farmW} farmH={farmH}/>
-
-        {/* Measurement grid stays very faint in edit mode only */}
-        <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(to right, rgba(80,95,80,.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(80,95,80,.045) 1px, transparent 1px)",backgroundSize:"24px 24px",pointerEvents:"none",zIndex:3}}/>
-
-        {/* Grid labels — X axis (every 10m) */}
-        <div style={{position:"absolute",bottom:2,left:0,right:0,display:"flex",pointerEvents:"none"}}>
-          {Array.from({length: Math.floor(farmW/10)+1}).map((_,i) => (
-            <span key={i} style={{position:"absolute",left:`${(i*10/farmW)*100}%`,transform:"translateX(-50%)",fontSize:8,fontFamily:F.mono,color:"rgba(80,95,80,.35)"}}>{i*10}m</span>
-          ))}
-        </div>
-        {/* Grid labels — Y axis (every 10m) */}
-        <div style={{position:"absolute",top:0,left:2,bottom:0,pointerEvents:"none"}}>
-          {Array.from({length: Math.floor(farmH/10)+1}).map((_,i) => (
-            <span key={i} style={{position:"absolute",top:`${(i*10/farmH)*100}%`,fontSize:8,fontFamily:F.mono,color:"rgba(80,95,80,.35)"}}>{i*10}m</span>
-          ))}
-        </div>
-
-        {/* North indicator */}
-        <div style={{position:"absolute",top:8,left:12,fontSize:10,fontFamily:F.mono,fontWeight:700,color:"rgba(80,95,80,.35)",pointerEvents:"none"}}>N↑</div>
-
-        {/* Zone hover tooltip */}
-        {!dragging && hoverInfo && (
+      <div style={{position:"relative"}}>
+        {armedType && (
           <div style={{
-            position:"absolute", left: hoverInfo.x, top: hoverInfo.y - 8,
-            transform:"translate(-50%, -100%)", zIndex:50, pointerEvents:"none",
-            minWidth:180, maxWidth:240,
-          }}>
-            <div style={{
-              background:"#1d1d1f", color:"#fff", borderRadius:10, padding:"10px 14px",
-              fontSize:12, lineHeight:1.5, fontFamily:F.body, boxShadow:"0 8px 24px rgba(0,0,0,.25)",
-            }}>
-              <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>{hoverInfo.name}</div>
-              <div style={{opacity:.7,fontSize:11,marginBottom:2}}>{hoverInfo.typeLabel}</div>
-              <div style={{opacity:.7,fontSize:11}}>{hoverInfo.wM}×{hoverInfo.hM}m · {hoverInfo.area} m²</div>
-              {hoverInfo.cropCount > 0 && <div style={{marginTop:4,fontSize:11,color:"#95d5b2"}}>{hoverInfo.cropCount} crop{hoverInfo.cropCount>1?"s":""} planted</div>}
-              {hoverInfo.animalCount > 0 && <div style={{fontSize:11,color:"#ffcc00"}}>{hoverInfo.animalCount} animal{hoverInfo.animalCount>1?"s":""}</div>}
-            </div>
-            <div style={{width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"6px solid #1d1d1f",margin:"0 auto"}}/>
+            position: "absolute", top: 8, left: 8, right: 8,
+            padding: "8px 12px", background: C.green, color: "#fff",
+            borderRadius: 10, fontSize: 12, fontWeight: 700,
+            boxShadow: "0 4px 12px rgba(0,0,0,.25)", zIndex: 10,
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          }} onClick={function(e){e.stopPropagation();}}>
+            <span style={{flex:1,lineHeight:1.3}}>
+              Tap map to place <strong>{ZT_MAP.get(armedType) ? ZT_MAP.get(armedType).label : armedType}</strong>
+            </span>
+            <button type="button" onClick={function(){setArmedType(null);}}
+              style={{background:"rgba(255,255,255,.25)",border:"none",color:"#fff",padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>Cancel</button>
           </div>
         )}
-
-        {/* Tap-to-place hint banner — shown when a palette type is armed */}
-        {armedType && (
-            <div style={{
-              position: "absolute", top: 8, left: 8, right: 8,
-              padding: "8px 12px",
-              background: C.green,
-              color: "#fff",
-              borderRadius: 10,
-              fontSize: 12, fontWeight: 700,
-              boxShadow: "0 4px 12px rgba(0,0,0,.25)",
-              zIndex: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-              pointerEvents: "auto",
-            }}
-              onClick={e => e.stopPropagation()}
-            >
-              <span style={{flex: 1, lineHeight: 1.3}}>
-                Tap map to place <strong>{ZT_MAP.get(armedType) ? ZT_MAP.get(armedType).label : armedType}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => setArmedType(null)}
-                style={{
-                  background: "rgba(255,255,255,.25)",
-                  border: "none",
-                  color: "#fff",
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >Cancel</button>
-            </div>
-        )}
-
-        {/* Zone blocks — with crop color patches (same as Dashboard) */}
-        {(()=>{
-          const SETUP_CC = CROP_COLORS;
-          const setupColorMap = new Map(); let sci=0;
-          data.garden.plots.forEach(p=>{ if(p.status!=="harvested"&&!setupColorMap.has(p.crop)){setupColorMap.set(p.crop,SETUP_CC[sci%SETUP_CC.length]);sci++;} });
-          return zones.map(z => {
-            const zt = ZT_MAP.get(z.type);
-            const xPct = ((z.xM||0) / farmW * 100).toFixed(2);
-            const yPct = ((z.yM||0) / farmH * 100).toFixed(2);
-            const wPct = ((z.wM||10) / farmW * 100).toFixed(2);
-            const hPct = ((z.hM||8) / farmH * 100).toFixed(2);
-            const isSel = sel === z.id;
-            const isDraggingThis = dragging?.id === z.id;
-            const isPlant = ["veg","orchard","herbs","greenhouse"].includes(z.type);
-            const zPlots = data.garden.plots.filter(p => p.zone === z.id && p.status !== "harvested");
-            const isAnimalZone = ["barn","pasture"].includes(z.type);
-            const zAnimals = isAnimalZone ? data.livestock.animals.filter(a => LDB[a.type]) : [];
-            const animalCount = zAnimals.reduce((s,a) => s + a.count, 0);
-
-            // Build crop patches — row-packed auto-layout (no manual positioning)
-            const zoneTotalM2 = (z.wM||10)*(z.hM||8);
-            const cropPatches = [];
-            if (isPlant && zPlots.length > 0 && zoneTotalM2 > 0) {
-              // Step 1: compute frac + growth stage for each plot
-              const raw = [];
-              const todayMs = localDateFromKey(todayLocalKey()).getTime();
-              zPlots.forEach(p => {
-                let area = 0;
-                const cr = rCM(data.region).get(p.crop);
-                if (p.measureType==="area"&&p.qty) area=+p.qty;
-                else if (p.plantCount && cr) { const sp=cr.spacing/100; area=p.plantCount*sp*sp; }
-                if (area>0) {
-                  const frac=Math.min(1,area/zoneTotalM2);
-                  const cc=setupColorMap.get(p.crop)||{r:100,g:140,b:60};
-                  // Growth stage from plantDate + crop's `days` to harvest
-                  let growthPct = 0;
-                  let stage = "just_planted";
-                  if (p.plantDate && cr && cr.days > 0) {
-                    const plantedMs = localDateFromKey(p.plantDate).getTime();
-                    const elapsedDays = Math.max(0, (todayMs - plantedMs) / 864e5);
-                    growthPct = Math.max(0, Math.min(1, elapsedDays / cr.days));
-                    if (growthPct >= 0.85) stage = "ready";
-                    else if (growthPct >= 0.10) stage = "growing";
-                    else stage = "just_planted";
-                  }
-                  raw.push({
-                    plotId:p.id,
-                    crop:p.crop,
-                    variety:p.variety||"",
-                    name:p.name||p.crop,
-                    frac,
-                    pctLabel:Math.round(frac*100),
-                    cc,
-                    growthPct,
-                    stage,
-                    plantDate:p.plantDate||"",
-                    harvestDate:p.harvestDate||"",
-                    zoneName:z.name,
-                  });
-                }
-              });
-              // Step 2: sort desc by frac, then row-pack with width budget 1.0
-              raw.sort((a,b)=>b.frac-a.frac);
-              const sumFrac = raw.reduce((s,r)=>s+r.frac,0);
-              const scale = sumFrac > 1 ? 1/sumFrac : 1;
-              const rows = [];
-              let cur = []; let curW = 0;
-              raw.forEach(r => {
-                const pw = r.frac * scale;
-                if (curW + pw > 1.0001 && cur.length > 0) { rows.push(cur); cur = []; curW = 0; }
-                cur.push({...r, pw});
-                curW += pw;
-              });
-              if (cur.length > 0) rows.push(cur);
-              // Step 3: assign px/py/ph (equal-height rows)
-              const rowH = rows.length > 0 ? 1 / rows.length : 1;
-              rows.forEach((row, ri) => {
-                let x = 0;
-                row.forEach(p => {
-                  cropPatches.push({...p, ph: rowH, px: x, py: ri * rowH});
-                  x += p.pw;
-                });
-              });
-            }
-
-            return (
-              <div key={z.id} id={`zone-${z.id}`}
-                onPointerDown={e => {
-                  // Only start zone drag if not clicking a crop patch
-                  if (e.target.closest('[data-crop-patch]')) return;
-                  e.stopPropagation();
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                  const rect = svgRef.current.getBoundingClientRect();
-                  const z2 = zones.find(zz => zz.id === z.id);
-                  setDragging({id:z.id,startX:e.clientX-rect.left,startY:e.clientY-rect.top,origXM:z2.xM||0,origYM:z2.yM||0,rect});
-                  setSel(z.id);
-                }}
-                onPointerMove={e => {
-                  if (e.pointerType !== "mouse") return; // hover tooltips only on desktop
-                  if (!dragging && !zoneResize) {
-                    const rect = svgRef.current.getBoundingClientRect();
-                    setHoverInfo({x:e.clientX-rect.left,y:e.clientY-rect.top,name:z.name,typeLabel:zt?.label||z.type,wM:(z.wM||10).toFixed(0),hM:(z.hM||8).toFixed(0),area:((z.wM||10)*(z.hM||8)).toFixed(0),cropCount:zPlots.length,animalCount});
-                  }
-                }}
-                onMouseLeave={() => setHoverInfo(null)}
-                onClick={() => { if (!dragging && !zoneResize) setSel(z.id); }}
-                style={{
-                  position:"absolute",
-                  left:`${xPct}%`,top:`${yPct}%`,width:`${wPct}%`,height:`${hPct}%`,
-                  borderRadius:zoneRadius(z.type),
-                  border:`1px solid ${isSel ? "rgba(241,223,69,.96)" : "rgba(24,44,27,.13)"}`,
-                  boxShadow: isSel ? `0 0 0 3px rgba(255,255,255,.96), 0 0 0 6px rgba(241,223,69,.96), 0 10px 24px rgba(35,45,26,.2)` : "0 8px 18px rgba(40,60,30,.13)",
-                  background: "transparent",
-                  cursor: isDraggingThis ? "grabbing" : "pointer",
-                  opacity: isDraggingThis ? 0.75 : 1,
-                  transition: dragging ? "none" : "all .2s ease",
-                  transform: isSel && !isDraggingThis ? "scale(1.02)" : "scale(1)",
-                  overflow:"hidden",
-                  zIndex:5,
-                }}>
-                <ZoneSurface type={z.type} rounded={zoneRadius(z.type)}/>
-                {/* Zone name */}
-                <div style={{position:"absolute",top:cropPatches.length>0?"auto":"50%",bottom:cropPatches.length>0?3:"auto",left:"50%",transform:cropPatches.length>0?"translateX(-50%)":"translate(-50%, -50%)",padding:"4px 8px",fontSize:10,fontWeight:850,color:"#2b3a2e",background:"rgba(252,250,243,.9)",borderRadius:999,border:"1px solid rgba(43,58,46,.14)",boxShadow:"0 1px 4px rgba(38,50,30,.16)",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"88%",zIndex:8,pointerEvents:"none",backdropFilter:"blur(4px)"}}>{z.name}</div>
-                {/* Crop patches — auto-laid-out, stage-aware (purely visual, no manipulation) */}
-                {cropPatches.map((cb) => {
-                  return <CropStagePatch key={cb.plotId} patch={cb} showText={cropPatches.length <= 4}/>;
-                })}
-                {/* Size label */}
-                <span style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",fontSize:8,fontFamily:F.mono,color:"rgba(35,50,35,.4)",whiteSpace:"nowrap",pointerEvents:"none",zIndex:2}}>{(z.wM||0).toFixed(0)}×{(z.hM||0).toFixed(0)}m</span>
-                {/* Resize handles — show when selected, like Paint */}
-                {isSel && ["r","b","l","t","rb","lb","rt","lt"].map(edge => {
-                  const isCorner = edge.length === 2;
-                  const sz3 = isCorner ? 10 : 6;
-                  const pos = {};
-                  if (edge.includes("t")) { pos.top = -sz3/2; }
-                  if (edge.includes("b")) { pos.bottom = -sz3/2; }
-                  if (edge.includes("l")) { pos.left = -sz3/2; }
-                  if (edge.includes("r")) { pos.right = -sz3/2; }
-                  if (edge === "t" || edge === "b") { pos.left = "50%"; pos.transform = "translateX(-50%)"; }
-                  if (edge === "l" || edge === "r") { pos.top = "50%"; pos.transform = "translateY(-50%)"; }
-                  const cursors = {r:"ew-resize",l:"ew-resize",t:"ns-resize",b:"ns-resize",rb:"nwse-resize",lt:"nwse-resize",rt:"nesw-resize",lb:"nesw-resize"};
-                  return (
-                    <div key={edge} data-crop-patch="true"
-                      onPointerDown={e => {
-                        e.stopPropagation();
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        const rect2 = svgRef.current.getBoundingClientRect();
-                        setZoneResize({id:z.id, edge, startX:e.clientX-rect2.left, startY:e.clientY-rect2.top,
-                          origXM:z.xM||0, origYM:z.yM||0, origWM:z.wM||10, origHM:z.hM||8});
-                      }}
-                      style={{position:"absolute",...pos, width:sz3, height:sz3,
-                        background:"#fff", border:`2px solid ${C.green}`, borderRadius:isCorner?2:1,
-                        cursor:cursors[edge], zIndex:10,
-                        touchAction: "none",
-                      }}/>
-                  );
-                })}
-              </div>
-            );
-          });
-        })()}
-
-        {/* Selected zone info panel — persistent game-style HUD */}
-        {sel && !dragging && (() => {
-          const sz2 = zones.find(z => z.id === sel);
-          if (!sz2) return null;
-          const zt2 = ZT_MAP.get(sz2.type);
-          const area2 = ((sz2.wM||10)*(sz2.hM||8)).toFixed(0);
-          const zPlots2 = data.garden.plots.filter(p => p.zone === sel && p.status !== "harvested");
-          const isAnimal2 = ["barn","pasture"].includes(sz2.type);
-          const animalCount2 = isAnimal2 ? data.livestock.animals.filter(a => LDB[a.type]).reduce((s,a) => s + a.count, 0) : 0;
-          // Position panel near the zone
-          const panelX = Math.min(75, Math.max(5, ((sz2.xM||0) / farmW * 100) + ((sz2.wM||10) / farmW * 100) + 1));
-          const panelY = Math.max(3, ((sz2.yM||0) / farmH * 100));
-          // If panel would go off-right, put it on the left side of zone
-          const flipLeft = panelX > 70;
-          const finalX = flipLeft ? Math.max(2, ((sz2.xM||0) / farmW * 100) - 26) : panelX;
-          return (
-            <div style={{
-              position:"absolute", left:`${finalX}%`, top:`${panelY}%`,
-              zIndex:60, width:180, animation:"fadeIn .2s ease",
-            }}>
-              <div style={{
-                background:"linear-gradient(135deg,#1a2e1a,#243524)", color:"#fff",
-                borderRadius:14, padding:"14px 16px",
-                boxShadow:"0 8px 32px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08)",
-                backdropFilter:"blur(8px)", border:"1px solid rgba(100,180,100,.2)",
-              }}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                  <div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",color:"rgba(255,255,255,.45)",textTransform:"uppercase"}}>{zt2?.label || sz2.type}</div>
-                  <div onClick={(e) => { e.stopPropagation(); setSel(null); }}
-                    style={{width:20,height:20,borderRadius:10,background:"rgba(255,255,255,.1)",
-                      display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",
-                      fontSize:11,color:"rgba(255,255,255,.5)",lineHeight:1}}>✕</div>
-                </div>
-                <div style={{fontSize:15,fontWeight:800,marginBottom:2,fontFamily:F.head,letterSpacing:"-0.02em"}}>{sz2.name}</div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,.5)",marginBottom:10,fontWeight:500}}>{zt2?.label || sz2.type}</div>
-                <div className="g2" style={{gap:6,marginBottom:8}}>
-                  <div style={{background:"rgba(255,255,255,.06)",borderRadius:8,padding:"6px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:15,fontWeight:800,fontFamily:F.mono}}>{(sz2.wM||10).toFixed(0)}×{(sz2.hM||8).toFixed(0)}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginTop:1}}>metres</div>
-                  </div>
-                  <div style={{background:"rgba(255,255,255,.06)",borderRadius:8,padding:"6px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:15,fontWeight:800,fontFamily:F.mono}}>{area2}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginTop:1}}>m²</div>
-                  </div>
-                </div>
-                {zPlots2.length > 0 && (
-                  <div style={{borderTop:"1px solid rgba(255,255,255,.08)",paddingTop:8,marginTop:4}}>
-                    <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.4)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>Crops</div>
-                    {zPlots2.slice(0,4).map(p => (
-                      <div key={p.id} style={{fontSize:11,color:"rgba(255,255,255,.8)",marginBottom:2}}>
-                        🌱 {p.name || p.crop} {p.status === "growing" ? "· growing" : p.status === "ready" ? "· ready!" : ""}
-                      </div>
-                    ))}
-                    {zPlots2.length > 4 && <div style={{fontSize:10,color:"rgba(255,255,255,.3)"}}>+{zPlots2.length-4} more</div>}
-                  </div>
-                )}
-                {animalCount2 > 0 && (
-                  <div style={{borderTop:"1px solid rgba(255,255,255,.08)",paddingTop:8,marginTop:4}}>
-                    <div style={{fontSize:11,color:"#ffcc00"}}>🐄 {animalCount2} animal{animalCount2>1?"s":""}</div>
-                  </div>
-                )}
-                {onPlantInZone && ["veg","orchard","herbs","greenhouse"].includes(sz2.type) && (
-                  <button onClick={function(e){e.stopPropagation();onPlantInZone(sz2.id);}}
-                    style={{marginTop:10,width:"100%",padding:"7px 0",background:C.green,color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",letterSpacing:"0.01em"}}>
-                    + Plant in {sz2.name}
-                  </button>
-                )}
-                <div style={{marginTop:6,fontSize:10,color:"rgba(255,255,255,.3)",textAlign:"center",fontStyle:"italic"}}>Click zone to edit below ↓</div>
-              </div>
-            </div>
-          );
-        })()}
+        <GroveScene
+          data={groveData}
+          showEditButton={false}
+          showHelperText={false}
+          showTimeTint={false}
+          edit={{selectedId:sel,onSelect:setSel,onZoneGeom:handleZoneGeom,onPlaceAt:handlePlaceAt,armed:!!armedType,dragType:PALETTE_DRAG_TYPE}}
+        />
 
       {/* First-visit tutorial — shown until dismissed */}
       {!tutorialDismissed && (
@@ -643,7 +241,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
           position:"absolute",inset:0,zIndex:80,
           background:"rgba(0,0,0,.55)",backdropFilter:"blur(3px)",
           display:"flex",alignItems:"center",justifyContent:"center",
-          borderRadius:16,
+          borderRadius:18,
         }}>
           <div style={{
             background:C.card,borderRadius:16,padding:"28px 32px",
@@ -684,19 +282,24 @@ function Setup({data, setData, onPlantInZone, onBack}) {
         </div>
       )}
 
-        {/* Helper text */}
-        <div style={{position:"absolute",bottom:6,left:10,fontSize:9,color:"rgba(80,95,80,.45)",fontFamily:F.mono,pointerEvents:"none"}}>Tap palette then tap map · Or drag zones from palette · Tap to select</div>
+        <div style={{fontSize:10.5,color:C.t3,textAlign:"center",marginTop:6}}>
+          Tap palette then tap map · Drag zones to move · Drag corner dots to resize · Tap ground to deselect
+        </div>
       </div>
       {/* Palette — Living Map */}
       <ZonePalette zones={data.zones} armedType={armedType} onArm={setArmedType}/>
       </div>
 
-      {/* Growth-stage legend — matches CropStagePatch v3 */}
+      {/* Growth-stage legend — Grove stage colors */}
       {data.garden.plots.some(p=>p.status!=="harvested") && (
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 12px",padding:"8px 0 0",alignItems:"center"}}>
-          {Object.entries(STAGE_STYLE).map(function([key,st]){return (
-            <div key={key} style={{display:"flex",alignItems:"center",gap:4}}>
-              <span style={{width:8,height:8,borderRadius:"50%",background:st.ring}}/>
+          {[
+            {k:"planted", label:"Just planted", color:"#c9a97b"},
+            {k:"growing", label:"Growing", color:"#8cbd71"},
+            {k:"ready", label:"Ready", color:"#e3b45c"},
+          ].map(function(st){return (
+            <div key={st.k} style={{display:"flex",alignItems:"center",gap:4}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:st.color}}/>
               <span style={{fontSize:10,color:C.t2,fontWeight:600}}>{st.label}</span>
             </div>
           );})}
@@ -1077,7 +680,7 @@ function MapScreen({data, setData, pageData, clearPageData, setPage}) {
 
   return (
     <div style={{maxWidth:1100}}>
-      <LivingFarmMap data={data} showCropPatches onEditLayout={function(){setEditing(true);}} onPlantInZone={handlePlantInZone}/>
+      <GroveScene data={data} setData={setData} onEditLayout={function(){setEditing(true);}} onPlantInZone={handlePlantInZone} onShowCrops={function(){setPage("crops");}}/>
     </div>
   );
 }

@@ -12,7 +12,7 @@
    (or custom onZoneClick).
    ═══════════════════════════════════════════ */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { C } from "../../lib/theme";
 import { rCM } from "../../lib/regional";
 import { buildZoneSpaceMap } from "../../lib/farm-calc";
@@ -90,8 +90,22 @@ export default function GroveScene({
   interactive = true,
   showEditButton = true,
   showHelperText = true,
+  showTimeTint = true,
   noBorder = false,
+  /* edit mode (Farm Designer): { selectedId, onSelect(id|null),
+     onZoneGeom(id, {xM,yM,wM,hM}), onPlaceAt(xM,yM,type?), armed, dragType } */
+  edit = null,
 }) {
+  const boxRef = useRef(null);
+  /* editor pointer state — {mode:"drag"|"resize", id, corner?, startSX, startSY, orig:{xM,yM,wM,hM}} */
+  const [editPtr, setEditPtr] = useState(null);
+
+  /* client px → viewBox units (aspect is locked, so width ratio suffices) */
+  function toVB(clientX, clientY) {
+    const rect = boxRef.current.getBoundingClientRect();
+    const s = rect.width > 0 ? PROJ.vbW / rect.width : 1;
+    return [(clientX - rect.left) * s, (clientY - rect.top) * s];
+  }
   /* ── Hour-of-day tint (Phase 8.5 behavior, kept) ── */
   const [mapHour, setMapHour] = useState(() => new Date().getHours());
   useEffect(() => {
@@ -212,10 +226,12 @@ export default function GroveScene({
         <div style={{ fontSize: 32, marginBottom: 8 }}>🗺️</div>
         <div style={{ fontSize: 14, fontWeight: 600 }}>No zones yet</div>
         <div style={{ fontSize: 12, marginTop: 4 }}>Design your farm layout to see it here</div>
+        {onEditLayout && (
         <button onClick={onEditLayout} style={{
           marginTop: 14, padding: "8px 20px", background: C.green, color: "#fff",
           border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
         }}>Design Farm Layout</button>
+        )}
       </div>
     );
   }
@@ -225,8 +241,75 @@ export default function GroveScene({
   const pct = ([sx, sy]) => ({ left: (sx / vbW * 100) + "%", top: (sy / vbH * 100) + "%" });
 
   function clickZone(z) {
+    if (edit) { edit.onSelect && edit.onSelect(z.id); return; }
     if (onZoneClick) { onZoneClick(z); return; }
     if (interactive) setSelZoneId(z.id);
+  }
+
+  /* ── Editor pointer plumbing ── */
+  function startZoneDrag(z, e) {
+    if (!edit) return;
+    e.stopPropagation();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    const [sx, sy] = toVB(e.clientX, e.clientY);
+    setEditPtr({ mode: "drag", id: z.id, startSX: sx, startSY: sy,
+      orig: { xM: z.xM || 0, yM: z.yM || 0, wM: z.wM || 10, hM: z.hM || 8 } });
+    edit.onSelect && edit.onSelect(z.id);
+  }
+  function startCornerResize(z, corner, e) {
+    if (!edit) return;
+    e.stopPropagation();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    const [sx, sy] = toVB(e.clientX, e.clientY);
+    setEditPtr({ mode: "resize", id: z.id, corner, startSX: sx, startSY: sy,
+      orig: { xM: z.xM || 0, yM: z.yM || 0, wM: z.wM || 10, hM: z.hM || 8 } });
+  }
+  function editPointerMove(e) {
+    if (!edit || !editPtr) return;
+    const [sx, sy] = toVB(e.clientX, e.clientY);
+    const { dxM, dyM } = PROJ.invertDelta(sx - editPtr.startSX, sy - editPtr.startSY);
+    const o = editPtr.orig;
+    if (editPtr.mode === "drag") {
+      edit.onZoneGeom && edit.onZoneGeom(editPtr.id, { xM: o.xM + dxM, yM: o.yM + dyM, wM: o.wM, hM: o.hM });
+      return;
+    }
+    /* corner resize — corners named by meter-space corner they grab */
+    let xM = o.xM, yM = o.yM, wM = o.wM, hM = o.hM;
+    const c = editPtr.corner;
+    const MIN = 3;
+    if (c === "br") { wM = Math.max(MIN, o.wM + dxM); hM = Math.max(MIN, o.hM + dyM); }
+    if (c === "tr") { wM = Math.max(MIN, o.wM + dxM); const nh = Math.max(MIN, o.hM - dyM); yM = o.yM + (o.hM - nh); hM = nh; }
+    if (c === "bl") { const nw = Math.max(MIN, o.wM - dxM); xM = o.xM + (o.wM - nw); wM = nw; hM = Math.max(MIN, o.hM + dyM); }
+    if (c === "tl") { const nw = Math.max(MIN, o.wM - dxM); xM = o.xM + (o.wM - nw); wM = nw;
+      const nh = Math.max(MIN, o.hM - dyM); yM = o.yM + (o.hM - nh); hM = nh; }
+    edit.onZoneGeom && edit.onZoneGeom(editPtr.id, { xM, yM, wM, hM });
+  }
+  function editPointerUp() { if (editPtr) setEditPtr(null); }
+  function editCanvasClick(e) {
+    if (!edit) return;
+    if (edit.armed && edit.onPlaceAt) {
+      const [sx, sy] = toVB(e.clientX, e.clientY);
+      const m = PROJ.invert(sx, sy);
+      edit.onPlaceAt(m.xM, m.yM);
+      return;
+    }
+    edit.onSelect && edit.onSelect(null);
+  }
+  function editDragOver(e) {
+    if (!edit || !edit.dragType || !e.dataTransfer) return;
+    if (Array.from(e.dataTransfer.types || []).includes(edit.dragType)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+  }
+  function editDrop(e) {
+    if (!edit || !edit.onPlaceAt || !e.dataTransfer) return;
+    const t = e.dataTransfer.getData(edit.dragType || "") || e.dataTransfer.getData("text/plain");
+    if (!t) return;
+    e.preventDefault();
+    const [sx, sy] = toVB(e.clientX, e.clientY);
+    const m = PROJ.invert(sx, sy);
+    edit.onPlaceAt(m.xM, m.yM, t);
   }
 
   /* Ground grid lines every ~5m, clipped to the farm diamond */
@@ -237,8 +320,17 @@ export default function GroveScene({
 
   return (
     <div data-grove-scene-marker="scene-root" style={{ position: "relative" }}>
-      <div style={{
+      <div ref={boxRef}
+        onPointerMove={edit ? editPointerMove : undefined}
+        onPointerUp={edit ? editPointerUp : undefined}
+        onPointerCancel={edit ? editPointerUp : undefined}
+        onClick={edit ? editCanvasClick : undefined}
+        onDragOver={edit ? editDragOver : undefined}
+        onDrop={edit ? editDrop : undefined}
+        style={{
         position: "relative", width: "100%", overflow: "hidden",
+        touchAction: edit ? "none" : undefined,
+        cursor: edit && edit.armed ? "crosshair" : undefined,
         aspectRatio: `${vbW} / ${vbH}`,
         borderRadius: noBorder ? 0 : 18,
         border: noBorder ? "none" : `1px solid ${C.bdr}`,
@@ -269,11 +361,18 @@ export default function GroveScene({
             const cc = TYPE_COLORS[z.type] || TYPE_COLORS.default;
             const hovered = hoverId === z.id;
             const common = {
-              onClick: () => clickZone(z),
+              onClick: (e) => { if (edit) e.stopPropagation(); clickZone(z); },
+              onPointerDown: edit ? (e) => startZoneDrag(z, e) : undefined,
               onMouseEnter: interactive ? () => setHoverId(z.id) : undefined,
               onMouseLeave: interactive ? () => setHoverId(null) : undefined,
-              style: { cursor: interactive || onZoneClick ? "pointer" : "default" },
+              style: {
+                cursor: edit
+                  ? (editPtr && editPtr.id === z.id && editPtr.mode === "drag" ? "grabbing" : "grab")
+                  : (interactive || onZoneClick ? "pointer" : "default"),
+                touchAction: edit ? "none" : undefined,
+              },
             };
+            const isEditSel = edit && edit.selectedId === z.id;
 
             if (building) {
               const bc = BUILDING_COLORS[z.type] || BUILDING_COLORS.storage;
@@ -297,6 +396,7 @@ export default function GroveScene({
                   <polygon points={polyPoints([d1t, d2t, d2, d1])} fill={bc.door}/>
                   <polygon points={polyPoints([RO.tl, RO.tr, RO.br, RO.bl])} fill={bc.roof} stroke={bc.ridge} strokeWidth="1"/>
                   <line x1={r1[0]} y1={r1[1]} x2={r2[0]} y2={r2[1]} stroke={bc.ridge} strokeWidth={Math.max(1.5, U * 0.12)}/>
+                  {isEditSel && <polygon points={polyPoints([G.tl, G.tr, G.br, G.bl])} fill="none" stroke="#f1df45" strokeWidth="2.5" strokeDasharray="6 4"/>}
                 </g>
               );
             }
@@ -307,6 +407,7 @@ export default function GroveScene({
                   <polygon points={polyPoints([G.tl, G.tr, G.br, G.bl])} fill={cc.top} stroke={cc.r} strokeWidth="1.2"/>
                   <path d={`M ${P(x0 + w * .25, y0 + h * .4)[0]} ${P(x0 + w * .25, y0 + h * .4)[1]} q ${U * .8} ${-U * .25} ${U * 1.6} 0`} stroke={cc.detail} strokeWidth="1.6" fill="none" strokeLinecap="round"/>
                   <path d={`M ${P(x0 + w * .45, y0 + h * .65)[0]} ${P(x0 + w * .45, y0 + h * .65)[1]} q ${U * .7} ${-U * .22} ${U * 1.4} 0`} stroke={cc.detail} strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+                  {isEditSel && <polygon points={polyPoints([G.tl, G.tr, G.br, G.bl])} fill="none" stroke="#f1df45" strokeWidth="2.5" strokeDasharray="6 4"/>}
                 </g>
               );
             }
@@ -375,7 +476,7 @@ export default function GroveScene({
               <g key={z.id} {...common} data-grove-zone={z.type}>
                 <polygon points={polyPoints([T.bl, T.br, G.br, G.bl])} fill={cc.l}/>
                 <polygon points={polyPoints([T.tr, T.br, G.br, G.tr])} fill={cc.r}/>
-                <polygon points={polyPoints([T.tl, T.tr, T.br, T.bl])} fill={cc.top} stroke={cc.r} strokeWidth="1" opacity={hovered ? .93 : 1}/>
+                <polygon points={polyPoints([T.tl, T.tr, T.br, T.bl])} fill={cc.top} stroke={isEditSel ? "#f1df45" : cc.r} strokeWidth={isEditSel ? 2.5 : 1} strokeDasharray={isEditSel ? "6 4" : undefined} opacity={hovered ? .93 : 1}/>
                 {patches.map(pt => {
                   const pwM = pt.pw * w;
                   const phM = pt.ph * h;
@@ -410,7 +511,12 @@ export default function GroveScene({
             const groups = zoneAnimalGroups(z, data.livestock && data.livestock.animals).slice(0, 2);
             const sp = isPlantZone(z.type) ? zoneSpace[z.id] : null;
             const fillPct = sp && sp.totalM2 > 0 ? Math.round((sp.pct || 0) * 100) : null;
-            const zoneTasks = tasksByZone[z.id] || null;
+            const zoneTasks = edit ? null : (tasksByZone[z.id] || null);
+            const isEditSel = edit && edit.selectedId === z.id;
+            const handleCorners = isEditSel ? [
+              { c: "tl", m: [x0, y0] }, { c: "tr", m: [x0 + w, y0] },
+              { c: "br", m: [x0 + w, y0 + h] }, { c: "bl", m: [x0, y0 + h] },
+            ] : [];
             const tagPos = pct(P(x0 + w / 2, y0 + h, building ? -4 : 2));
             const centerTop = pct(P(x0 + w / 2, y0 + h / 2, E + (building ? 30 : 34)));
             return (
@@ -464,7 +570,7 @@ export default function GroveScene({
                 })}
 
                 {/* zone tag */}
-                <button onClick={() => clickZone(z)} style={{
+                <button onClick={(e) => { if (edit) e.stopPropagation(); clickZone(z); }} style={{
                   position: "absolute", ...tagPos, transform: "translate(-50%,12%)",
                   pointerEvents: "auto", cursor: "pointer",
                   display: "flex", alignItems: "center", gap: 5,
@@ -475,13 +581,31 @@ export default function GroveScene({
                   boxShadow: "0 1px 4px rgba(20,36,24,.2)",
                 }} data-icon="true">
                   {z.name}
-                  {fillPct !== null && <em style={{ fontStyle: "normal", fontWeight: 700, color: zoneFillColor(fillPct) }}>{fillPct}%</em>}
-                  {groups.length > 0 && fillPct === null && (
+                  {edit && <em style={{ fontStyle: "normal", fontWeight: 700, color: "#5e6e5e" }}>{(z.wM || 10).toFixed(0)}×{(z.hM || 8).toFixed(0)}m</em>}
+                  {!edit && fillPct !== null && <em style={{ fontStyle: "normal", fontWeight: 700, color: zoneFillColor(fillPct) }}>{fillPct}%</em>}
+                  {!edit && groups.length > 0 && fillPct === null && (
                     <em style={{ fontStyle: "normal", fontWeight: 700, color: "#5e6e5e" }}>
                       {groups.reduce((s, g) => s + g.count, 0)}
                     </em>
                   )}
                 </button>
+
+                {/* editor resize handles — 4 corners of the selected zone */}
+                {handleCorners.map(hc => {
+                  const hp = pct(P(hc.m[0], hc.m[1], building ? 0 : E));
+                  return (
+                    <div key={hc.c}
+                      onPointerDown={(e) => startCornerResize(z, hc.c, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: "absolute", ...hp, transform: "translate(-50%,-50%)",
+                        width: 16, height: 16, borderRadius: 8,
+                        background: "#fff", border: "2.5px solid #f1df45",
+                        boxShadow: "0 1px 5px rgba(20,36,24,.4)",
+                        pointerEvents: "auto", cursor: "grab", touchAction: "none", zIndex: 6,
+                      }}/>
+                  );
+                })}
 
                 {/* task markers */}
                 {zoneTasks && (
@@ -519,7 +643,7 @@ export default function GroveScene({
         </div>
 
         {/* time-of-day tint */}
-        {tint && <div style={{ position: "absolute", inset: 0, background: tint, pointerEvents: "none", transition: "background 2s ease" }}/>}
+        {showTimeTint && tint && <div style={{ position: "absolute", inset: 0, background: tint, pointerEvents: "none", transition: "background 2s ease" }}/>}
 
         {/* Edit button */}
         {showEditButton && onEditLayout && (

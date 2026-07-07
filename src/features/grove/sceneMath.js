@@ -38,7 +38,23 @@ export function makeProjector(fW, fH, vbW = 1000, pad = 56) {
   // unit: projected length of 1m along the x iso axis
   const a = p(0, 0); const b = p(1, 0);
   const unit = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  return { p, unit, vbW, vbH: Math.round(vbH) };
+
+  /* Inverse projection (elev=0): viewBox coords → meters.
+     sx = ((x−y)K − minX)·scale + pad ; sy = ((x+y)K/2 − minY)·scale + pad */
+  function invert(sx, sy) {
+    const rx = (sx - pad) / scale + minX;
+    const ry = (sy - yOff) / scale + minY;
+    const A = rx / K;          // x − y
+    const B = (2 * ry) / K;    // x + y
+    return { xM: (A + B) / 2, yM: (B - A) / 2 };
+  }
+  /* Delta-only inverse: screen-space delta (viewBox units) → meter delta */
+  function invertDelta(dsx, dsy) {
+    const A = dsx / scale / K;
+    const B = (2 * (dsy / scale)) / K;
+    return { dxM: (A + B) / 2, dyM: (B - A) / 2 };
+  }
+  return { p, invert, invertDelta, unit, vbW, vbH: Math.round(vbH) };
 }
 
 export function polyPoints(pts) {

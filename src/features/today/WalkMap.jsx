@@ -1,14 +1,17 @@
-import React from "react";
-import LivingFarmMap from "../farm/living/LivingFarmMap";
+import React, { useMemo } from "react";
+import GroveScene from "../grove/GroveScene";
+import { makeProjector } from "../grove/sceneMath";
 
 /*
-   WalkMap — guided walk map view.
+   WalkMap — guided walk map view (Grove edition).
 
-   LOCKED BEHAVIOUR — do not change:
-   - Map fills its container exactly. No scroll, no overflow, no pan, no zoom.
-   - Uses fitMode="fill" so LivingFarmMap fills position:absolute inset:0.
-   - Walker token is positioned at cx/cy % of the same container.
-   - aspectRatio is NOT used here — it causes overflow. Container controls size.
+   Renders the SAME isometric GroveScene as the home screen — one map
+   engine everywhere. The scene keeps its natural aspect ratio and is
+   letterboxed inside the fill container (CSS aspect-ratio transfer).
+
+   Walker token: stops carry cx/cy as percent of farm meters (top-down).
+   We convert percent → meters → iso projection → percent of the scene
+   box, so the walker stands exactly on the projected ground point.
 */
 
 const WALKER_CSS = `
@@ -22,8 +25,17 @@ const WALKER_CSS = `
 export default function WalkMap({ stops, currentStopIdx, data, onStopClick }) {
   const safeStops = stops || [];
   const current = currentStopIdx >= 0 ? safeStops[currentStopIdx] : null;
-  const walkerX = current ? current.cx : 5;
-  const walkerY = current ? current.cy : 90;
+
+  const fW = (data && data.farmW) || 100;
+  const fH = (data && data.farmH) || 60;
+  const PROJ = useMemo(function() { return makeProjector(fW, fH); }, [fW, fH]);
+
+  /* stop cx/cy (% of farm meters) → iso scene percent */
+  function stopPct(cx, cy) {
+    const pt = PROJ.p((cx / 100) * fW, (cy / 100) * fH, 6);
+    return { left: (pt[0] / PROJ.vbW) * 100, top: (pt[1] / PROJ.vbH) * 100 };
+  }
+  const walkerPos = current ? stopPct(current.cx, current.cy) : stopPct(0, 50);
 
   const zoneToStopIdx = new Map();
   for (let i = 0; i < safeStops.length; i++) {
@@ -45,29 +57,30 @@ export default function WalkMap({ stops, currentStopIdx, data, onStopClick }) {
     );
   }
 
-  /* Fill the container completely. No aspectRatio — that causes overflow.
-     The parent (WalkOverlay) controls the height via flex:1 + minHeight:0.
-     overflow:hidden ensures nothing bleeds out. */
+  /* Letterbox: outer fills, inner keeps the scene's aspect ratio.
+     width:100% + maxHeight:100% + aspect-ratio → CSS transferred sizing. */
   return (
     <div style={{
-      position: "absolute",
-      inset: 0,
-      overflow: "hidden",
-      borderRadius: 12,
+      position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12,
+      display: "flex", alignItems: "center", justifyContent: "center",
     }}>
       <style>{WALKER_CSS}</style>
-      <LivingFarmMap
-        data={data}
-        fitMode="fill"
-        showTimeTint={false}
-        showEditButton={false}
-        showHelperText={false}
-        showCropPatches={false}
-        interactive={false}
-        noBorder={true}
-        onZoneClick={handleZoneClick}
-      />
-      <WalkerToken x={walkerX} y={walkerY} />
+      <div style={{
+        position: "relative",
+        width: "100%", maxHeight: "100%",
+        aspectRatio: PROJ.vbW + " / " + PROJ.vbH,
+      }}>
+        <GroveScene
+          data={data}
+          interactive={false}
+          showEditButton={false}
+          showHelperText={false}
+          showTimeTint={false}
+          noBorder={true}
+          onZoneClick={handleZoneClick}
+        />
+        <WalkerToken x={walkerPos.left} y={walkerPos.top} />
+      </div>
     </div>
   );
 }
@@ -86,7 +99,7 @@ function WalkerToken({ x, y }) {
       }}
     >
       <div style={{ position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", width:44, height:44, borderRadius:"50%", background:"radial-gradient(circle, rgba(127,201,127,.5) 0%, transparent 70%)" }} />
-      <div style={{ position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg,#fff 0%,#e8f5e9 100%)", border:"2.5px solid #4caf50", boxShadow:"0 2px 10px rgba(0,0,0,.45)", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>&#x1F6B6;</div>
+      <div style={{ position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg,#fff 0%,#e8f5e9 100%)", border:"2.5px solid #4caf50", boxShadow:"0 2px 10px rgba(0,0,0,.45)", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>🚶</div>
     </div>
   );
 }
