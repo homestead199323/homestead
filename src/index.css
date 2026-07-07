@@ -290,6 +290,15 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Opacity-only page fade. Page roots must NEVER animate transform:
+   'animation ... both' retains the transform after the animation ends,
+   which turns the page root into a containing block and silently breaks
+   every position:fixed descendant (snap sheet, zone card, toasts). */
+@keyframes fadeOnly {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -383,7 +392,7 @@ body {
   .bento-wide { grid-column: auto; }
 }
 
-.page-enter { animation: fadeUp 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+.page-enter { animation: fadeOnly 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
 .card-enter { animation: fadeUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 .card-enter:nth-child(1) { animation-delay: 0s; }
@@ -516,7 +525,7 @@ nav button:hover:not([aria-current="page"]) {
    SMOOTH PAGE TRANSITIONS
    ═══════════════════════════════════════════ */
 main > div {
-  animation: fadeUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: fadeOnly 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
 /* ═══════════════════════════════════════════
