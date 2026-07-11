@@ -310,6 +310,7 @@ const GuineaFowl = () => (
 );
 
 /* Exact-name lookup. Keys must match CROPS[].name / LDB keys. */
+// eslint-disable-next-line react-refresh/only-export-components -- icon registry lives with its components by design; dev-only Fast Refresh nit
 export const FARM_SVG = {
   Radish, Beetroot, Turnip, Leek, Celery, Celeriac, Pea, Okra,
   Plum, Apricot, Persimmon, Fig, Pomegranate, Lentil, Chickpea,
@@ -318,6 +319,7 @@ export const FARM_SVG = {
   Quail, "Guinea Fowl": GuineaFowl,
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- see FARM_SVG note
 export function hasFarmIcon(name) {
   return !!FARM_SVG[name];
 }

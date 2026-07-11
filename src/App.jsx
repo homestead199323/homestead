@@ -32,7 +32,7 @@ import { NAV, BOTTOM_TABS, MORE_ITEMS } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
 import { isSupabaseConfigured } from "./lib/db";
 import { getSession, onAuthChange, signOut } from "./lib/auth";
-import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt } from "./lib/sync";
+import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt, resetSync } from "./lib/sync";
 import { SyncStatus } from "./components/SyncStatus";
 import AuthScreen from "./features/auth/AuthScreen";
 import SettingsPanel from "./features/settings/SettingsPanel";
@@ -604,6 +604,7 @@ function AuthGate() {
       } else if (event === "SIGNED_OUT") {
         reconciledFor.current = null;
         setCloudData(null);
+        resetSync(); // server-side sign-outs / token revocation take this path too
         setPhase("signedout");
       }
       // TOKEN_REFRESHED / USER_UPDATED: no view change needed.
@@ -621,6 +622,9 @@ function AuthGate() {
       // signs in on this browser starts clean instead of inheriting this
       // user's farm. (Cloud copy is already saved by the flush above.)
       clearFarm();
+      // Drop any push that DIDN'T flush (e.g. signed out while offline) so
+      // it can't drain into the next account's row on reconnect.
+      resetSync();
     } catch (e) {
       console.warn("[auth] sign-out error:", e);
     }

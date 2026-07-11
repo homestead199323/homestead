@@ -162,6 +162,19 @@ export async function flushPush() {
   }
 }
 
+// ── Reset (sign-out) ────────────────────────────────────────────────
+// Clear all pending push state. Called on sign-out so a queued, unflushed
+// write from one account can never drain into the NEXT account's session on
+// a shared browser (the reconnect + beforeunload handlers survive sign-out,
+// and flushPush writes under whatever session exists at flush time).
+export function resetSync() {
+  if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
+  _pendingData = null;
+  _dirty = false;
+  _lastUpdatedAt = 0;
+  setStatus("local"); // signed out — no cloud target until the next sign-in
+}
+
 // ── Multi-device pull (Phase 6) ─────────────────────────────────────
 // Called on tab focus / visibility regain. If the cloud row is newer than
 // what we hold AND we have no unpushed local edits, returns the fresh cloud

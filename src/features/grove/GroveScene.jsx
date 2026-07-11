@@ -40,6 +40,7 @@ const SOIL_TYPES = new Set(["veg", "herbs", "raised", "container"]);
 const FRAMED_TYPES = new Set(["raised", "container"]);
 
 /* Ornaments (user-placed, max 10 — placed via Farm Designer) */
+// eslint-disable-next-line react-refresh/only-export-components -- palette constant consumed by Farm Designer; dev-only Fast Refresh nit
 export const ORNAMENT_TYPES = [
   { id: "tree",     label: "Tree",      icon: "🌳" },
   { id: "bush",     label: "Bush",      icon: "🌿" },
