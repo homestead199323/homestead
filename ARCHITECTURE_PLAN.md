@@ -434,7 +434,36 @@ Infra note (ex-corporate Mac): the Xcode platform download was blocked by a `0.0
 
 ## Phase 8 — Payments And Subscriptions
 
-**Status: NOT STARTED.**
+**Status: IN PROGRESS (8.1 shipped 2026-07-12).**
+
+**Decisions (2026-07-12):**
+- Processor: **Paddle** (Merchant of Record). Stripe is NOT available to
+  Albanian sellers (verified 2026-07: 46 supported countries, AL absent;
+  Atlas/Delaware route rejected as overhead). Lemon Squeezy rejected —
+  being folded into Stripe Managed Payments (public preview), roadmap risk.
+  Paddle explicitly supports AL sellers and takes UK/EU VAT liability.
+- Post-trial behavior: **read-only** — data visible + pull-sync works,
+  writes rejected (DB-enforced, not just UI).
+- Trial derives from `profiles.trial_started_at` (set at signup). 7 days,
+  full Pro during trial.
+
+**8.1 SHIPPED (commit c13fb74 + Supabase migrations
+`phase8_subscription_schema_and_entitlement_rls`,
+`phase8_revoke_anon_has_write_access`):**
+- profiles: + paddle_customer_id, paddle_subscription_id,
+  subscription_status, current_period_end (+ CHECK constraints).
+- `profiles_update_own` policy DROPPED — tier was client-writable
+  (self-serve free Pro from devtools). tier now changes only via
+  service_role (future Paddle webhook edge function).
+- `public.has_write_access(uid)` SECURITY DEFINER fn (grants:
+  authenticated + service_role only); farms INSERT/UPDATE policies now
+  require it. past_due (Paddle dunning) keeps access; canceled/paused/
+  lapsed → read-only.
+- `src/services/payments/entitlements.js` — client mirror of the SQL
+  predicate + 72h offline grace cache (hfm_entitlement_v1). 19 unit
+  tests pass. NOT imported anywhere yet.
+- Founder accounts (dervis + elvia) set tier='lifetime' (trials had
+  expired; write-block would have locked them).
 
 Pricing (canonical — verified in public/landing.html line 954):
 - 7-day free trial, no card required
@@ -442,13 +471,30 @@ Pricing (canonical — verified in public/landing.html line 954):
 - Pro $9.99/mo (AI assistant, multi-zone, analytics)
 - Lifetime $190 one-time (early adopter)
 
-- [ ] Create `src/services/payments/`.
-- [ ] Keep Stripe for web subscriptions.
-- [ ] Research Apple App Store subscription rules before iOS payments.
+Remaining:
+- [x] Create `src/services/payments/` (8.1).
+- [ ] 8.2: wire entitlements into App — read-only UI lock, trial-days
+      banner, Pro feature gates (AI/multi-zone/analytics), upgrade screen.
+      resetEntitlement() must be called wherever resetSync() is.
+- [ ] 8.3: terms of service + privacy policy + refund policy pages
+      (Paddle account approval requires them; GDPR blocker anyway).
+- [ ] 8.4 (DERVIS): buy custom domain (vercel.app subdomain may fail
+      Paddle site review) + create/verify Paddle account + create the
+      4 products (Basic mo, Pro mo, Lifetime).
+- [ ] 8.5: Paddle checkout overlay + webhook → Supabase edge function
+      (service_role updates profiles.tier/status/period_end).
+- [ ] 8.6: verify RLS write-block end-to-end with a live expired-trial
+      session (NOT yet verified — only lifetime accounts exist).
+- [ ] Research Apple App Store subscription rules before iOS payments
+      (web Paddle purchases can't be sold inside the iOS app — Apple IAP
+      rules; revisit at Phase 7 resumption).
 - [ ] Research Google Play subscription rules before Android payments.
-- [ ] Keep paid-feature checks in shared code.
-- [ ] Add subscription status service.
-- [ ] 72h offline grace token for subscribers.
+- [x] Keep paid-feature checks in shared code (entitlements.js is the
+      shared brain; UI imports it, never re-implements rules).
+- [x] Add subscription status service (8.1: fetchEntitlement /
+      computeEntitlement / hasFeature).
+- [x] 72h offline grace token for subscribers (8.1: cached verifiedAt
+      in hfm_entitlement_v1; live behavior verified at 8.6).
 
 ---
 
