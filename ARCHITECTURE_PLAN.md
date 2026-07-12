@@ -473,9 +473,18 @@ Pricing (canonical — verified in public/landing.html line 954):
 
 Remaining:
 - [x] Create `src/services/payments/` (8.1).
-- [ ] 8.2: wire entitlements into App — read-only UI lock, trial-days
-      banner, Pro feature gates (AI/multi-zone/analytics), upgrade screen.
-      resetEntitlement() must be called wherever resetSync() is.
+- [x] 8.2 SHIPPED (commit ef30ccc → dpl_349yGMNBPxHAkFQfxH6TooJPuZ6E, 5
+      bundle markers verified live): entitlements wired into App —
+      setData guarded (locked → upgrade sheet, no mutation), TrialBanner
+      (countdown / read-only / dunning), UpgradeSheet (PADDLE_ENABLED=false
+      until 8.5), AI assistant Pro-gated via LockedAssistantFab,
+      resetEntitlement() beside both resetSync() call sites. Bonus fix:
+      db.js no longer hard-crashes the app when env vars are missing
+      (createClient throws on falsy url — local-only escape hatch was
+      dead code). Validated: eslint + 5-state Playwright smoke suite.
+      NOT yet gated: zone-count limit for Basic (multi-zone) and
+      analytics — needs product decision on Basic's zone cap and what
+      "analytics" maps to in Financials.
 - [ ] 8.3: terms of service + privacy policy + refund policy pages
       (Paddle account approval requires them; GDPR blocker anyway).
 - [ ] 8.4 (DERVIS): buy custom domain (vercel.app subdomain may fail
