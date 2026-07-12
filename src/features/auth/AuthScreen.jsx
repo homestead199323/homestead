@@ -127,6 +127,16 @@ export default function AuthScreen() {
             </Btn>
           </div>
 
+          {/* Phase 8.3 — legal consent line, shown on the signup form only */}
+          {isSignup && (
+            <div style={{textAlign:"center",marginTop:12,fontSize:11.5,color:C.t2,lineHeight:1.5}}>
+              By creating an account you agree to the{" "}
+              <a href="/terms" target="_blank" rel="noopener" style={{color:C.green,fontWeight:600}}>Terms of Service</a>
+              {" "}and{" "}
+              <a href="/privacy" target="_blank" rel="noopener" style={{color:C.green,fontWeight:600}}>Privacy Policy</a>.
+            </div>
+          )}
+
           {/* Google sign-in hidden until OAuth is configured in Supabase.
               To restore: uncomment handleGoogle + its import above, then
               re-add the OR divider and the Google <button> here. */}
