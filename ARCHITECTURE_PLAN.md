@@ -497,8 +497,20 @@ Remaining:
       4 products (Basic mo, Pro mo, Lifetime).
 - [ ] 8.5: Paddle checkout overlay + webhook → Supabase edge function
       (service_role updates profiles.tier/status/period_end).
-- [ ] 8.6: verify RLS write-block end-to-end with a live expired-trial
-      session (NOT yet verified — only lifetime accounts exist).
+- [x] 8.6 VERIFIED (2026-07-12, no code change): RLS write-block tested
+      against the LIVE database via role impersonation (SET LOCAL ROLE
+      authenticated + request.jwt.claims — same mechanism supabase-js
+      uses), using a synthetic auth.users fixture (deleted after,
+      cascade + real-account integrity confirmed). Matrix, each state
+      committed + verified before its impersonated write:
+      trial fresh → write OK; trial expired → 42501 blocked, reads OK,
+      sees ONLY own farm/profile, self-UPDATE tier='pro' hits 0 rows;
+      basic+canceled → blocked; basic+past_due → write OK (dunning);
+      basic+active → write OK; lifetime → write OK.
+      GOTCHA reconfirmed: execute_sql rolls back the entire call on any
+      statement error — NEVER bundle admin state changes with an
+      impersonated statement that is expected to fail; verify state in a
+      separate call first.
 - [ ] Research Apple App Store subscription rules before iOS payments
       (web Paddle purchases can't be sold inside the iOS app — Apple IAP
       rules; revisit at Phase 7 resumption).
