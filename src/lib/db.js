@@ -23,7 +23,12 @@ if (!url || !key) {
   );
 }
 
-export const supabase = createClient(url, key, {
+// Guard: createClient THROWS on a falsy url, which killed the entire app at
+// module load when env vars were missing — making AuthGate's local-only
+// escape hatch unreachable dead code. With placeholder credentials the
+// client constructs fine; every network call just fails, and callers
+// already branch on isSupabaseConfigured to avoid/absorb that.
+export const supabase = createClient(url || "https://unconfigured.invalid", key || "unconfigured", {
   auth: {
     // Persist the session in localStorage so a returning user stays signed in.
     // Matches the app's existing localStorage persistence model.

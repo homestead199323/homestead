@@ -38,6 +38,8 @@ import AuthScreen from "./features/auth/AuthScreen";
 import SettingsPanel from "./features/settings/SettingsPanel";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import { checkIsAdmin } from "./lib/admin";
+import { fetchEntitlement, getCachedEntitlement, resetEntitlement, hasFeature } from "./services/payments/entitlements";
+import { TrialBanner, UpgradeSheet, LockedAssistantFab } from "./features/payments/Paywall";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
    ═══════════════════════════════════════════ */
@@ -227,6 +229,31 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   // Phase 8.4 — queue of badge ids waiting to be shown in the celebration overlay
   const [badgeQueue,setBadgeQueue]=useState([]);
 
+  // Phase 8.2 (payments) — entitlement drives the read-only lock, trial
+  // banner, and Pro gates. Seeded synchronously from the offline-grace
+  // cache, then verified against Supabase on mount and on tab focus.
+  // 'unknown' (no cache yet, fetch pending) is treated optimistically as
+  // unlocked — the farms RLS is the real security boundary, and blocking a
+  // paying user on a network blip is worse than letting a write bounce.
+  const [ent, setEnt] = useState(() => getCachedEntitlement());
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  useEffect(() => {
+    let on = true;
+    fetchEntitlement().then((e) => { if (on) setEnt(e); });
+    const refresh = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      fetchEntitlement().then((e) => { if (on) setEnt(e); });
+    };
+    window.addEventListener("focus", refresh);
+    return () => { on = false; window.removeEventListener("focus", refresh); };
+  }, []);
+  const locked = ent.state !== "unknown" && !ent.canWrite;
+  const aiAllowed = ent.state === "unknown" || hasFeature(ent, "ai");
+  // Ref mirror so the stable setData callback (empty deps) sees the live
+  // lock without being re-created on every entitlement change.
+  const lockedRef = useRef(false);
+  useEffect(() => { lockedRef.current = locked; }, [locked]);
+
   // 7-day feedback prompt — record first use, show prompt after 7 days (once)
   useEffect(() => {
     try {
@@ -296,7 +323,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   // was empty and we seeded from local/DEF, and the offline-edit-then-login
   // case where local is authoritative). Ongoing changes push via setData.
   useEffect(() => {
-    if (data) pushFarm(data);
+    if (data && !lockedRef.current) pushFarm(data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -318,6 +345,10 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   // Save wrapper — backward-compatible setData that dispatches + debounced save
   // Also runs gamification updates (streak, badges) on every data change
   const setData = useCallback((nd) => {
+    // Phase 8.2 — read-only after trial/subscription expiry. The farms RLS
+    // rejects the upsert anyway; blocking here keeps local state consistent
+    // with the cloud and turns a dead click into an upgrade prompt.
+    if (lockedRef.current) { setUpgradeOpen(true); return; }
     const withGamify = updateGamify(nd);
     // Phase 8.4 — extract transient _pendingCelebrations before persisting
     const { _pendingCelebrations, ...persistable } = withGamify;
@@ -452,6 +483,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
           </button>
         </nav>
         <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
+          <TrialBanner ent={ent} onUpgrade={() => setUpgradeOpen(true)}/>
           {pg()}
         </main>
       </div>
@@ -459,7 +491,10 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} isAdmin={isAdmin} onClose={()=>setMoreOpen(false)} onOpenSettings={()=>{setMoreOpen(false);setSettingsOpen(true);}}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
-      <AIAssistant data={data} setData={setData} lift={page === "home"}/>
+      {aiAllowed
+        ? <AIAssistant data={data} setData={setData} lift={page === "home"}/>
+        : <LockedAssistantFab lift={page === "home"} onClick={() => setUpgradeOpen(true)}/>}
+      <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} ent={ent}/>
       {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} importData={importData} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut}/>}
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}/>}
     </>
@@ -619,6 +654,7 @@ function AuthGate() {
         reconciledFor.current = null;
         setCloudData(null);
         resetSync(); // server-side sign-outs / token revocation take this path too
+        resetEntitlement(); // Phase 8.2 — a paid user's offline-grace cache must not leak to the next account
         setPhase("signedout");
       }
       // TOKEN_REFRESHED / USER_UPDATED: no view change needed.
@@ -639,6 +675,7 @@ function AuthGate() {
       // Drop any push that DIDN'T flush (e.g. signed out while offline) so
       // it can't drain into the next account's row on reconnect.
       resetSync();
+      resetEntitlement(); // Phase 8.2 — same hygiene as resetSync (see entitlements.js)
     } catch (e) {
       console.warn("[auth] sign-out error:", e);
     }
