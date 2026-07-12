@@ -485,8 +485,13 @@ Remaining:
       NOT yet gated: zone-count limit for Basic (multi-zone) and
       analytics — needs product decision on Basic's zone cap and what
       "analytics" maps to in Financials.
-- [ ] 8.3: terms of service + privacy policy + refund policy pages
-      (Paddle account approval requires them; GDPR blocker anyway).
+- [x] 8.3 SHIPPED (commit 7ac952b -> dpl_Aix4r9qG16T46VWPqZDLpiq3Fs3Z):
+      /terms /privacy /refunds live (verified 200 + content), landing
+      footer links, AuthScreen signup consent line (verified in live
+      bundle). Facts baked in: Supabase Frankfurt EU storage, offline AI,
+      Umami cookieless, Paddle MoR, food-preservation disclaimer, 14-day
+      refunds + EU withdrawal, deletion-by-email until in-app flow.
+      Drafted from product facts, NOT legal advice - Dervis to read.
 - [ ] 8.4 (DERVIS): buy custom domain (vercel.app subdomain may fail
       Paddle site review) + create/verify Paddle account + create the
       4 products (Basic mo, Pro mo, Lifetime).
