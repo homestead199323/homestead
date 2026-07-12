@@ -1,6 +1,6 @@
 import {
   ClipboardList, Sprout, Package,
-  TrendingUp, BookOpen, MoreHorizontal, PawPrint, Map,
+  TrendingUp, BookOpen, MoreHorizontal, PawPrint, Map, ShieldCheck,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════
@@ -26,6 +26,11 @@ export const BOTTOM_TABS = [
   {id:"live",  l:"Animals", E:PawPrint},
   {id:"more",  l:"More",    E:MoreHorizontal},
 ];
+
+/* Owner-only nav item — appended at runtime in App.jsx when the
+   signed-in user is the owner (checkIsAdmin). Not in NAV/MORE_ITEMS so
+   regular users never see it. */
+export const ADMIN_NAV = {id:"admin", l:"Admin", E:ShieldCheck, group:"Owner"};
 
 export const MORE_ITEMS = [
   {id:"pantry",  l:"Pantry",        E:Package},

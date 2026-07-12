@@ -28,7 +28,7 @@ import AIAssistant from "./features/assistant/AIAssistant";
 import FeedbackSurvey, { FeedbackPrompt } from "./features/feedback/FeedbackSurvey";
 import { BadgeCelebration } from "./components/BadgeCelebration";
 import Onboarding from "./features/onboarding/Onboarding";
-import { NAV, BOTTOM_TABS, MORE_ITEMS } from "./app/navigation";
+import { NAV, BOTTOM_TABS, MORE_ITEMS, ADMIN_NAV } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
 import { isSupabaseConfigured } from "./lib/db";
 import { getSession, onAuthChange, signOut } from "./lib/auth";
@@ -36,6 +36,8 @@ import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, no
 import { SyncStatus } from "./components/SyncStatus";
 import AuthScreen from "./features/auth/AuthScreen";
 import SettingsPanel from "./features/settings/SettingsPanel";
+import AdminDashboard from "./features/admin/AdminDashboard";
+import { checkIsAdmin } from "./lib/admin";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
    ═══════════════════════════════════════════ */
@@ -116,7 +118,8 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
   );
 });
 
-const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpenSettings}) {
+const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpenSettings, isAdmin}) {
+  const moreItems = isAdmin ? [...MORE_ITEMS, ADMIN_NAV] : MORE_ITEMS;
   return createPortal(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:500}}/>
@@ -140,7 +143,7 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpe
           </div>
         </div>
         <div style={{padding:"4px 0"}}>
-          {MORE_ITEMS.map(function(item) {
+          {moreItems.map(function(item) {
             return (
               <button key={item.id} onClick={function(){setPage(item.id);onClose();}} aria-current={page===item.id?"page":undefined}
                 style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px 20px",
@@ -205,6 +208,14 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
   const [viewW,setViewW]=useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [moreOpen,setMoreOpen]=useState(false);
   const [settingsOpen,setSettingsOpen]=useState(false);
+  // Owner flag — controls Admin nav visibility only. The admin RPC
+  // re-verifies identity server-side, so this is purely cosmetic.
+  const [isAdmin,setIsAdmin]=useState(false);
+  useEffect(() => {
+    let on = true;
+    checkIsAdmin().then(v => { if (on) setIsAdmin(v); });
+    return () => { on = false; };
+  }, []);
   const [darkMode,setDarkMode]=useState(() => {
     try {
       const saved = loadTheme();
@@ -388,6 +399,8 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
     return <div style={{padding:40,textAlign:"center",color:C.t2,fontFamily:F.body}}>Loading…</div>;
   }
 
+  const sideNav = isAdmin ? [...NAV, ADMIN_NAV] : NAV;
+
   const pg = () => {
     switch(page) {
       case "tasks": return <TaskQueue data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
@@ -398,6 +411,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       case "fin": return <Financials data={data} setData={setData}/>;
       case "manuals": return <Manuals data={data} setPage={setPage}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
+      case "admin": return <AdminDashboard/>;
       default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
     }
   };
@@ -413,8 +427,8 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
             {!isTablet&&<div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>}
           </div>
           <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
-          {NAV.map((n,idx)=>{
-            const showHeader = idx===0 || NAV[idx-1].group!==n.group;
+          {sideNav.map((n,idx)=>{
+            const showHeader = idx===0 || sideNav[idx-1].group!==n.group;
             return (
             <React.Fragment key={n.id}>
             {showHeader && !isTablet && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:C.t3,padding:"10px 14px 3px",marginTop:idx===0?0:6}}>{n.group}</div>}
@@ -442,7 +456,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
         </main>
       </div>
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
-      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} onClose={()=>setMoreOpen(false)} onOpenSettings={()=>{setMoreOpen(false);setSettingsOpen(true);}}/>}
+      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} isAdmin={isAdmin} onClose={()=>setMoreOpen(false)} onOpenSettings={()=>{setMoreOpen(false);setSettingsOpen(true);}}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       <AIAssistant data={data} setData={setData} lift={page === "home"}/>
