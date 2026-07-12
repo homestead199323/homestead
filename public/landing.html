@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <title>MyTerra — Your Farm, Simplified</title>
-    <meta name="description" content="The farm management app for people who've never farmed. Plan crops, track livestock, manage tasks — all offline. Free to try.">
-    <meta name="theme-color" content="#2E7D32">
+    <title>MyTerra — Grow real food, the way you'd play a game</title>
+    <meta name="description" content="MyTerra turns your land into a farm game that's real: draw your farm, follow daily quests, harvest actual food. 70 crops, 14 animals, works offline. Free for 7 days.">
+    <meta name="theme-color" content="#2e6b52">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="MyTerra — Your Farm, Simplified">
-    <meta property="og:description" content="The farm management app for people who've never farmed. 9 tools. Works offline. Built by a real farmer.">
+    <meta property="og:title" content="MyTerra — Grow real food, the way you'd play a game">
+    <meta property="og:description" content="A farm game simulator running on real life. Draw your farm, follow daily quests, harvest actual food. Free for 7 days — no card.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://myterra-sigma.vercel.app/">
     <meta property="og:image" content="https://myterra-sigma.vercel.app/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="MyTerra — Your farm, simplified.">
+    <meta property="og:image:alt" content="MyTerra — an illustrated farm map with today's quests">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="MyTerra — Your Farm, Simplified">
-    <meta name="twitter:description" content="Farm management for beginners. 9 tools. Works offline. Built by a real farmer in Albania.">
+    <meta name="twitter:title" content="MyTerra — Grow real food, the way you'd play a game">
+    <meta name="twitter:description" content="A farm game simulator running on real life. Draw your farm, follow daily quests, harvest actual food. Free for 7 days.">
     <meta name="twitter:image" content="https://myterra-sigma.vercel.app/og-image.png">
     <!-- Umami analytics with SRI. If analytics stop working, the script was updated by Umami.
          Regenerate the hash: curl -s https://cloud.umami.is/script.js | openssl dgst -sha384 -binary | openssl base64 -A -->
@@ -30,831 +30,417 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* ===== RESET & BASE ===== */
+        /* ═══ TOKENS ═══ */
+        :root {
+            --ink: #1c2b21;          /* deep forest text */
+            --ink-2: #55645a;        /* muted text */
+            --moss: #2e6b52;         /* app's forest green — primary */
+            --sprout: #3d9970;       /* lighter green */
+            --cream: #f7f6f3;        /* app background */
+            --grass: #eef4e4;        /* map-grass tint for panels */
+            --sun: #d98e22;          /* harvest amber — urgency */
+            --sun-soft: #fdf3e2;
+            --night: #101b14;        /* app dark mode */
+            --card: #ffffff;
+            --line: #e4e6df;
+            --r-lg: 22px;
+            --r-md: 14px;
+            --shadow-lg: 0 24px 60px rgba(28,43,33,.16);
+            --shadow-md: 0 10px 30px rgba(28,43,33,.10);
+            --shadow-sm: 0 3px 12px rgba(28,43,33,.08);
+            --font-d: 'Fraunces', Georgia, serif;
+            --font-b: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* ═══ RESET & BASE ═══ */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+        html { scroll-behavior: smooth; scroll-padding-top: 84px; overflow-x: clip; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: #1a1a2e;
-            background: #fafdf7;
+            font-family: var(--font-b);
+            color: var(--ink);
+            background: var(--cream);
             line-height: 1.6;
             overflow-x: hidden;
         }
-        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.2; }
+        h1, h2, h3 { font-family: var(--font-d); font-weight: 600; line-height: 1.12; letter-spacing: -0.01em; }
         a { text-decoration: none; color: inherit; }
-        img { max-width: 100%; display: block; }
+        img { max-width: 100%; height: auto; display: block; }
+        section[id] { scroll-margin-top: 84px; }
+        .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
-        /* Scroll offset for fixed nav */
-        section[id] { scroll-margin-top: 80px; }
-
-        /* ===== UTILITIES ===== */
-        .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
-        .text-center { text-align: center; }
-        .fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .fade-in { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s ease; }
         .fade-in.visible { opacity: 1; transform: translateY(0); }
+        :focus-visible { outline: 3px solid var(--sprout); outline-offset: 2px; border-radius: 6px; }
 
-        /* ===== NAV ===== */
+        .eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 600; letter-spacing: .04em;
+            color: var(--moss); text-transform: uppercase;
+        }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            font-family: var(--font-b); font-weight: 600; font-size: 16px;
+            padding: 15px 30px; border-radius: 999px; border: none; cursor: pointer;
+            transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+        }
+        .btn-primary { background: var(--moss); color: #fff; box-shadow: 0 6px 20px rgba(46,107,82,.35); }
+        .btn-primary:hover { background: #275c46; transform: translateY(-2px); box-shadow: 0 10px 26px rgba(46,107,82,.4); }
+        .btn-ghost { background: transparent; color: var(--moss); border: 1.5px solid #c6d4c3; }
+        .btn-ghost:hover { border-color: var(--moss); background: #fff; }
+
+        /* ═══ NAV ═══ */
         nav {
             position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            background: rgba(250, 253, 247, 0.92);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(46, 125, 50, 0.08);
-            padding: 14px 0;
-            transition: box-shadow 0.3s;
+            background: rgba(247,246,243,.9);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(28,43,33,.06);
+            transition: box-shadow .3s;
         }
-        nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.06); }
+        nav.scrolled { box-shadow: 0 2px 18px rgba(28,43,33,.08); }
         .nav-inner {
             display: flex; align-items: center; justify-content: space-between;
-            max-width: 1140px; margin: 0 auto; padding: 0 24px;
+            max-width: 1120px; margin: 0 auto; padding: 14px 24px;
         }
-        .nav-logo {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 800; font-size: 22px;
-            color: #2E7D32;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .nav-logo span { font-size: 26px; }
-        .nav-links { display: flex; align-items: center; gap: 32px; }
-        .nav-links a {
-            font-size: 14px; font-weight: 500; color: #555;
-            transition: color 0.2s;
-        }
-        .nav-links a:hover { color: #2E7D32; }
+        .nav-logo { font-family: var(--font-d); font-weight: 700; font-size: 23px; color: var(--moss); display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; align-items: center; gap: 28px; }
+        .nav-links a { font-size: 15px; font-weight: 500; color: var(--ink-2); transition: color .2s; }
+        .nav-links a:hover { color: var(--moss); }
         .nav-cta {
-            background: #2E7D32; color: #fff !important;
-            padding: 10px 24px; border-radius: 10px;
-            font-weight: 600; font-size: 14px;
-            transition: all 0.25s; box-shadow: 0 2px 8px rgba(46,125,50,0.25);
+            background: var(--moss); color: #fff !important;
+            padding: 10px 22px; border-radius: 999px; font-weight: 600; font-size: 14px;
+            box-shadow: 0 3px 12px rgba(46,107,82,.3); transition: all .2s;
         }
-        .nav-cta:hover { background: #256b29; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(46,125,50,0.3); }
+        .nav-cta:hover { background: #275c46; transform: translateY(-1px); }
+        .mobile-menu-btn { display: none; background: none; border: none; font-size: 26px; cursor: pointer; color: var(--ink); padding: 4px 8px; }
+        .mobile-nav-open {
+            display: flex !important; flex-direction: column; align-items: flex-start;
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: rgba(247,246,243,.98); backdrop-filter: blur(14px);
+            padding: 18px 24px 26px; gap: 18px;
+            border-bottom: 1px solid var(--line); box-shadow: 0 10px 24px rgba(0,0,0,.07);
+        }
 
-        /* ===== HERO ===== */
-        .hero {
-            padding: 140px 0 80px;
-            position: relative;
-            overflow: hidden;
-        }
-        .hero::before {
-            content: '';
-            position: absolute; top: -200px; right: -200px;
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(46,125,50,0.06) 0%, transparent 70%);
-            border-radius: 50%;
-        }
-        .hero-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 60px; align-items: center;
-        }
+        /* ═══ HERO ═══ */
+        .hero { padding: 132px 0 0; text-align: center; position: relative; }
         .hero-badge {
             display: inline-flex; align-items: center; gap: 8px;
-            background: #e8f5e9; color: #2E7D32;
-            padding: 6px 16px; border-radius: 50px;
-            font-size: 13px; font-weight: 600;
-            margin-bottom: 20px;
-        }
-        .hero-badge .pulse {
-            width: 8px; height: 8px; background: #4CAF50;
-            border-radius: 50%; animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.5); }
+            background: var(--grass); color: var(--moss); border: 1px solid #d8e6cf;
+            padding: 7px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+            margin-bottom: 22px;
         }
         .hero h1 {
-            font-size: clamp(36px, 5vw, 56px);
-            font-weight: 800;
-            color: #1a1a2e;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
+            font-size: clamp(40px, 6vw, 68px);
+            max-width: 820px; margin: 0 auto 20px;
         }
-        .hero h1 em {
-            font-style: normal;
-            background: linear-gradient(135deg, #2E7D32, #66BB6A);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .hero-sub {
-            font-size: 18px; color: #555;
-            margin-bottom: 36px;
-            max-width: 480px;
-        }
-        .hero-buttons { display: flex; gap: 14px; flex-wrap: wrap; }
-        .btn-primary {
-            display: inline-block;
-            background: #2E7D32; color: #fff;
-            padding: 16px 36px; border-radius: 14px;
-            font-weight: 700; font-size: 16px;
-            transition: all 0.25s; border: none; cursor: pointer;
-            box-shadow: 0 4px 16px rgba(46,125,50,0.3);
-            font-family: 'Inter', sans-serif;
-        }
-        .btn-primary:hover { background: #256b29; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(46,125,50,0.35); }
-        .btn-secondary {
-            display: inline-block;
-            background: transparent; color: #2E7D32;
-            padding: 16px 36px; border-radius: 14px;
-            font-weight: 600; font-size: 16px;
-            border: 2px solid #c8e6c9; cursor: pointer;
-            transition: all 0.25s;
-            font-family: 'Inter', sans-serif;
-        }
-        .btn-secondary:hover { border-color: #2E7D32; background: #e8f5e9; }
+        .hero h1 em { font-style: italic; color: var(--moss); }
+        .hero-sub { font-size: 19px; color: var(--ink-2); max-width: 620px; margin: 0 auto 32px; }
+        .hero-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+        .hero-trust { margin-top: 16px; font-size: 14px; color: var(--ink-2); }
+        .hero-trust b { color: var(--ink); font-weight: 600; }
 
-        /* Hero visual */
-        .hero-visual { position: relative; }
-        .hero-mockup {
-            background: linear-gradient(135deg, #1b5e20, #2E7D32, #43a047);
-            border-radius: 24px;
-            padding: 40px 30px;
-            color: #fff;
-            box-shadow: 0 20px 60px rgba(46,125,50,0.2), 0 0 0 1px rgba(255,255,255,0.1) inset;
-            position: relative;
-            overflow: hidden;
-        }
-        .hero-mockup::before {
-            content: '';
-            position: absolute; top: -50%; right: -50%;
-            width: 100%; height: 100%;
-            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
-        }
-        .mockup-header {
-            display: flex; align-items: center; gap: 12px;
-            margin-bottom: 24px; position: relative;
-        }
-        .mockup-icon {
-            width: 44px; height: 44px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px;
-        }
-        .mockup-header h3 { font-size: 18px; font-weight: 700; }
-        .mockup-header p { font-size: 13px; opacity: 0.7; }
-        .mockup-stats {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 12px; position: relative;
-        }
-        .stat-card {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 14px; padding: 16px;
-            backdrop-filter: blur(8px);
-        }
-        .stat-card .label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-card .value { font-size: 26px; font-weight: 700; margin-top: 4px; }
-        .stat-card .sub { font-size: 12px; opacity: 0.6; margin-top: 2px; }
-
-        /* removed floating tags — they were overlapping and unreadable */
-
-        /* ===== STATS BAR ===== */
-        .stats-bar {
-            padding: 48px 0;
-            border-top: 1px solid #e8f5e9;
-            border-bottom: 1px solid #e8f5e9;
-            background: #f1f8e9;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px; text-align: center;
-        }
-        .stats-grid .number {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 36px; font-weight: 800;
-            color: #2E7D32;
-        }
-        .stats-grid .desc {
-            font-size: 14px; color: #666; margin-top: 4px;
-        }
-
-        /* ===== PROBLEM / SOLUTION ===== */
-        .problem { padding: 100px 0; }
-        .problem-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 60px;
-        }
-        .problem-side h2 { font-size: 32px; font-weight: 800; margin-bottom: 24px; }
-        .problem-side p { font-size: 16px; color: #555; margin-bottom: 16px; }
-        .pain-list { list-style: none; margin-top: 24px; }
-        .pain-list li {
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
-            display: flex; align-items: flex-start; gap: 12px;
-            font-size: 15px; color: #444;
-        }
-        .pain-list .icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-        .solution-card {
-            background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
-            border: 1px solid #c8e6c9;
-            border-radius: 20px; padding: 40px;
-        }
-        .solution-card h3 { font-size: 22px; color: #2E7D32; margin-bottom: 16px; }
-        .solution-card p { font-size: 15px; color: #555; margin-bottom: 20px; }
-        .check-list { list-style: none; }
-        .check-list li {
-            padding: 8px 0;
-            display: flex; align-items: center; gap: 10px;
-            font-size: 15px; color: #333; font-weight: 500;
-        }
-        .check-list .check { color: #2E7D32; font-size: 18px; }
-
-        /* ===== APP SHOWCASE ===== */
-        .showcase {
-            padding: 100px 0;
+        /* Hero visual — the farm with floating quest chips */
+        .hero-stage { position: relative; max-width: 1040px; margin: 56px auto 0; padding: 0 24px; }
+        .hero-shot {
+            border-radius: var(--r-lg); overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(28,43,33,.08);
             background: #fff;
-            overflow: hidden;
         }
-        .showcase .section-label {
-            font-size: 13px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 1.5px;
-            color: #2E7D32; margin-bottom: 12px;
+        .quest-chip {
+            position: absolute; display: flex; align-items: center; gap: 9px;
+            background: #fff; border-radius: 999px; padding: 9px 16px 9px 10px;
+            box-shadow: 0 10px 26px rgba(28,43,33,.18);
+            border: 1px solid rgba(28,43,33,.06);
+            font-size: 14px; font-weight: 600; white-space: nowrap;
+            animation: chip-float 5s ease-in-out infinite;
         }
-        .showcase h2 { font-size: 36px; font-weight: 800; margin-bottom: 16px; }
-        .showcase .section-sub {
-            font-size: 17px; color: #666;
-            max-width: 560px; margin: 0 auto 60px;
+        .quest-chip .qc-ico {
+            width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 15px; background: var(--grass);
         }
+        .quest-chip small { display: block; font-size: 11px; font-weight: 500; color: var(--ink-2); line-height: 1.1; }
+        .qc-ready .qc-ico { background: var(--sun-soft); }
+        .qc-ready { border-color: rgba(217,142,34,.35); }
+        .qc-1 { top: 6%;  left: 4px;  animation-delay: 0s; }
+        .qc-2 { top: 30%; right: 4px; animation-delay: 1.2s; }
+        .qc-3 { bottom: 22%; left: 3%; animation-delay: 2.1s; }
+        .qc-4 { bottom: -16px; right: 8%; animation-delay: .6s; }
+        @keyframes chip-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-9px); }
+        }
+        .hero-caption { margin-top: 16px; font-size: 13.5px; color: var(--ink-2); }
 
-        /* ===== SCREENSHOT FLOW ===== */
-        .screenshot-flow {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 48px 36px;
-            padding: 20px 0;
+        /* ═══ DATA STRIP ═══ */
+        .strip { padding: 40px 0 8px; }
+        .strip-inner {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 12px 34px; font-size: 15px; color: var(--ink-2);
         }
-        .screenshot-step {
-            text-align: left;
+        .strip-inner b { color: var(--ink); font-weight: 700; font-size: 17px; }
+        .strip-note { text-align: center; margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+
+        /* ═══ HOW IT WORKS ═══ */
+        .how { padding: 88px 0 30px; }
+        .section-head { text-align: center; max-width: 640px; margin: 0 auto 54px; }
+        .section-head h2 { font-size: clamp(30px, 4vw, 42px); margin: 12px 0 14px; }
+        .section-head p { color: var(--ink-2); font-size: 17px; }
+        .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+        .how-card {
+            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+            padding: 30px 28px; box-shadow: var(--shadow-sm);
         }
-        .screenshot-step.full-width {
-            grid-column: 1 / -1;
-            max-width: 900px;
-            margin: 0 auto;
+        .how-num {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: var(--grass); color: var(--moss);
+            font-family: var(--font-d); font-weight: 700; font-size: 17px;
+            display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
         }
-        .screenshot-step h4 {
-            font-size: 20px;
-            font-weight: 700;
-            margin: 16px 0 6px;
-            color: #1a1a2e;
+        .how-card h3 { font-size: 21px; margin-bottom: 10px; }
+        .how-card p { font-size: 15px; color: var(--ink-2); }
+
+        /* ═══ FEATURE DEEP DIVES ═══ */
+        .features { padding: 60px 0 20px; }
+        .feat {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+            padding: 46px 0;
         }
-        .screenshot-step p {
-            font-size: 15px;
-            color: #666;
-            line-height: 1.5;
+        .feat-shot {
+            border-radius: var(--r-lg); overflow: hidden;
+            box-shadow: var(--shadow-md); border: 1px solid rgba(28,43,33,.08);
         }
-        .step-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .step-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            background: #2E7D32;
-            color: #fff;
-            border-radius: 50%;
-            font-weight: 700;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-        .step-badge .step-label {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #2E7D32;
-        }
-        .screenshot-card {
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.12);
-            border: 2px solid rgba(46,125,50,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        .screenshot-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 16px 60px rgba(0,0,0,0.18);
-        }
-        .screenshot-card img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-/* ===== FEATURES ===== */
-        .features { padding: 100px 0; background: #fafdf7; }
-        .features .section-label {
-            font-size: 13px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 1.5px;
-            color: #2E7D32; margin-bottom: 12px;
-        }
-        .features h2 { font-size: 36px; font-weight: 800; margin-bottom: 16px; }
-        .features .section-sub {
-            font-size: 17px; color: #666;
-            max-width: 560px; margin: 0 auto 60px;
-        }
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
-        }
-        .feature-card {
-            background: #fff;
-            border: 1px solid #e8f5e9;
-            border-radius: 18px;
-            padding: 32px 28px;
-            transition: all 0.3s;
-        }
-        .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 36px rgba(46,125,50,0.08);
-            border-color: #a5d6a7;
-        }
-        .feature-icon {
-            width: 52px; height: 52px;
-            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-            border-radius: 14px;
+        .feat h3 { font-size: clamp(26px, 3vw, 34px); margin: 12px 0 14px; }
+        .feat p { color: var(--ink-2); font-size: 16.5px; margin-bottom: 18px; }
+        .feat ul { list-style: none; display: grid; gap: 10px; }
+        .feat li { display: flex; gap: 10px; font-size: 15px; align-items: flex-start; }
+        .feat li .tick {
+            flex: none; width: 20px; height: 20px; border-radius: 50%; margin-top: 2px;
+            background: var(--grass); color: var(--moss); font-size: 12px; font-weight: 700;
             display: flex; align-items: center; justify-content: center;
-            font-size: 24px; margin-bottom: 18px;
-        }
-        .feature-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
-        .feature-card p { font-size: 14px; color: #666; line-height: 1.6; }
-
-        /* ===== AI SECTION ===== */
-        .ai-section {
-            padding: 100px 0;
-            background: linear-gradient(180deg, #fafdf7 0%, #f1f8e9 100%);
-        }
-        .ai-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 60px; align-items: center;
-        }
-        .ai-content .section-label {
-            font-size: 13px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 1.5px;
-            color: #2E7D32; margin-bottom: 12px;
-        }
-        .ai-content h2 { font-size: 36px; font-weight: 800; margin-bottom: 16px; }
-        .ai-content p { font-size: 16px; color: #555; margin-bottom: 24px; }
-        .ai-queries { display: flex; flex-wrap: wrap; gap: 8px; }
-        .ai-query {
-            background: #e8f5e9; color: #2E7D32;
-            padding: 8px 16px; border-radius: 50px;
-            font-size: 13px; font-weight: 500;
-        }
-        .ai-demo {
-            background: #1a1a2e;
-            border-radius: 20px; padding: 28px;
-            color: #fff; position: relative;
-            overflow: hidden;
-        }
-        .ai-demo::before {
-            content: '';
-            position: absolute; top: 0; left: 0; right: 0;
-            height: 40px;
-            background: rgba(255,255,255,0.05);
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-        .ai-demo-dots {
-            display: flex; gap: 6px;
-            margin-bottom: 20px; position: relative;
-        }
-        .ai-demo-dots span { width: 10px; height: 10px; border-radius: 50%; }
-        .ai-demo-dots span:nth-child(1) { background: #ff5f56; }
-        .ai-demo-dots span:nth-child(2) { background: #ffbd2e; }
-        .ai-demo-dots span:nth-child(3) { background: #27c93f; }
-        .ai-bubble {
-            margin-bottom: 14px; padding: 14px 18px;
-            border-radius: 14px; font-size: 14px; line-height: 1.5;
-            max-width: 85%;
-        }
-        .ai-bubble.user {
-            background: #2E7D32; margin-left: auto;
-            border-bottom-right-radius: 4px;
-        }
-        .ai-bubble.assistant {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-bottom-left-radius: 4px;
         }
 
-        /* ===== BUILT BY FARMER ===== */
-        .farmer { padding: 80px 0; }
-        .farmer-card {
-            background: linear-gradient(135deg, #2E7D32, #1b5e20);
-            border-radius: 24px; padding: 60px;
-            color: #fff;
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 40px; align-items: center;
-        }
-        .farmer-avatar {
-            width: 100px; height: 100px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 50%;
+        /* ═══ FIELD BAND (phones, dark) ═══ */
+        .field { background: var(--night); color: #e9f2ea; padding: 96px 0; margin-top: 60px; }
+        .field-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 60px; align-items: center; }
+        .field .eyebrow { color: #8fd3ac; }
+        .field h2 { font-size: clamp(30px, 4vw, 42px); color: #fff; margin: 12px 0 16px; }
+        .field p { color: #b7c8ba; font-size: 16.5px; margin-bottom: 18px; }
+        .field ul { list-style: none; display: grid; gap: 12px; }
+        .field li { display: flex; gap: 10px; font-size: 15px; align-items: flex-start; color: #dcE8de; }
+        .field li .tick {
+            flex: none; width: 20px; height: 20px; border-radius: 50%; margin-top: 2px;
+            background: rgba(143,211,172,.16); color: #8fd3ac; font-size: 12px; font-weight: 700;
             display: flex; align-items: center; justify-content: center;
-            font-size: 48px;
-            border: 3px solid rgba(255,255,255,0.2);
         }
-        .farmer-card blockquote {
-            font-size: 20px; font-style: italic;
-            line-height: 1.6; opacity: 0.95;
-            margin-bottom: 16px;
+        .phones { display: flex; justify-content: center; gap: 22px; }
+        .phone {
+            width: min(46%, 232px); border-radius: 30px; padding: 9px;
+            background: #1d2a20; border: 1px solid rgba(255,255,255,.09);
+            box-shadow: 0 30px 70px rgba(0,0,0,.5);
         }
-        .farmer-card .attribution { font-size: 14px; opacity: 0.7; }
+        .phone img { border-radius: 22px; }
+        .phone:first-child { transform: rotate(-3.5deg) translateY(10px); }
+        .phone:last-child { transform: rotate(3deg); }
 
-        /* ===== PRICING ===== */
-        .pricing { padding: 100px 0; background: #fff; }
-        .pricing h2 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
-        .pricing .section-sub {
-            font-size: 17px; color: #666;
-            max-width: 480px; margin: 0 auto 50px;
+        /* ═══ FOUNDER ═══ */
+        .founder { padding: 90px 0 20px; }
+        .founder-card {
+            display: grid; grid-template-columns: 88px 1fr; gap: 26px; align-items: center;
+            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+            padding: 40px 44px; box-shadow: var(--shadow-sm); max-width: 860px; margin: 0 auto;
         }
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px; max-width: 900px; margin: 0 auto;
+        .founder-avatar {
+            width: 88px; height: 88px; border-radius: 50%; background: var(--grass);
+            display: flex; align-items: center; justify-content: center; font-size: 42px;
         }
+        .founder blockquote { font-family: var(--font-d); font-size: 20px; line-height: 1.45; font-style: italic; color: var(--ink); }
+        .founder .attribution { margin-top: 12px; font-size: 14px; color: var(--ink-2); font-weight: 500; }
+
+        /* ═══ PRICING ═══ */
+        .pricing { padding: 90px 0 30px; }
+        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: stretch; }
         .price-card {
-            border: 2px solid #e8f5e9;
-            border-radius: 20px; padding: 36px 28px;
-            text-align: center; transition: all 0.3s;
-            position: relative;
+            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+            padding: 34px 30px; text-align: left; box-shadow: var(--shadow-sm);
+            display: flex; flex-direction: column; position: relative;
         }
-        .price-card.featured {
-            border-color: #2E7D32;
-            background: #fafdf7;
-            transform: scale(1.04);
-            box-shadow: 0 12px 40px rgba(46,125,50,0.12);
+        .price-card.featured { border: 2px solid var(--moss); box-shadow: var(--shadow-md); }
+        .price-tag {
+            position: absolute; top: -13px; left: 28px;
+            font-size: 12px; font-weight: 700; letter-spacing: .03em;
+            padding: 5px 12px; border-radius: 999px;
         }
-        .price-card.featured::before {
-            content: 'Most Popular';
-            position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-            background: #2E7D32; color: #fff;
-            padding: 4px 18px; border-radius: 50px;
-            font-size: 12px; font-weight: 600;
-        }
-        .price-card h3 { font-size: 20px; margin-bottom: 8px; }
-        .price-amount {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 42px; font-weight: 800;
-            color: #2E7D32; margin: 16px 0 4px;
-        }
-        .price-amount .period { font-size: 16px; font-weight: 500; color: #888; }
-        .price-desc { font-size: 14px; color: #888; margin-bottom: 24px; }
-        .price-features { list-style: none; text-align: left; margin-bottom: 28px; }
-        .price-features li {
-            padding: 8px 0; font-size: 14px; color: #444;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .price-features .check { color: #2E7D32; font-weight: 700; }
+        .tag-green { background: var(--moss); color: #fff; }
+        .tag-amber { background: var(--sun); color: #fff; }
+        .price-card h3 { font-size: 22px; margin-bottom: 6px; }
+        .price-desc { font-size: 14px; color: var(--ink-2); margin-bottom: 18px; }
+        .price-amount { font-family: var(--font-d); font-size: 44px; font-weight: 700; }
+        .price-amount .period { font-family: var(--font-b); font-size: 15px; font-weight: 500; color: var(--ink-2); }
+        .price-features { list-style: none; margin: 20px 0 26px; display: grid; gap: 10px; flex: 1; }
+        .price-features li { display: flex; gap: 9px; font-size: 14.5px; align-items: flex-start; }
+        .price-features .tick { color: var(--moss); font-weight: 700; }
         .price-btn {
-            display: block; width: 100%;
-            padding: 14px; border-radius: 12px;
-            font-weight: 600; font-size: 15px;
-            border: 2px solid #2E7D32;
-            background: transparent; color: #2E7D32;
-            cursor: pointer; transition: all 0.25s;
-            font-family: 'Inter', sans-serif;
+            width: 100%; padding: 13px; border-radius: 999px; border: none; cursor: pointer;
+            font-family: var(--font-b); font-weight: 600; font-size: 15px;
+            background: var(--grass); color: var(--moss); transition: all .2s;
         }
-        .price-btn:hover { background: #2E7D32; color: #fff; }
-        .price-card.featured .price-btn { background: #2E7D32; color: #fff; }
-        .price-card.featured .price-btn:hover { background: #256b29; }
+        .price-btn:hover { background: #e2ecd6; }
+        .featured .price-btn { background: var(--moss); color: #fff; box-shadow: 0 5px 16px rgba(46,107,82,.32); }
+        .featured .price-btn:hover { background: #275c46; }
+        .pricing-note { text-align: center; margin-top: 26px; font-size: 14.5px; color: var(--ink-2); }
 
-        /* ===== FINAL CTA ===== */
-        .final-cta {
-            padding: 100px 0;
-            text-align: center;
-            background: linear-gradient(180deg, #fff 0%, #e8f5e9 100%);
+        /* ═══ FAQ ═══ */
+        .faq { padding: 80px 0 30px; }
+        .faq-list { max-width: 760px; margin: 0 auto; display: grid; gap: 12px; }
+        details {
+            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+            padding: 0 22px; box-shadow: var(--shadow-sm);
         }
-        .final-cta h2 { font-size: 40px; font-weight: 800; margin-bottom: 16px; }
-        .final-cta p {
-            font-size: 18px; color: #555;
-            margin-bottom: 36px; max-width: 500px; margin-left: auto; margin-right: auto;
+        summary {
+            cursor: pointer; font-weight: 600; font-size: 16px; padding: 19px 0;
+            list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px;
         }
-        .final-cta .btn-primary { font-size: 18px; padding: 18px 48px; }
-        .no-card { font-size: 13px; color: #888; margin-top: 14px; }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: "+"; font-size: 22px; color: var(--moss); font-weight: 500; transition: transform .2s; }
+        details[open] summary::after { transform: rotate(45deg); }
+        details p { padding: 0 0 20px; color: var(--ink-2); font-size: 15px; }
 
-        /* ===== FOOTER ===== */
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e8f5e9;
-            text-align: center;
+        /* ═══ FINAL CTA ═══ */
+        .final { padding: 90px 0 100px; }
+        .final-card {
+            background: linear-gradient(160deg, #2e6b52, #1f4e3b);
+            border-radius: 28px; padding: 72px 40px; text-align: center; color: #fff;
+            box-shadow: var(--shadow-lg); position: relative; overflow: hidden;
         }
-        footer p { font-size: 13px; color: #999; }
-        footer a { color: #2E7D32; font-weight: 500; }
+        .final-card::before {
+            content: "🌱  🥕  🍅  🥚  🐐  🌻"; position: absolute; top: 26px; left: 0; right: 0;
+            font-size: 20px; letter-spacing: 26px; opacity: .35; text-align: center; white-space: nowrap;
+        }
+        .final h2 { font-size: clamp(30px, 4.4vw, 46px); margin-bottom: 14px; color: #fff; }
+        .final p { color: #cfe4d3; font-size: 17px; max-width: 520px; margin: 0 auto 30px; }
+        .final .btn-primary { background: #fff; color: var(--moss); box-shadow: 0 8px 26px rgba(0,0,0,.28); }
+        .final .btn-primary:hover { background: #f1f6ee; }
+        .final .micro { margin-top: 16px; font-size: 13.5px; color: #b9d5c0; }
 
-        /* ===== MOBILE ===== */
-        .mobile-menu-btn {
-            display: none; background: none; border: none;
-            font-size: 24px; cursor: pointer; color: #333;
-        }
-        .mobile-nav-open {
-            display: flex !important;
-            flex-direction: column;
-            position: absolute;
-            top: 100%; left: 0; right: 0;
-            background: rgba(250, 253, 247, 0.98);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            padding: 16px 24px 24px;
-            gap: 16px;
-            border-bottom: 1px solid #e8f5e9;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-        }
+        /* ═══ FOOTER ═══ */
+        footer { padding: 34px 0 46px; text-align: center; color: var(--ink-2); font-size: 14px; }
+        footer a { color: var(--moss); font-weight: 500; }
+        footer a:hover { text-decoration: underline; }
 
-        @media (max-width: 900px) {
-            .hero-grid, .problem-grid, .ai-grid { grid-template-columns: 1fr; gap: 40px; }
-            .hero-visual { order: -1; }
-            .features-grid { grid-template-columns: 1fr 1fr; }
-            .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
-            .price-card.featured { transform: scale(1); }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
-            .farmer-card { grid-template-columns: 1fr; text-align: center; padding: 40px 28px; }
-            .farmer-avatar { margin: 0 auto; }
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 940px) {
+            .how-grid { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
+            .feat { grid-template-columns: 1fr; gap: 30px; padding: 36px 0; }
+            .feat-shot { order: -1; }
+            .field-grid { grid-template-columns: 1fr; gap: 48px; }
+            .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+            .founder-card { grid-template-columns: 1fr; text-align: center; padding: 34px 26px; }
+            .founder-avatar { margin: 0 auto; }
             .nav-links { display: none; }
             .mobile-menu-btn { display: block; }
         }
-
-        @media (max-width: 600px) {
-            .hero { padding: 120px 0 60px; }
-            .hero h1 { font-size: 32px; }
-            .hero-sub { font-size: 16px; }
-            .features-grid { grid-template-columns: 1fr; }
-            .hero-buttons { flex-direction: column; }
-            .btn-primary, .btn-secondary { width: 100%; text-align: center; }
-            /* floating tags removed */
-            .screenshot-flow { grid-template-columns: 1fr; gap: 32px; }
-            .screenshot-step.full-width { max-width: 100%; }
+        @media (max-width: 620px) {
+            .hero { padding-top: 112px; }
+            .hero-sub { font-size: 17px; }
+            .hero-buttons { flex-direction: column; align-items: stretch; padding: 0 8px; }
+            .hero-stage { margin-top: 40px; padding: 0 16px; }
+            .quest-chip { padding: 7px 12px 7px 8px; font-size: 12px; }
+            .quest-chip .qc-ico { width: 24px; height: 24px; font-size: 12px; }
+            .qc-1 { left: 2px; } .qc-2 { right: 2px; }
+            .qc-3 { display: none; }
+            .phones { gap: 14px; }
+            .final-card { padding: 56px 22px; }
+            .final-card::before { letter-spacing: 14px; font-size: 16px; }
         }
-
-        /* ===== ADDED: app frame + dark/light band ===== */
-        .app-frame {
-            border-radius: 16px; overflow: hidden;
-            background: #0f1511;
-            box-shadow: 0 24px 70px rgba(0,0,0,0.22), 0 0 0 1px rgba(46,125,50,0.08);
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            .quest-chip { animation: none; }
+            .fade-in { opacity: 1; transform: none; transition: none; }
         }
-        .app-frame .bar { display: flex; gap: 7px; padding: 11px 14px; background: #11201a; }
-        .app-frame .bar i { width: 11px; height: 11px; border-radius: 50%; display: block; }
-        .app-frame .bar i.r { background: #ff5f57; }
-        .app-frame .bar i.y { background: #febc2e; }
-        .app-frame .bar i.g { background: #28c840; }
-        .app-frame img { width: 100%; height: auto; display: block; }
-
-        .hero-visual .app-frame { transition: transform 0.4s ease, box-shadow 0.4s ease; }
-        .hero-visual .app-frame:hover { transform: translateY(-6px); box-shadow: 0 32px 80px rgba(0,0,0,0.28); }
-        .hero-shot-cap {
-            margin-top: 14px; text-align: center; font-size: 13px; color: #6b7a70;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-
-        /* dark/light band */
-        .theme-band { padding: 100px 0; background: linear-gradient(180deg, #0f1511, #13211a); color: #eaf5ee; }
-        .theme-band .container { text-align: center; }
-        .theme-band .section-label { color: #7bd88f; }
-        .theme-band h2 { color: #fff; font-size: 36px; font-weight: 800; margin-bottom: 14px; }
-        .theme-band .section-sub { color: #a9c6b4; max-width: 640px; margin: 0 auto 48px; font-size: 18px; }
-        .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-        .theme-col .tlabel {
-            display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;
-            margin-bottom: 16px; color: #cfe6d8; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .theme-col .app-frame { box-shadow: 0 24px 70px rgba(0,0,0,0.45); }
-        @media (max-width: 760px) { .theme-grid { grid-template-columns: 1fr; gap: 28px; } }
-
     </style>
 </head>
 <body>
+
 <!-- NAV -->
 <nav id="nav">
     <div class="nav-inner">
-        <a href="#" class="nav-logo" data-scroll-top><span>&#127793;</span> MyTerra</a>
+        <a href="#" class="nav-logo" data-scroll-top><span>🌱</span> MyTerra</a>
         <div class="nav-links" id="navLinks">
-            <a href="#showcase" data-nav>See The App</a>
-            <a href="#themes" data-nav>Light &amp; Dark</a>
+            <a href="#how" data-nav>How it works</a>
             <a href="#features" data-nav>Features</a>
             <a href="#pricing" data-nav>Pricing</a>
-            <a href="/app" class="nav-cta">Try Free</a>
+            <a href="#faq" data-nav>FAQ</a>
+            <a href="/app">Sign in</a>
+            <a href="/app" class="nav-cta">Start free trial</a>
         </div>
-        <button class="mobile-menu-btn" id="menuBtn" aria-label="Toggle menu">&#9776;</button>
+        <button class="mobile-menu-btn" id="menuBtn" aria-label="Toggle menu">☰</button>
     </div>
 </nav>
 
 <!-- HERO -->
-<section class="hero">
+<header class="hero">
     <div class="container">
-        <div class="hero-grid">
-            <div class="hero-content fade-in">
-                <div class="hero-badge">
-                    <span class="pulse"></span>
-                    Built by a real farmer
-                </div>
-                <h1>Your first farm.<br><em>Without the guesswork.</em></h1>
-                <p class="hero-sub">MyTerra is a farm game simulator running on real life. Plan crops, track animals, walk your farm, and get tasks that appear on their own &mdash; all from your phone, even offline.</p>
-                <div class="hero-buttons">
-                    <a href="/app" class="btn-primary">Start Farming Free</a>
-                    <a href="#showcase" class="btn-secondary" data-nav>See How It Works</a>
-                </div>
-            </div>
-            <div class="hero-visual fade-in">
-                <div class="app-frame">
-                    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-                    <img src="/screens/dashboard-dark.webp" width="1600" height="1000" alt="MyTerra dashboard: crops, animals, task pipeline, interactive farm map and harvest estimates" fetchpriority="high">
-                </div>
-                <div class="hero-shot-cap">&#127793; A real farm running in MyTerra &mdash; not a mockup</div>
-            </div>
+        <div class="hero-badge fade-in">🌱 A farm game simulator — running on real life</div>
+        <h1 class="fade-in">Grow real food,<br>the way you'd <em>play a game</em>.</h1>
+        <p class="hero-sub fade-in">Draw your land, and MyTerra fills your days with simple quests — plant this, water that, collect the eggs. No experience needed. The harvest is real.</p>
+        <div class="hero-buttons fade-in">
+            <a href="/app" class="btn btn-primary">Start free — 7 days</a>
+            <a href="#features" class="btn btn-ghost" data-nav>See the app</a>
         </div>
+        <p class="hero-trust fade-in"><b>No credit card.</b> Works offline. Built for total beginners.</p>
+    </div>
+
+    <div class="hero-stage fade-in">
+        <div class="hero-shot">
+            <img src="/screens/grove-light.webp" width="1600" height="1000" fetchpriority="high"
+                 alt="MyTerra's illustrated farm map: veggie beds, greenhouse, orchard, coop and pasture with today's task markers pinned to each zone">
+        </div>
+        <div class="quest-chip qc-ready qc-1"><span class="qc-ico">🥕</span><span>Harvest carrots<small>Veggie Beds · Ready</small></span></div>
+        <div class="quest-chip qc-2"><span class="qc-ico">🥚</span><span>Collect 8 eggs<small>At the coop</small></span></div>
+        <div class="quest-chip qc-3"><span class="qc-ico">💧</span><span>Water tomatoes<small>Greenhouse</small></span></div>
+        <div class="quest-chip qc-4"><span class="qc-ico">🔥</span><span>23-day streak<small>Keep it going</small></span></div>
+        <p class="hero-caption">A real farm running in MyTerra — every pin is a job the app scheduled on its own.</p>
+    </div>
+</header>
+
+<!-- DATA STRIP -->
+<section class="strip">
+    <div class="container">
+        <div class="strip-inner fade-in">
+            <span><b>70</b> crops with full grow guides</span>
+            <span><b>14</b> livestock species</span>
+            <span><b>13</b> preservation methods</span>
+            <span><b>8</b> DIY build projects</span>
+        </div>
+        <p class="strip-note fade-in">Every guide fact-checked against RHS, FAO, USDA and university extension data — not internet folklore.</p>
     </div>
 </section>
 
-<!-- STATS BAR -->
-<section class="stats-bar">
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
     <div class="container">
-        <div class="stats-grid fade-in">
-            <div>
-                <div class="number">70</div>
-                <div class="desc">Crops with full grow guides</div>
-            </div>
-            <div>
-                <div class="number">14</div>
-                <div class="desc">Livestock species tracked</div>
-            </div>
-            <div>
-                <div class="number">13</div>
-                <div class="desc">Preservation methods</div>
-            </div>
-            <div>
-                <div class="number">9</div>
-                <div class="desc">Modules, all offline</div>
-            </div>
+        <div class="section-head fade-in">
+            <span class="eyebrow">How it works</span>
+            <h2>From lawn to lunch in three moves.</h2>
         </div>
-    </div>
-</section>
-
-<!-- PROBLEM / SOLUTION -->
-<section class="problem">
-    <div class="container">
-        <div class="problem-grid">
-            <div class="problem-side fade-in">
-                <h2>Farming shouldn't require a degree.</h2>
-                <p>You want to grow your own food, raise animals, and live closer to the land. But every resource assumes you already know what you're doing.</p>
-                <ul class="pain-list">
-                    <li><span class="icon">&#128566;</span> "When do I plant tomatoes in MY climate?"</li>
-                    <li><span class="icon">&#128552;</span> "My plant is yellow. Is it dying?"</li>
-                    <li><span class="icon">&#128565;</span> "I have 10 tabs open and still confused"</li>
-                    <li><span class="icon">&#128553;</span> "I forgot to water. Again."</li>
-                </ul>
+        <div class="how-grid">
+            <div class="how-card fade-in">
+                <div class="how-num">1</div>
+                <h3>Draw your farm</h3>
+                <p>Lay out beds, a coop, a greenhouse — ten zone types, dragged to scale on an illustrated map. Pick from 70 crops and 14 animals, and your world is live.</p>
             </div>
-            <div class="solution-card fade-in">
-                <h3>MyTerra fixes this.</h3>
-                <p>One app. Everything you need. Answers tailored to your exact situation &mdash; your climate, your crops, your animals.</p>
-                <ul class="check-list">
-                    <li><span class="check">&#10003;</span> Tell it your location, it knows your seasons</li>
-                    <li><span class="check">&#10003;</span> Plant a crop, it builds your task schedule</li>
-                    <li><span class="check">&#10003;</span> Ask a question, it answers from real farm data</li>
-                    <li><span class="check">&#10003;</span> No internet? No problem. Fully offline.</li>
-                    <li><span class="check">&#10003;</span> Track costs, yields, and what actually worked</li>
-                </ul>
+            <div class="how-card fade-in">
+                <div class="how-num">2</div>
+                <h3>Follow today's quests</h3>
+                <p>MyTerra schedules the work for you: what to water, feed, prune and harvest — grouped by where you'll be standing. Walk the farm, tick things off, keep your streak.</p>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- APP SHOWCASE (Real Screenshots) -->
-<section class="showcase" id="showcase">
-    <div class="container text-center">
-        <div class="section-label fade-in">See The Actual App</div>
-        <h2 class="fade-in">This is what you get.</h2>
-        <p class="section-sub fade-in">Real screenshots from a live farm &mdash; six crops in the ground, eleven animals, and the whole homestead keeping itself organised.</p>
-    </div>
-    <div class="container">
-        <div class="screenshot-flow">
-
-            <!-- 1. Dashboard full-width -->
-            <div class="screenshot-step full-width fade-in">
-                <div class="step-badge">
-                    <div class="step-number">1</div>
-                    <span class="step-label">Your command center</span>
-                </div>
-                <div class="screenshot-card">
-                    <img src="/screens/dashboard-light.webp" width="1600" height="1000" alt="MyTerra dashboard with today's work, crops, animals, money and interactive farm map" loading="lazy">
-                </div>
-                <h4>Everything on one dashboard</h4>
-                <p>Today's tasks, crops growing, animals, money in and out, your streak &mdash; plus a live farm map with zone coverage and harvest estimates. One glance and you know exactly where things stand.</p>
-            </div>
-
-            <!-- 2. Farm map -->
-            <div class="screenshot-step fade-in">
-                <div class="step-badge">
-                    <div class="step-number">2</div>
-                    <span class="step-label">Walk your farm</span>
-                </div>
-                <div class="screenshot-card">
-                    <img src="/screens/farm-map-dark.webp" width="1600" height="1000" alt="Interactive farm map with ten zones: veggie beds, herb garden, orchard, coop, pasture, greenhouse and more" loading="lazy">
-                </div>
-                <h4>Design &amp; walk your farm</h4>
-                <p>Drag zones to lay out your land to scale. Veggie beds, orchards, coops, greenhouses &mdash; ten zone types. Tap any bed to see what's planted and how full it is.</p>
-            </div>
-
-            <!-- 3. Crops -->
-            <div class="screenshot-step fade-in">
-                <div class="step-badge">
-                    <div class="step-number">3</div>
-                    <span class="step-label">Plant &amp; track</span>
-                </div>
-                <div class="screenshot-card">
-                    <img src="/screens/crops-light.webp" width="1600" height="1000" alt="Crops screen listing tomato, onion, lettuce, carrot, basil and pumpkin with yield and days to harvest" loading="lazy">
-                </div>
-                <h4>Plant &amp; track what's growing</h4>
-                <p>Pick from 70 crops. See plant count, expected yield, and days to harvest at a glance. Each crop carries a step-by-step grow guide built from real horticultural data.</p>
-            </div>
-
-            <!-- 4. Tasks -->
-            <div class="screenshot-step fade-in">
-                <div class="step-badge">
-                    <div class="step-number">4</div>
-                    <span class="step-label">Auto-generated tasks</span>
-                </div>
-                <div class="screenshot-card">
-                    <img src="/screens/tasks-dark.webp" width="1600" height="1000" alt="Task calendar grouping daily routine by location with a harvest-ready alert" loading="lazy">
-                </div>
-                <h4>Tasks appear automatically</h4>
-                <p>Feed, water, prune, harvest &mdash; scheduled from what you planted and which animals you keep. Urgent jobs float to the top; the daily routine is grouped by where you'll be standing.</p>
-            </div>
-
-            <!-- 5. Animals -->
-            <div class="screenshot-step fade-in">
-                <div class="step-badge">
-                    <div class="step-number">5</div>
-                    <span class="step-label">Keep livestock</span>
-                </div>
-                <div class="screenshot-card">
-                    <img src="/screens/animals-dark.webp" width="1600" height="1000" alt="Animals screen with chickens, geese and goats and one-tap produce collection" loading="lazy">
-                </div>
-                <h4>Livestock, sorted</h4>
-                <p>14 species from chickens to goats. Egg collection, feeding, hoof and health checks &mdash; all turned into routine tasks so nothing gets missed.</p>
-            </div>
-
-            <!-- 6. Financials -->
-            <div class="screenshot-step fade-in">
-                <div class="step-badge">
-                    <div class="step-number">6</div>
-                    <span class="step-label">Track your money</span>
-                </div>
-                <div class="screenshot-card">
-                    <img src="/screens/financials-dark.webp" width="1600" height="1000" alt="Financials with spent, revenue and net profit, a monthly chart and expense breakdown" loading="lazy">
-                </div>
-                <h4>Money tracked automatically</h4>
-                <p>Seeds, feed, egg sales, veg boxes &mdash; logged as you go. Monthly charts, expense breakdown by category, and a running profit figure tell you what's actually worth growing.</p>
-            </div>
-
-            <!-- 7. Manuals full-width -->
-            <div class="screenshot-step full-width fade-in">
-                <div class="step-badge">
-                    <div class="step-number">7</div>
-                    <span class="step-label">Learn as you go</span>
-                </div>
-                <div class="screenshot-card">
-                    <img src="/screens/manuals-light.webp" width="1600" height="1000" alt="Built-in manuals: searchable grid of 70 crops plus animals, preserving and DIY projects" loading="lazy">
-                </div>
-                <h4>A whole farming library, built in</h4>
-                <p>70 crops, 14 animals, 13 preservation methods and 8 DIY build guides &mdash; fact-checked against RHS, FAO, USDA and university extension services. Searchable, offline, always in your pocket.</p>
-            </div>
-
-        </div>
-    </div>
-</section>
-
-<!-- LIGHT / DARK -->
-<section class="theme-band" id="themes">
-    <div class="container">
-        <div class="section-label">Light by day, dark by night</div>
-        <h2>Looks right at 6am and at midnight.</h2>
-        <p class="section-sub">A proper dark mode &mdash; not just inverted colours. Switch with one tap from the sidebar, or let it follow your phone. Every screen, chart and map is tuned for both.</p>
-        <div class="theme-grid">
-            <div class="theme-col fade-in">
-                <div class="tlabel">&#9728;&#65039; Light</div>
-                <div class="app-frame">
-                    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-                    <img src="/screens/dashboard-light.webp" width="1600" height="1000" alt="MyTerra dashboard in light mode" loading="lazy">
-                </div>
-            </div>
-            <div class="theme-col fade-in">
-                <div class="tlabel">&#127769; Dark</div>
-                <div class="app-frame">
-                    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-                    <img src="/screens/dashboard-dark.webp" width="1600" height="1000" alt="MyTerra dashboard in dark mode" loading="lazy">
-                </div>
+            <div class="how-card fade-in">
+                <div class="how-num">3</div>
+                <h3>Harvest &amp; stock up</h3>
+                <p>Harvests land in your pantry, sales and costs land in your books. You watch actual food and actual money pile up — that's the endgame.</p>
             </div>
         </div>
     </div>
@@ -862,99 +448,130 @@
 
 <!-- FEATURES -->
 <section class="features" id="features">
-    <div class="container text-center">
-        <div class="section-label fade-in">9 Modules, Zero Complexity</div>
-        <h2 class="fade-in">Everything a homesteader needs.</h2>
-        <p class="section-sub fade-in">From the first seed to the pantry shelf. Every module is built on real agricultural data &mdash; not generic advice from the internet.</p>
-        <div class="features-grid">
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#128202;</div>
-                <h3>Dashboard</h3>
-                <p>Your farm at a glance. Active crops, today's tasks, weather, streak, and what needs attention right now.</p>
+    <div class="container">
+        <div class="section-head fade-in">
+            <span class="eyebrow">The actual app</span>
+            <h2>Real screenshots. Real farm.</h2>
+            <p>Ten crops in the ground, sixteen animals, and one homestead keeping itself organised.</p>
+        </div>
+
+        <div class="feat">
+            <div class="fade-in">
+                <span class="eyebrow">Tasks</span>
+                <h3>Your farm writes your to-do list.</h3>
+                <p>Every plant and animal generates its own care schedule. Urgent jobs — "harvest today or it bolts" — float to the top in red. The daily routine is grouped by location, so one walk covers everything.</p>
+                <ul>
+                    <li><span class="tick">✓</span> Harvest windows flagged before you miss them</li>
+                    <li><span class="tick">✓</span> Feeding, watering and health checks on autopilot</li>
+                    <li><span class="tick">✓</span> Day, week and month views — nothing slips</li>
+                </ul>
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#128203;</div>
-                <h3>Task Queue</h3>
-                <p>Never forget to water again. Tasks generate automatically from what you planted and the animals you keep.</p>
+            <div class="feat-shot fade-in">
+                <img src="/screens/tasks-dark.webp" width="1600" height="1000" loading="lazy"
+                     alt="Task calendar with urgent harvest alerts and a daily routine grouped by farm location">
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#128506;</div>
-                <h3>Farm Map</h3>
-                <p>Lay out your land to scale and walk it. Ten zone types, drag to position, coverage shown per bed.</p>
+        </div>
+
+        <div class="feat">
+            <div class="feat-shot fade-in">
+                <img src="/screens/crops-light.webp" width="1600" height="1000" loading="lazy"
+                     alt="Crops screen listing tomato, cucumber, zucchini, carrot and more with plant counts, expected yield and days to harvest">
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#127807;</div>
-                <h3>Crops &amp; Planting</h3>
-                <p>70 crops with spacing, companions, pests and yields. Tuned for Western Europe, with regional overrides for warmer and colder zones.</p>
+            <div class="fade-in">
+                <span class="eyebrow">Crops</span>
+                <h3>70 crops that know your climate.</h3>
+                <p>Pick a crop and MyTerra already knows its spacing, watering rhythm, companions, pests and season — tuned for Western Europe, with overrides for warmer and colder regions.</p>
+                <ul>
+                    <li><span class="tick">✓</span> Expected yield in kilograms before you sow</li>
+                    <li><span class="tick">✓</span> Days-to-harvest countdown per bed</li>
+                    <li><span class="tick">✓</span> Step-by-step care from soil prep to season end</li>
+                </ul>
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#128046;</div>
-                <h3>Animals</h3>
-                <p>14 species from chickens to goats. Feeding, produce, breeding and health &mdash; all tracked as routine.</p>
+        </div>
+
+        <div class="feat">
+            <div class="fade-in">
+                <span class="eyebrow">Animals</span>
+                <h3>Chickens to goats, without the guesswork.</h3>
+                <p>Add your flock and the routine appears: feeding, egg collection, hoof checks, hive inspections. One tap logs the eggs straight into your pantry.</p>
+                <ul>
+                    <li><span class="tick">✓</span> 14 species with breed-level guidance</li>
+                    <li><span class="tick">✓</span> Produce tracking — eggs, milk, honey, meat</li>
+                    <li><span class="tick">✓</span> Health and care schedules per animal</li>
+                </ul>
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#127860;</div>
-                <h3>Pantry</h3>
-                <p>Track your harvest and preserved goods. 13 preservation methods with safety guidelines built in.</p>
+            <div class="feat-shot fade-in">
+                <img src="/screens/animals-dark.webp" width="1600" height="1000" loading="lazy"
+                     alt="Animals screen with chickens, ducks, goats and bees, each with one-tap produce collection">
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#128176;</div>
-                <h3>Financials</h3>
-                <p>Costs and revenue per crop and animal. Know which plants earn their keep and which drain your wallet.</p>
+        </div>
+
+        <div class="feat">
+            <div class="feat-shot fade-in">
+                <img src="/screens/fin-dark.webp" width="1600" height="1000" loading="lazy"
+                     alt="Financials screen with spend, revenue and net cards, a monthly chart and expense breakdown by category">
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#128214;</div>
-                <h3>Manuals</h3>
-                <p>A built-in library: crop care, animal husbandry, a seasonal calendar, preservation safety and DIY builds.</p>
+            <div class="fade-in">
+                <span class="eyebrow">Money</span>
+                <h3>Know if the farm pays for itself.</h3>
+                <p>Seed orders, feed bags, egg sales, veg boxes — logged as you go. Monthly charts and a category breakdown show exactly which crops earn their keep.</p>
+                <ul>
+                    <li><span class="tick">✓</span> Income vs. spend, month by month</li>
+                    <li><span class="tick">✓</span> Expense breakdown by category</li>
+                    <li><span class="tick">✓</span> A running net figure — the honest scoreboard</li>
+                </ul>
             </div>
-            <div class="feature-card fade-in">
-                <div class="feature-icon">&#129302;</div>
-                <h3>Smart Assistant</h3>
-                <p>Ask anything about your crops, animals and climate &mdash; answered from a verified database, fully offline.</p>
+        </div>
+
+        <div class="feat">
+            <div class="fade-in">
+                <span class="eyebrow">Manuals</span>
+                <h3>A farming library in your pocket.</h3>
+                <p>Crop guides, animal husbandry, a seasonal calendar, preservation safety and DIY builds — searchable and fully offline. When you wonder "is this normal?", the answer is one tap away.</p>
+                <ul>
+                    <li><span class="tick">✓</span> 70 crop + 14 animal deep guides</li>
+                    <li><span class="tick">✓</span> 13 preservation methods with safety rules</li>
+                    <li><span class="tick">✓</span> 8 DIY projects — coops, beds, compost bays</li>
+                </ul>
+            </div>
+            <div class="feat-shot fade-in">
+                <img src="/screens/manuals-light.webp" width="1600" height="1000" loading="lazy"
+                     alt="Built-in manuals: a searchable grid of crop guides plus animals, preserving and DIY project sections">
             </div>
         </div>
     </div>
 </section>
 
-<!-- AI ASSISTANT -->
-<section class="ai-section" id="ai">
+<!-- FIELD BAND -->
+<section class="field">
     <div class="container">
-        <div class="ai-grid">
-            <div class="ai-content fade-in">
-                <div class="section-label">Smart offline farm assistant</div>
-                <h2>Ask anything.<br>Get real answers.</h2>
-                <p>The built-in assistant knows your crops, your animals, and your climate. It pulls from a verified database of 70 crops and 14 livestock species &mdash; no internet needed.</p>
-                <p>Type a couple of letters and autocomplete surfaces every relevant question. No googling. No forums. Just answers from a farmer's database.</p>
-                <div class="ai-queries">
-                    <span class="ai-query">When to plant garlic?</span>
-                    <span class="ai-query">Tomato pests</span>
-                    <span class="ai-query">Goat feeding</span>
-                    <span class="ai-query">Companion plants</span>
-                    <span class="ai-query">Frost dates</span>
-                    <span class="ai-query">Harvest timing</span>
-                </div>
+        <div class="field-grid">
+            <div class="fade-in">
+                <span class="eyebrow">Made for muddy hands</span>
+                <h2>Works in the field.<br>Even with no signal.</h2>
+                <p>MyTerra is offline-first: open it at the bottom of the garden, tick off your quests, and it syncs itself when you're back in range. Phone, tablet or laptop — your farm is on all of them.</p>
+                <ul>
+                    <li><span class="tick">✓</span> Full app works with zero internet</li>
+                    <li><span class="tick">✓</span> Your farm backed up to the cloud, synced across devices</li>
+                    <li><span class="tick">✓</span> Light and dark mode — readable at 6am and 11pm</li>
+                </ul>
             </div>
-            <div class="ai-demo fade-in">
-                <div class="ai-demo-dots">
-                    <span></span><span></span><span></span>
-                </div>
-                <div class="ai-bubble user">When should I plant tomatoes?</div>
-                <div class="ai-bubble assistant">In a Western Europe maritime climate, start tomato seedlings indoors in <strong>February&ndash;March</strong>. Transplant outdoors after your last frost, typically <strong>mid to late May</strong>. A greenhouse or polytunnel gives the most reliable crop. Space 50cm apart, full sun, water deeply every 2&ndash;3 days.</div>
-                <div class="ai-bubble user">What about companions?</div>
-                <div class="ai-bubble assistant">Great companions for tomatoes: <strong>basil</strong> (repels aphids), <strong>carrots</strong> (loosen soil), <strong>marigolds</strong> (nematode control). Avoid planting near fennel or brassicas.</div>
+            <div class="phones fade-in">
+                <div class="phone"><img src="/screens/phone-farm.webp" width="780" height="1688" loading="lazy" alt="MyTerra on a phone: the illustrated farm map with today's quest sheet"></div>
+                <div class="phone"><img src="/screens/phone-tasks.webp" width="780" height="1688" loading="lazy" alt="MyTerra on a phone: the task calendar with harvest alerts"></div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- BUILT BY A FARMER -->
-<section class="farmer">
+<!-- FOUNDER -->
+<section class="founder">
     <div class="container">
-        <div class="farmer-card fade-in">
-            <div class="farmer-avatar">&#129489;&#8205;&#127806;</div>
+        <div class="founder-card fade-in">
+            <div class="founder-avatar">🧑‍🌾</div>
             <div>
                 <blockquote>"I built MyTerra because every farming app I found was made by tech people who've never touched soil. This one is built by someone who wakes up at 5am to check on the goats."</blockquote>
-                <p class="attribution">Dervis, farmer and founder &mdash; Tirana, Albania</p>
+                <p class="attribution">Dervis — farmer &amp; founder, Tirana, Albania</p>
             </div>
         </div>
     </div>
@@ -962,70 +579,110 @@
 
 <!-- PRICING -->
 <section class="pricing" id="pricing">
-    <div class="container text-center">
-        <h2 class="fade-in">Simple pricing. Start free.</h2>
-        <p class="section-sub fade-in">Try everything for 7 days. No credit card. Cancel anytime.</p>
+    <div class="container">
+        <div class="section-head fade-in">
+            <span class="eyebrow">Pricing</span>
+            <h2>Try everything free for 7 days.</h2>
+            <p>No credit card to start. Pick a plan only if the farm sticks.</p>
+        </div>
         <div class="pricing-grid fade-in">
             <div class="price-card">
                 <h3>Basic</h3>
-                <div class="price-amount">$4.99<span class="period"> /mo</span></div>
-                <div class="price-desc">Everything you need to start</div>
+                <p class="price-desc">Everything you need to start</p>
+                <div class="price-amount">$4.99<span class="period"> /month</span></div>
                 <ul class="price-features">
-                    <li><span class="check">&#10003;</span> All 9 modules</li>
-                    <li><span class="check">&#10003;</span> Offline mode</li>
-                    <li><span class="check">&#10003;</span> Auto-generated tasks</li>
-                    <li><span class="check">&#10003;</span> Seasonal calendar</li>
-                    <li><span class="check">&#10003;</span> Full manuals</li>
+                    <li><span class="tick">✓</span> All 9 modules</li>
+                    <li><span class="tick">✓</span> Offline mode + cloud backup</li>
+                    <li><span class="tick">✓</span> Auto-generated tasks</li>
+                    <li><span class="tick">✓</span> Seasonal calendar</li>
+                    <li><span class="tick">✓</span> Full manual library</li>
                 </ul>
-                <button class="price-btn" data-launch-app>Start Free Trial</button>
+                <button class="price-btn" data-launch-app>Start free trial</button>
             </div>
             <div class="price-card featured">
+                <span class="price-tag tag-green">Most popular</span>
                 <h3>Pro</h3>
-                <div class="price-amount">$9.99<span class="period"> /mo</span></div>
-                <div class="price-desc">For serious homesteaders</div>
+                <p class="price-desc">For serious homesteaders</p>
+                <div class="price-amount">$9.99<span class="period"> /month</span></div>
                 <ul class="price-features">
-                    <li><span class="check">&#10003;</span> Everything in Basic</li>
-                    <li><span class="check">&#10003;</span> Smart offline assistant</li>
-                    <li><span class="check">&#10003;</span> Multi-zone management</li>
-                    <li><span class="check">&#10003;</span> Advanced analytics</li>
-                    <li><span class="check">&#10003;</span> Priority support</li>
+                    <li><span class="tick">✓</span> Everything in Basic</li>
+                    <li><span class="tick">✓</span> Smart offline farm assistant</li>
+                    <li><span class="tick">✓</span> Multi-zone management</li>
+                    <li><span class="tick">✓</span> Advanced analytics</li>
+                    <li><span class="tick">✓</span> Priority support</li>
                 </ul>
-                <button class="price-btn" data-launch-app>Start Free Trial</button>
+                <button class="price-btn" data-launch-app>Start free trial</button>
             </div>
             <div class="price-card">
+                <span class="price-tag tag-amber">Founding price — limited</span>
                 <h3>Lifetime</h3>
-                <div class="price-amount">$190<span class="period"> once</span></div>
-                <div class="price-desc">Pay once, farm forever</div>
+                <p class="price-desc">Pay once, farm forever</p>
+                <div class="price-amount">$190<span class="period"> one-time</span></div>
                 <ul class="price-features">
-                    <li><span class="check">&#10003;</span> Everything in Pro</li>
-                    <li><span class="check">&#10003;</span> Lifetime updates</li>
-                    <li><span class="check">&#10003;</span> Early adopter price</li>
-                    <li><span class="check">&#10003;</span> Founding member badge</li>
-                    <li><span class="check">&#10003;</span> Shape the roadmap</li>
+                    <li><span class="tick">✓</span> Everything in Pro</li>
+                    <li><span class="tick">✓</span> Lifetime updates</li>
+                    <li><span class="tick">✓</span> Early-adopter price, locked in</li>
+                    <li><span class="tick">✓</span> Founding member badge</li>
+                    <li><span class="tick">✓</span> A say in the roadmap</li>
                 </ul>
-                <button class="price-btn" data-launch-app>Start Free Trial</button>
+                <button class="price-btn" data-launch-app>Start free trial</button>
             </div>
+        </div>
+        <p class="pricing-note fade-in">Every plan starts with the same 7 free days. No card, cancel anytime.</p>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+    <div class="container">
+        <div class="section-head fade-in">
+            <span class="eyebrow">FAQ</span>
+            <h2>Fair questions.</h2>
+        </div>
+        <div class="faq-list fade-in">
+            <details>
+                <summary>I've never grown anything. Is this for me?</summary>
+                <p>You're exactly who it's built for. MyTerra assumes zero knowledge: it tells you what to do, when, and why — in plain words, one small job at a time. If you can follow a game quest, you can follow a carrot bed.</p>
+            </details>
+            <details>
+                <summary>Does it really work offline?</summary>
+                <p>Yes. The whole app — tasks, guides, maps, logs — runs with no connection. Changes queue up and sync to your cloud backup the moment you're back online.</p>
+            </details>
+            <details>
+                <summary>Which regions does it cover?</summary>
+                <p>The base data is tuned for Western Europe's maritime climate (UK, Ireland, Benelux, northern France). Regional overrides adapt planting windows and varieties for Northern Europe, the Mediterranean, and warm and cold zones of the US &amp; Canada.</p>
+            </details>
+            <details>
+                <summary>Phone or laptop?</summary>
+                <p>Both. MyTerra runs in any modern browser and installs to your phone's home screen like a native app. Your farm syncs across every device you sign in on.</p>
+            </details>
+            <details>
+                <summary>What happens after the 7 days?</summary>
+                <p>You pick a plan to keep going — Basic, Pro, or the one-time Lifetime deal. No card is taken up front, so nothing charges automatically. Your farm data stays safe either way.</p>
+            </details>
         </div>
     </div>
 </section>
 
 <!-- FINAL CTA -->
-<section class="final-cta">
+<section class="final">
     <div class="container">
-        <h2 class="fade-in">Ready to start your homestead?</h2>
-        <p class="fade-in">Join the farmers who stopped guessing and started growing. Free for 7 days. Works on any phone.</p>
-        <a href="/app" class="btn-primary fade-in">Launch MyTerra Free</a>
-        <p class="no-card fade-in">No credit card required. Works offline immediately.</p>
+        <div class="final-card fade-in">
+            <h2>Your first harvest starts today.</h2>
+            <p>Draw your farm in five minutes. Get your first quests immediately. Eat the results in a few weeks.</p>
+            <a href="/app" class="btn btn-primary">Start free — 7 days</a>
+            <p class="micro">No credit card. Works offline. Your data stays yours.</p>
+        </div>
     </div>
 </section>
 
 <!-- FOOTER -->
 <footer>
     <div class="container">
-        <p>&#127793; MyTerra &mdash; Built with soil-stained hands in Albania.</p>
+        <p>🌱 MyTerra — built with soil-stained hands in Albania.</p>
         <p style="margin-top: 8px;">
-            <a href="mailto:dervis.kanina@gmail.com">Contact</a> &nbsp;&middot;&nbsp;
-            <a href="/app">Launch App</a>
+            <a href="mailto:dervis.kanina@gmail.com">Contact</a> &nbsp;·&nbsp;
+            <a href="/app">Launch the app</a>
         </p>
     </div>
 </footer>
