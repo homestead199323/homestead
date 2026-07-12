@@ -114,9 +114,6 @@ export function Overlay({title,onClose,children,wide,sheet}) {
       <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",opacity}} onClick={onClose}/>
       <div
         onClick={function(e){e.stopPropagation();}}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         style={{
           transform:`translateY(${dragY}px)`,
           opacity,
@@ -126,25 +123,32 @@ export function Overlay({title,onClose,children,wide,sheet}) {
           borderRadius:"20px 20px 0 0",
           width:"100%",
           maxHeight:"90dvh",
-          overflowY:"scroll",
-          overflowX:"hidden",
-          WebkitOverflowScrolling:"touch",
-          overscrollBehavior:"contain",
+          display:"flex",
+          flexDirection:"column",
+          overflow:"hidden",
           boxSizing:"border-box",
           boxShadow:"0 -4px 32px rgba(0,0,0,.18)",
-          paddingBottom:"env(safe-area-inset-bottom, 16px)",
-          cursor:"grab",
-          touchAction:"pan-x",
         }}
-        className="overlay-sheet"
+        className="overlay-sheet overlay-sheet--drag"
       >
-        {/* Drag handle pill */}
-        <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 0",flexShrink:0}}/>
-        <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:"20px 20px 0 0",cursor:"default"}} onPointerDown={function(e){e.stopPropagation();}}>
-          <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
+        {/* Drag zone — ONLY this top area drags the sheet. The body below
+            scrolls normally on touch (previously the whole sheet captured
+            vertical drags, so steps below the fold were unreachable on phones). */}
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{flexShrink:0,background:C.card,borderRadius:"20px 20px 0 0",cursor:"grab",touchAction:"none"}}
+        >
+          {/* Drag handle pill */}
+          <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 0"}}/>
+          <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 24px 8px"}}>
+            <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
+            <button data-icon onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",touchAction:"manipulation"}}><X size={18} strokeWidth={2}/></button>
+          </div>
         </div>
-        <div style={{padding:"16px 24px 24px",cursor:"default"}} onPointerDown={function(e){e.stopPropagation();}}>{children}</div>
+        {/* Scrollable body */}
+        <div style={{padding:"8px 24px 24px",paddingBottom:"max(24px, env(safe-area-inset-bottom, 24px))",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",touchAction:"pan-y",flex:1}}>{children}</div>
       </div>
     </div>,
     document.body

@@ -112,7 +112,7 @@ export const CROPS = [
     storage:"Wine, juice, raisins."
   },
   { name:"Fig",pH:"6.0-8.0",fert:"Light feeder. Compost in spring. Excess nitrogen reduces fruiting.",emoji:"🤎",cat:"Fruit Tree",days:365,sowIn:"Nov-Feb",harvest:"Aug-Sep",spacing:500,sun:"Full",waterFreq:"Every 7-10 days",waterNote:"Fan-train against south-facing wall. Hardy varieties (Brown Turkey, Brunswick). Restrict root run for fruiting. Water during fruit swell.",color:"#784212",yld:5,
-    pests:[{n:"Fig rust",t:"Fig rust: rake fallen leaves, copper spray"},{n:"Fig wasp (beneficial!)",t:"Birds: netting when fruit ripens"},{n:"Birds"}],
+    pests:[{n:"Fig rust",t:"Fig rust: rake up fallen leaves, copper spray at bud break and after harvest"},{n:"Birds",t:"Birds: net when fruit begins to soften — main cause of lost crops"},{n:"Coral spot",t:"Coral spot: prune out dead wood promptly, seal large cuts, improve airflow"}],
     stages:["🌳","🌳","🌳","🌳","🤎","🤎"],
     steps:[{d:0,l:"Plant",t:"South wall. Sandy soil."},{d:30,l:"Establish",t:"Light pruning."}],
     storage:"Fresh days. Oven/dehydrator dry months. Jam."
@@ -155,7 +155,7 @@ export const CROPS = [
     steps:[{d:0,l:"Pot only!",t:"Rich moist soil."},{d:14,l:"Harvest",t:"Cut stems freely."}],
     storage:"Dry for tea."
   },
-  { name:"Lavender",emoji:"💜",cat:"Herb",days:90,sowIn:"Mar-Apr",harvest:"Jul-Aug",spacing:40,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"English lavender hardiest. Must have free-draining soil. Hates wet winter feet.",color:"#8e44ad",yld:0.2,
+  { name:"Lavender",pH:"6.5-8.0",fert:"NONE. Thrives in poor, alkaline, free-draining soil. Feeding produces soft leggy growth and fewer flowers.",emoji:"💜",cat:"Herb",days:90,sowIn:"Mar-Apr",harvest:"Jul-Aug",spacing:40,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"English lavender hardiest. Must have free-draining soil. Hates wet winter feet.",color:"#8e44ad",yld:0.2,
     pests:[{n:"Root rot (overwatering)",t:"Root rot: drainage, never overwater"},{n:"Lavender shab (Phomopsis)",t:"Shab: remove affected branches, airflow"}],
     stages:["🌱","🌿","🌿","🌿","💜","💜"],
     steps:[{d:0,l:"Plant",t:"Fast-draining soil."},{d:60,l:"Harvest flowers",t:"Lower flowers open."}],
@@ -188,7 +188,7 @@ export const CROPS = [
     storage:"Whole 2-3wk. Pickle rind."
   },
   { name:"Melon",pH:"6.0-7.0",fert:"Same as watermelon. Reduce water near harvest for sweetness.",emoji:"🍈",cat:"Vegetable",days:90,sowIn:"May-Jun",harvest:"Aug-Sep",spacing:60,sun:"Full",waterFreq:"Every 2 days",waterNote:"Greenhouse essential. Charentais types do best. Hand-pollinate if needed.",color:"#f39c12",yld:2,
-    pests:[{n:"Fusarium wilt",t:"Same as watermelon"},{n:"Powdery mildew"},{n:"Aphids"}],
+    pests:[{n:"Fusarium wilt",t:"Fusarium: rotate 5+ years, resistant/grafted seedlings, avoid waterlogging"},{n:"Powdery mildew",t:"Powdery mildew: milk spray 1:9, good airflow, resistant varieties, ventilate greenhouse"},{n:"Aphids",t:"Aphids: soap spray, remove infected plants fast — they spread cucumber mosaic virus"}],
     stages:["🟤","🌱","🌿","🍃","🌸","🍈"],
     steps:[{d:0,l:"Sow",t:"Warm soil. Black plastic mulch."},{d:21,l:"Train",t:"Guide vines. Hand-pollinate."},{d:60,l:"Ripen",t:"Slips from vine when ready."}],
     storage:"Fresh 1-2wk."
@@ -273,7 +273,7 @@ export const CROPS = [
     steps:[{d:0,l:"Plant",t:"European types best."},{d:30,l:"Establish",t:"Stake. Water."}],
     storage:"Dry as prunes (years). Jam. Brandy/Distilling."
   },
-  { name:"Cherry",emoji:"🍒",cat:"Fruit Tree",days:365,sowIn:"Nov-Feb",harvest:"Jun-Aug",spacing:500,sun:"Full",waterFreq:"Every 5-7 days",waterNote:"Net against birds (essential). Modern dwarfing rootstocks suit gardens. Sour cherries hardier.",color:"#c0392b",yld:12,
+  { name:"Cherry",pH:"6.0-7.0",fert:"NPK 10-10-10 in early spring before bud break. Moderate feeder — avoid excess nitrogen (soft growth, less fruit).",emoji:"🍒",cat:"Fruit Tree",days:365,sowIn:"Nov-Feb",harvest:"Jun-Aug",spacing:500,sun:"Full",waterFreq:"Every 5-7 days",waterNote:"Net against birds (essential). Modern dwarfing rootstocks suit gardens. Sour cherries hardier.",color:"#c0392b",yld:12,
     pests:[{n:"Cherry fly",t:"Cherry fly: yellow sticky traps, early harvest"},{n:"Birds (main threat!)",t:"Birds: full netting is only reliable solution"},{n:"Brown rot",t:"Brown rot: remove mummies, copper spray"},{n:"Bacterial canker",t:"Bacterial canker: prune only in summer, copper spray autumn"}],
     stages:["🌳","🌳","🌳","🌸","🍒","🍒"],
     steps:[{d:0,l:"Plant",t:"Slightly cooler spots best."},{d:30,l:"Establish",t:"Net when fruiting."}],
@@ -297,54 +297,64 @@ export const CROPS = [
     steps:[{d:0,l:"Plant",t:"Mediterranean native. Well-drained."}],
     storage:"Shell: 12mo+. Blanch and freeze."
   },
-  { name:"Chestnut",emoji:"🌰",cat:"Nut Tree",days:365,sowIn:"Nov-Feb",harvest:"Sep-Oct",spacing:800,sun:"Full",waterFreq:"Monthly",waterNote:"Acidic soil preferred. Established trees rain-dependent.",color:"#8B4513",yld:25,
+  { name:"Chestnut",pH:"5.5-6.5",fert:"Light feeder. Balanced NPK 10-10-10 in spring for young trees. Prefers acidic soil — never lime.",emoji:"🌰",cat:"Nut Tree",days:365,sowIn:"Nov-Feb",harvest:"Sep-Oct",spacing:800,sun:"Full",waterFreq:"Monthly",waterNote:"Acidic soil preferred. Established trees rain-dependent.",color:"#8B4513",yld:25,
     stages:["🌳","🌳","🌳","🌳","🌰","🌰"],
     steps:[{d:0,l:"Plant",t:"Acidic soil preferred. Large tree — plan placement."},{d:30,l:"Establish",t:"Water weekly first 2 years. Mulch heavily."}],
+    pests:[{n:"Chestnut blight (Cryphonectria)",t:"Blight: no cure — remove and burn affected wood, plant resistant hybrids, avoid wounding bark"},{n:"Chestnut weevil",t:"Weevil: collect and destroy fallen nuts promptly, keep ground clear under tree"},{n:"Squirrels",t:"Squirrels: main nut thief — harvest promptly as burrs split, trapping where legal"}],
     storage:"Fresh 1-2wk. Dry/roast 3-6mo. Flour indefinitely."
   },
-  { name:"Quince",emoji:"🍐",cat:"Fruit Tree",days:365,sowIn:"Nov-Feb",harvest:"Oct-Nov",spacing:400,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"Hardy and reliable in WE. Water during fruit set, otherwise rain-dependent.",color:"#f1c40f",yld:15,
+  { name:"Quince",pH:"6.0-7.0",fert:"Light feeder. NPK 10-10-10 in early spring. Compost mulch in autumn. Avoid excess nitrogen.",emoji:"🍐",cat:"Fruit Tree",days:365,sowIn:"Nov-Feb",harvest:"Oct-Nov",spacing:400,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"Hardy and reliable in WE. Water during fruit set, otherwise rain-dependent.",color:"#f1c40f",yld:15,
     stages:["🌳","🌳","🌳","🌸","🍐","🍐"],
     steps:[{d:0,l:"Plant",t:"Full sun. Any soil. Very tough tree."},{d:30,l:"Establish",t:"Water first year."}],
+    pests:[{n:"Quince leaf blight (Diplocarpon)",t:"Leaf blight: rake and destroy fallen leaves, copper spray at bud break, improve airflow"},{n:"Codling moth",t:"Codling moth: pheromone traps May-Aug, grease bands on trunk"},{n:"Brown rot",t:"Brown rot: remove mummified fruit, prune for airflow, avoid bruising at harvest"}],
     storage:"Whole 2-3mo cool. Jam/preserve: 12+mo. Jelly."
   },
-  { name:"Persimmon",emoji:"🟠",cat:"Fruit Tree",days:365,sowIn:"Nov-Feb",harvest:"Oct-Nov",spacing:500,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"Sheltered south wall in S England. Marginal — container possible. Astringent types hardier.",color:"#e67e22",yld:20,
+  { name:"Persimmon",pH:"6.0-7.5",fert:"Light feeder. Balanced NPK 10-10-10 in spring. Over-feeding causes fruit drop — go easy.",emoji:"🟠",cat:"Fruit Tree",days:365,sowIn:"Nov-Feb",harvest:"Oct-Nov",spacing:500,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"Sheltered south wall in S England. Marginal — container possible. Astringent types hardier.",color:"#e67e22",yld:20,
     stages:["🌳","🌳","🌳","🌳","🟠","🟠"],
     steps:[{d:0,l:"Plant",t:"Full sun. Well-drained. Sheltered."},{d:30,l:"Establish",t:"Water first year."}],
+    pests:[{n:"Generally trouble-free in WE",t:"Few pests this far north — main risk is frost on early blossom and fruit drop from stress"},{n:"Fruit drop (physiological)",t:"Fruit drop: consistent watering, avoid over-feeding, shelter from wind and late frost"},{n:"Mealybug (under glass)",t:"Mealybug: wipe off with alcohol swab, horticultural soap, encourage predators"}],
     storage:"Firm: ripen at room temp. Fully ripe: freeze."
   },
-  { name:"Lemon",fert:"Citrus-specific feed (high N summer, balanced winter). Foliar Mg/Fe if leaves yellow.",emoji:"🍋",cat:"Fruit Tree",days:365,sowIn:"Apr-May",harvest:"Year-round (light)",spacing:250,sun:"Full",waterFreq:"Every 5-7 days",waterNote:"Conservatory or heated greenhouse essential — minimum 5°C. Move outdoors Jun-Sep, indoors winter. Acid-loving compost.",color:"#f1c40f",yld:5,
+  { name:"Lemon",pH:"5.5-6.5",fert:"Citrus-specific feed (high N summer, balanced winter). Foliar Mg/Fe if leaves yellow.",emoji:"🍋",cat:"Fruit Tree",days:365,sowIn:"Apr-May",harvest:"Year-round (light)",spacing:250,sun:"Full",waterFreq:"Every 5-7 days",waterNote:"Conservatory or heated greenhouse essential — minimum 5°C. Move outdoors Jun-Sep, indoors winter. Acid-loving compost.",color:"#f1c40f",yld:5,
     stages:["🌳","🌳","🌳","🌸","🍋","🍋"],
     steps:[{d:0,l:"Plant",t:"South-facing wall for heat reflection. Frost-free location only."},{d:30,l:"Establish",t:"Water weekly. Protect from cold first 3 winters."}],
+    pests:[{n:"Scale insects",t:"Scale: wipe off with soapy cloth, horticultural oil spray, main pest under glass"},{n:"Mealybug",t:"Mealybug: dab with alcohol swab, encourage predators, sticky white clusters in leaf joints"},{n:"Spider mites (dry indoor air)",t:"Spider mites: raise humidity, mist foliage, neem oil — worst on overwintered indoor plants"}],
     storage:"Fresh 2-3wk. Juice + freeze. Preserved lemons (salt) 12+mo."
   },
-  { name:"Orange",fert:"Citrus-specific feed (high N summer, balanced winter). Foliar Mg/Fe if leaves yellow.",emoji:"🍊",cat:"Fruit Tree",days:365,sowIn:"Apr-May",harvest:"Dec-Mar (light)",spacing:250,sun:"Full",waterFreq:"Every 5-7 days",waterNote:"Conservatory or heated greenhouse essential — minimum 7°C. Move outdoors Jun-Sep, indoors winter. Acid-loving compost.",color:"#e67e22",yld:5,
+  { name:"Orange",pH:"5.5-6.5",fert:"Citrus-specific feed (high N summer, balanced winter). Foliar Mg/Fe if leaves yellow.",emoji:"🍊",cat:"Fruit Tree",days:365,sowIn:"Apr-May",harvest:"Dec-Mar (light)",spacing:250,sun:"Full",waterFreq:"Every 5-7 days",waterNote:"Conservatory or heated greenhouse essential — minimum 7°C. Move outdoors Jun-Sep, indoors winter. Acid-loving compost.",color:"#e67e22",yld:5,
     stages:["🌳","🌳","🌳","🌸","🍊","🍊"],
     steps:[{d:0,l:"Plant",t:"Frost-free location. South-facing."},{d:30,l:"Establish",t:"Water. Protect winter."}],
+    pests:[{n:"Scale insects",t:"Scale: wipe off with soapy cloth, horticultural oil spray, main pest under glass"},{n:"Mealybug",t:"Mealybug: dab with alcohol swab, encourage predators, sticky white clusters in leaf joints"},{n:"Spider mites (dry indoor air)",t:"Spider mites: raise humidity, mist foliage, neem oil — worst on overwintered indoor plants"}],
     storage:"Fresh 2-3wk room temp, 4-6wk fridge. Marmalade 12+mo."
   },
-  { name:"Hazelnut",emoji:"🌰",cat:"Nut Tree",days:365,sowIn:"Nov-Feb",harvest:"Sep-Oct",spacing:450,sun:"Full-Partial",waterFreq:"Every 7-14 days",waterNote:"Excellent UK native nut. Easy to grow. Coppice every 7-8 years.",color:"#8B4513",yld:5,
+  { name:"Hazelnut",pH:"6.0-7.5",fert:"Light feeder. Compost mulch in spring. Avoid high nitrogen — promotes leaf over nuts.",emoji:"🌰",cat:"Nut Tree",days:365,sowIn:"Nov-Feb",harvest:"Sep-Oct",spacing:450,sun:"Full-Partial",waterFreq:"Every 7-14 days",waterNote:"Excellent UK native nut. Easy to grow. Coppice every 7-8 years.",color:"#8B4513",yld:5,
     stages:["🌳","🌳","🌳","🌳","🌰","🌰"],
     steps:[{d:0,l:"Plant",t:"Two varieties needed for pollination. Wind-pollinated."},{d:30,l:"Establish",t:"Mulch. Water."}],
+    pests:[{n:"Nut weevil (Curculio nucum)",t:"Nut weevil: collect and destroy fallen nuts, hoe soil under tree in winter to expose larvae"},{n:"Grey squirrels (#1 threat)",t:"Squirrels: strip whole crops while still green — harvest promptly, trapping where legal"},{n:"Big bud mite",t:"Big bud mite: remove and burn swollen buds in winter, prune affected shoots"}],
     storage:"In shell: 12+ months cool dry. Shelled: freeze."
   },
-  { name:"Chamomile",emoji:"🌼",cat:"Herb",days:60,sowIn:"Mar-Apr, Sep-Oct",harvest:"Jun-Sep",spacing:15,sun:"Full",waterFreq:"Every 3-5 days",waterNote:"Moderate. Once established, drought-tolerant — UK rainfall sufficient most years.",color:"#f1c40f",yld:0.1,
+  { name:"Chamomile",pH:"5.6-7.5",fert:"NONE. Prefers poor, free-draining soil. Rich soil gives lush leaf and fewer flowers.",emoji:"🌼",cat:"Herb",days:60,sowIn:"Mar-Apr, Sep-Oct",harvest:"Jun-Sep",spacing:15,sun:"Full",waterFreq:"Every 3-5 days",waterNote:"Moderate. Once established, drought-tolerant — UK rainfall sufficient most years.",color:"#f1c40f",yld:0.1,
     stages:["🟤","🌱","🌿","🌿","🌼","🌼"],
     steps:[{d:0,l:"Sow surface",t:"Tiny seeds — don't bury. Press into soil."},{d:30,l:"Thin",t:"15cm apart."},{d:50,l:"Harvest flowers",t:"Pick when petals fold back. Morning after dew dries."}],
+    pests:[{n:"Aphids",t:"Aphids: soap spray, or leave — chamomile attracts hoverflies that eat them"},{n:"Powdery mildew",t:"Powdery mildew: improve airflow, avoid overhead watering, thin crowded plants"},{n:"Generally trouble-free",t:"Chamomile is a companion herb — repels many pests and rarely suffers itself"}],
     storage:"Dry flowers 1-2 years."
   },
-  { name:"Thyme",emoji:"🌿",cat:"Herb",days:90,sowIn:"Mar-Apr",harvest:"Jun-Oct",spacing:25,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"Drought-tolerant. Free-draining soil essential — wet winter feet kill it. Poor soil = more aroma.",color:"#7dcea0",yld:0.2,
+  { name:"Thyme",pH:"6.0-8.0",fert:"NONE. Poor, gritty, alkaline soil gives the best aroma. Feeding weakens flavour.",emoji:"🌿",cat:"Herb",days:90,sowIn:"Mar-Apr",harvest:"Jun-Oct",spacing:25,sun:"Full",waterFreq:"Every 7-14 days",waterNote:"Drought-tolerant. Free-draining soil essential — wet winter feet kill it. Poor soil = more aroma.",color:"#7dcea0",yld:0.2,
     stages:["🟤","🌱","🌿","🌿","🌸","🌿"],
     steps:[{d:0,l:"Plant",t:"Well-drained. Full sun. From cuttings or divisions."},{d:60,l:"Harvest",t:"Cut stems. Never more than 1/3 at once."}],
+    pests:[{n:"Root rot (overwatering — main killer)",t:"Root rot: sharp drainage essential, never waterlog, grow in raised bed or gritty mix"},{n:"Rosemary beetle",t:"Rosemary beetle: hand-pick metallic striped beetles from foliage, also attacks lavender and sage"},{n:"Spider mites (under glass)",t:"Spider mites: mist foliage, improve airflow, only a problem on indoor/greenhouse plants"}],
     storage:"Dry 1-2 years. Keeps flavor well."
   },
-  { name:"Parsley",emoji:"🌿",cat:"Herb",days:70,sowIn:"Mar-May, Sep",harvest:"May-Nov",spacing:18,sun:"Full-Partial",waterFreq:"Every 2-3 days",waterNote:"Excellent in cool moist UK climate. Biennial — flowers in 2nd year.",color:"#27ae60",yld:0.3,
+  { name:"Parsley",pH:"6.0-7.0",fert:"Moderate feeder. Compost at sowing, liquid feed every 2-3wk in growing season for lush leaf.",emoji:"🌿",cat:"Herb",days:70,sowIn:"Mar-May, Sep",harvest:"May-Nov",spacing:18,sun:"Full-Partial",waterFreq:"Every 2-3 days",waterNote:"Excellent in cool moist UK climate. Biennial — flowers in 2nd year.",color:"#27ae60",yld:0.3,
     stages:["🟤","🌱","🌿","🌿","🌿","🌿"],
     steps:[{d:0,l:"Sow",t:"Slow to germinate (2-4wk). Soak seed 24hr first."},{d:14,l:"Patience",t:"Don't give up — it's slow."},{d:50,l:"Harvest",t:"Outer stems first."}],
+    pests:[{n:"Carrot fly",t:"Carrot fly: parsley is in the carrot family — use fleece or a 60cm barrier, companion with onion"},{n:"Aphids",t:"Aphids: soap spray, check leaf undersides"},{n:"Celery leaf miner",t:"Leaf miner: remove and destroy affected leaves, fleece cover early season"}],
     storage:"Dry for winter. Freeze in oil/ice cubes."
   },
-  { name:"Dill",emoji:"🌿",cat:"Herb",days:40,sowIn:"Mar-May, Sep",harvest:"Jun-Sep",spacing:20,sun:"Full",waterFreq:"Every 3-4 days",waterNote:"Cool weather herb. Bolts in heat. Succession sow.",color:"#27ae60",yld:0.2,
+  { name:"Dill",pH:"5.5-6.5",fert:"Light feeder. Compost at sowing is enough. Excess nitrogen gives weak floppy stems.",emoji:"🌿",cat:"Herb",days:40,sowIn:"Mar-May, Sep",harvest:"Jun-Sep",spacing:20,sun:"Full",waterFreq:"Every 3-4 days",waterNote:"Cool weather herb. Bolts in heat. Succession sow.",color:"#27ae60",yld:0.2,
     stages:["🟤","🌱","🌿","🌿","🌸","🌿"],
     steps:[{d:0,l:"Direct sow",t:"Don't transplant — tap root. Succession sow every 3wk."},{d:30,l:"Harvest leaves",t:"Before flowering for best flavor."},{d:40,l:"Seed heads",t:"Let some flower for pickle dill."}],
+    pests:[{n:"Aphids",t:"Aphids: soap spray, or leave — dill flowers attract hoverflies and parasitic wasps"},{n:"Carrot fly",t:"Carrot fly: same family as carrot — fleece or barrier if grown near carrots"},{n:"Powdery mildew",t:"Powdery mildew: improve airflow, avoid overhead watering, thin dense stands"}],
     storage:"Dry 1 year. Seeds for pickling indefinitely."
   },
 

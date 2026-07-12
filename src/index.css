@@ -434,8 +434,9 @@ button:active:not(:disabled) {
   .overlay-handle-row {
     border-radius: 24px 24px 0 0 !important;
   }
-  /* drag handle indicator */
-  .overlay-sheet::before {
+  /* drag handle indicator — only for the non-drag (form) sheet variant.
+     The draggable detail sheet renders its own pill + safe-area padding in JSX. */
+  .overlay-sheet:not(.overlay-sheet--drag)::before {
     content: "";
     display: block;
     width: 40px;
@@ -443,6 +444,9 @@ button:active:not(:disabled) {
     border-radius: 2px;
     background: var(--color-border);
     margin: 12px auto 0;
+  }
+  .overlay-sheet--drag {
+    padding-bottom: 0 !important;
   }
 }
 
