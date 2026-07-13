@@ -7,9 +7,9 @@
    - TrialBanner        — slim status strip above page content: trial
                           countdown, read-only notice after expiry,
                           payment-issue notice during Paddle dunning.
-   - UpgradeSheet       — plan picker modal. Checkout buttons are
-                          disabled until Paddle goes live (Phase 8.5) —
-                          flip PADDLE_ENABLED when the webhook ships.
+   - UpgradeSheet       — plan picker modal. Checkout opens the real
+                          Paddle overlay (Phase 8.5 — see
+                          openPaddleCheckout / paddle-webhook edge fn).
    - LockedAssistantFab — replaces the AI assistant FAB when the plan
                           lacks the 'ai' feature; opens the sheet.
 
@@ -20,9 +20,64 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Lock, MessageCircle, Sparkles, X } from "lucide-react";
 import { C, F } from "../../lib/theme";
+import { supabase } from "../../lib/db";
 
-// Flip to true in Phase 8.5 when Paddle checkout + webhook are live.
-export const PADDLE_ENABLED = false;
+// Phase 8.5: Paddle checkout is live.
+export const PADDLE_ENABLED = true;
+
+// Client-side token — safe to embed in frontend code (Paddle's own
+// docs: this token can only start a checkout, it can't read/write
+// anything). Server-side API key + webhook secret live in the
+// paddle-webhook Supabase Edge Function's secrets, never here.
+const PADDLE_CLIENT_TOKEN = "live_734383069159c3bce2c4f6956b4";
+
+// Price ID per plan. MUST match the products created in Paddle (8.4)
+// and PRICE_TIER in supabase/functions/paddle-webhook/index.ts.
+const PRICE_IDS = {
+  basic: "pri_01kxdcntw2905t5fky81fy8cp0",
+  pro: "pri_01kxdcqpgjd5z1qrpd6hxgmxr2",
+  lifetime: "pri_01kxdcrgmy4jnxycc4h9fa2jsp",
+};
+
+let paddleLoadPromise = null;
+function loadPaddle() {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  if (window.Paddle) return Promise.resolve(window.Paddle);
+  if (paddleLoadPromise) return paddleLoadPromise;
+  paddleLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
+    script.onload = function () {
+      try {
+        window.Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN });
+        resolve(window.Paddle);
+      } catch (e) { reject(e); }
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return paddleLoadPromise;
+}
+
+// custom_data.user_id is how the webhook attributes the Paddle event
+// back to a profiles row — see paddle-webhook/index.ts.
+// eslint-disable-next-line react-refresh/only-export-components -- checkout fn lives with the sheet that calls it; dev-only Fast Refresh nit
+export async function openPaddleCheckout(planId) {
+  try {
+    const Paddle = await loadPaddle();
+    if (!Paddle) return;
+    const { data } = await supabase.auth.getUser();
+    const user = data && data.user;
+    if (!user) return;
+    Paddle.Checkout.open({
+      items: [{ priceId: PRICE_IDS[planId], quantity: 1 }],
+      customer: user.email ? { email: user.email } : undefined,
+      customData: { user_id: user.id },
+    });
+  } catch (e) {
+    console.error("Paddle checkout failed to open", e);
+  }
+}
 
 // Pricing — MUST match public/landing.html (canonical) and the Paddle
 // products created in Phase 8.4.
@@ -149,7 +204,7 @@ export function UpgradeSheet({ open, onClose, ent }) {
                 <p style={{ fontSize: 12, color: C.t2, margin: "6px 0 10px", lineHeight: 1.5 }}>{plan.blurb}</p>
                 <button
                   disabled={!PADDLE_ENABLED}
-                  onClick={function(){ /* Phase 8.5: openPaddleCheckout(plan.id) */ }}
+                  onClick={function(){ openPaddleCheckout(plan.id); }}
                   style={{
                     width: "100%", border: "none", borderRadius: 10,
                     padding: "9px 0", fontSize: 13, fontWeight: 700, fontFamily: F.body,
