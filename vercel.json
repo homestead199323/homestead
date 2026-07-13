@@ -17,7 +17,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://cloud.umami.is; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://cloud.umami.is https://api-gateway.umami.dev https://api.open-meteo.com https://geocoding-api.open-meteo.com https://fosqnppqcsoowqvrlkul.supabase.co wss://fosqnppqcsoowqvrlkul.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+          "value": "default-src 'self'; script-src 'self' https://cloud.umami.is https://cdn.paddle.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://cloud.umami.is https://api-gateway.umami.dev https://api.open-meteo.com https://geocoding-api.open-meteo.com https://fosqnppqcsoowqvrlkul.supabase.co wss://fosqnppqcsoowqvrlkul.supabase.co https://*.paddle.com; frame-src https://buy.paddle.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
         },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
