@@ -110,7 +110,13 @@ function Setup({data, setData, onPlantInZone, onBack}) {
   const ORN_IDS = new Set(ORNAMENT_TYPES.map(o => o.id));
   /* Stage 4b (brief §7): decor tray only offers env-appropriate items;
      ORN_IDS stays the superset so already-placed decor keeps working */
-  const ORN_PALETTE = ornamentTypesFor(resolveEnvironment(data));
+  const mapEnv = resolveEnvironment(data);
+  const ORN_PALETTE = ornamentTypesFor(mapEnv);
+  /* Stage 4c: balcony/backyard canvases are the real space and can be far
+     smaller than a farm — a 10 m floor would lock balcony users out of
+     editing their own dimensions (starter canvas can be 3×2 m). */
+  const sizeMin = mapEnv === "balcony" ? 2 : mapEnv === "backyard" ? 4 : 10;
+  const sizeLabel = mapEnv === "farm" ? "Total farm size" : "Total space size";
   const [cityQuery, setCityQuery] = useState(data.city || "");
   const [cityResults, setCityResults] = useState([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
@@ -551,11 +557,11 @@ function Setup({data, setData, onPlantInZone, onBack}) {
                   style={{border:"none", background:"transparent", color:C.t2, fontSize:20, lineHeight:1, padding:"4px 6px", cursor:"pointer", WebkitTapHighlightColor:"transparent", fontFamily:"inherit"}}>✕</button>
               </div>
 
-              <div style={{fontSize:11, fontWeight:700, color:C.t2, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:6}}>Total farm size</div>
+              <div style={{fontSize:11, fontWeight:700, color:C.t2, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:6}}>{sizeLabel}</div>
               <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto", gap:10, alignItems:"end", marginBottom:4}}>
-                <MeterField label="Width (m)" value={farmW} min={10} max={2000}
+                <MeterField label="Width (m)" value={farmW} min={sizeMin} max={2000}
                   onCommit={function(n) { const v = Math.round(n); setFarmW(v); setData({...data, farmW: v}); }}/>
-                <MeterField label="Height (m)" value={farmH} min={10} max={2000}
+                <MeterField label="Height (m)" value={farmH} min={sizeMin} max={2000}
                   onCommit={function(n) { const v = Math.round(n); setFarmH(v); setData({...data, farmH: v}); }}/>
                 <div style={{fontSize:11, color:C.t3, fontFamily:F.mono, paddingBottom:10, whiteSpace:"nowrap"}}>{(farmW*farmH).toLocaleString()} m²</div>
               </div>

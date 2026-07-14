@@ -62,10 +62,16 @@
     `contain`→`container` normalized in migrateZones; all 5 plant-zone lists extended; new
     raised/container surfaces in visuals.js; migrateProfile added to backup-import path.
     Map animations pause when tab hidden (§17). jsdom e2e: 3 envs + legacy user + migration.
-  - [ ] **4b:** richer per-env animations (wind sway, rain, watering), sun-direction overlay,
-    balcony vertical structures/hanging planters, backyard trees/shed/seating objects.
-  - [ ] **4c:** environment switcher in settings (brief §18 — existing users may change env),
-    lazy-loaded image assets when/if they replace CSS/SVG surfaces.
+  - [x] **4b (2026-07-14, commit 827db47):** per-env map FX. New `src/features/grove/MapFX.jsx`
+    (shared by GroveScene + LivingFarmMap): live rain/snow from cached Open-Meteo forecast,
+    sun-direction glow from `profile.sunDirection` (morning/afternoon/allday) with ☀️ badge;
+    balcony railing planters + wall shelf, backyard trees, env-aware decor palette, watering
+    drips. Hidden in edit mode (§7). Verified live in bundle index-BRWIEMGE.js
+    (grove-rain-drop, grove-snow-flake, data-map-fx, "Morning sun"/"Sun all day" all present).
+  - [~] **4c:** environment switcher in settings (brief §18 — existing users may change env).
+    Dimension editing verified pre-existing: Farm.jsx settings sheet edits farmW/farmH
+    (balcony/backyard canvas = real space). Lazy-loaded image assets: N/A — all env
+    surfaces are CSS/SVG, nothing to lazy-load.
 - [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
   Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
   Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.
