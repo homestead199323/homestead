@@ -22,7 +22,7 @@ import FarmIcon from "../../../components/FarmIcon";
 import { zoneAnimalGroups } from "./visuals";
 import { buildZoneSpaceMap } from "../../../lib/farm-calc";
 
-const PLANT_TYPES = ["veg", "orchard", "herbs", "greenhouse"];
+const PLANT_TYPES = ["veg", "orchard", "herbs", "greenhouse", "raised", "container"];
 const ANIMAL_TYPES = ["barn", "pasture"];
 
 export default function ZoneOverlay({ zone, data, onClose, onEditLayout, onPlantInZone }) {

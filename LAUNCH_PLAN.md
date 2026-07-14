@@ -50,9 +50,22 @@
   (`buildStarterZone`); assets stored in `profile.assets` but do NOT auto-create zones
   (Basic zone-cap decision pending). Legacy skip loop bug fixed (skip now sets
   setupDone:true). Finish lands on populated Today via existing buildTaskQueue.
-- [ ] **Stage 4 — map environments.** Balcony + Backyard visual environments on the shared
+- [~] **Stage 4 — map environments.** Balcony + Backyard visual environments on the shared
   data model; current map becomes Farm environment. Scale/objects/animations per brief §6–7.
   Multiple sessions. Lazy-load per-environment assets.
+  - [x] **4a (2026-07-14):** environment plumbing + first visual pass. `src/lib/environment.js`
+    (resolveEnvironment, farm fallback). GroveScene + LivingFarmMap render per environment:
+    balcony = decking ground, apartment wall + railing frame, no border trees/roads/gate/tufts;
+    backyard = lawn + perimeter fence, no farm gate/roads/border trees; farm unchanged.
+    Fixed Stage 3 regression: zone types `raised`/`container` registered in ZT (onboarding wrote
+    unregistered `contain`/`raised` — balcony/backyard users couldn't plant into starter zones);
+    `contain`→`container` normalized in migrateZones; all 5 plant-zone lists extended; new
+    raised/container surfaces in visuals.js; migrateProfile added to backup-import path.
+    Map animations pause when tab hidden (§17). jsdom e2e: 3 envs + legacy user + migration.
+  - [ ] **4b:** richer per-env animations (wind sway, rain, watering), sun-direction overlay,
+    balcony vertical structures/hanging planters, backyard trees/shed/seating objects.
+  - [ ] **4c:** environment switcher in settings (brief §18 — existing users may change env),
+    lazy-loaded image assets when/if they replace CSS/SVG surfaces.
 - [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
   Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
   Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.

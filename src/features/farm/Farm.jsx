@@ -245,7 +245,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
     handleZoneGeom(sz.id, g);
   };
 
-  const isPlantZone = sz && ["veg", "orchard", "herbs", "greenhouse"].includes(sz.type);
+  const isPlantZone = sz && ["veg", "orchard", "herbs", "greenhouse", "raised", "container"].includes(sz.type);
 
   return (
     <div data-fd-root style={{position:"fixed", inset:0, zIndex:2100, background:C.bg, display:"flex", flexDirection:"column"}}>
@@ -674,7 +674,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const plantsCalc = activeMeasure==="area" ? plantsFromArea(ci?.name, +form.qty||0, data.region) : null;
   const yieldCalc = ci && form.qty ? expectedYield(ci.name, +form.qty||0, activeMeasure, vi?.yld, data.region) : null;
   const autoH=()=>form.plantDate&&ci?addDaysToLocalKey(form.plantDate, effectiveDays):"";
-  const vegZ=data.zones.filter(z=>["veg","orchard","herbs","greenhouse"].includes(z.type));
+  const vegZ=data.zones.filter(z=>["veg","orchard","herbs","greenhouse","raised","container"].includes(z.type));
   const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region), [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]);
 
   const add=()=>{

@@ -405,7 +405,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
         )) {
           throw new Error("Backup file contains reserved keys and cannot be imported safely.");
         }
-        const merged = migrateCompletions(migrateGamify(migratePlotSchema(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}}))));
+        const merged = migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}})))));
         setData(merged);
       } catch(err) { alert("Invalid backup file: " + err.message); }
     };

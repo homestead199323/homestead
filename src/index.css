@@ -881,3 +881,6 @@ circle.ring-progress {
   .grove-sway, .grove-tree-sway, .grove-pop,
   .grove-card-in, .grove-row-in, .grove-fade, .grove-bar-fill { animation: none !important; }
 }
+
+/* Stage 4 (brief §17): stop map animations while the tab is hidden */
+[data-anim-paused], [data-anim-paused] * { animation-play-state: paused !important; }

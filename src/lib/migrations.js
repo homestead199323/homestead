@@ -24,9 +24,12 @@ export function migrateZones(data) {
   const farmH = data.farmH || 60;
   let changed = false;
   const zones = data.zones.map(z => {
-    if (z.xM !== undefined) return z;
+    let nz = z;
+    // Stage 4: onboarding briefly wrote type "contain"; canonical id is "container"
+    if (nz.type === "contain") { changed = true; nz = { ...nz, type: "container" }; }
+    if (nz.xM !== undefined) return nz;
     changed = true;
-    return { ...z, xM: z.x/100*farmW, yM: z.y/100*farmH, wM: z.w/100*farmW, hM: z.h/100*farmH };
+    return { ...nz, xM: nz.x/100*farmW, yM: nz.y/100*farmH, wM: nz.w/100*farmW, hM: nz.h/100*farmH };
   });
   if (changed) return { ...data, zones };
   return data;

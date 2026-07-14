@@ -30,6 +30,7 @@ import RoadLayer from "./RoadLayer";
 import ZoneSurface from "./ZoneSurface";
 import ZoneOverlay from "./ZoneOverlay";
 import { isPlantZone, mapBackgroundStyle, mapVignetteStyle, zoneRadius, zoneAnimalGroups, zoneFillColor } from "./visuals";
+import { resolveEnvironment } from "../../../lib/environment";
 
 /* Props
    ─────
@@ -72,6 +73,17 @@ export default function LivingFarmMap({
   useEffect(() => {
     const id = setInterval(() => setMapHour(new Date().getHours()), 60000);
     return () => clearInterval(id);
+  }, []);
+
+  /* Stage 4 (brief §6–7): environment-aware ground + farm-only roads */
+  const env = resolveEnvironment(data);
+
+  /* Stage 4 (brief §17): pause CSS animations while the tab is hidden */
+  const [tabHidden, setTabHidden] = useState(() => typeof document !== "undefined" && document.visibilityState === "hidden");
+  useEffect(() => {
+    function onVis() { setTabHidden(document.visibilityState === "hidden"); }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
   const mapTintOverlay = useMemo(() => {
@@ -229,14 +241,14 @@ export default function LivingFarmMap({
     ? {
         position: "absolute",
         inset: 0,
-        ...mapBackgroundStyle(),
+        ...mapBackgroundStyle(env),
         border: noBorder ? "none" : `1px solid ${C.bdr}`,
         borderRadius: noBorder ? 0 : 16,
         overflow: "hidden",
       }
     : {
         position: "relative",
-        ...mapBackgroundStyle(),
+        ...mapBackgroundStyle(env),
         border: noBorder ? "none" : `1px solid ${C.bdr}`,
         borderRadius: noBorder ? 0 : 16,
         overflow: "hidden",
@@ -253,9 +265,9 @@ export default function LivingFarmMap({
 
   return (
     <Wrapper {...wrapperProps}>
-      <div style={containerStyle} data-living-zone-marker={fitMode === "fill" ? "map-root" : undefined}>
+      <div style={containerStyle} data-anim-paused={tabHidden ? "" : undefined} data-living-zone-marker={fitMode === "fill" ? "map-root" : undefined}>
         <div style={mapVignetteStyle()}/>
-        <RoadLayer zones={data.zones} farmW={fW} farmH={fH}/>
+        {env === "farm" && <RoadLayer zones={data.zones} farmW={fW} farmH={fH}/>}
 
         {/* Time-of-day tint */}
         {mapTintOverlay && (

@@ -1,12 +1,13 @@
 import { POULTRY_SPECIES, GRAZER_SPECIES } from "../../../data/livestock";
 
-export const PLANT_ZONE_TYPES = new Set(["veg", "orchard", "herbs", "greenhouse"]);
+export const PLANT_ZONE_TYPES = new Set(["veg", "orchard", "herbs", "greenhouse", "raised", "container"]);
 
 export function isPlantZone(type) {
   return PLANT_ZONE_TYPES.has(type);
 }
 
 export function zoneRadius(type) {
+  if (type === "raised" || type === "container") return 10;
   if (type === "orchard" || type === "water" || type === "herbs" || type === "pasture") return 24;
   if (type === "greenhouse" || type === "house") return 16;
   if (type === "storage" || type === "compost") return 10;
@@ -88,6 +89,23 @@ export function zoneSurfaceStyle(type) {
       background: "linear-gradient(135deg, #8c7657, #6f6149)",
     };
   }
+  if (type === "raised") {
+    return {
+      ...base,
+      background:
+        "linear-gradient(90deg, rgba(83,54,31,.15) 1px, transparent 1px), linear-gradient(135deg, #9c7247, #855f38)",
+      backgroundSize: "22px 100%, 100% 100%",
+      boxShadow: "inset 0 0 0 4px #8a6a45, inset 0 1px rgba(255,255,255,.18)",
+    };
+  }
+  if (type === "container") {
+    return {
+      ...base,
+      background:
+        "radial-gradient(circle at 15px 14px, #b5623f 0 8px, #8f4a2e 8px 9px, transparent 10px), linear-gradient(135deg, #caa06a, #b28a55)",
+      backgroundSize: "30px 28px, 100% 100%",
+    };
+  }
   if (type === "pasture") {
     return {
       ...base,
@@ -103,7 +121,20 @@ export function zoneSurfaceStyle(type) {
   };
 }
 
-export function mapBackgroundStyle() {
+export function mapBackgroundStyle(env) {
+  /* Stage 4 (brief §6–7): ground per environment. Default/farm unchanged. */
+  if (env === "balcony") {
+    return {
+      background:
+        "repeating-linear-gradient(180deg, rgba(80,50,20,.14) 0 2px, transparent 2px 26px), linear-gradient(160deg, #cfa873 0%, #b9925f 100%)",
+    };
+  }
+  if (env === "backyard") {
+    return {
+      background:
+        "repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 42px, transparent 42px 84px), linear-gradient(160deg, #93bd60 0%, #7ba84e 100%)",
+    };
+  }
   return {
     background:
       "radial-gradient(circle at 18% 12%, rgba(255,255,225,.20) 0 1px, transparent 2px), linear-gradient(160deg, #c3cf9b 0%, #a6ba7e 100%)",

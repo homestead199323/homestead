@@ -243,7 +243,7 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
 
     // Ring 2: Crops growing — active plots that have been planted / total zone capacity
     const plantedCount = activePlots.filter(p => p.plantDate).length;
-    const zoneCapacity = Math.max(1, data.zones.filter(z => ["veg","orchard","herbs","greenhouse"].includes(z.type)).length * 4); // ~4 crops per zone as target
+    const zoneCapacity = Math.max(1, data.zones.filter(z => ["veg","orchard","herbs","greenhouse","raised","container"].includes(z.type)).length * 4); // ~4 crops per zone as target
     const growPct = Math.min(1, plantedCount / zoneCapacity);
 
     // Ring 3: Harvest readiness — crops within 7 days of harvest / all active

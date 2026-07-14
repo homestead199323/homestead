@@ -18,6 +18,7 @@ import { localDateFromKey, todayLocalKey } from "../../lib/utils";
 import GroveZoneCard from "./GroveZoneCard";
 import { isPlantZone, zoneAnimalGroups, zoneFillColor } from "../farm/living/visuals";
 import { makeProjector, depthOf, srand } from "./sceneMath";
+import { resolveEnvironment } from "../../lib/environment";
 
 /* ── World palette (fixed physical colors; night handled by hour tint) ── */
 const W = {
@@ -198,6 +199,14 @@ export default function GroveScene({
     const id = setInterval(() => setMapHour(new Date().getHours()), 60000);
     return () => clearInterval(id);
   }, []);
+
+  /* Stage 4 (brief §17): pause CSS animations while the tab is hidden */
+  const [tabHidden, setTabHidden] = useState(() => typeof document !== "undefined" && document.visibilityState === "hidden");
+  useEffect(() => {
+    function onVis() { setTabHidden(document.visibilityState === "hidden"); }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
   const tint = useMemo(() => {
     const h = mapHour;
     if (h >= 8 && h <= 17) return null;
@@ -219,6 +228,8 @@ export default function GroveScene({
     () => buildZoneSpaceMap(data.zones, data.garden && data.garden.plots ? data.garden.plots : [], fW, fH, data.region),
     [data.zones, data.garden, fW, fH, data.region]
   );
+
+  const env = resolveEnvironment(data);
 
   const PROJ = useMemo(() => makeProjector(fW, fH), [fW, fH]);
 
@@ -298,6 +309,7 @@ export default function GroveScene({
 
   /* ── Auto road network: house front (or farm center) → each zone + gate ── */
   const roads = useMemo(() => {
+    if (env !== "farm") return [];
     const zs = data.zones || [];
     if (zs.length === 0) return [];
     const house = zs.find(z => z.type === "house");
@@ -323,7 +335,7 @@ export default function GroveScene({
       segs.push([[ax, ay], [best[0], ay], [best[0], best[1]]]);
     });
     return segs;
-  }, [data.zones, fW, fH, PROJ]);
+  }, [data.zones, fW, fH, PROJ, env]);
 
   /* ── World scatter: border trees, free trees, tufts, flowers (seeded) ── */
   const world = useMemo(() => {
@@ -336,6 +348,7 @@ export default function GroveScene({
     const border = [];
     const step = Math.max(4, fW / 11);
     let i = 0;
+    if (env === "farm") {
     for (let x = step * 0.4; x < fW; x += step) {
       border.push({ x: x + (srand(i) - 0.5) * 2.4, y: -padM * (0.35 + srand(i + 50) * 0.3), r: 0.75 + srand(i + 99) * 0.5, i }); i++;
     }
@@ -348,20 +361,25 @@ export default function GroveScene({
       border.push({ x: -padM * (0.35 + srand(i + 20) * 0.3), y: y + (srand(i) - 0.5) * 2, r: 0.7 + srand(i + 99) * 0.5, i }); i++;
       border.push({ x: fW + padM * (0.35 + srand(i + 21) * 0.3), y: y + (srand(i + 1) - 0.5) * 2, r: 0.7 + srand(i + 99) * 0.5, i }); i++;
     }
+    }
     const free = [];
+    if (env === "farm") {
     for (let k = 0; k < 4; k++) {
       const x = 2 + srand(k * 7 + 2) * (fW - 4);
       const y = 2 + srand(k * 7 + 5) * (fH - 4);
       if (!insideZone(x, y, 1.6)) free.push({ x, y, r: 0.9 + srand(k + 40) * 0.5, i: 200 + k });
     }
+    }
     const tufts = [];
+    if (env !== "balcony") {
     for (let k = 0; k < 16; k++) {
       const x = 1 + srand(k * 13 + 3) * (fW - 2);
       const y = 1 + srand(k * 13 + 9) * (fH - 2);
       if (!insideZone(x, y, 0.4)) tufts.push({ x, y, fl: srand(k + 77) > 0.62, i: k });
     }
+    }
     return { border, free, tufts };
-  }, [data.zones, fW, fH, PROJ]);
+  }, [data.zones, fW, fH, PROJ, env]);
 
   /* ── Empty state ── */
   if (!data.zones || data.zones.length === 0) {
@@ -587,9 +605,14 @@ export default function GroveScene({
   const ornaments = (data.ornaments || []).slice(0, MAX_ORNAMENTS);
   const roadW = Math.max(6, U * 1.3);
   const gate = P(fW / 2, fH);
+  /* Stage 4: balcony frame geometry — clamped so huge per-meter scales
+     (tiny balconies) never push the wall/railing outside the viewBox */
+  const wallH = Math.max(8, P(0, 0)[1] - Math.min(8, U * 0.2));
+  const railY = Math.min(vbH - 8, P(0, fH)[1] + Math.min(14, U * 0.35));
+  const railPostH = Math.min(22, Math.max(8, U * 0.55));
 
   return (
-    <div data-grove-scene-marker="scene-root" style={{ position: "relative" }}>
+    <div data-grove-scene-marker="scene-root" data-anim-paused={tabHidden ? "" : undefined} style={{ position: "relative" }}>
       <div ref={boxRef}
         onPointerMove={edit ? editPointerMove : undefined}
         onPointerUp={edit ? editPointerUp : undefined}
@@ -604,15 +627,27 @@ export default function GroveScene({
         aspectRatio: `${vbW} / ${vbH}`,
         borderRadius: noBorder ? 0 : 18,
         border: noBorder ? "none" : `1px solid ${C.bdr}`,
-        background: W.grass,
+        background: env === "balcony" ? "#c9a570" : W.grass,
       }}>
         {/* ═══ SVG base layer — the world ═══ */}
         <svg viewBox={`0 0 ${vbW} ${vbH}`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}>
-          <rect x="0" y="0" width={vbW} height={vbH} fill={W.grass}/>
-          <ellipse cx={vbW * 0.28} cy={vbH * 0.3} rx={vbW * 0.2} ry={vbH * 0.12} fill={W.grassLight}/>
-          <ellipse cx={vbW * 0.72} cy={vbH * 0.62} rx={vbW * 0.22} ry={vbH * 0.13} fill={W.grassLight}/>
-          <ellipse cx={vbW * 0.45} cy={vbH * 0.85} rx={vbW * 0.24} ry={vbH * 0.1} fill={W.grassPatch}/>
-          <rect x={P(0, 0)[0]} y={P(0, 0)[1]} width={M(fW)} height={M(fH)} fill="none" stroke={W.grassDark} strokeWidth="1.5"/>
+          <rect x="0" y="0" width={vbW} height={vbH} fill={env === "balcony" ? "#c9a570" : W.grass}/>
+          {env !== "balcony" && (
+            <g data-env-el="grass-shading">
+              <ellipse cx={vbW * 0.28} cy={vbH * 0.3} rx={vbW * 0.2} ry={vbH * 0.12} fill={W.grassLight}/>
+              <ellipse cx={vbW * 0.72} cy={vbH * 0.62} rx={vbW * 0.22} ry={vbH * 0.13} fill={W.grassLight}/>
+              <ellipse cx={vbW * 0.45} cy={vbH * 0.85} rx={vbW * 0.24} ry={vbH * 0.1} fill={W.grassPatch}/>
+            </g>
+          )}
+          {env === "balcony" && (
+            <g data-env-el="decking">
+              {Array.from({ length: Math.max(2, Math.ceil(vbH / Math.max(12, U * 0.55))) }, function(_, i) {
+                const py = (i + 1) * Math.max(12, U * 0.55);
+                return <line key={"pk" + i} x1="0" y1={py} x2={vbW} y2={py} stroke="#b8935d" strokeWidth="1.6"/>;
+              })}
+            </g>
+          )}
+          {env === "farm" && <rect x={P(0, 0)[0]} y={P(0, 0)[1]} width={M(fW)} height={M(fH)} fill="none" stroke={W.grassDark} strokeWidth="1.5"/>}
 
           {/* grass tufts + wildflowers */}
           {world.tufts.map(t => {
@@ -640,10 +675,34 @@ export default function GroveScene({
               strokeDasharray={`${roadW * 0.9} ${roadW * 0.75}`}/>
           ))}
 
-          {/* gate at the bottom edge */}
-          <rect x={gate[0] - M(2.2)} y={gate[1] - M(0.25)} width={M(0.5)} height={M(1.6)} fill={W.post}/>
-          <rect x={gate[0] + M(1.7)} y={gate[1] - M(0.25)} width={M(0.5)} height={M(1.6)} fill={W.post}/>
-          <rect x={gate[0] - M(2.5)} y={gate[1] - M(0.6)} width={M(5)} height={M(0.45)} rx={M(0.12)} fill={W.fence}/>
+          {/* gate at the bottom edge — farm only (brief §7: no farm elements off-farm) */}
+          {env === "farm" && (
+            <g data-env-el="farm-gate">
+              <rect x={gate[0] - M(2.2)} y={gate[1] - M(0.25)} width={M(0.5)} height={M(1.6)} fill={W.post}/>
+              <rect x={gate[0] + M(1.7)} y={gate[1] - M(0.25)} width={M(0.5)} height={M(1.6)} fill={W.post}/>
+              <rect x={gate[0] - M(2.5)} y={gate[1] - M(0.6)} width={M(5)} height={M(0.45)} rx={M(0.12)} fill={W.fence}/>
+            </g>
+          )}
+
+          {/* backyard: residential perimeter fence (brief §6) */}
+          {env === "backyard" && (
+            <g data-env-el="yard-fence">{fenceEls(0.25, 0.25, fW - 0.5, fH - 0.5, "yardfence", false)}</g>
+          )}
+
+          {/* balcony: apartment wall band (top) + railing (bottom) (brief §6) */}
+          {env === "balcony" && (
+            <g data-env-el="balcony-frame">
+              <rect x="0" y="0" width={vbW} height={wallH} fill="#e6ddcc"/>
+              <rect x="0" y={wallH - 3} width={vbW} height="3" fill="#c9bda6"/>
+              <rect x={vbW / 2 - Math.min(28, U * 0.7)} y={Math.max(2, wallH - Math.min(56, U * 1.4))} width={Math.min(56, U * 1.4)} height={Math.min(56, U * 1.4)} rx="2" fill="#8a6a4a"/>
+              <rect x="0" y={railY} width={vbW} height={Math.max(2.5, Math.min(5, U * 0.12))} rx="2" fill="#7a8288"/>
+              {Array.from({ length: Math.max(4, Math.floor(fW / 1.1) + 1) }, function(_, i) {
+                const n = Math.max(3, Math.floor(fW / 1.1));
+                const px = (i / n) * (vbW - 6) + 3;
+                return <rect key={"rl" + i} x={px} y={railY} width={Math.max(2, Math.min(4, U * 0.06))} height={railPostH} fill="#6b737a"/>;
+              })}
+            </g>
+          )}
 
           {/* editor placement grid */}
           {edit && (

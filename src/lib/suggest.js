@@ -108,7 +108,7 @@ export function suggestCrops(profile, region, opts) {
 // auto-create zones — the Basic zone-cap decision is still open; assets are
 // stored in profile.assets for later stages.
 const ENV_ZONE = {
-  balcony:  { type:"contain", label:"Balcony Containers", emoji:"🪣", share:0.5,  minA:0.5, maxA:6,  inset:0.25, minW:3,  minH:2 },
+  balcony:  { type:"container", label:"Balcony Containers", emoji:"🪣", share:0.5,  minA:0.5, maxA:6,  inset:0.25, minW:3,  minH:2 },
   backyard: { type:"raised",  label:"Raised Bed",         emoji:"🪴", share:0.25, minA:1,   maxA:12, inset:1,    minW:6,  minH:4 },
   farm:     { type:"veg",     label:"Vegetable Bed",      emoji:"🌿", share:0.1,  minA:4,   maxA:24, inset:4,    minW:16, minH:10 },
 };
