@@ -19,6 +19,7 @@ import GroveZoneCard from "./GroveZoneCard";
 import { isPlantZone, zoneAnimalGroups, zoneFillColor } from "../farm/living/visuals";
 import { makeProjector, depthOf, srand } from "./sceneMath";
 import { resolveEnvironment } from "../../lib/environment";
+import MapWeatherFX from "./MapFX";
 
 /* ── World palette (fixed physical colors; night handled by hour tint) ── */
 const W = {
@@ -43,15 +44,28 @@ const FRAMED_TYPES = new Set(["raised", "container"]);
 /* Ornaments (user-placed, max 10 — placed via Farm Designer) */
 // eslint-disable-next-line react-refresh/only-export-components -- palette constant consumed by Farm Designer; dev-only Fast Refresh nit
 export const ORNAMENT_TYPES = [
-  { id: "tree",     label: "Tree",      icon: "🌳" },
-  { id: "bush",     label: "Bush",      icon: "🌿" },
-  { id: "flowers",  label: "Flowers",   icon: "🌼" },
-  { id: "rock",     label: "Rocks",     icon: "🪨" },
-  { id: "pond",     label: "Mini pond", icon: "💧" },
-  { id: "haybale",  label: "Hay bale",  icon: "🌾" },
-  { id: "woodpile", label: "Wood pile", icon: "🪵" },
-  { id: "bench",    label: "Bench",     icon: "🪑" },
+  { id: "tree",        label: "Tree",           icon: "🌳", envs: ["farm", "backyard"] },
+  { id: "bush",        label: "Bush",           icon: "🌿", envs: ["farm", "backyard"] },
+  { id: "flowers",     label: "Flowers",        icon: "🌼", envs: ["farm", "backyard", "balcony"] },
+  { id: "rock",        label: "Rocks",          icon: "🪨", envs: ["farm", "backyard"] },
+  { id: "pond",        label: "Mini pond",      icon: "💧", envs: ["farm", "backyard"] },
+  { id: "haybale",     label: "Hay bale",       icon: "🌾", envs: ["farm"] },
+  { id: "woodpile",    label: "Wood pile",      icon: "🪵", envs: ["farm", "backyard"] },
+  { id: "bench",       label: "Bench",          icon: "🪑", envs: ["farm", "backyard", "balcony"] },
+  /* Stage 4b (brief §6): environment-specific decor */
+  { id: "shed",        label: "Shed",           icon: "🏚️", envs: ["backyard"] },
+  { id: "pot",         label: "Pot",            icon: "🪴", envs: ["balcony", "backyard"] },
+  { id: "planter",     label: "Planter box",    icon: "🧺", envs: ["balcony"] },
+  { id: "hangpot",     label: "Hanging plant",  icon: "🌸", envs: ["balcony"] },
+  { id: "wateringcan", label: "Watering can",   icon: "🚿", envs: ["balcony", "backyard"] },
 ];
+/* Palette shown in the Farm Designer decor tray for a given environment.
+   Brief §7: no farm elements on balcony maps. Placed ornaments of any type
+   still render everywhere (superset lookup) so env switches never break. */
+// eslint-disable-next-line react-refresh/only-export-components -- palette helper consumed by Farm Designer
+export function ornamentTypesFor(env) {
+  return ORNAMENT_TYPES.filter(function(o) { return o.envs.includes(env); });
+}
 export const MAX_ORNAMENTS = 10;
 
 /* Small inline glyphs for task markers (duotone, self-contained) */
@@ -370,6 +384,17 @@ export default function GroveScene({
       if (!insideZone(x, y, 1.6)) free.push({ x, y, r: 0.9 + srand(k + 40) * 0.5, i: 200 + k });
     }
     }
+    /* Stage 4b (brief §6): backyard garden trees — two candidates just inside
+       the fence corners, skipped if a zone occupies that corner */
+    if (env === "backyard") {
+      const corners = [
+        { x: 1.8 + srand(301) * 1.2, y: 1.8 + srand(302) * 1.2 },
+        { x: fW - 1.8 - srand(303) * 1.2, y: fH - 1.8 - srand(304) * 1.2 },
+      ];
+      corners.forEach(function(cn, k) {
+        if (!insideZone(cn.x, cn.y, 1.4)) free.push({ x: cn.x, y: cn.y, r: 0.85 + srand(k + 60) * 0.35, i: 300 + k });
+      });
+    }
     const tufts = [];
     if (env !== "balcony") {
     for (let k = 0; k < 16; k++) {
@@ -589,6 +614,43 @@ export default function GroveScene({
       <circle cx={c[0] + s * 0.35} cy={c[1] + s * 0.2} r={s * 0.42} fill="#a8814f"/><circle cx={c[0] + s * 0.35} cy={c[1] + s * 0.2} r={s * 0.2} fill="#c69d64"/>
       <circle cx={c[0] - s * 0.1} cy={c[1] - s * 0.35} r={s * 0.42} fill="#96703f"/><circle cx={c[0] - s * 0.1} cy={c[1] - s * 0.35} r={s * 0.2} fill="#b8905a"/>
     </g>);
+    else if (o.type === "shed") body = (<g>
+      <rect x={c[0] - s * 1.5 + M(0.2)} y={c[1] - s * 1.1 + M(0.2)} width={s * 3} height={s * 2.2} rx={s * 0.12} fill="rgba(30,56,34,.22)"/>
+      <rect x={c[0] - s * 1.5} y={c[1] - s * 1.1} width={s * 3} height={s * 2.2} rx={s * 0.12} fill="#8a6a42"/>
+      <line x1={c[0] - s * 1.3} y1={c[1]} x2={c[0] + s * 1.3} y2={c[1]} stroke="#9a7a4e" strokeWidth={Math.max(2, s * 0.3)} strokeLinecap="round"/>
+      <line x1={c[0] - s * 0.7} y1={c[1] - s * 0.95} x2={c[0] - s * 0.7} y2={c[1] + s * 0.95} stroke="#755735" strokeWidth={Math.max(1, s * 0.12)}/>
+      <line x1={c[0] + s * 0.7} y1={c[1] - s * 0.95} x2={c[0] + s * 0.7} y2={c[1] + s * 0.95} stroke="#755735" strokeWidth={Math.max(1, s * 0.12)}/>
+    </g>);
+    else if (o.type === "pot") body = (<g>
+      <ellipse cx={c[0]} cy={c[1] + s * 0.5} rx={s * 0.75} ry={s * 0.28} fill={W.shadow}/>
+      <circle cx={c[0]} cy={c[1]} r={s * 0.62} fill="#c0703f"/>
+      <circle cx={c[0]} cy={c[1]} r={s * 0.44} fill="#8a5a30"/>
+      <circle cx={c[0] - s * 0.12} cy={c[1] - s * 0.08} r={s * 0.3} fill={W.canopyHi}/>
+      <circle cx={c[0] + s * 0.16} cy={c[1] + s * 0.08} r={s * 0.24} fill={W.canopy}/>
+    </g>);
+    else if (o.type === "planter") body = (<g>
+      <rect x={c[0] - s * 1.3 + M(0.12)} y={c[1] - s * 0.5 + M(0.12)} width={s * 2.6} height={s} rx={s * 0.14} fill={W.shadow}/>
+      <rect x={c[0] - s * 1.3} y={c[1] - s * 0.5} width={s * 2.6} height={s} rx={s * 0.14} fill={W.frame}/>
+      <rect x={c[0] - s * 1.12} y={c[1] - s * 0.34} width={s * 2.24} height={s * 0.68} rx={s * 0.1} fill="#7a5c3a"/>
+      <circle cx={c[0] - s * 0.6} cy={c[1]} r={s * 0.26} fill={W.canopyHi}/>
+      <circle cx={c[0]} cy={c[1] - s * 0.05} r={s * 0.28} fill={W.canopy}/>
+      <circle cx={c[0] + s * 0.62} cy={c[1] + s * 0.03} r={s * 0.25} fill={W.canopyHi}/>
+    </g>);
+    else if (o.type === "hangpot") body = (<g className="grove-hang">
+      <line x1={c[0]} y1={c[1] - s * 1.4} x2={c[0] - s * 0.35} y2={c[1] - s * 0.3} stroke="#6b737a" strokeWidth={Math.max(1, s * 0.1)}/>
+      <line x1={c[0]} y1={c[1] - s * 1.4} x2={c[0] + s * 0.35} y2={c[1] - s * 0.3} stroke="#6b737a" strokeWidth={Math.max(1, s * 0.1)}/>
+      <path d={`M ${c[0] - s * 0.5} ${c[1] - s * 0.3} h ${s} l ${-s * 0.2} ${s * 0.55} h ${-s * 0.6} z`} fill="#c0703f"/>
+      <circle cx={c[0] - s * 0.28} cy={c[1] - s * 0.32} r={s * 0.2} fill={W.canopyHi}/>
+      <circle cx={c[0] + s * 0.05} cy={c[1] - s * 0.42} r={s * 0.22} fill={W.canopy}/>
+      <circle cx={c[0] + s * 0.32} cy={c[1] - s * 0.3} r={s * 0.18} fill="#e8698a"/>
+    </g>);
+    else if (o.type === "wateringcan") body = (<g>
+      <ellipse cx={c[0]} cy={c[1] + s * 0.45} rx={s * 0.8} ry={s * 0.26} fill={W.shadow}/>
+      <rect x={c[0] - s * 0.5} y={c[1] - s * 0.4} width={s} height={s * 0.8} rx={s * 0.16} fill="#5f8fa8"/>
+      <path d={`M ${c[0] - s * 0.5} ${c[1] - s * 0.15} l ${-s * 0.55} ${-s * 0.35}`} stroke="#5f8fa8" strokeWidth={Math.max(2, s * 0.22)} strokeLinecap="round" fill="none"/>
+      <circle cx={c[0] - s * 1.08} cy={c[1] - s * 0.52} r={s * 0.16} fill="#4d7a91"/>
+      <path d={`M ${c[0] + s * 0.5} ${c[1] - s * 0.3} q ${s * 0.4} 0 ${s * 0.4} ${s * 0.35}`} stroke="#4d7a91" strokeWidth={Math.max(1.6, s * 0.14)} fill="none"/>
+    </g>);
     else body = (<g>
       <rect x={c[0] - s * 0.9} y={c[1] - s * 0.25} width={s * 1.8} height={s * 0.4} rx={s * 0.12} fill={W.frame}/>
       <rect x={c[0] - s * 0.75} y={c[1] + s * 0.15} width={s * 0.28} height={s * 0.5} fill={W.post}/>
@@ -701,6 +763,39 @@ export default function GroveScene({
                 const px = (i / n) * (vbW - 6) + 3;
                 return <rect key={"rl" + i} x={px} y={railY} width={Math.max(2, Math.min(4, U * 0.06))} height={railPostH} fill="#6b737a"/>;
               })}
+              {/* Stage 4b (brief §6): railing planters hanging on the rail */}
+              {Array.from({ length: Math.min(3, Math.max(2, Math.floor(fW / 2.2))) }, function(_, i) {
+                const n = Math.min(3, Math.max(2, Math.floor(fW / 2.2)));
+                const px = ((i + 0.5) / n) * vbW + (srand(i + 91) - 0.5) * 14;
+                const bw = Math.min(34, Math.max(18, U * 0.9));
+                const bh = bw * 0.34;
+                return (
+                  <g key={"rp" + i} className="grove-hang" data-env-el="railing-planter"
+                    style={{ animationDelay: "-" + Math.round(srand(i + 41) * 4000) + "ms" }}>
+                    <rect x={px - bw / 2} y={railY + 2} width={bw} height={bh} rx={bh * 0.25} fill="#c0703f"/>
+                    <rect x={px - bw / 2 + 1.5} y={railY + 3.2} width={bw - 3} height={bh * 0.45} rx={bh * 0.18} fill="#8a5a30"/>
+                    <circle cx={px - bw * 0.26} cy={railY + 2.5} r={bh * 0.34} fill={W.canopyHi}/>
+                    <circle cx={px + bw * 0.02} cy={railY + 1.6} r={bh * 0.38} fill={W.canopy}/>
+                    <circle cx={px + bw * 0.28} cy={railY + 2.4} r={bh * 0.3} fill="#e8698a"/>
+                  </g>
+                );
+              })}
+              {/* Stage 4b (brief §6): vertical growing shelf against the wall */}
+              <g data-env-el="wall-shelf">
+                {Array.from({ length: 3 }, function(_, i) {
+                  const sw = Math.min(64, Math.max(34, U * 1.6));
+                  const sx = Math.min(vbW - sw - 6, vbW * 0.14);
+                  const sy = Math.max(3, wallH - 8 - i * Math.max(9, Math.min(16, wallH * 0.3)));
+                  return (
+                    <g key={"sh" + i}>
+                      <rect x={sx} y={sy} width={sw} height={3} rx={1.5} fill="#8a6a4a"/>
+                      <circle cx={sx + sw * 0.22} cy={sy - 2.4} r={2.6} fill={W.canopyHi}/>
+                      <circle cx={sx + sw * 0.52} cy={sy - 2.8} r={2.9} fill={W.canopy}/>
+                      <circle cx={sx + sw * 0.8} cy={sy - 2.3} r={2.4} fill="#e8b23a"/>
+                    </g>
+                  );
+                })}
+              </g>
             </g>
           )}
 
@@ -1099,6 +1194,12 @@ export default function GroveScene({
                           display: "flex", alignItems: "center", justifyContent: "center",
                         }}>
                         <MarkerGlyph kind={m.kind} size={13}/>
+                        {m.kind === "water" && (
+                          <span aria-hidden="true">
+                            <span className="grove-drip" style={{ left: 8, bottom: -7 }}/>
+                            <span className="grove-drip" style={{ left: 15, bottom: -9, animationDelay: "-0.6s" }}/>
+                          </span>
+                        )}
                         {m.count > 1 && (
                           <span style={{
                             position: "absolute", top: -5, right: -5,
@@ -1115,6 +1216,10 @@ export default function GroveScene({
             );
           })}
         </div>
+
+        {/* Stage 4b (brief §6–7): sun-direction glow + live rain/snow.
+            Hidden in edit mode so effects never hinder editing. */}
+        {!edit && <MapWeatherFX data={data}/>}
 
         {/* time-of-day tint */}
         {showTimeTint && tint && <div style={{ position: "absolute", inset: 0, background: tint, pointerEvents: "none", transition: "background 2s ease" }}/>}

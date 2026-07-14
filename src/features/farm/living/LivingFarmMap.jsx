@@ -31,6 +31,7 @@ import ZoneSurface from "./ZoneSurface";
 import ZoneOverlay from "./ZoneOverlay";
 import { isPlantZone, mapBackgroundStyle, mapVignetteStyle, zoneRadius, zoneAnimalGroups, zoneFillColor } from "./visuals";
 import { resolveEnvironment } from "../../../lib/environment";
+import MapWeatherFX from "../../grove/MapFX";
 
 /* Props
    ─────
@@ -268,6 +269,9 @@ export default function LivingFarmMap({
       <div style={containerStyle} data-anim-paused={tabHidden ? "" : undefined} data-living-zone-marker={fitMode === "fill" ? "map-root" : undefined}>
         <div style={mapVignetteStyle()}/>
         {env === "farm" && <RoadLayer zones={data.zones} farmW={fW} farmH={fH}/>}
+
+        {/* Stage 4b (brief §6–7): sun-direction glow + live rain/snow */}
+        <MapWeatherFX data={data}/>
 
         {/* Time-of-day tint */}
         {mapTintOverlay && (

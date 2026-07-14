@@ -884,3 +884,60 @@ circle.ring-progress {
 
 /* Stage 4 (brief §17): stop map animations while the tab is hidden */
 [data-anim-paused], [data-anim-paused] * { animation-play-state: paused !important; }
+
+
+/* ── Stage 4b (brief §6–7): weather FX + hanging planters + watering drips ── */
+@keyframes groveRainFall {
+  from { top: -8%; opacity: .85; }
+  to { top: 106%; opacity: .55; }
+}
+.grove-rain-drop {
+  position: absolute;
+  top: -8%;
+  width: 1.5px;
+  height: 11px;
+  border-radius: 99px;
+  background: rgba(190, 216, 245, .75);
+  transform: rotate(11deg);
+  animation: groveRainFall 1.1s linear infinite;
+}
+@keyframes groveSnowFall {
+  0% { top: -6%; transform: translateX(0); }
+  50% { transform: translateX(6px); }
+  100% { top: 104%; transform: translateX(-4px); }
+}
+.grove-snow-flake {
+  position: absolute;
+  top: -6%;
+  width: 4px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .85);
+  animation: groveSnowFall 4s linear infinite;
+}
+@keyframes groveHang {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.grove-hang {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: groveHang 4.4s ease-in-out infinite;
+}
+@keyframes groveDrip {
+  0% { transform: translateY(0); opacity: 0; }
+  25% { opacity: .9; }
+  100% { transform: translateY(9px); opacity: 0; }
+}
+.grove-drip {
+  position: absolute;
+  width: 3px;
+  height: 5px;
+  border-radius: 99px;
+  background: #4a9fd8;
+  animation: groveDrip 1.3s ease-in infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .grove-rainfx { display: none; }
+  .grove-hang, .grove-drip { animation: none !important; }
+}

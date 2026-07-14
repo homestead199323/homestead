@@ -10,7 +10,8 @@ import { appendLog, todayLocalKey, localDateFromKey, addDaysToLocalKey } from ".
 import { getRegionalCrops, getRegionalVarieties, rCM, rCR } from "../../lib/regional";
 import { cropMeasureType, plantsFromArea, expectedYield, buildZoneSpaceMap } from "../../lib/farm-calc";
 import PlotOverlay from "./PlotOverlay";
-import GroveScene, { ORNAMENT_TYPES, MAX_ORNAMENTS } from "../grove/GroveScene";
+import GroveScene, { ORNAMENT_TYPES, ornamentTypesFor, MAX_ORNAMENTS } from "../grove/GroveScene";
+import { resolveEnvironment } from "../../lib/environment";
 import { makeProjector } from "../grove/sceneMath";
 import FarmIcon from "../../components/FarmIcon";
 import { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
@@ -107,6 +108,9 @@ function Setup({data, setData, onPlantInZone, onBack}) {
   const [stageFit, setStageFit] = useState({w: 0, h: 0});
   const stageRef = useRef(null);
   const ORN_IDS = new Set(ORNAMENT_TYPES.map(o => o.id));
+  /* Stage 4b (brief §7): decor tray only offers env-appropriate items;
+     ORN_IDS stays the superset so already-placed decor keeps working */
+  const ORN_PALETTE = ornamentTypesFor(resolveEnvironment(data));
   const [cityQuery, setCityQuery] = useState(data.city || "");
   const [cityResults, setCityResults] = useState([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
@@ -511,7 +515,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
 
               {tray === "decor" && (
                 <div className="fd-tray" data-fd-tray="decor">
-                  {ORNAMENT_TYPES.map(function(o) {
+                  {ORN_PALETTE.map(function(o) {
                     const armed = armedOrn === o.id;
                     const full = ornaments.length >= MAX_ORNAMENTS;
                     return (
