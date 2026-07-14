@@ -50,7 +50,7 @@
   (`buildStarterZone`); assets stored in `profile.assets` but do NOT auto-create zones
   (Basic zone-cap decision pending). Legacy skip loop bug fixed (skip now sets
   setupDone:true). Finish lands on populated Today via existing buildTaskQueue.
-- [~] **Stage 4 — map environments.** Balcony + Backyard visual environments on the shared
+- [x] **Stage 4 — map environments.** (completed 2026-07-14) Balcony + Backyard visual environments on the shared
   data model; current map becomes Farm environment. Scale/objects/animations per brief §6–7.
   Multiple sessions. Lazy-load per-environment assets.
   - [x] **4a (2026-07-14):** environment plumbing + first visual pass. `src/lib/environment.js`
@@ -68,10 +68,15 @@
     balcony railing planters + wall shelf, backyard trees, env-aware decor palette, watering
     drips. Hidden in edit mode (§7). Verified live in bundle index-BRWIEMGE.js
     (grove-rain-drop, grove-snow-flake, data-map-fx, "Morning sun"/"Sun all day" all present).
-  - [~] **4c:** environment switcher in settings (brief §18 — existing users may change env).
-    Dimension editing verified pre-existing: Farm.jsx settings sheet edits farmW/farmH
-    (balcony/backyard canvas = real space). Lazy-loaded image assets: N/A — all env
-    surfaces are CSS/SVG, nothing to lazy-load.
+  - [x] **4c (2026-07-14, commit 29329a6):** environment switcher in Settings (brief §18 —
+    existing users may change env). SettingsPanel "My Space" section writes
+    `profile.environment` ONLY — zones, plots, canvas, dimensions untouched, no layout
+    regeneration. Farm designer size editing made env-aware: label "Total space size"
+    for balcony/backyard, MeterField min 2 m (balcony) / 4 m (backyard) — old 10 m floor
+    locked balcony users out of editing real-space dimensions. Lazy-loaded image assets:
+    N/A — all env surfaces are CSS/SVG. Vercel webhook missed 29329a6; retriggered via
+    05c72e6. Verified live in bundle index-Br4oa1nD.js ("Total space size", switcher
+    helper text, "My Space" all present; CSP header intact).
 - [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
   Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
   Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.
