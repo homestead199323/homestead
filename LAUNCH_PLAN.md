@@ -1,6 +1,6 @@
 # MyTerra Launch Plan (Public Launch Transformation)
 
-**Source brief:** "MyTerra Public Launch Transformation Brief" (2026-07-14).
+**Source brief:** `docs/LAUNCH_BRIEF.md` (full canonical text — read it before working on any stage).
 **Locked decisions (Dervis, 2026-07-14):**
 - Pricing stays as shipped: Basic $4.99/mo, Pro $9.99/mo, Lifetime $190 (Paddle live). Brief's €6.99/€59.99 pricing is REJECTED.
 - Trial: 7-day Pro trial → paywall. No permanent free plan.
