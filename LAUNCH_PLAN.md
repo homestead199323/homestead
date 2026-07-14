@@ -39,13 +39,17 @@
 ## Stage plan
 
 - [x] **Stage 1 — inspection + this plan** (2026-07-14)
-- [~] **Stage 2 — data model.** Add `profile` block to DEF (environment, dimensions, sunlight,
+- [x] **Stage 2 — data model** (2026-07-14, commit c695356). Add `profile` block to DEF (environment, dimensions, sunlight,
   goals, experience, timeBudget, household, onboardingVersion) + `migrateProfile` at both
   call sites. Existing users → environment `farm`.
-- [ ] **Stage 3 — onboarding.** Extend Onboarding.jsx to the brief's 12 steps (environment,
+- [x] **Stage 3 — onboarding** (2026-07-14). 12-step flow shipped (environment,
   dimensions, location, sunlight, goals, experience, time, household, assets, plant
-  suggestions, initial map, 7-day plan). Every answer written to `profile` and consumed
-  by suggestion/task logic. Finish on populated Today screen.
+  suggestions, initial map, 7-day plan). All answers → `profile` (onboardingVersion 2);
+  suggestions consume environment/sunlight/experience/dislikes via `src/lib/suggest.js`
+  (reusable for Plan screen + Stage 6). Starter zone + canvas generated per environment
+  (`buildStarterZone`); assets stored in `profile.assets` but do NOT auto-create zones
+  (Basic zone-cap decision pending). Legacy skip loop bug fixed (skip now sets
+  setupDone:true). Finish lands on populated Today via existing buildTaskQueue.
 - [ ] **Stage 4 — map environments.** Balcony + Backyard visual environments on the shared
   data model; current map becomes Farm environment. Scale/objects/animations per brief §6–7.
   Multiple sessions. Lazy-load per-environment assets.

@@ -135,6 +135,7 @@ const DEFAULT_PROFILE = {
   experience: null,
   timeBudget: null,
   household: { people: null, use: null, likes: [], dislikes: [] },
+  assets: [],
   onboardingVersion: 0,
 };
 
@@ -146,6 +147,7 @@ export function migrateProfile(data) {
     ...p,
     dimensions: { ...DEFAULT_PROFILE.dimensions, ...(p.dimensions || {}) },
     household:  { ...DEFAULT_PROFILE.household,  ...(p.household  || {}) },
+    assets: Array.isArray(p.assets) ? p.assets : [],
   };
   if (!profile.environment && isExistingUser) profile.environment = "farm";
   return { ...data, profile };

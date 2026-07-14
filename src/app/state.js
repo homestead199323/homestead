@@ -22,6 +22,7 @@ export const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animal
     experience: null,      // "beginner" | "some" | "confident" | "expert"
     timeBudget: null,      // "min5" | "min15" | "weekly" | "daily" | "unlimited"
     household: { people: null, use: null, likes: [], dislikes: [] },
+    assets: [],            // existing equipment ids: containers/raised_bed/greenhouse/fruit_trees/coop/compost/tools/none
     onboardingVersion: 0,  // 0 = legacy 4-step flow, 2 = launch 12-step flow
   },
   // Gamification state
