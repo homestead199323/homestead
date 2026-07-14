@@ -121,6 +121,37 @@ export function migrateCompletions(data) {
 }
 
 // ---------------------------------------------------------------------------
+// migrateProfile — ensure data.profile exists (launch data model, 2026-07-14).
+// Existing users (setup completed or zones present) are classified as the
+// Farm environment so their current map is untouched. Idempotent: fills only
+// missing keys, never overwrites values already set.
+// ---------------------------------------------------------------------------
+const DEFAULT_PROFILE = {
+  environment: null,
+  dimensions: { lengthM: null, widthM: null, areaM2: null, unit: "metric", covered: null },
+  sunlight: null,
+  sunDirection: null,
+  goals: [],
+  experience: null,
+  timeBudget: null,
+  household: { people: null, use: null, likes: [], dislikes: [] },
+  onboardingVersion: 0,
+};
+
+export function migrateProfile(data) {
+  const p = data.profile || {};
+  const isExistingUser = !!data.setupDone || (data.zones || []).length > 0;
+  const profile = {
+    ...DEFAULT_PROFILE,
+    ...p,
+    dimensions: { ...DEFAULT_PROFILE.dimensions, ...(p.dimensions || {}) },
+    household:  { ...DEFAULT_PROFILE.household,  ...(p.household  || {}) },
+  };
+  if (!profile.environment && isExistingUser) profile.environment = "farm";
+  return { ...data, profile };
+}
+
+// ---------------------------------------------------------------------------
 // updateGamify — update streak + badge state after any data-mutating action
 // ---------------------------------------------------------------------------
 export function updateGamify(data) {

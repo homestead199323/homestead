@@ -9,6 +9,21 @@ export const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animal
   // Daily task completions — keyed by local YYYY-MM-DD, value is array of task keys
   // completed on that day. Auto-pruned to last 30 days on migration.
   completions: {},
+  // Onboarding profile — every field is written by onboarding and consumed by
+  // suggestion/task/map logic. environment: 'balcony' | 'backyard' | 'farm'.
+  // null environment = onboarding not completed yet (new user pre-onboarding).
+  // Existing pre-launch users are migrated to 'farm' (see migrateProfile).
+  profile: {
+    environment: null,
+    dimensions: { lengthM: null, widthM: null, areaM2: null, unit: "metric", covered: null },
+    sunlight: null,        // "lt3" | "3to5" | "5to7" | "gt7" | "unsure"
+    sunDirection: null,    // "morning" | "afternoon" | "allday" | null
+    goals: [],             // multi-select ids, see Onboarding step 5
+    experience: null,      // "beginner" | "some" | "confident" | "expert"
+    timeBudget: null,      // "min5" | "min15" | "weekly" | "daily" | "unlimited"
+    household: { people: null, use: null, likes: [], dislikes: [] },
+    onboardingVersion: 0,  // 0 = legacy 4-step flow, 2 = launch 12-step flow
+  },
   // Gamification state
   gamify: {
     streak: 0,               // Current consecutive-day streak

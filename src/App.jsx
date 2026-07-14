@@ -16,7 +16,7 @@ import {
 import { C, F, SX } from "./lib/theme";
 import { todayLocalKey } from "./lib/utils";
 import { buildTaskQueue } from "./lib/task-queue";
-import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, updateGamify } from "./lib/migrations";
+import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, migrateProfile, updateGamify } from "./lib/migrations";
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
 import Manuals from "./features/manuals/Manuals";
@@ -195,6 +195,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
       initial = migratePlotSchema(initial);
       initial = migrateGamify(initial);
       initial = migrateCompletions(initial);
+      initial = migrateProfile(initial);
       return initial;
     } catch (e) {
       console.error("initData failed, falling back to DEF:", e);
@@ -303,7 +304,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
         try {
           let migrated = {...DEF, ...fresh, log: fresh.log||[], costs: fresh.costs||{items:[]}};
           if (!migrated.schemaVersion) migrated = {...migrated, schemaVersion: 7};
-          migrated = migrateCompletions(migrateGamify(migratePlotSchema(migrateZones(migrated))));
+          migrated = migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones(migrated)))));
           dispatchData({ type: "SET_ALL", data: migrated });
           saveFarm(migrated); // keep local cache aligned; do NOT re-push
         } catch (e) { console.warn("[sync] hydrate from remote failed:", e); }
