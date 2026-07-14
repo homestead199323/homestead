@@ -566,13 +566,13 @@ function ScreenPlants({ profileDraft, region, maxPicks, selected, setSelected, o
     });
   }
 
-  var ok = pruned.length > 0;
   return (
     <>
       <h2 style={S.heading}>Your matched plants</h2>
       <p style={S.sub}>
         Picked for your space, light, experience and the time of year.
-        Choose up to {maxPicks} — fewer plants, better habits.
+        Choose up to {maxPicks} — fewer plants, better habits. Or skip for
+        now and plant later.
       </p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
         {list.map(function(c) {
@@ -592,7 +592,9 @@ function ScreenPlants({ profileDraft, region, maxPicks, selected, setSelected, o
           {maxPicks} selected — deselect one to swap
         </div>
       )}
-      <button style={S.btnPrimary(ok)} onClick={ok ? function(){ setSelected(pruned); onNext(); } : undefined}>Continue</button>
+      <button style={S.btnPrimary(true)} onClick={function(){ setSelected(pruned); onNext(); }}>
+        {pruned.length > 0 ? "Continue" : "Continue — leave unplanted"}
+      </button>
       <button style={S.btnBack} onClick={onBack}>← Back</button>
     </>
   );
@@ -615,7 +617,9 @@ function ScreenMap({ environment, zonePlan, selected, onNext, onBack }) {
         </div>
         <div style={{fontSize:13, color:C.t2, lineHeight:1.6}}>
           <div>🗺️ Map canvas: {zonePlan.farmW} × {zonePlan.farmH} m ({environment === "farm" ? "with room to expand" : "your real space"})</div>
-          <div>🌱 Planted with: {selected.join(", ")}</div>
+          <div>{selected.length > 0
+            ? "🌱 Planted with: " + selected.join(", ")
+            : "🌱 Unplanted for now — add crops any time from the Crops screen"}</div>
         </div>
       </div>
       <div style={{...S.hint, marginBottom:20}}>

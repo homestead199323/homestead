@@ -169,16 +169,23 @@ export function buildSevenDayPlan(pickNames, region) {
     var rc = crop ? (getRegionalCrop(crop, region) || crop) : null;
     return { name:name, interval: waterIntervalDays(rc && rc.waterFreq ? rc.waterFreq : (crop && crop.waterFreq)) };
   });
+  var hasPicks = pickNames.length > 0;
   var days = [];
   for (var d = 1; d <= 7; d++) {
     var items = [];
-    if (d === 1) items.push("Sow / plant: " + pickNames.join(", "));
+    if (d === 1) {
+      if (hasPicks) items.push("Sow / plant: " + pickNames.join(", "));
+      else items.push("Explore your map and get to know the app");
+    }
     var waterNames = picks.filter(function(pk) {
       if (d === 1) return false;
       return (d - 1) % pk.interval === 0;
     }).map(function(pk){ return pk.name; });
     if (waterNames.length) items.push("Water: " + waterNames.join(", "));
-    if (d === 3) items.push("Check seedlings — look for germination, thin crowded spots");
+    if (d === 3) {
+      if (hasPicks) items.push("Check seedlings — look for germination, thin crowded spots");
+      else items.push("Browse the crop library — pick your first plant when you're ready");
+    }
     if (d === 7) items.push("Weekly check-in — log progress on your Today screen");
     days.push({ day:d, items:items });
   }
