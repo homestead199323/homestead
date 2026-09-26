@@ -79,6 +79,11 @@ export function planRound(tasks, data, mode = "quick", startId = "") {
         plotStop(plotZone, plot).tasks.push(task);
         return;
       }
+      const taskZone = !plot && task.zoneId && zones.find((z) => z.id === task.zoneId);
+      if (taskZone) {
+        zoneStop(taskZone).tasks.push(task);
+        return;
+      }
       const z = zones.find((z) => z.id === ids[0]);
       if (z) {
         zoneStop(z).tasks.push({ ...task, otherZones: ids.slice(1).map((id) => zones.find((z) => z.id === id)?.name) });

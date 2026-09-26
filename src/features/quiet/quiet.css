@@ -36,3 +36,15 @@ body{font-family:var(--font-body);letter-spacing:-.015em}button,input,select,tex
 /* Planting form */
 .q-spacing-guide{font-size:12px;color:var(--color-text-2);margin:8px 0}
 .q-planting-preview{margin-top:12px}.q-planting-preview>small{display:block;font-size:11px;color:var(--color-text-2);margin-bottom:6px}.q-planting-preview .q-bed-plan-tools{display:none}
+/* Seedling nursery */
+.q-trays{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.q-tray{width:100%;max-width:260px;height:auto;display:block}
+.q-batch-card{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:12px;border:1px solid var(--color-border);border-radius:14px;background:var(--color-card);color:var(--color-text);cursor:pointer;margin-bottom:8px}
+.q-batch-card .q-trays{width:92px;flex:none}.q-batch-card strong{display:block;font-size:15px}.q-batch-card small{display:block;font-size:12px;color:var(--color-text-2)}.q-batch-next{margin-top:4px;color:var(--color-green-dark)!important;font-weight:600}
+.q-stage-track{display:flex;gap:4px;list-style:none;padding:0;margin:8px 0 2px}.q-stage-track li{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.q-stage-track li span{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--color-bg);border:1px solid var(--color-border);color:var(--color-text-3)}
+.q-stage-track li small{font-size:9.5px!important;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.q-stage-track li.is-done span{background:var(--color-green);border-color:var(--color-green);color:#fff}.q-stage-track li.is-next span{border:2px solid var(--color-green);color:var(--color-green-dark)}
+.q-seed-steps{list-style:none;padding:0;margin:14px 0}.q-seed-steps li{padding:10px 12px;border:1px solid var(--color-border);border-radius:12px;margin-bottom:6px;opacity:.7}
+.q-seed-steps li.is-done{opacity:.85}.q-seed-steps li.is-next{opacity:1;border-color:var(--color-green);background:var(--color-green-pale)}.q-seed-steps li .q-button{margin-top:8px;width:100%}
+.q-seed-steps small{font-size:12px;color:var(--color-text-2)}.q-nursery-list{margin:4px 0}.q-empty-note{font-size:12px;color:var(--color-text-2)}
+.q-seed-choice label{gap:8px;align-items:center;cursor:pointer}.q-seed-choice small{display:block;font-size:12px;color:var(--color-text-2);margin-top:6px}

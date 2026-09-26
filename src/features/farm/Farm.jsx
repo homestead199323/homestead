@@ -4,6 +4,8 @@ import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Pill, Ring, Stat } from "../../components/ui";
 import {bedRows, growthOf} from "../quiet/farm-model";
 import {ChevronDown, ChevronRight} from "lucide-react";
+import { NurseryList } from "../nursery/NurseryUI";
+import { activeBatches } from "../nursery/nursery-model";
 import {isTreeCrop} from "../quiet/planting-plan";
 import PlantArt from "../quiet/PlantArt";
 import MapLines from "../quiet/MapLines";
@@ -710,6 +712,7 @@ function Farming({data, setData, pageData, clearPageData}) {
     return {key,title,unit,plots,count:_sum(plots,"plantCount"),kg:_sum(plots,"expectedYieldKg"),ready:plots.filter(function(p){return _dueIn(p)<=0;}).length};
   });
   const _PREVIEW=5;
+  const _seedlings=activeBatches(data);
   function renderCrop(p,unit){
         const c=rCM(data.region).get(p.crop);
         const growth=growthOf(p,c,todayLocalKey());
@@ -733,6 +736,7 @@ function Farming({data, setData, pageData, clearPageData}) {
                   {p.qty&&p.measureType==="area"&&<span>📐 {p.qty}m²</span>}
                   {p.expectedYieldKg&&<span>📦 ~{p.expectedYieldKg}kg</span>}
                   {!hasQty&&p.plantDate&&<span>{p.plantDate}</span>}
+                  {p.status==="planned"&&p.plannedDate&&<span>🌱 from nursery · plant out {localDateFromKey(p.plannedDate).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>}
                 </div>
               </div>
               <div style={{display:"flex",gap:4,flexDirection:"column",alignItems:"flex-end"}}>
@@ -758,6 +762,18 @@ function Farming({data, setData, pageData, clearPageData}) {
         {_totalYield>0&&<Stat label="Est. Yield" value={`${_totalYield.toFixed(0)}kg`} sub="at harvest" color={C.green}/>}
         <Stat label="Ready" value={_ready} sub="to harvest" color={C.orange}/>
       </div>
+      {(_seedlings.length>0||data.zones.some(function(z){return z.type==="nursery";}))&&(
+        <section style={{marginBottom:18}}>
+          <button type="button" aria-expanded={openSec.seedlings??true} onClick={function(){setOpenSec({...openSec,seedlings:!(openSec.seedlings??true)});}}
+            style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",padding:"8px 2px",margin:"0 0 6px",background:"none",border:0,borderBottom:`1px solid ${C.bdr}`,cursor:"pointer",color:C.text,textAlign:"left"}}>
+            <span style={{display:"flex",alignItems:"center",gap:8}}>
+              {(openSec.seedlings??true)?<ChevronDown size={18}/>:<ChevronRight size={18}/>}
+              <span style={{fontSize:17,fontWeight:650}}>Seedlings</span>
+            </span>
+            <small style={{color:C.t2,fontSize:12}}>{_seedlings.length} {_seedlings.length===1?"batch":"batches"} · {_seedlings.reduce(function(n,b){return n+b.cells;},0)} cells</small>
+          </button>
+          {(openSec.seedlings??true)&&<NurseryList data={data} setData={setData}/>}
+        </section>)}
       {_active.length===0?
         <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
       <>{_sections.map(function(sec){

@@ -136,6 +136,72 @@ function Plantings({ z, plots, crops, id }) {
     </g>
   );
 }
+// Seedling nursery from above: benches along the long side, trays on them tinted by seedling stage.
+function NurseryBenches({ z, data, id }) {
+  const long = z.wM >= z.hM,
+    along = long ? z.wM : z.hM,
+    cross = long ? z.hM : z.wM;
+  const benchW = Math.min(0.8, cross * 0.4),
+    aisle = Math.min(0.6, cross * 0.25);
+  const benches = Math.max(1, Math.floor((cross - 0.2 + aisle) / (benchW + aisle)));
+  const trayA = 0.55,
+    trayC = Math.min(0.35, benchW * 0.9);
+  const perBench = Math.max(0, Math.floor((along - 0.3) / (trayA + 0.05)));
+  const colour = { sown: "#6b4a30", sprouted: "#86b85f", potted: "#5f9a45", hardening: "#3f7d3a" };
+  const trays = (data.nursery?.batches || [])
+    .filter((b) => b.zoneId === z.id && b.stage && b.stage !== "planted")
+    .flatMap((b) =>
+      Array.from({ length: Math.max(1, Math.ceil(b.cells / 60)) }, () => colour[b.stage] || "#6b4a30"),
+    );
+  const offset = (cross - benches * benchW - (benches - 1) * aisle) / 2;
+  let n = 0;
+  return (
+    <g pointerEvents="none">
+      {Array.from({ length: benches }, (_, i) => {
+        const c0 = offset + i * (benchW + aisle);
+        return (
+          <g key={i}>
+            <rect
+              x={long ? 0.15 : c0}
+              y={long ? c0 : 0.15}
+              width={long ? along - 0.3 : benchW}
+              height={long ? benchW : along - 0.3}
+              fill={`url(#${id}-wood)`}
+              stroke="#4d3a28"
+              strokeWidth=".02"
+            />
+            {Array.from({ length: perBench }, (_, j) => {
+              const tint = trays[n++];
+              if (!tint) return null;
+              const a0 = 0.2 + j * (trayA + 0.05),
+                cc = c0 + (benchW - trayC) / 2;
+              return (
+                <g key={j}>
+                  <rect
+                    x={long ? a0 : cc}
+                    y={long ? cc : a0}
+                    width={long ? trayA : trayC}
+                    height={long ? trayC : trayA}
+                    rx=".02"
+                    fill="#2b2f2a"
+                  />
+                  <rect
+                    x={(long ? a0 : cc) + 0.03}
+                    y={(long ? cc : a0) + 0.03}
+                    width={(long ? trayA : trayC) - 0.06}
+                    height={(long ? trayC : trayA) - 0.06}
+                    fill={tint}
+                    opacity=".9"
+                  />
+                </g>
+              );
+            })}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
 function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDown, onKeyDown }) {
   const w = z.wM,
     h = z.hM,
@@ -152,11 +218,13 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
           : "#bfb69b";
   const animals = (data.livestock?.animals || []).filter((a) => animalZone(a, data.zones)?.id === z.id);
   const fill =
-    z.type === "water"
-      ? `url(#${id}-water)`
-      : plant && z.type !== "orchard"
-        ? `url(#${id}-soil)`
-        : `url(#${id}-meadow)`;
+    z.type === "nursery"
+      ? `url(#${id}-gravel)`
+      : z.type === "water"
+        ? `url(#${id}-water)`
+        : plant && z.type !== "orchard"
+          ? `url(#${id}-soil)`
+          : `url(#${id}-meadow)`;
   const shapeProps = {
     fill,
     stroke: z.type === "water" ? "#b6b59b" : plant ? material : "#819267",
@@ -221,6 +289,8 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
         </Building>
       ) : plant ? (
         <Plantings z={z} plots={data.garden?.plots || []} crops={crops} id={id} />
+      ) : z.type === "nursery" ? (
+        <NurseryBenches z={z} data={data} id={id} />
       ) : null}
       {["pasture", "orchard"].includes(z.type) && (
         <Fence w={w} h={h} id={id} gate pickets={z.type === "orchard"} />

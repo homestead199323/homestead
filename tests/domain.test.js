@@ -163,3 +163,60 @@ test('Orchards default to natural scattered trees, and shuffling moves them', ()
   assert.equal(b.error, '');
   assert.notDeepEqual(a.layout.points, b.layout.points);
 });
+import { planBatch, nurseryTasks, scheduleOf, nextStage } from '../src/features/nursery/nursery-model.js';
+import { markTaskDone } from '../src/lib/utils.js';
+import { propagationOf } from '../src/data/propagation.js';
+test('Seedling batch counts back from planting out and sows spare cells', () => {
+  const tomato = { name: 'Tomato', days: 95 };
+  assert.equal(propagationOf(tomato).method, 'transplant');
+  assert.equal(propagationOf({ name: 'Carrot' }).method, 'direct');
+  const { batch, warning } = planBatch({ crop: tomato, zoneId: 'nur', plants: 10, plantOutDate: '2027-05-20', id: 'b', today: '2027-03-01' });
+  assert.equal(batch.sowDate, '2027-04-01');
+  assert.equal(batch.cells, 12);
+  assert.equal(warning, '');
+  const s = scheduleOf(batch);
+  assert.equal(s.sprouted, '2027-04-08');
+  assert.equal(s.potted, '2027-04-22');
+  assert.equal(s.hardening, '2027-05-13');
+  const late = planBatch({ crop: tomato, zoneId: 'nur', plants: 10, plantOutDate: '2027-05-20', id: 'b', today: '2027-04-10' });
+  assert.equal(late.batch.sowDate, '2027-04-10');
+  assert.match(late.warning, /9 days ago/);
+});
+test('Nursery tasks appear when due and ticking them moves the batch and plants out the bed', () => {
+  const today = new Date().toLocaleDateString('en-CA');
+  const { batch } = planBatch({ crop: { name: 'Lettuce', days: 60 }, zoneId: 'nur', plants: 8, plantOutDate: today, plotId: 'p1', targetZoneId: 'bed1', id: 'b1', today });
+  let data = {
+    zones: [{ id: 'nur', type: 'nursery', name: 'Nursery' }, { id: 'bed1', type: 'veg', name: 'Bed' }],
+    garden: { plots: [{ id: 'p1', crop: 'Lettuce', zone: 'bed1', status: 'planned', plantDate: '', growDays: 60 }] },
+    nursery: { batches: [{ ...batch, sowDate: today }] },
+  };
+  const t1 = nurseryTasks(data, today);
+  assert(t1.some((t) => t.key === 'seed-b1-sown' && t.daysOut === 0 && t.zoneId === 'nur'));
+  data = markTaskDone(data, 'seed-b1-sown');
+  assert.equal(data.nursery.batches[0].stage, 'sown');
+  assert(nurseryTasks(data, today).some((t) => t.key === 'nursery-nur-check'));
+  assert.equal(nextStage(data.nursery.batches[0]), 'sprouted');
+  data = markTaskDone(data, 'seed-b1-planted');
+  assert.equal(data.nursery.batches[0].stage, 'planted');
+  assert.equal(data.garden.plots[0].status, 'planted');
+  assert.equal(data.garden.plots[0].plantDate, today);
+  assert(data.garden.plots[0].harvestDate > today);
+  assert.equal(nurseryTasks(data, today).length, 0);
+});
+test('Walk visits the nursery for seedling tasks', () => {
+  const tasks = [{ key: 'seed-x-sown', zoneId: 'nur', daysOut: 0, type: 'seedling' }];
+  const d = { farmW: 10, farmH: 10, zones: [{ id: 'nur', type: 'nursery', name: 'Nursery', xM: 1, yM: 1, wM: 2, hM: 1 }], garden: { plots: [] } };
+  const stops = planRound(tasks, d);
+  assert.equal(stops.length, 1);
+  assert.equal(stops[0].zoneId, 'nur');
+});
+import { sowMonths, suggestDates, seasonNote } from '../src/features/nursery/nursery-model.js';
+test('Nursery dates follow the crop sowing window', () => {
+  assert.deepEqual([...sowMonths('Feb-Apr, Sep')].sort((a, b) => a - b), [1, 2, 3, 8]);
+  assert.deepEqual([...sowMonths('Nov-Feb')].sort((a, b) => a - b), [0, 1, 10, 11]);
+  const tomato = { name: 'Tomato', sowIn: 'Feb-Apr' };
+  assert.deepEqual(suggestDates(tomato, '2026-09-26'), { sowDate: '2027-02-01', plantOutDate: '2027-03-22' });
+  assert.equal(suggestDates(tomato, '2027-03-10').sowDate, '2027-03-10');
+  assert.match(seasonNote(tomato, '2026-09-26'), /outside the usual window/);
+  assert.equal(seasonNote(tomato, '2027-03-01'), '');
+});

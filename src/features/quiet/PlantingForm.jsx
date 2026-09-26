@@ -9,6 +9,9 @@ import { cropFitsZone, planPlanting, plantingInput } from "./planting-plan";
 import PlantingControls from "./PlantingControls";
 import CompanionPanel from "./CompanionPanel";
 import FarmIcon from "../../components/FarmIcon";
+import { propagationOf } from "../../data/propagation";
+import { planBatch, nurseryZones, suggestDates, seasonNote } from "../nursery/nursery-model";
+import { applySeedlingStage } from "../../lib/seedling-stage";
 const empty = {
   crop: "",
   zone: "",
@@ -49,6 +52,25 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
     setForm(next);
     setError("");
   }
+  // Raise transplant crops in the nursery: the bed planting waits until the seedlings are planted out.
+  const prop = crop ? propagationOf(crop) : null,
+    nurseries = nurseryZones(data),
+    canNursery = !!crop && prop.method !== "direct" && !initial.fromBatch && zone?.type !== "orchard";
+  const fromSeed = canNursery && nurseries.length > 0 && (form.fromSeed ?? prop.method === "transplant");
+  const plantOutDate = form.plantOutDate || (crop ? suggestDates(crop, todayLocalKey()).plantOutDate : "");
+  const nurseryId = nurseries.some((z) => z.id === form.nursery) ? form.nursery : nurseries[0]?.id;
+  const seedPlan =
+    fromSeed && plan?.count
+      ? planBatch({
+          crop,
+          variety: form.variety,
+          zoneId: nurseryId,
+          plants: plan.count,
+          plantOutDate,
+          id: "preview",
+          today: todayLocalKey(),
+        })
+      : null;
   function save() {
     if (!crop || !zone) {
       setError("Choose a crop and its growing area.");
@@ -72,18 +94,46 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
         qty: plan.count,
         measureType: "plants",
         expectedYieldKg: yieldKg,
-        plantDate: form.plantDate,
-        harvestDate: form.plantDate ? addDaysToLocalKey(form.plantDate, variety?.days || crop.days) : "",
-        status: form.plantDate ? "planted" : "planned",
+        plantDate: fromSeed ? "" : form.plantDate,
+        harvestDate:
+          !fromSeed && form.plantDate ? addDaysToLocalKey(form.plantDate, variety?.days || crop.days) : "",
+        status: !fromSeed && form.plantDate ? "planted" : "planned",
+        growDays: variety?.days || crop.days,
         steps: crop.steps.map((s) => ({ ...s, done: false })),
       };
-    const next = {
+    if (fromSeed) plot.plannedDate = plantOutDate;
+    let next = {
       ...data,
       garden: { ...data.garden, plots: [...data.garden.plots, plot] },
       log: appendLog(data.log, {
-        text: `🌱 ${form.plantDate ? "Planted" : "Planned"} ${name} (${plan.count} plants)`,
+        text: fromSeed
+          ? `🌱 Planned ${name} (${plan.count} plants) from seed in the nursery`
+          : `🌱 ${form.plantDate ? "Planted" : "Planned"} ${name} (${plan.count} plants)`,
       }),
     };
+    if (fromSeed) {
+      const batch = planBatch({
+        crop,
+        variety: form.variety,
+        zoneId: nurseryId,
+        plants: plan.count,
+        plantOutDate,
+        plotId: plot.id,
+        targetZoneId: zone.id,
+        id: uid(),
+        today: todayLocalKey(),
+      }).batch;
+      next.nursery = { ...(data.nursery || {}), batches: [...(data.nursery?.batches || []), batch] };
+    }
+    if (initial.fromBatch) {
+      next.nursery = {
+        ...(next.nursery || {}),
+        batches: (next.nursery?.batches || []).map((b) =>
+          b.id === initial.fromBatch ? { ...b, plotId: plot.id, targetZoneId: zone.id } : b,
+        ),
+      };
+      next = applySeedlingStage(next, initial.fromBatch, "planted", todayLocalKey());
+    }
     if (+form.cost > 0)
       next.costs = {
         ...data.costs,
@@ -232,13 +282,70 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
         value={form.name}
         onChange={(e) => update({ ...form, name: e.target.value })}
       />
-      <Inp
-        label="Plant date (leave blank to plan)"
-        type="date"
-        max={todayLocalKey()}
-        value={form.plantDate}
-        onChange={(e) => update({ ...form, plantDate: e.target.value })}
-      />
+      {canNursery && (
+        <section className="q-inset q-seed-choice">
+          <label className="q-row">
+            <input
+              type="checkbox"
+              checked={fromSeed}
+              disabled={!nurseries.length}
+              onChange={(e) => update({ ...form, fromSeed: e.target.checked })}
+            />
+            <strong>Start from seed in the nursery</strong>
+          </label>
+          {!nurseries.length ? (
+            <small>
+              Add a Seedling Nursery area on your farm map to raise seedlings before planting out.
+            </small>
+          ) : fromSeed ? (
+            <>
+              <div className="q-grid2">
+                {nurseries.length > 1 && (
+                  <Sel
+                    label="Nursery"
+                    value={nurseryId}
+                    onChange={(e) => update({ ...form, nursery: e.target.value })}
+                    options={nurseries.map((z) => ({ value: z.id, label: z.name }))}
+                  />
+                )}
+                <Inp
+                  label="Plant out on"
+                  type="date"
+                  min={todayLocalKey()}
+                  value={plantOutDate}
+                  onChange={(e) => update({ ...form, plantOutDate: e.target.value })}
+                />
+              </div>
+              {seedPlan && (
+                <small>
+                  Sow {seedPlan.batch.cells} cells on {seedPlan.batch.sowDate} ({prop.weeks} weeks in the
+                  nursery, {seedPlan.batch.cells - seedPlan.batch.plants} spare). The bed space is reserved
+                  until you plant out.
+                </small>
+              )}
+              {seedPlan?.warning && <p className="q-warning">{seedPlan.warning}</p>}
+              {seedPlan && seasonNote(crop, seedPlan.batch.sowDate) && (
+                <p className="q-warning">{seasonNote(crop, seedPlan.batch.sowDate)}</p>
+              )}
+            </>
+          ) : (
+            <small>
+              {prop.method === "either"
+                ? "Usually fine sown direct too."
+                : "Or plant bought seedlings directly."}
+            </small>
+          )}
+        </section>
+      )}
+      {!fromSeed && (
+        <Inp
+          label="Plant date (leave blank to plan)"
+          type="date"
+          max={todayLocalKey()}
+          value={form.plantDate}
+          onChange={(e) => update({ ...form, plantDate: e.target.value })}
+        />
+      )}
       <Inp
         label="Seed cost (€)"
         type="number"

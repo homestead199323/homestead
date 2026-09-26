@@ -3,6 +3,8 @@
    Extracted from App.jsx (Phase A.7, 2026-05-09)
    ═══════════════════════════════════════════ */
 
+import { applySeedlingStage, markBedPrepared } from "./seedling-stage.js";
+
 // Append an entry to the activity log, capped at 200 entries to prevent localStorage overflow.
 export const appendLog = (logArr, entry) => [...(logArr || []), entry].slice(-200);
 
@@ -46,6 +48,9 @@ export const markTaskDone = (data, taskKey) => {
   const todayKey = todayLocalKey();
   const existing = (data.completions && data.completions[todayKey]) || [];
   if (existing.includes(taskKey)) return data;
+  // Nursery tasks ("seed-<batch>-<stage>") move the seedling batch along when ticked anywhere.
+  const seed = /^seed-(.+)-(sown|sprouted|potted|hardening|planted|bedprep)$/.exec(taskKey);
+  if (seed) data = seed[2] === "bedprep" ? markBedPrepared(data, seed[1]) : applySeedlingStage(data, seed[1], seed[2], todayKey);
   return {
     ...data,
     completions: {

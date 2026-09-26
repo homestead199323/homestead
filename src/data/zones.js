@@ -10,6 +10,7 @@ export const ZT = [
   { id: "herbs", label: "Herb Garden", fill: "#b7e4c7", stroke: "#52b788", icon: "🌿" },
   { id: "pasture", label: "Pasture", fill: "#d8f3dc", stroke: "#74c69d", icon: "🐄" },
   { id: "greenhouse", label: "Greenhouse", fill: "#c8e6c9", stroke: "#81c784", icon: "🏡" },
+  { id: "nursery", label: "Seedling Nursery", fill: "#dfe8c9", stroke: "#8aa05a", icon: "🌱" },
   { id: "barn", label: "Barn/Coop", fill: "#d4a373", stroke: "#a0522d", icon: "🏚" },
   { id: "water", label: "Water", fill: "#90caf9", stroke: "#42a5f5", icon: "💧" },
   { id: "house", label: "House", fill: "#ffe0b2", stroke: "#ffa726", icon: "🏠" },

@@ -1,5 +1,6 @@
 import { toLocalDateKey, daysBetweenLocalKeys, localDateFromKey, addDaysToLocalKey } from "./utils";
 import { rCM } from "./regional";
+import { nurseryTasks } from "../features/nursery/nursery-model.js";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../data/livestock";
 
 export function buildTaskQueue(data) {
@@ -129,6 +130,9 @@ export function buildTaskQueue(data) {
       tasks.push({ key: `animal-${a.id}-hive`, pri: 2, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, desc: `Check brood pattern, honey stores, queen presence. Look for varroa mites.`, loc: animalLoc, animalId: a.id, daysOut: 0 });
     }
   });
+
+  // Seedling nursery: sowing, pricking out, hardening off, planting out, daily checks.
+  tasks.push(...nurseryTasks(data, todayKey));
 
   // Filter out tasks that have been marked done today via the completions map.
   // Step tasks are filtered by p.steps[i].done above (persistent), not here.
