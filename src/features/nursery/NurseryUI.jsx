@@ -249,7 +249,8 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
         label="Sowing tray"
         value={batch.tray || 60}
         cells={batch.cells}
-        suggested={suggestTrays({ name: batch.crop }).tray}
+        suggested={suggestTrays({ name: batch.crop }, batch.cells).tray}
+        reason={suggestTrays({ name: batch.crop }, batch.cells).sowReason}
         onChange={(n) => update({ tray: n })}
       />
       {batch.potOn && (
@@ -257,7 +258,8 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
           label="Pot on into"
           value={batch.potTray || 24}
           cells={batch.cells}
-          suggested={suggestTrays({ name: batch.crop }).potTray}
+          suggested={suggestTrays({ name: batch.crop }, batch.cells).potTray}
+          reason={suggestTrays({ name: batch.crop }, batch.cells).potReason}
           onChange={(n) => update({ potTray: n })}
         />
       )}
@@ -304,7 +306,8 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
           potTray: form.potTray,
         })
       : null;
-  const suggested = crop ? suggestTrays(crop) : {};
+  const cellsNeeded = +form.plants > 0 ? Math.ceil(+form.plants * 1.2) : undefined;
+  const suggested = crop ? suggestTrays(crop, cellsNeeded) : {};
   function save() {
     if (!plan) return;
     const batch = { ...plan.batch, id: uid() };
@@ -360,6 +363,7 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
           value={form.tray || suggested.tray}
           cells={plan?.batch.cells}
           suggested={suggested.tray}
+          reason={suggested.sowReason}
           onChange={(n) => setForm({ ...form, tray: n })}
         />
       )}
@@ -369,6 +373,7 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
           value={form.potTray || suggested.potTray}
           cells={plan?.batch.cells}
           suggested={suggested.potTray}
+          reason={suggested.potReason}
           onChange={(n) => setForm({ ...form, potTray: n })}
         />
       )}

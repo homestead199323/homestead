@@ -83,7 +83,7 @@ export function SeedlingTray({ batch, max = 3 }) {
 }
 
 /** Choose a module tray by number of cells; shows how many trays the sowing needs. */
-export function TrayPicker({ value, onChange, cells, label = "Tray size", suggested }) {
+export function TrayPicker({ value, onChange, cells, label = "Tray size", suggested, reason }) {
   const chosen = trayOf(value),
     row = useRef(null);
   useEffect(() => {
@@ -119,6 +119,11 @@ export function TrayPicker({ value, onChange, cells, label = "Tray size", sugges
           );
         })}
       </div>
+      {reason && (
+        <small className="q-tray-reason">
+          <strong>Suggested {suggested}:</strong> {reason}
+        </small>
+      )}
       <small className="q-tray-use">
         {chosen.cells} cells · ≈{chosen.cellCM} cm each · good for {chosen.use.toLowerCase()}
         {cells

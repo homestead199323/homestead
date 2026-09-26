@@ -65,3 +65,4 @@ body{font-family:var(--font-body);letter-spacing:-.015em}button,input,select,tex
 .q-step-no{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--color-text-3);font-size:10px;margin-right:8px;vertical-align:1px}.q-seed-steps li.is-done .q-step-no{background:var(--color-green);border-color:var(--color-green);color:#fff}.q-seed-steps li.is-next .q-step-no{border-color:var(--color-green);color:var(--color-green-dark)}.q-frost-note{display:block;font-size:11px;color:var(--color-text-2);margin:4px 0 10px}
 .q-step-why{display:block;font-size:11.5px;color:var(--color-text-2);margin-top:4px;line-height:1.4}
 .q-notes p{margin:0}.q-notes p+p{margin-top:8px;padding-top:8px;border-top:1px solid color-mix(in srgb,currentColor 15%,transparent)}
+.q-tray-reason{display:block;font-size:11.5px;color:var(--color-text-2);margin:2px 0 4px}.q-tray-reason strong{color:var(--color-green-dark)}

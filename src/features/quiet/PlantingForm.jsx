@@ -341,17 +341,19 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
               )}
               <TrayPicker
                 label="Sowing tray"
-                value={form.tray || suggestTrays(crop).tray}
+                value={form.tray || suggestTrays(crop, seedPlan?.batch.cells).tray}
                 cells={seedPlan?.batch.cells}
-                suggested={suggestTrays(crop).tray}
+                suggested={suggestTrays(crop, seedPlan?.batch.cells).tray}
+                reason={suggestTrays(crop, seedPlan?.batch.cells).sowReason}
                 onChange={(n) => update({ ...form, tray: n })}
               />
               {prop.potOn && (
                 <TrayPicker
                   label="Pot on into"
-                  value={form.potTray || suggestTrays(crop).potTray}
+                  value={form.potTray || suggestTrays(crop, seedPlan?.batch.cells).potTray}
                   cells={seedPlan?.batch.cells}
-                  suggested={suggestTrays(crop).potTray}
+                  suggested={suggestTrays(crop, seedPlan?.batch.cells).potTray}
+                  reason={suggestTrays(crop, seedPlan?.batch.cells).potReason}
                   onChange={(n) => update({ ...form, potTray: n })}
                 />
               )}

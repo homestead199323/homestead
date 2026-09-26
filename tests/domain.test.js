@@ -240,11 +240,21 @@ test('Sowing on a different day moves the plant-out date with it', () => {
 import { TRAYS, suggestTrays } from '../src/data/trays.js';
 test('Tray sizes are whole grids and batches remember their trays', () => {
   for (const t of TRAYS) assert(Number.isInteger(t.rows) && t.rows * t.cols === t.cells);
-  assert.deepEqual(suggestTrays({ name: 'Tomato' }), { tray: 104, potTray: 24 });
-  assert.deepEqual(suggestTrays({ name: 'Zucchini' }), { tray: 24, potTray: null });
+  const t0 = suggestTrays({ name: 'Tomato' });
+  assert.deepEqual([t0.tray, t0.potTray], [104, 24]);
+  // The crop sets the cell size; the count picks the tray with the fewest empty cells.
+  const t36 = suggestTrays({ name: 'Tomato' }, 36);
+  assert.deepEqual([t36.tray, t36.potTray], [77, 40]);
+  assert.match(t36.sowReason, /77 needs the fewest trays/);
+  assert.equal(suggestTrays({ name: 'Tomato' }, 100).tray, 104);
+  assert.equal(suggestTrays({ name: 'Tomato' }, 100).potTray, 40);
+  assert.equal(suggestTrays({ name: 'Tomato' }, 12).potTray, 15);
+  const z = suggestTrays({ name: 'Zucchini' }, 10);
+  assert.deepEqual([z.tray, z.potTray], [24, null]);
+  assert.equal(suggestTrays({ name: 'Lettuce' }, 60).tray, 60);
   const b = planBatch({ crop: { name: 'Tomato' }, zoneId: 'n', plants: 10, plantOutDate: '2027-05-20', id: 'x', today: '2027-03-01', tray: 60 }).batch;
   assert.equal(b.tray, 60);
-  assert.equal(b.potTray, 24);
+  assert.equal(b.potTray, 15);
   assert.equal(planBatch({ crop: { name: 'Lettuce' }, zoneId: 'n', plants: 10, plantOutDate: '2027-05-20', id: 'x', today: '2027-03-01' }).batch.potTray, null);
 });
 import { scheduleOf as sched, stagesOf as stagesFor, earliestPlantOut } from '../src/features/nursery/nursery-model.js';
