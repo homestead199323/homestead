@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Pill, Ring, Stat } from "../../components/ui";
 import {bedRows, growthOf} from "../quiet/farm-model";
+import {ChevronDown, ChevronRight} from "lucide-react";
 import {isTreeCrop} from "../quiet/planting-plan";
 import PlantArt from "../quiet/PlantArt";
 import MapLines from "../quiet/MapLines";
@@ -687,6 +688,8 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
 function Farming({data, setData, pageData, clearPageData}) {
   const [showAdd,setShowAdd]=useState(false);
   const [selP,setSelP]=useState(null);
+  const [openSec,setOpenSec]=useState({});
+  const [showAll,setShowAll]=useState({});
   const [initial,setInitial]=useState({});
   useEffect(()=>{if(pageData?.crop||pageData?.zone){setInitial(pageData);setShowAdd(true);clearPageData?.();}},[pageData,clearPageData]);
   const sp=data.garden.plots.find(p=>p.id===selP);
@@ -696,13 +699,17 @@ function Farming({data, setData, pageData, clearPageData}) {
   const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
   const _ready=_active.filter(function(p){return p.harvestDate&&localDateFromKey(p.harvestDate)<=localDateFromKey(todayLocalKey());}).length;
   // Trees (orchard crops or any fruit/nut tree) get their own section, separate from vegetable beds.
-  const _isTree=function(p){const z=data.zones.find(z=>z.id===p.zone);return z?.type==="orchard"||isTreeCrop(rCM(data.region).get(p.crop));};
-  const _trees=_active.filter(_isTree),_beds=_active.filter(function(p){return !_isTree(p);});
+  // Sections: vegetable beds, herbs, and trees (orchard areas or any fruit/nut tree, wherever planted).
+  const _cropMap=rCM(data.region);
+  const _kind=function(p){const z=data.zones.find(z=>z.id===p.zone);const c=_cropMap.get(p.crop);if(z?.type==="orchard"||isTreeCrop(c))return "orchard";if(c?.cat==="Herb"||z?.type==="herbs")return "herbs";return "beds";};
+  const _today=localDateFromKey(todayLocalKey());
+  const _dueIn=function(p){const h=localDateFromKey(p.harvestDate);return h?(h-_today)/864e5:Infinity;};
   const _sum=function(list,key){return list.reduce(function(s,p){return s+(+p[key]||0);},0);};
-  const _sections=[
-    {key:"beds",title:"Beds & garden",unit:"plants",plots:_beds,count:_sum(_beds,"plantCount"),kg:_sum(_beds,"expectedYieldKg")},
-    {key:"orchard",title:"Orchard",unit:"trees",plots:_trees,count:_sum(_trees,"plantCount"),kg:_sum(_trees,"expectedYieldKg")},
-  ];
+  const _sections=[["beds","Vegetable beds","plants"],["herbs","Herbs","plants"],["orchard","Orchard","trees"]].map(function([key,title,unit]){
+    const plots=_active.filter(function(p){return _kind(p)===key;}).sort(function(a,b){return _dueIn(a)-_dueIn(b);});
+    return {key,title,unit,plots,count:_sum(plots,"plantCount"),kg:_sum(plots,"expectedYieldKg"),ready:plots.filter(function(p){return _dueIn(p)<=0;}).length};
+  });
+  const _PREVIEW=5;
   function renderCrop(p,unit){
         const c=rCM(data.region).get(p.crop);
         const growth=growthOf(p,c,todayLocalKey());
@@ -745,21 +752,34 @@ function Farming({data, setData, pageData, clearPageData}) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
         <Stat label="Active Crops" value={_active.length}/>
-        {_sections[0].count>0&&<Stat label="Plants" value={_sections[0].count} sub="in beds"/>}
-        {_sections[1].count>0&&<Stat label="Trees" value={_sections[1].count} sub="fruit &amp; nut"/>}
+        {_sections[0].count+_sections[1].count>0&&<Stat label="Plants" value={_sections[0].count+_sections[1].count} sub="veg and herbs"/>}
+        {_sections[2].count>0&&<Stat label="Trees" value={_sections[2].count} sub="fruit and nut"/>}
         {_totalArea>0&&<Stat label="Total Area" value={`${_totalArea.toFixed(0)}m²`} sub="under cultivation"/>}
         {_totalYield>0&&<Stat label="Est. Yield" value={`${_totalYield.toFixed(0)}kg`} sub="at harvest" color={C.green}/>}
         <Stat label="Ready" value={_ready} sub="to harvest" color={C.orange}/>
       </div>
       {_active.length===0?
         <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
-      <>{_sections.map(function(sec){return sec.plots.length>0&&(
-        <section key={sec.key} style={{marginBottom:22}}>
-          <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,margin:"4px 2px 10px"}}>
-            <h3 style={{margin:0,fontSize:17,fontWeight:650}}>{sec.title}</h3>
+      <>{_sections.map(function(sec){
+        if(!sec.plots.length)return null;
+        const open=openSec[sec.key]??true, all=showAll[sec.key]||sec.plots.length<=_PREVIEW+1;
+        const shown=all?sec.plots:sec.plots.slice(0,_PREVIEW);
+        return (
+        <section key={sec.key} style={{marginBottom:18}}>
+          <button type="button" aria-expanded={open} onClick={function(){setOpenSec({...openSec,[sec.key]:!open});}}
+            style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",padding:"8px 2px",margin:"0 0 6px",background:"none",border:0,borderBottom:`1px solid ${C.bdr}`,cursor:"pointer",color:C.text,textAlign:"left"}}>
+            <span style={{display:"flex",alignItems:"center",gap:8}}>
+              {open?<ChevronDown size={18}/>:<ChevronRight size={18}/>}
+              <span style={{fontSize:17,fontWeight:650}}>{sec.title}</span>
+              {sec.ready>0&&<Pill c={C.orange} bg={C.harvestBg}>{sec.ready} ready</Pill>}
+            </span>
             <small style={{color:C.t2,fontSize:12}}>{sec.plots.length} {sec.plots.length===1?"crop":"crops"} · {sec.count} {sec.unit}{sec.kg>0?` · ~${Math.round(sec.kg)}kg`:""}</small>
-          </div>
-          <div style={{display:"grid",gap:8}}>{sec.plots.map(function(p){return renderCrop(p,sec.unit);})}</div>
+          </button>
+          {open&&<div style={{display:"grid",gap:8}}>{shown.map(function(p){return renderCrop(p,sec.unit);})}</div>}
+          {open&&sec.plots.length>_PREVIEW+1&&(
+            <button type="button" className="q-text-button" style={{marginTop:8}} onClick={function(){setShowAll({...showAll,[sec.key]:!all});}}>
+              {all?"Show fewer":`Show all ${sec.plots.length} crops`}
+            </button>)}
         </section>);})}</>}
 
       {sp && <PlotOverlay plot={sp} data={data} setData={setData} onClose={()=>setSelP(null)}/>}
