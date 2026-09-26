@@ -85,12 +85,13 @@ export const PROJECT_GUIDES = {
 };
 
 export const BLUEPRINT_IMAGES = {
-  raised_bed:      "/manuals/1-raised-bed.png",
-  chicken_coop:    "/manuals/2-chicken-coop.png",
-  compost_bin:     "/manuals/3-compost-bin.png",
-  rain_barrel:     "/manuals/4-rain-barrel.png",
-  fencing:         "/manuals/5-perimeter-fencing.png",
-  tool_shed:       "/manuals/6-tool-shed.png",
-  cold_frame:      "/manuals/7-cold-frame.png",
-  drip_irrigation: "/manuals/8-drip-irrigation.png",
+  raised_bed:      "/manuals/1-raised-bed.webp",
+  chicken_coop:    "/manuals/2-chicken-coop.webp",
+  compost_bin:     "/manuals/3-compost-bin.webp",
+  rain_barrel:     "/manuals/4-rain-barrel.webp",
+  fencing:         "/manuals/5-perimeter-fencing.webp",
+  tool_shed:       "/manuals/6-tool-shed.webp",
+  cold_frame:      "/manuals/7-cold-frame.webp",
+  drip_irrigation: "/manuals/8-drip-irrigation.webp",
 };
+

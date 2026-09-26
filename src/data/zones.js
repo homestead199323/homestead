@@ -4,6 +4,7 @@
    ═══════════════════════════════════════════ */
 
 export const ZT = [
+  {id:"beehive",label:"Beehive",fill:"#d1bd8e",stroke:"#aa9364",icon:"🐝"},
   { id: "veg", label: "Vegetable Bed", fill: "#52b788", stroke: "#2d6a4f", icon: "🥬" },
   { id: "orchard", label: "Orchard", fill: "#a7c957", stroke: "#6a994e", icon: "🍎" },
   { id: "herbs", label: "Herb Garden", fill: "#b7e4c7", stroke: "#52b788", icon: "🌿" },
@@ -19,3 +20,4 @@ export const ZT = [
 ];
 
 export const ZT_MAP = new Map(ZT.map(t => [t.id, t]));
+

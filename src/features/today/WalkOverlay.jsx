@@ -1,640 +1,80 @@
-import { useState, useMemo, useEffect } from "react";
-import { F } from "../../lib/theme";
-import { markTaskDone, todayLocalKey, appendLog } from "../../lib/utils";
-import { uid } from "../../lib/storage";
-import { rCM } from "../../lib/regional";
-import { useSwipeUp } from "../../lib/use-swipe-up";
-import WalkMap from "./WalkMap";
-import FarmIcon from "../../components/FarmIcon";
-import { buildWalkStops } from "./walk-stops";
+import {useEffect,useRef,useState} from 'react';
+import {X,Footprints,Check,Camera,CloudOff,Sun,MapPin,Leaf,TriangleAlert,NotebookPen} from 'lucide-react';
+import {uid,flushFarm} from '../../lib/storage';
+import {todayLocalKey,appendLog} from '../../lib/utils';
+import {rCM} from '../../lib/regional';
+import {planRound,roundMinutes} from '../quiet/walk-model';
+import {applyTaskCompletion} from '../quiet/complete-task';
+import GroveScene from '../grove/GroveScene';
+import BedDetail from '../quiet/BedDetail';
+import PlantArt from '../quiet/PlantArt';
+import AnimalArt from '../quiet/AnimalArt';
+import {art} from '../quiet/art';
+import {growthOf,animalZone} from '../quiet/farm-model';
 
-/* ═══════════════════════════════════════════
-   WalkOverlay — map-guided guided walk through today's tasks.
+function WalkStop({stop,session,data,setData,onAdvance}) {
+ const draft=session.draft||{},checked=draft.checked||[],[error,setError]=useState(''),[photoBusy,setPhotoBusy]=useState(false);
+ const zone=data.zones.find(z=>z.id===stop.zoneId),plant=['veg','herbs','orchard','greenhouse','raised','container'].includes(stop.type);
+ const cropMap=rCM(data.region),plots=data.garden.plots.filter(p=>stop.plotIds.includes(p.id));
+ const heroPlot=plots.find(p=>stop.tasks.some(t=>t.plotId===p.id))||plots[0];
+ const animal=data.livestock.animals.find(a=>animalZone(a,data.zones)?.id===stop.zoneId);
+ const [showNote,setShowNote]=useState(!!draft.note);
+ const stage=heroPlot?growthOf(heroPlot,cropMap.get(heroPlot.crop),todayLocalKey()):null;
+ const latest=useRef({data,session}),mounted=useRef(true);
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+ useEffect(()=>{latest.current={data,session};},[data,session]);
+ const update=patch=>setData({...data,walkSession:{...session,draft:{...draft,...patch}}});
+ async function photo(e){const file=e.target.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){setError('Choose an image file.');return;}setPhotoBusy(true);setError('');try{const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas'),scale=Math.min(1,800/Math.max(bitmap.width,bitmap.height));canvas.width=bitmap.width*scale;canvas.height=bitmap.height*scale;canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const photo=canvas.toDataURL('image/jpeg',.65);if(JSON.stringify(latest.current.data).length+photo.length>1800000){setError('This device’s photo journal is nearly full. Export a backup in Settings, then remove older photos from an area’s field journal to make space. Your text notes can still be saved.');return;}const current=latest.current;if(mounted.current&&current.session.id===session.id&&current.session.index===session.index)setData({...current.data,walkSession:{...current.session,draft:{...current.session.draft,photo}}});}catch{setError('This photo could not be read. Try a JPEG or PNG image.');}finally{setPhotoBusy(false);}}
+ return <>
+ <div className="q-walk-hero">
+ {heroPlot?<PlantArt crop={heroPlot.crop} stage={stage.index} size={280}/>:animal?<AnimalArt species={animal.type} size={260}/>:art(stop.type)?<img src={art(stop.type)} alt={stop.label}/>:<img src={art('prop-bush')} alt="Garden foliage"/>}
+ </div>
+ <div className="q-walk-card"><div className="q-eyebrow">Stop {session.index+1} of {session.stops.length}</div><h2>{heroPlot?`Check your ${heroPlot.crop.toLowerCase()}`:stop.label}</h2><p className="q-walk-question">{heroPlot?"How do the leaves and soil look?":"How is everything looking today?"}</p><details className="q-inset"><summary>What to look for in {stop.label}</summary><p>{plant?'Compare leaves and growth with your previous notes. Look at the underside of leaves, check soil moisture and note wilting, damage or unusual spots. A change is a reason to look closer, not a diagnosis.':'Compare today with what is normal in this area. Check access, shelter and water, and note damage or unusual behaviour.'}</p>{plots.map(p=>{const c=cropMap.get(p.crop);return c?<div key={p.id}><strong>{p.name||p.crop}</strong><p>{c.waterNote||c.waterFreq} · {c.sun}</p></div>:null;})}</details>
+ <div className="q-walk-tools">Bring: {stop.tasks.some(t=>t.type==='harvest')?'a harvest basket, ':''}{stop.tasks.some(t=>t.type==='water')?'watering can or hose, ':''}your usual care tools. Only water or harvest after checking what is needed.</div>
 
-   Layout (full-screen overlay):
-     ┌────────────────────────────────┐
-     │ Header  (n of N · close ×)    │
-     │ Progress bar                  │
-     │ ───────────────────────────── │
-     │     <WalkMap>  (animated)     │
-     │ ───────────────────────────── │
-     │ Task card                     │
-     │   emoji · title · log input  │
-     │   [Skip]      [Done ✓]        │
-     └────────────────────────────────┘
-
-   State machine (phase):
-     • walking — showing the current step's task card
-     • summary — end-of-walk recap
-
-   A "step" is one task at one stop. A stop can hold multiple tasks
-   (e.g. water + harvest in the same bed). The map walker only moves
-   when the stop changes, not between tasks at the same stop.
-
-   Quick-log handling:
-     • harvest → moves plot to "harvested", adds yield to pantry, logs it
-     • eggs    → adds count to pantry, logs it
-     • water   → logs amount (no domain state change)
-     • all     → markTaskDone (drives streak/badges via updateGamify
-                  wrapper in App.jsx)
-
-   Props (unchanged from previous version):
-     tasks    — buildTaskQueue output (full list)
-     data     — app state
-     setData  — setter; auto-wraps with updateGamify in App.jsx
-     onClose  — close handler from parent
-   ═══════════════════════════════════════════ */
-
-// Soft chime via Web Audio API — no asset, no CSP change.
-function playChime() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(660, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
-  } catch (e) { /* silent */ }
+ <div className="q-walk-status">{[['healthy','Healthy'],['issue','Needs attention']].map(([key,label])=><button key={key} className="q-secondary" aria-pressed={draft.status===key} onClick={()=>update({status:key})}>{key==='healthy'?<Leaf size={22}/>:<TriangleAlert size={22}/>}<span>{label}</span></button>)}</div>
+ <button className="q-text-button q-just-checked" aria-pressed={draft.status==='checked'} onClick={()=>update({status:'checked'})}>{draft.status==='checked'?'✓ Just checked':'Record a check without rating'}</button>
+ <div className="q-walk-capture"><button className="q-secondary" onClick={()=>setShowNote(!showNote)} aria-expanded={showNote}><NotebookPen size={17}/> {draft.note?'Edit note':'Add note'}</button><label className="q-secondary q-photo-button"><Camera size={17}/>{photoBusy?'Preparing…':'Add photo'}<input type="file" accept="image/*" capture="environment" onChange={photo} disabled={photoBusy} aria-label="Add a photo"/></label></div>
+ {showNote&&<label className="q-note-field">Notes for next time<textarea value={draft.note||''} maxLength={2000} placeholder="What did you notice?" onChange={e=>update({note:e.target.value})}/></label>}
+ {draft.photo&&<div><img className="q-photo-preview" src={draft.photo} alt="Observation to save"/><button className="q-text-button" onClick={()=>update({photo:null})}>Remove photo</button></div>}
+ {stop.tasks.length>0&&<details className="q-inset q-walk-task-list"><summary>Today’s care · {stop.tasks.length} tasks</summary> {stop.tasks.map(t=>{const done=(data.completions?.[todayLocalKey()]||[]).includes(t.key);return <div className="q-task-row" key={t.key}><input className="q-check" type="checkbox" checked={checked.includes(t.key)||done} disabled={done} aria-label={`Complete ${t.title}`} onChange={e=>update({checked:e.target.checked?[...checked,t.key]:checked.filter(k=>k!==t.key)})}/><div className="q-grow"><strong>{t.title}</strong><p>{t.desc}</p>{t.otherZones?.length>0&&<p className="q-warning">This task covers this species in {t.otherZones.join(', ')} too. Check every group before completing.</p>}{['harvest','eggs'].includes(t.type)&&!done&&<label>Actual {t.type==='harvest'?'harvest (kg)':'eggs collected'}<input style={{width:'100%',boxSizing:'border-box',padding:10,marginTop:5}} type="number" min="0" step={t.type==='eggs'?1:.1} value={draft.amounts?.[t.key]??''} placeholder="Enter the amount you collected" onChange={e=>update({amounts:{...draft.amounts,[t.key]:e.target.value}})}/></label>}</div></div>;})}</details>}
+ <details className="q-inset q-walk-map"><summary>See this stop on your farm</summary><GroveScene data={data} interactive={false} showEditButton={false} showHelperText={false} activeZoneId={stop.zoneId} route={session.stops}/></details>
+ {plant&&zone&&<details className="q-inset"><summary>Explore this bed & confirm growth stages</summary><BedDetail zone={zone} data={data} setData={setData}/></details>}
+ {error&&<p role="alert" className="q-warning">{error}</p>}
+ </div><div className="q-walk-footer"><button className="q-secondary" disabled={photoBusy} onClick={()=>onAdvance(false)}>Check later</button><button className="q-button" disabled={photoBusy} onClick={()=>{const invalid=stop.tasks.find(t=>checked.includes(t.key)&&['harvest','eggs'].includes(t.type)&&(!Number.isFinite(+draft.amounts?.[t.key])||+draft.amounts?.[t.key]<=0||(t.type==='eggs'&&!Number.isInteger(+draft.amounts?.[t.key]))));if(invalid){setError('Enter the actual positive quantity for each checked collection task. Leave it unchecked if you collected nothing.');return;}if(!draft.status){setError('Choose how this area is doing before saving your check.');return;}onAdvance(true);}}><Check size={17}/> Save & next</button></div></>;
 }
-
-function buzz() {
-  try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) { /* silent */ }
-}
-
-// ─── Quick-log defaults ──────────────────────────────────────────────────────
-function defaultLogValue(task, data) {
-  if (!task) return null;
-  if (task.type === "harvest" && task.plotId) {
-    const plots = (data.garden && data.garden.plots) || [];
-    const plot = plots.find(function(p) { return p.id === task.plotId; });
-    if (!plot) return 3;
-    if (plot.expectedYieldKg) return plot.expectedYieldKg;
-    const crop = rCM(data.region).get(plot.crop);
-    if (crop && crop.yld) return crop.yld;
-    return 3;
+export default function WalkOverlay({tasks,data,setData,onClose}) {
+ const [mode,setMode]=useState('quick'),[place,setPlace]=useState('outside'),[startId,setStartId]=useState(''),[online,setOnline]=useState(navigator.onLine);
+ const [saveStatus,setSaveStatus]=useState('saved');
+ const dialog=useRef(null),close=useRef(onClose);
+ useEffect(()=>{close.current=onClose;},[onClose]);
+ const lock=useRef(false),session=data.walkSession,active=session?.status==='active',finished=session?.status==='complete';
+ const stops=planRound(tasks,data,mode,startId),stop=active?session.stops[session.index]:null;
+ useEffect(()=>{const prev=document.body.style.overflow;document.body.style.overflow='hidden';const update=()=>setOnline(navigator.onLine);const saved=e=>setSaveStatus(e.detail);window.addEventListener('farm-save-status',saved);window.addEventListener('online',update);window.addEventListener('offline',update);return()=>{flushFarm();window.removeEventListener('farm-save-status',saved);document.body.style.overflow=prev;window.removeEventListener('online',update);window.removeEventListener('offline',update);};},[]);
+ useEffect(()=>{
+  const previous=document.activeElement,root=dialog.current;
+  root.querySelector('button')?.focus();
+  function keydown(e){
+   if(e.key==='Escape'){e.preventDefault();close.current();return;}
+   if(e.key!=='Tab')return;
+   const items=[...root.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
+   const first=items[0],last=items.at(-1);
+   if(e.shiftKey&&(document.activeElement===first||!root.contains(document.activeElement))){e.preventDefault();last?.focus();}
+   else if(!e.shiftKey&&(document.activeElement===last||!root.contains(document.activeElement))){e.preventDefault();first?.focus();}
   }
-  if (task.type === "water") {
-    if (task.plotId) return 5;
-    if (task.headCount) return Math.max(1, Math.round(task.headCount * 4));
-    return 5;
-  }
-  if (task.type === "eggs") {
-    const heads = task.headCount || 1;
-    return Math.max(1, Math.floor(heads * 0.7));
-  }
-  return null;
-}
-
-// Returns the new `data` after completing the given task with optional log value.
-function applyTaskCompletion(data, task, logValue) {
-  if (!task) return data;
-
-  // Harvest — move plot to harvested, push yield to pantry, log.
-  if (task.type === "harvest" && task.plotId) {
-    const plots = (data.garden && data.garden.plots) || [];
-    const plot = plots.find(function(p) { return p.id === task.plotId; });
-    if (plot) {
-      const crop = rCM(data.region).get(plot.crop);
-      const kg = Number(logValue) > 0 ? Number(logValue) : (plot.expectedYieldKg || (crop && crop.yld) || 3);
-      const item = {
-        id: uid(),
-        name: plot.crop,
-        category: "Fresh Produce",
-        qty: kg,
-        unit: "kg",
-        source: "farm",
-        addedDate: todayLocalKey(),
-        storageNote: (crop && crop.storage) || "",
-      };
-      const next = {
-        ...data,
-        garden: { plots: plots.map(function(x) { return x.id === plot.id ? { ...x, status: "harvested" } : x; }) },
-        pantry: { items: [...((data.pantry && data.pantry.items) || []), item] },
-        log: appendLog(data.log, { text: "🧺 Harvested " + kg + "kg " + plot.crop }),
-      };
-      return markTaskDone(next, task.key);
-    }
-  }
-
-  // Eggs — add to pantry, log.
-  if (task.type === "eggs") {
-    const count = Number(logValue) > 0 ? Math.round(Number(logValue)) : 1;
-    const item = {
-      id: uid(),
-      name: "Eggs",
-      category: "Eggs",
-      qty: count,
-      unit: "count",
-      source: "farm",
-      addedDate: todayLocalKey(),
-      storageNote: "Refrigerate within 2 hours of collection.",
-    };
-    const next = {
-      ...data,
-      pantry: { items: [...((data.pantry && data.pantry.items) || []), item] },
-      log: appendLog(data.log, { text: "🥚 Collected " + count + " eggs" }),
-    };
-    return markTaskDone(next, task.key);
-  }
-
-  // Water — log the amount only.
-  if (task.type === "water") {
-    const litres = Number(logValue) > 0 ? Number(logValue) : null;
-    const text = litres ? ("💧 " + task.title + " (~" + litres + "L)") : ("💧 " + task.title);
-    const next = { ...data, log: appendLog(data.log, { text: text }) };
-    return markTaskDone(next, task.key);
-  }
-
-  // Step task — set the plot's persistent steps[i].done flag, so the step
-  // doesn't reappear on next reload. (task-queue tracks step completion via
-  // this flag, NOT via the daily completions map; we must update both.)
-  if (task.type === "step" && task.plotId && task.stepIdx != null) {
-    const plots = (data.garden && data.garden.plots) || [];
-    const plot = plots.find(function(p) { return p.id === task.plotId; });
-    if (plot && plot.steps && plot.steps[task.stepIdx]) {
-      const newSteps = plot.steps.map(function(s, i) {
-        return i === task.stepIdx ? { ...s, done: true } : s;
-      });
-      const next = {
-        ...data,
-        garden: {
-          ...(data.garden || {}),
-          plots: plots.map(function(x) { return x.id === plot.id ? { ...x, steps: newSteps } : x; }),
-        },
-      };
-      return markTaskDone(next, task.key);
-    }
-  }
-
-  // Everything else — pure check-off.
-  return markTaskDone(data, task.key);
-}
-
-// ─── Stop popup ──────────────────────────────────────────────────────────────
-// Floating callout anchored to the current stop on the map. Carries the task
-// info, the quick-log input (if applicable), and Skip / Done. Position is
-// computed in percent so it tracks the map regardless of container size.
-//   • Below the stop when the stop is in the upper half; above otherwise.
-//   • Clamped to keep within ~15–85% horizontally so it doesn't overflow.
-//   • A tail points at the actual stop center (offset compensates clamping).
-function StopPopup(props) {
-  const stop = props.stop;
-  const task = props.task;
-  const taskIdx = props.taskIdx || 0;
-  const taskCount = props.taskCount || 1;
-  const placement = (stop.cy < 55) ? "below" : "above";
-
-  // Horizontal clamping: don't let the popup escape map bounds.
-  const clampMin = 18;
-  const clampMax = 82;
-  const popupLeftPct = Math.max(clampMin, Math.min(clampMax, stop.cx));
-  const tailOffsetPct = stop.cx - popupLeftPct;
-
-  const verticalOffsetPct = 6;
-  const topPct = (placement === "below")
-    ? Math.min(95, stop.cy + verticalOffsetPct)
-    : Math.max(5, stop.cy - verticalOffsetPct);
-
-  const popupTransform = (placement === "below")
-    ? "translateX(-50%)"
-    : "translateX(-50%) translateY(-100%)";
-
-  const containerStyle = {
-    position: "absolute",
-    left: popupLeftPct + "%",
-    top: topPct + "%",
-    transform: popupTransform,
-    width: 280,
-    maxWidth: "calc(100% - 16px)",
-    zIndex: 10,
-    pointerEvents: "auto",
-    animation: "walk-popup-in 0.25s ease-out",
-  };
-
-  const cardStyle = {
-    background: "linear-gradient(180deg, rgba(20, 36, 26, 0.97) 0%, rgba(8, 22, 14, 0.97) 100%)",
-    border: "1px solid rgba(127,201,127,.4)",
-    borderRadius: 14,
-    padding: "12px 14px",
-    boxShadow: "0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04)",
-    WebkitBackdropFilter: "blur(8px)",
-    backdropFilter: "blur(8px)",
-    color: "#fff",
-    transform: props.swipe ? "translateY(" + props.swipe.offsetY + "px)" : "translateY(0)",
-    opacity: props.swipe ? Math.max(0.3, 1 - Math.abs(props.swipe.offsetY) / 300) : 1,
-    transition: props.swipe && props.swipe.dragging ? "none" : "transform 180ms ease, opacity 180ms ease",
-    touchAction: "none",
-  };
-
-  // Tail centered horizontally but shifted by the clamp offset so it
-  // still points at the actual stop center.
-  const tailStyle = {
-    position: "absolute",
-    left: "calc(50% + " + tailOffsetPct + "%)",
-    marginLeft: -8,
-    width: 0,
-    height: 0,
-    borderLeft: "8px solid transparent",
-    borderRight: "8px solid transparent",
-  };
-  if (placement === "below") {
-    tailStyle.top = -8;
-    tailStyle.borderBottom = "8px solid rgba(127,201,127,.55)";
-  } else {
-    tailStyle.bottom = -8;
-    tailStyle.borderTop = "8px solid rgba(127,201,127,.55)";
-  }
-
-  return (
-    <div style={containerStyle}>
-      <div style={tailStyle} />
-      <div {...(props.swipe ? props.swipe.bind : {})} style={cardStyle}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", flex: "0 0 auto" }}><FarmIcon name={task.cropName || task.speciesType} emoji={task.emoji || "🌱"} size={26}/></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, fontFamily: F.head, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {task.title}
-            </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.55)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              📍 {stop.label}{taskCount > 1 ? (" · " + (taskIdx + 1) + "/" + taskCount) : ""}
-            </div>
-          </div>
-        </div>
-
-        {task.desc && (
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", marginBottom: 10, lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-            {task.desc}
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-          {props.needsInput && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,.06)", padding: "0 8px", borderRadius: 10, border: "1px solid rgba(255,255,255,.15)", flex: "0 0 auto" }}>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step={task.type === "eggs" ? "1" : "0.1"}
-                value={props.logVal == null ? "" : props.logVal}
-                onChange={function(e) {
-                  const v = e.target.value;
-                  props.setLogVal(v === "" ? "" : Number(v));
-                }}
-                style={{
-                  width: 44,
-                  background: "transparent",
-                  border: "none",
-                  color: "#fff",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  textAlign: "center",
-                  outline: "none",
-                  fontFamily: F.head,
-                  padding: "8px 0",
-                }}
-              />
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>{props.inputUnit}</div>
-            </div>
-          )}
-          <button onClick={props.onSkip} style={{
-            flex: 1,
-            padding: "9px 12px",
-            borderRadius: 10,
-            background: "rgba(255,255,255,.06)",
-            border: "1px solid rgba(255,255,255,.12)",
-            color: "rgba(255,255,255,.85)",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}>Skip</button>
-          <button onClick={props.onDone} style={{
-            flex: 2,
-            padding: "9px 12px",
-            borderRadius: 10,
-            background: "#7fc97f",
-            border: "none",
-            color: "#0f2418",
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: "pointer",
-            boxShadow: "0 2px 10px rgba(127,201,127,.25)",
-          }}>Done ✓</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default function WalkOverlay({ tasks, data, setData, onClose }) {
-  // Snapshot stops on open. Re-running every render would shift the order
-  // mid-walk (each completion shrinks the queue), which is jarring.
-  const [stops] = useState(function() {
-    return buildWalkStops(tasks, data);
-  });
-
-  // Flatten to steps so we can advance one task at a time even when a stop
-  // has several. Walker only animates on stopIdx change.
-  const steps = useMemo(function() {
-    const flat = [];
-    stops.forEach(function(s, si) {
-      s.tasks.forEach(function(t, ti) {
-        flat.push({ stop: s, stopIdx: si, task: t, taskIdx: ti });
-      });
-    });
-    return flat;
-  }, [stops]);
-
-  const total = steps.length;
-
-  const [stepIdx, setStepIdx] = useState(0);
-  const [phase, setPhase] = useState(total === 0 ? "summary" : "walking");
-  const [logVal, setLogVal] = useState(function() {
-    return defaultLogValue(total > 0 ? steps[0].task : null, data);
-  });
-  const [completedKeys, setCompletedKeys] = useState([]);
-  const [startStreak] = useState((data.gamify && data.gamify.streak) || 0);
-
-  // Lock body scroll while the walk is open. Without this, on desktop
-  // the page underneath remains scrollable and the dashboard bleeds
-  // through visually when the user scrolls (the overlay is fixed, but
-  // the body content slides under it). Restore prior overflow on close.
-  useEffect(function() {
-    const prevOverflow = document.body.style.overflow;
-    const prevTouch = document.body.style.touchAction;
-    document.body.style.overflow = "hidden";
-    document.body.style.touchAction = "none";
-    return function() {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.touchAction = prevTouch;
-    };
-  }, []);
-
-  const step = steps[stepIdx];
-  const task = step ? step.task : null;
-  const currentStopIdx = step ? step.stopIdx : -1;
-
-  // Map needs checkmark hints — derived from completed task keys.
-  const completedStopKeys = useMemo(function() {
-    const done = new Set();
-    stops.forEach(function(s) {
-      const allDone = s.tasks.every(function(t) {
-        return completedKeys.indexOf(t.key) !== -1;
-      });
-      if (allDone) done.add(s.stopKey);
-    });
-    return done;
-  }, [stops, completedKeys]);
-
-  // Plot icons — visible crops inside zones for game-like feel. One icon
-  // per active (non-harvested) plot at the plot's center within its zone.
-  const plotIcons = useMemo(function() {
-    const cropMap = rCM(data.region);
-    const out = [];
-    ((data.garden && data.garden.plots) || []).forEach(function(p) {
-      if (p.status === "harvested") return;
-      const crop = cropMap.get(p.crop);
-      if (!crop) return;
-      out.push({
-        id: p.id,
-        zoneId: p.zone,
-        emoji: crop.emoji || "🌱",
-        px: typeof p.px === "number" ? p.px : 50,
-        py: typeof p.py === "number" ? p.py : 50,
-      });
-    });
-    return out;
-  }, [data.garden, data.region]);
-
-  // Reset the quick-log input each time the active task changes.
-  useEffect(function() {
-    setLogVal(defaultLogValue(task, data));
-  }, [task, data]);
-
-  // Lock body scroll
-  useEffect(function() {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return function() { document.body.style.overflow = prev; };
-  }, []);
-
-  // Esc closes
-  useEffect(function() {
-    const h = function(e) { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", h);
-    return function() { window.removeEventListener("keydown", h); };
-  }, [onClose]);
-
-  function advance() {
-    if (stepIdx + 1 >= total) {
-      setPhase("summary");
-    } else {
-      setStepIdx(stepIdx + 1);
-    }
-  }
-
-  // Jump directly to a chosen stop. Prefers the first INCOMPLETE step at
-  // that stop so the user lands on something useful; falls back to the
-  // first step there if everything's already done.
-  function jumpToStop(targetStopIdx) {
-    let idx = steps.findIndex(function(s) {
-      return s.stopIdx === targetStopIdx
-        && completedKeys.indexOf(s.task.key) === -1;
-    });
-    if (idx < 0) {
-      idx = steps.findIndex(function(s) { return s.stopIdx === targetStopIdx; });
-    }
-    if (idx >= 0 && idx !== stepIdx) {
-      setStepIdx(idx);
-    }
-  }
-
-  function completeCurrent() {
-    if (!task) { advance(); return; }
-    setCompletedKeys(function(keys) {
-      return keys.indexOf(task.key) === -1 ? [...keys, task.key] : keys;
-    });
-    setData(applyTaskCompletion(data, task, logVal));
-    playChime();
-    buzz();
-    advance();
-  }
-
-  function skipCurrent() {
-    advance();
-  }
-
-  // Quick-log tasks need explicit Done — swipe-up disabled for them so the
-  // user doesn't accidentally commit a 0kg harvest.
-  const needsInput = task && (task.type === "harvest" || task.type === "eggs" || task.type === "water");
-  const swipe = useSwipeUp({ onSwipeUp: completeCurrent, disabled: phase !== "walking" || needsInput });
-
-  const completedCount = completedKeys.length;
-  const skippedCount = total - completedCount;
-
-  let inputUnit = "";
-  if (task && task.type === "harvest") inputUnit = "kg";
-  else if (task && task.type === "water") inputUnit = "L";
-  else if (task && task.type === "eggs") inputUnit = "eggs";
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 9999,
-      width: "100vw", height: "100dvh",
-      background: "linear-gradient(180deg, #1a3d2e 0%, #0f2418 100%)",
-      display: "flex", flexDirection: "column",
-      color: "#fff",
-      fontFamily: F.body,
-      overflow: "hidden",
-    }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,.08)", flex: "0 0 auto" }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.7)", letterSpacing: ".02em" }}>
-          {phase === "walking" ? ("Walk · " + (stepIdx + 1) + " of " + total) : "Walk complete"}
-        </div>
-        <button onClick={onClose} aria-label="Close walk" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,.6)", fontSize: 22, cursor: "pointer", padding: 4, lineHeight: 1, width: 30, height: 30 }}>×</button>
-      </div>
-
-      {/* Progress bar */}
-      {phase === "walking" && (
-        <div style={{ height: 3, background: "rgba(255,255,255,.08)", flex: "0 0 auto" }}>
-          <div style={{
-            height: "100%",
-            width: (total === 0 ? 0 : (stepIdx / total) * 100) + "%",
-            background: "#7fc97f",
-            transition: "width 0.3s ease",
-          }} />
-        </div>
-      )}
-
-      {/* Walking phase */}
-      {phase === "walking" && task && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
-          {/* Map takes all available space above the task card */}
-          <div style={{ flex: 1, minHeight: 0, height: 0, position: "relative", margin: "8px 10px 0", overflow: "hidden" }}>
-            <WalkMap
-              stops={stops}
-              currentStopIdx={currentStopIdx}
-              completedStopKeys={completedStopKeys}
-              zones={data.zones || []}
-              plotIcons={plotIcons}
-              farmW={data.farmW || 100}
-              farmH={data.farmH || 60}
-              onStopClick={jumpToStop}
-              data={data}
-            />
-            <div style={{ position: "absolute", bottom: 6, left: 0, right: 0, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", letterSpacing: ".06em", textTransform: "uppercase", fontWeight: 600, background: "rgba(0,0,0,.3)", padding: "3px 8px", borderRadius: 6 }}>
-                Tap any section to jump
-              </div>
-            </div>
-          </div>
-
-          {/* Task card — anchored below the map, never overlaps it */}
-          {step && (
-            <div style={{ flex: "0 0 auto", padding: "8px 10px calc(8px + env(safe-area-inset-bottom))", overflow: "hidden" }}>
-              <div
-                {...(needsInput ? {} : swipe.bind)}
-                style={{
-                  background: "linear-gradient(180deg, rgba(20,36,26,0.97) 0%, rgba(8,22,14,0.97) 100%)",
-                  border: "1px solid rgba(127,201,127,.4)",
-                  borderRadius: 14,
-                  padding: "12px 14px",
-                  boxShadow: "0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04)",
-                  color: "#fff",
-                  transform: (!needsInput && swipe) ? "translateY(" + swipe.offsetY + "px)" : "translateY(0)",
-                  opacity: (!needsInput && swipe) ? Math.max(0.3, 1 - Math.abs(swipe.offsetY) / 300) : 1,
-                  transition: (!needsInput && swipe && swipe.dragging) ? "none" : "transform 180ms ease, opacity 180ms ease",
-                  touchAction: needsInput ? "auto" : "none",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: task.desc ? 8 : 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", flex: "0 0 auto" }}><FarmIcon name={task.cropName || task.speciesType} emoji={task.emoji || "🌱"} size={26}/></div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, fontFamily: F.head, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {task.title}
-                    </div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.55)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {"📍"} {step.stop.label}{step.stop.tasks.length > 1 ? (" · " + (step.taskIdx + 1) + "/" + step.stop.tasks.length) : ""}
-                    </div>
-                  </div>
-                </div>
-                {task.desc && (
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", marginBottom: 10, lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                    {task.desc}
-                  </div>
-                )}
-                <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-                  {needsInput && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,.06)", padding: "0 8px", borderRadius: 10, border: "1px solid rgba(255,255,255,.15)", flex: "0 0 auto" }}>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step={task.type === "eggs" ? "1" : "0.1"}
-                        value={logVal == null ? "" : logVal}
-                        onChange={function(e) {
-                          const v = e.target.value;
-                          setLogVal(v === "" ? "" : Number(v));
-                        }}
-                        style={{ width: 44, background: "transparent", border: "none", color: "#fff", fontSize: 16, fontWeight: 700, textAlign: "center", outline: "none", fontFamily: F.head, padding: "8px 0" }}
-                      />
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>{inputUnit}</div>
-                    </div>
-                  )}
-                  <button onClick={skipCurrent} style={{ flex: 1, padding: "9px 12px", borderRadius: 10, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", color: "rgba(255,255,255,.85)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Skip</button>
-                  <button onClick={completeCurrent} style={{ flex: 2, padding: "9px 12px", borderRadius: 10, background: "#7fc97f", border: "none", color: "#0f2418", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 10px rgba(127,201,127,.25)" }}>Done ✓</button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Summary phase */}
-      {phase === "summary" && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", textAlign: "center" }}>
-          <div style={{ fontSize: 72, marginBottom: 16 }}>
-            {total === 0 ? "👋" : completedCount === total ? "🎉" : completedCount > 0 ? "✓" : "🌿"}
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, fontFamily: F.head, marginBottom: 8 }}>
-            {total === 0
-              ? "Nothing for today"
-              : completedCount === total
-                ? "Walk complete"
-                : completedCount === 0
-                  ? "Maybe later"
-                  : completedCount + " of " + total + " done"}
-          </div>
-          <div style={{ fontSize: 14, color: "rgba(255,255,255,.7)", marginBottom: 24, maxWidth: 300, lineHeight: 1.5 }}>
-            {total === 0
-              ? "Take it easy 🌿"
-              : completedCount === total
-                ? "Nice work. See you tomorrow."
-                : completedCount === 0
-                  ? "No worries — come back when you're ready."
-                  : skippedCount + " left for later."}
-          </div>
-          {completedCount > 0 && startStreak === 0 && (
-            <div style={{ fontSize: 13, color: "#7fc97f", fontWeight: 600, marginBottom: 24, padding: "8px 14px", background: "rgba(127,201,127,.12)", borderRadius: 10, border: "1px solid rgba(127,201,127,.25)" }}>
-              🌱 Streak started — day 1
-            </div>
-          )}
-          <button onClick={onClose} style={{
-            padding: "14px 32px", borderRadius: 14,
-            background: "#7fc97f", border: "none",
-            color: "#0f2418", fontSize: 15, fontWeight: 700, cursor: "pointer",
-          }}>Back to Today</button>
-        </div>
-      )}
-    </div>
-  );
+  root.addEventListener('keydown',keydown);
+  return()=>{root.removeEventListener('keydown',keydown);previous?.focus();};
+ },[]);
+ useEffect(()=>{dialog.current?.scrollTo({top:0});},[session?.index,session?.status]);
+ function begin(){setData({...data,walkSession:{id:uid(),status:'active',date:todayLocalKey(),startedAt:new Date().toISOString(),mode,place,stops,index:0,draft:{},visited:[],deferred:[]}});}
+ function advance(save){if(lock.current||!stop)return;lock.current=true;let next=data;const draft=session.draft||{};if(save){const selected=stop.tasks.filter(t=>(draft.checked||[]).includes(t.key));selected.forEach(t=>{next=applyTaskCompletion(next,t,draft.amounts?.[t.key]);});const entry={id:uid(),walkId:session.id,at:new Date().toISOString(),zoneId:stop.zoneId,plotIds:stop.plotIds,status:draft.status,note:draft.note||'',photo:draft.photo||null,tasks:selected.map(t=>t.key)};next={...next,observations:[...(next.observations||[]),entry],log:appendLog(next.log,{text:`Walk: ${stop.label} — ${draft.status==='issue'?'needs attention':draft.status==='healthy'?'looking good':'checked'}${draft.note?': '+draft.note:''}`,zoneId:stop.zoneId,plotIds:stop.plotIds})};}
+ const end=session.index+1>=session.stops.length;
+ next.walkSession={...session,index:session.index+1,status:end?'complete':'active',draft:{},visited:save?[...session.visited,stop.id]:session.visited,deferred:save?session.deferred:[...session.deferred,stop.id],finishedAt:end?new Date().toISOString():null};
+ setData(next);setTimeout(()=>{lock.current=false;},300);}
+ return <div ref={dialog} className="q-walk" role="dialog" aria-modal="true" aria-label="Morning farm walk"><div className="q-walk-shell"><header className="q-walk-header"><div><h1>Morning walk</h1></div><button className="q-icon" aria-label={active?'Pause and close walk':'Close walk'} onClick={onClose}><X size={20}/></button></header>
+ <div className="q-row q-between"><span className="q-pill">{saveStatus==='error'?'Could not save on this device':saveStatus==='saving'?'Saving…':online?'Saved on this device':'Offline · saved on this device'}</span>{!online&&<CloudOff size={18}/>} {active&&<small>{session.mode==='quick'?'Quick':'Full'} round</small>}</div>
+ {saveStatus==='error'&&<p role="alert" className="q-warning">Device storage is full or unavailable. Keep this page open and export a backup from Settings before closing the app.</p>}
+ {active&&session.date!==todayLocalKey()&&<p className="q-walk-resumed">Continuing your {session.date} round. New checks are logged for today.</p>}
+ {active&&stop?<><div className="q-walk-progress" style={{marginTop:16}}><span style={{width:`${session.index/session.stops.length*100}%`}}/></div><div className="q-walk-route">{session.stops.map((s,i)=><span key={s.id} aria-current={i===session.index}>{i+1}. {s.label}</span>)}</div><WalkStop key={`${session.id}-${session.index}`} stop={stop} session={session} data={data} setData={setData} onAdvance={advance}/></>:finished?<div className="q-walk-card"><Sun size={36}/><h2>A little more in tune with your farm.</h2><p>{session.visited.length} areas checked. {session.deferred.length} left for later. Your notes are saved in each area’s field journal.</p><p>Unchecked tasks remain on your list. Growth and harvest dates are estimates; your observations tell the real story.</p><button className="q-button" onClick={()=>{setData({...data,walkSession:null});onClose();}}>Back to my farm</button></div>:<><h2>Start with a look around.</h2><p>A guided round of your own space, with practical checks and a journal that grows with you.</p><div className="q-walk-choices">{[['quick','Quick round','Today’s tasks and a check at each stop.'],['full','Full round','Every area, including those with no tasks.']].map(([key,title,desc])=><button className="q-walk-choice" key={key} aria-pressed={mode===key} onClick={()=>setMode(key)}><Footprints size={25}/><strong>{title}</strong><small>{desc}</small></button>)}</div><div className="q-inset"><div className="q-grid2"><label>Where are you?<select value={place} onChange={e=>setPlace(e.target.value)}><option value="outside">Walking outside</option><option value="desk">Checking from home</option></select></label><label>Start from<select value={startId} onChange={e=>setStartId(e.target.value)}><option value="">Entrance</option>{data.zones.map(z=><option value={z.id} key={z.id}>{z.name}</option>)}</select></label></div><p><MapPin size={14}/> {stops.length} stops · about {roundMinutes(stops,data)} min. Move between stops at your own pace.</p></div>{!stops.length&&<p className="q-warning">{mode==='quick'?'No tasks due. Choose a full round for a general check.':'Add your first farm area to start a walk.'}</p>}<button className="q-button" style={{width:'100%'}} disabled={!stops.length} onClick={begin}>{place==='outside'?'Begin my walk':'Begin my check-in'}</button><p>Open the app once online before heading out. Your saved farm, checks and photos remain available offline.</p></>}
+ </div></div>;
 }

@@ -9,6 +9,10 @@
    otherwise falls back to the data emoji.
    ═══════════════════════════════════════════ */
 import React from "react";
+import PlantArt from "../features/quiet/PlantArt";
+import AnimalArt from "../features/quiet/AnimalArt";
+import {CROP_MAP} from "../data/crops";
+import {LDB} from "../data/livestock";
 
 const LEAF = "#4d9263";
 const LEAF_D = "#356b47";
@@ -328,7 +332,9 @@ export function hasFarmIcon(name) {
    Renders the custom SVG when one exists for `name`,
    otherwise the emoji fallback. Inline-flex so it sits
    in text rows like an emoji would. */
-export default function FarmIcon({ name, emoji, size = 20, style }) {
+export default function FarmIcon({ name, emoji, size = 20, style, harvest = false }) {
+  if(LDB[name])return <span aria-hidden="true" style={{display:'inline-flex',verticalAlign:'middle',...style}}><AnimalArt species={name} size={size}/></span>;
+  if(!harvest&&CROP_MAP.has(name))return <span aria-hidden="true" style={{display:'inline-flex',verticalAlign:'middle',...style}}><PlantArt crop={name} stage={4} size={size}/></span>;
   const Ic = name ? FARM_SVG[name] : null;
   if (Ic) {
     return (
@@ -357,3 +363,4 @@ export default function FarmIcon({ name, emoji, size = 20, style }) {
     </span>
   );
 }
+

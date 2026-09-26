@@ -120,7 +120,7 @@ export const SX = {
   s13mt4: {fontSize:13,marginTop:4},
   capHeader: {fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.04em"},
   capHeaderT2: {fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"},
-  headerH2: {fontFamily:F.head,fontSize:30,margin:0,letterSpacing:"-0.03em",fontWeight:800},
+  headerH2: {fontFamily:F.head,fontSize:28,margin:0,letterSpacing:"-0.035em",fontWeight:600},
   emptyIcon: {fontSize:48,marginBottom:12,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.1))"},
   s20: {fontSize:20},
   s13: {fontSize:13},
@@ -131,6 +131,7 @@ export const SX = {
   t3_10mt2: {fontSize:10,color:C.t3,marginTop:2},
   flex1min0: {flex:1,minWidth:0},
   pageHead: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24},
-  pageSubHead: {color:C.t2,fontSize:12.5,margin:"4px 0 0",fontWeight:500},
+  pageSubHead: {color:C.t2,fontSize:14,margin:"6px 0 0",fontWeight:500},
   bodyText: {fontSize:13,lineHeight:1.65,color:C.text},
 };
+

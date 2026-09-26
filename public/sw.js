@@ -4,6 +4,7 @@
 // and stable across reloads.
 const CACHE_NAME = 'myterra-__BUILD_ID__';
 const ASSETS = [
+  /* __PRECACHE_ASSETS__ */
   '/',
   '/app.html',
   '/manifest.json',
@@ -88,3 +89,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+

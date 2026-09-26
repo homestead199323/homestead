@@ -59,7 +59,7 @@ export default function Pantry({data, setData}) {
 
   return (
     <div className="page-enter" style={SX.mw800}>
-      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>📦 Pantry</h2><p style={SX.pageSubHead}>Everything you've harvested and stored</p></div><Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Manual</Btn></div>
+      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>Pantry</h2><p style={SX.pageSubHead}>Everything you've harvested and stored</p></div><Btn v="secondary" onClick={()=>setShowAdd(true)}>+ Manual</Btn></div>
       {/* 6.5.1 — hero count tile (replaces the two equal Stat tiles) */}
       {pantryHero.itemCount > 0 && (
         <Card style={{background:`linear-gradient(135deg, ${C.tGreen2}, ${C.card})`,border:`1px solid ${C.gm}`,marginBottom:16}}>
@@ -125,3 +125,4 @@ export default function Pantry({data, setData}) {
     </div>
   );
 }
+

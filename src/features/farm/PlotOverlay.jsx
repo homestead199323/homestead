@@ -7,6 +7,8 @@ import { appendLog, todayLocalKey, localDateFromKey } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
 import { plotAreaM2, buildZoneSpaceMap } from "../../lib/farm-calc";
 import FarmIcon from "../../components/FarmIcon";
+import Journal from "../quiet/Journal";
+import {relation} from "../quiet/farm-model";
 
 /* ═══════════════════════════════════════════
    PLOT OVERLAY — shared popup used from Farming, TaskQueue, Dashboard
@@ -27,8 +29,8 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
     ? data.garden.plots.filter(p => p.zone === plot.zone && p.status !== "harvested" && p.id !== plot.id).map(p => p.crop)
     : [];
   const compObj = COMP[plot.crop];
-  const compGood = compObj ? compZonePlots.filter(n => compObj.good.includes(n)) : [];
-  const compBad  = compObj ? compZonePlots.filter(n => compObj.bad.includes(n)) : [];
+  const compGood = compObj ? compZonePlots.filter(n => relation(plot.crop,n)==='good') : [];
+  const compBad  = compObj ? compZonePlots.filter(n => relation(plot.crop,n)==='avoid') : [];
   const showComp = plot.zone && compObj && compZonePlots.length > 0 && (compGood.length > 0 || compBad.length > 0);
 
   const togStep = (pid, si) => {
@@ -59,7 +61,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
     return (
       <Overlay title={`${plot.name || plot.crop}`} onClose={onClose} sheet layoutId={layoutId}>
         <div style={{padding:"24px 12px",color:C.t2,fontSize:13}}>Crop data not found for this plot.</div>
-      </Overlay>
+      <Journal data={data} setData={setData} plotId={plot.id}/></Overlay>
     );
   }
 
@@ -78,7 +80,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
           {plot.qty && plot.measureType === "area" && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
           {plot.qty && plot.measureType === "plants" && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}</div><div style={SX.t2_10}>plants</div></Card>}
           {plot.expectedYieldKg && <Card style={{background:C.harvestBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{plot.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
-          {plot.plantCount && crop.spacing ? <Card style={{background:C.surface,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:C.text}}>{crop.spacing}cm</div><div style={SX.t2_10}>between plants</div></Card> : null}
+          {plot.plantCount && crop.spacing ? <Card style={{background:C.surface,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:C.text}}>{plot.layout?.spacingCM||crop.spacing}cm</div><div style={SX.t2_10}>{plot.layout?.pattern==='scatter'?'minimum distance':'between plants'}</div></Card> : null}
         </div>
       )}
 
@@ -132,8 +134,9 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
         <Btn v="danger" sm onClick={()=>del(plot.id)}>Delete</Btn>
         {plot.status !== "harvested" && plot.harvestDate && localDateFromKey(plot.harvestDate) <= localDateFromKey(todayLocalKey()) && <Btn v="success" onClick={()=>harv(plot)}>🧺 Harvest</Btn>}
       </div>
-    </Overlay>
+    <Journal data={data} setData={setData} plotId={plot.id}/></Overlay>
   );
 }
 
 export default PlotOverlay;
+

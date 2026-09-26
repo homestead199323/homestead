@@ -10,46 +10,54 @@ import { useSwipe } from "../lib/use-swipe";
 /* ═══════════════════════════════════════════
    UI COMPONENTS
    ═══════════════════════════════════════════ */
-export const Btn = React.memo(function Btn({children,onClick,v="primary",sm,dis,style:s}) {
+export const Btn = React.memo(function Btn({children,onClick,v="primary",sm,dis,disabled,style:s}) {
+  dis = dis || disabled;
   const st={
     primary:{bg:C.grd,c:"#fff",shadow:"0 2px 8px color-mix(in srgb, var(--color-green-dark) 30%, transparent)"},
     secondary:{bg:"transparent",c:C.green,border:`1.5px solid ${C.bdr}`,shadow:"none"},
-    danger:{bg:"linear-gradient(135deg, #ef4444, #dc2626)",c:"#fff",shadow:"0 2px 8px rgba(239,68,68,.25)"},
+    danger:{bg:"#a34f45",c:"#fff",shadow:"0 2px 8px rgba(239,68,68,.25)"},
     ghost:{bg:"transparent",c:C.t2,shadow:"none"},
-    success:{bg:"linear-gradient(135deg, #22c55e, #16a34a)",c:"#fff",shadow:"0 2px 8px rgba(34,197,94,.25)"},
-    orange:{bg:"linear-gradient(135deg, #f59e0b, #d97706)",c:"#fff",shadow:"0 2px 8px rgba(245,158,11,.25)"}
+    success:{bg:"#356b53",c:"#fff",shadow:"0 2px 8px rgba(34,197,94,.25)"},
+    orange:{bg:"#966a32",c:"#fff",shadow:"0 2px 8px rgba(245,158,11,.25)"}
   };
   const b=st[v]||st.primary;
-  return <button onClick={dis?undefined:onClick} style={{background:b.bg,color:b.c,border:b.border||"none",borderRadius:C.rs,fontFamily:F.body,fontWeight:600,fontSize:sm?12:13,padding:sm?"7px 14px":"11px 22px",cursor:dis?"not-allowed":"pointer",opacity:dis?0.4:1,display:"inline-flex",alignItems:"center",gap:7,transition:"all .2s cubic-bezier(.25,.46,.45,.94)",boxShadow:dis?"none":b.shadow,letterSpacing:"0.01em",...s}}>{children}</button>;
+  return <button type="button" disabled={dis} onClick={dis?undefined:onClick} style={{background:b.bg,color:b.c,border:b.border||"none",borderRadius:C.rs,fontFamily:F.body,fontWeight:600,fontSize:sm?12:13,padding:sm?"7px 14px":"11px 22px",cursor:dis?"not-allowed":"pointer",opacity:dis?0.4:1,display:"inline-flex",alignItems:"center",gap:7,transition:"all .2s cubic-bezier(.25,.46,.45,.94)",boxShadow:dis?"none":b.shadow,letterSpacing:"0.01em",...s}}>{children}</button>;
 });
 
 export const Card = React.memo(function Card({children,onClick,active,style:s,p=true,className=""}) {
-  return <div onClick={onClick} className={`${onClick?"card-hover":""} ${className}`} style={{background:C.card,borderRadius:C.r,boxShadow:active?`0 0 0 2px ${C.green}, ${C.sh}`:C.sh,padding:p?"18px":0,cursor:onClick?"pointer":"default",transition:"all .25s cubic-bezier(.25,.46,.45,.94)",border:`1px solid ${active?C.green:"rgba(0,0,0,.04)"}`,...s}}>{children}</div>;
+  return <div onClick={onClick} role={onClick?"button":undefined} tabIndex={onClick?0:undefined} onKeyDown={onClick?e=>{if(e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onClick(e);}}:undefined} className={`${onClick?"card-hover":""} ${className}`} style={{background:C.card,borderRadius:C.r,boxShadow:active?`0 0 0 2px ${C.green}, ${C.sh}`:C.sh,padding:p?"18px":0,cursor:onClick?"pointer":"default",transition:"all .25s cubic-bezier(.25,.46,.45,.94)",border:`1px solid ${active?C.green:"rgba(0,0,0,.04)"}`,...s}}>{children}</div>;
 });
 
 export const Inp = React.memo(function Inp({label,...p}) {
+  const inputId=React.useId();
   return <div style={SX.mb12}>
-    {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
-    <input {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box",...p.style}}/>
+    {label&&<label htmlFor={p.id||inputId} style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
+    <input id={p.id||inputId} {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box",...p.style}}/>
   </div>;
 });
 
 export const Sel = React.memo(function Sel({label,options,...p}) {
+  const inputId=React.useId();
   return <div style={SX.mb12}>
-    {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
-    <select {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}>{options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}</select>
+    {label&&<label htmlFor={p.id||inputId} style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
+    <select id={p.id||inputId} {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}>{options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}</select>
   </div>;
 });
 
 export const Txt = React.memo(function Txt({label,...p}) {
+  const inputId=React.useId();
   return <div style={SX.mb12}>
-    {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
-    <textarea {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",resize:"vertical",minHeight:60,boxSizing:"border-box"}}/>
+    {label&&<label htmlFor={p.id||inputId} style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>{label}</label>}
+    <textarea id={p.id||inputId} {...p} style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",resize:"vertical",minHeight:60,boxSizing:"border-box"}}/>
   </div>;
 });
 
 export function Overlay({title,onClose,children,wide,sheet}) {
   const isSheet = !!sheet;
+  const dialogRef=useRef(null);
+  const closeRef=useRef(onClose);
+  useEffect(()=>{closeRef.current=onClose;},[onClose]);
+  useEffect(()=>{const previous=document.activeElement;dialogRef.current?.focus();function key(e){if(dialogRef.current&&!dialogRef.current.contains(document.activeElement))return;if(e.key==='Escape'){e.stopPropagation();closeRef.current();}if(e.key==='Tab'){const items=dialogRef.current?.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]');if(!items?.length)return;const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.focus?.();};},[]);
   // Touch drag-to-dismiss for sheet variant
   const [dragY, setDragY] = React.useState(0);
   const [startY, setStartY] = React.useState(null);
@@ -94,11 +102,11 @@ export function Overlay({title,onClose,children,wide,sheet}) {
       <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
         <div
           onClick={function(e){e.stopPropagation();}}
-          className="overlay-sheet page-enter"
+          className="overlay-sheet page-enter" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
           style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
           <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
             <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
-            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
+            <button aria-label="Close dialog" onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center"}}><X size={18} strokeWidth={2}/></button>
           </div>
           <div style={{padding:"16px 24px 24px"}}>{children}</div>
         </div>
@@ -129,7 +137,7 @@ export function Overlay({title,onClose,children,wide,sheet}) {
           boxSizing:"border-box",
           boxShadow:"0 -4px 32px rgba(0,0,0,.18)",
         }}
-        className="overlay-sheet overlay-sheet--drag"
+        className="overlay-sheet overlay-sheet--drag" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
       >
         {/* Drag zone — ONLY this top area drags the sheet. The body below
             scrolls normally on touch (previously the whole sheet captured
@@ -144,7 +152,7 @@ export function Overlay({title,onClose,children,wide,sheet}) {
           <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 0"}}/>
           <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 24px 8px"}}>
             <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
-            <button data-icon onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",touchAction:"manipulation"}}><X size={18} strokeWidth={2}/></button>
+            <button data-icon aria-label="Close dialog" onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",touchAction:"manipulation"}}><X size={18} strokeWidth={2}/></button>
           </div>
         </div>
         {/* Scrollable body */}
@@ -429,3 +437,4 @@ export const SwipeableRow = React.memo(function SwipeableRow({
     </div>
   );
 });
+

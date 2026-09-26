@@ -55,15 +55,19 @@ export const loadFarm = () => {
   catch (e) { console.warn("loadFarm parse failed:", e); return null; }
 };
 
+function reportSave(status) {if(typeof window!=="undefined")window.dispatchEvent(new CustomEvent('farm-save-status',{detail:status}));}
+function persistFarm(data) {const saved=kvSet(KEYS.FARM,JSON.stringify(data));reportSave(saved?'saved':'error');return saved;}
 export const saveFarm = (data) => {
+  reportSave('saving');
   _latestData = data;
   if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => kvSet(KEYS.FARM, JSON.stringify(data)), 500);
+  _saveTimer = setTimeout(() => persistFarm(data), 500);
 };
 
 export const saveFarmImmediate = (data) => {
   if (_saveTimer) clearTimeout(_saveTimer);
-  return kvSet(KEYS.FARM, JSON.stringify(data));
+  _latestData=data;
+  return persistFarm(data);
 };
 
 export const flushFarm = () => {
@@ -146,3 +150,4 @@ export const uid = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID)
     ? crypto.randomUUID()
     : Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+

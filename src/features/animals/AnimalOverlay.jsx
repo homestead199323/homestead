@@ -1,14 +1,17 @@
-import React from "react";
+import React, {useState} from "react";
 import { C, SX } from "../../lib/theme";
 import { LDB } from "../../data/livestock";
 import { BREEDS } from "../../data/breeds";
-import { Btn, Card, Overlay, Pill } from "../../components/ui";
+import { Btn, Card, Overlay, Pill, Inp, Sel } from "../../components/ui";
 import FarmIcon from "../../components/FarmIcon";
 
 /* ═══════════════════════════════════════════
    ANIMAL OVERLAY — shared popup used from Livestock, TaskQueue, Dashboard
    ═══════════════════════════════════════════ */
 function AnimalOverlay({animal, data, setData, onClose}) {
+  const [editing,setEditing]=useState(false),[draft,setDraft]=useState({name:animal.name||'',count:animal.count,zone:animal.zone||'',breed:animal.breed||''});
+  const validCount=Number.isInteger(+draft.count)&&+draft.count>0;
+  function save(){if(!validCount)return;setData({...data,livestock:{...data.livestock,animals:data.livestock.animals.map(a=>a.id===animal.id?{...a,...draft,name:draft.name.trim(),count:+draft.count}:a)}});setEditing(false);}
   const db = LDB[animal.type];
   if (!db) {
     return (
@@ -18,13 +21,15 @@ function AnimalOverlay({animal, data, setData, onClose}) {
     );
   }
   const del = id => {
-    setData({...data, livestock: {animals: data.livestock.animals.filter(a => a.id !== id)}});
+    setData({...data, livestock: {...data.livestock,animals: data.livestock.animals.filter(a => a.id !== id)}});
     onClose();
   };
   const breedInfo = animal.breed ? (BREEDS[animal.type] || []).find(b => b.name === animal.breed) : null;
 
   return (
     <Overlay title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={animal.type} emoji={db.e} size={24}/>{(animal.name || animal.type) + " Care Guide"}</span>} onClose={onClose} wide>
+      <button className="q-text-button" onClick={()=>setEditing(!editing)} aria-expanded={editing}>Edit animal details</button>
+      {editing&&<section className="q-inset"><Inp label="Name or group name" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/><Inp label="Number of animals" type="number" min="1" step="1" value={draft.count} onChange={e=>setDraft({...draft,count:e.target.value})}/><Sel label="Area" value={draft.zone} onChange={e=>setDraft({...draft,zone:e.target.value})} options={[{value:'',label:'Automatic area'},...data.zones.filter(z=>['barn','pasture','beehive'].includes(z.type)).map(z=>({value:z.id,label:z.name}))]}/><Sel label="Breed" value={draft.breed} onChange={e=>setDraft({...draft,breed:e.target.value})} options={[{value:'',label:'Not specified'},...(BREEDS[animal.type]||[]).map(b=>({value:b.name,label:b.name}))]}/>{!validCount&&<p role="alert">Enter a whole number greater than zero.</p>}<div className="q-row"><Btn onClick={save} disabled={!validCount}>Save details</Btn><Btn v="secondary" onClick={()=>setEditing(false)}>Cancel</Btn></div></section>}
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         <Pill>×{animal.count} head</Pill>
         {animal.breed && <Pill c={C.blue} bg={C.tBlue}>{animal.breed}</Pill>}
@@ -72,3 +77,4 @@ function AnimalOverlay({animal, data, setData, onClose}) {
 }
 
 export default AnimalOverlay;
+

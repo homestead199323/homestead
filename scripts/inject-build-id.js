@@ -1,7 +1,7 @@
 // Replace the __BUILD_ID__ placeholder in dist/sw.js with a unique build ID.
 // Runs after `vite build` (via package.json postbuild). Fails loudly if the
 // placeholder is missing — that means a previous step already mangled sw.js.
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 
 const SW_PATH = "dist/sw.js";
 const PLACEHOLDER = "__BUILD_ID__";
@@ -18,6 +18,8 @@ if (!src.includes(PLACEHOLDER)) {
 }
 
 const buildId = String(Date.now());
-const out = src.replaceAll(PLACEHOLDER, buildId);
+const assets = [...readdirSync("dist/assets").map(name => "/assets/" + name),...readdirSync("dist/manuals").filter(name=>name.endsWith(".webp")).map(name=>"/manuals/"+name)];
+const out = src.replaceAll(PLACEHOLDER, buildId).replace("/* __PRECACHE_ASSETS__ */", assets.map(path=>JSON.stringify(path)).join(",") + ",");
 writeFileSync(SW_PATH, out);
 console.log(`[inject-build-id] sw.js cache key = myterra-${buildId}`);
+

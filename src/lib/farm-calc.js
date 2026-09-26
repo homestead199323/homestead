@@ -61,6 +61,7 @@ export function zoneAreaM2(zone, farmW, farmH) {
 // Area consumed by a single plot in m²
 export function plotAreaM2(plot, region) {
   if (!plot || plot.status === "harvested") return 0;
+  if (plot.layout?.version===2) {const l=plot.layout,s=l.spacingCM/100;return l.pattern==='scatter'?(plot.plantCount||0)*s*s:l.lengthM*(s+(l.rowCount-1)*l.rowSpacingCM/100);}
   if (plot.measureType === "area" && plot.qty) return +plot.qty;
   if (plot.plantCount) {
     const crop = rCM(region).get(plot.crop);
@@ -88,3 +89,4 @@ export function buildZoneSpaceMap(zones, plots, farmW, farmH, region) {
   zones.forEach(function(z) { map[z.id] = zoneSpaceStats(z, plots, farmW, farmH, region); });
   return map;
 }
+

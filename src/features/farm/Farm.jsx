@@ -1,16 +1,19 @@
+import PlantingForm from '../quiet/PlantingForm';
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { C, F, SX } from "../../lib/theme";
-import { Btn, Card, Inp, Sel, Overlay, Pill, Ring, Stat } from "../../components/ui";
-import { COMP } from "../../data/companions";
+import { Btn, Card, Pill, Ring, Stat } from "../../components/ui";
+import {bedRows, growthOf} from "../quiet/farm-model";
+import PlantArt from "../quiet/PlantArt";
+import MapLines from "../quiet/MapLines";
 import { REGIONS, REGION_MAP } from "../../data/regions";
 import { ZT, ZT_MAP } from "../../data/zones";
 import { searchCity } from "../../data/cities";
 import { uid } from "../../lib/storage";
-import { appendLog, todayLocalKey, localDateFromKey, addDaysToLocalKey } from "../../lib/utils";
-import { getRegionalCrops, getRegionalVarieties, rCM, rCR } from "../../lib/regional";
-import { cropMeasureType, plantsFromArea, expectedYield, buildZoneSpaceMap } from "../../lib/farm-calc";
+import { todayLocalKey, localDateFromKey } from "../../lib/utils";
+import { getRegionalCrops, rCM } from "../../lib/regional";
 import PlotOverlay from "./PlotOverlay";
-import GroveScene, { ORNAMENT_TYPES, ornamentTypesFor, MAX_ORNAMENTS } from "../grove/GroveScene";
+import GroveScene from "../grove/GroveScene";
+import {ORNAMENT_TYPES,ornamentTypesFor,MAX_ORNAMENTS} from "../quiet/ornaments";
 import { resolveEnvironment } from "../../lib/environment";
 import { makeProjector } from "../grove/sceneMath";
 import FarmIcon from "../../components/FarmIcon";
@@ -95,7 +98,15 @@ function MeterField({label, value, min, max, onCommit}) {
   );
 }
 
-function Setup({data, setData, onPlantInZone, onBack}) {
+function Setup({data, setData:saveData, onPlantInZone, onBack}) {
+  const [history,setHistory]=useState({past:[],future:[],gesture:false});
+  const gesture=useRef(false);
+  const snapshot=d=>({zones:d.zones,garden:d.garden,livestock:d.livestock,ornaments:d.ornaments,mapLines:d.mapLines,farmW:d.farmW,farmH:d.farmH,roadsEnabled:d.roadsEnabled});
+  function setData(next){if(!gesture.current)setHistory(h=>({...h,past:[...h.past.slice(-49),snapshot(data)],future:[]}));saveData(next);}
+  function beginEdit(){gesture.current=true;setHistory(h=>({...h,past:[...h.past.slice(-49),snapshot(data)],future:[],gesture:true}));}
+  function endEdit(){gesture.current=false;setHistory(h=>({...h,gesture:false}));}
+  function travel(redo){const source=redo?history.future:history.past;if(!source.length)return;const prev=source[source.length-1];setHistory(redo?{past:[...history.past,snapshot(data)],future:history.future.slice(0,-1),gesture:false}:{past:history.past.slice(0,-1),future:[...history.future,snapshot(data)],gesture:false});saveData({...data,...prev});setFarmW(prev.farmW||100);setFarmH(prev.farmH||60);setSel(null);}
+
   const [sel, setSel] = useState(null);
   const [selOrn, setSelOrn] = useState(null);       // selected ornament id (for move/delete)
   const [armedType, setArmedType] = useState(null); // tap-to-place: id of armed palette type, or null
@@ -141,13 +152,13 @@ function Setup({data, setData, onPlantInZone, onBack}) {
   });
 
   const upZ = (id, u) => setData({...data, zones: data.zones.map(z => z.id===id ? {...z,...u} : z)});
-  const delZ = id => { setData({...data, zones: data.zones.filter(z => z.id !== id)}); setSel(null); };
+  const delZ = id => { setData({...data,zones:data.zones.filter(z=>z.id!==id),garden:{...data.garden,plots:data.garden.plots.map(p=>p.zone===id?{...p,zone:""}:p)},livestock:{...data.livestock,animals:data.livestock.animals.map(a=>a.zone===id?{...a,zone:""}:a)}});setSel(null); };
 
   /* ── Grove editor plumbing ── */
   const groveData = {...data, zones, farmW, farmH, ornaments: data.ornaments || []};
   function clampGeom(g) {
-    const wM = Math.max(3, Math.min(farmW, g.wM));
-    const hM = Math.max(3, Math.min(farmH, g.hM));
+    const wM = Math.max(.2, Math.min(farmW, g.wM));
+    const hM = Math.max(.2, Math.min(farmH, g.hM));
     const xM = Math.max(0, Math.min(farmW - wM, g.xM));
     const yM = Math.max(0, Math.min(farmH - hM, g.yM));
     return {
@@ -164,7 +175,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
     if (armedOrn || (type && ORN_IDS.has(type))) { placeOrnamentAt(xM, yM, type); return; }
     const t = type || armedType;
     if (!t || !ZT_MAP.get(t)) { setArmedType(null); return; }
-    const defaultWM = 10, defaultHM = 8;
+    const defaultWM = Math.min(farmW*.3, t==="beehive"?1:t==="house"?8:3), defaultHM = Math.min(farmH*.3,t==="beehive"?1:t==="house"?6:1.2);
     const c = clampGeom({xM: xM - defaultWM / 2, yM: yM - defaultHM / 2, wM: defaultWM, hM: defaultHM});
     const zt2 = ZT_MAP.get(t);
     const baseName = zt2 ? zt2.label : t;
@@ -291,7 +302,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
               showHelperText={false}
               showTimeTint={false}
               edit={{
-                selectedId:sel,
+                selectedId:sel, onBeginEdit:beginEdit, onEndEdit:endEdit,
                 onSelect:function(id){ setSel(id); if(id) setSelOrn(null); },
                 onZoneGeom:handleZoneGeom,
                 onPlaceAt:handlePlaceAt,
@@ -422,8 +433,9 @@ function Setup({data, setData, onPlantInZone, onBack}) {
 
       {/* ── Bottom dock: build tray / zone panel / ornament panel ── */}
       <div style={{flex:"0 0 auto", background:C.card, borderTop:`1px solid ${C.bdr}`,
-        padding:"10px 14px calc(10px + env(safe-area-inset-bottom))"}}>
+        maxHeight:"43dvh",overflowY:"auto",padding:"10px 14px calc(10px + env(safe-area-inset-bottom))"}}>
         <div style={{maxWidth:720, margin:"0 auto"}}>
+          <div className="q-row" style={{marginBottom:10}}><button className="q-secondary" disabled={!history.past.length} onClick={()=>travel(false)}>Undo</button><button className="q-secondary" disabled={!history.future.length} onClick={()=>travel(true)}>Redo</button><small style={{color:C.t2}}>Top view · edits save automatically</small></div>
 
           {sz && (
             <div className="fd-panel" data-fd-zone-panel>
@@ -439,9 +451,15 @@ function Setup({data, setData, onPlantInZone, onBack}) {
               <div style={{display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:8, marginBottom:10}}>
                 <MeterField label="X (m)" value={sz.xM} min={0} max={farmW} onCommit={function(n) { commitGeom("xM", n); }}/>
                 <MeterField label="Y (m)" value={sz.yM} min={0} max={farmH} onCommit={function(n) { commitGeom("yM", n); }}/>
-                <MeterField label="Width" value={sz.wM} min={3} max={farmW} onCommit={function(n) { commitGeom("wM", n); }}/>
-                <MeterField label="Height" value={sz.hM} min={3} max={farmH} onCommit={function(n) { commitGeom("hM", n); }}/>
+                <MeterField label="Width" value={sz.wM} min={.2} max={farmW} onCommit={function(n) { commitGeom("wM", n); }}/>
+                <MeterField label="Height" value={sz.hM} min={.2} max={farmH} onCommit={function(n) { commitGeom("hM", n); }}/>
               </div>
+              <details className="q-inset"><summary>Rows & appearance</summary><div className="q-grid2">
+                {isPlantZone&&<label>Number of rows<input type="number" min="1" max="100" value={sz.rowCount||bedRows(sz)} onChange={e=>{const n=+e.target.value;if(Number.isInteger(n)&&n>=1&&n<=100)upZ(sz.id,{rowCount:n});}}/></label>}
+                <label>Material<select value={sz.material||"wood"} onChange={e=>upZ(sz.id,{material:e.target.value})}><option value="wood">Natural wood</option><option value="stone">Pale stone</option><option value="metal">Soft metal</option></select></label>
+                <label>Colour<select value={sz.color||"sage"} onChange={e=>upZ(sz.id,{color:e.target.value})}><option value="sage">Sage</option><option value="clay">Clay</option></select></label>
+                {["water","pasture","compost"].includes(sz.type)&&<label>Shape<select value={sz.shape||"rectangle"} onChange={e=>upZ(sz.id,{shape:e.target.value})}><option value="rectangle">Rectangle</option><option value="oval">Oval</option></select></label>}
+              </div><div className="q-row q-wrap"><button className="q-secondary" disabled={sz.hM>farmW||sz.wM>farmH} title={sz.hM>farmW||sz.wM>farmH?"The rotated area would not fit within your farm dimensions":undefined} onClick={()=>{const c=clampGeom({...sz,wM:sz.hM,hM:sz.wM});upZ(sz.id,{...c,rowAxis:sz.rowAxis==='vertical'?'horizontal':'vertical'});}}>Rotate 90°</button><button className="q-secondary" onClick={()=>{const z={...sz,id:uid(),name:sz.name+' copy',...clampGeom({...sz,xM:sz.xM+.5,yM:sz.yM+.5})};setData({...data,zones:[...data.zones,z]});setSel(z.id);}}>Duplicate area</button></div><small>Duplicating copies the area and its appearance. Plantings and animals stay in their original area.</small></details>
               <div style={{display:"flex", alignItems:"center", gap:10, flexWrap:"wrap"}}>
                 <select value={sz.type} aria-label="Zone type"
                   onChange={function(e) { upZ(sz.id, {type: e.target.value}); }}
@@ -560,12 +578,19 @@ function Setup({data, setData, onPlantInZone, onBack}) {
               <div style={{fontSize:11, fontWeight:700, color:C.t2, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:6}}>{sizeLabel}</div>
               <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto", gap:10, alignItems:"end", marginBottom:4}}>
                 <MeterField label="Width (m)" value={farmW} min={sizeMin} max={2000}
-                  onCommit={function(n) { const v = Math.round(n); setFarmW(v); setData({...data, farmW: v}); }}/>
+                  onCommit={function(n) { const v = n; setFarmW(v); setData({...data, farmW: v,zones:zones.map(z=>({...z,wM:Math.min(z.wM,v),xM:Math.max(0,Math.min(z.xM,v-z.wM))}))}); }}/>
                 <MeterField label="Height (m)" value={farmH} min={sizeMin} max={2000}
-                  onCommit={function(n) { const v = Math.round(n); setFarmH(v); setData({...data, farmH: v}); }}/>
+                  onCommit={function(n) { const v = n; setFarmH(v); setData({...data, farmH: v,zones:zones.map(z=>({...z,hM:Math.min(z.hM,v),yM:Math.max(0,Math.min(z.yM,v-z.hM))}))}); }}/>
                 <div style={{fontSize:11, color:C.t3, fontFamily:F.mono, paddingBottom:10, whiteSpace:"nowrap"}}>{(farmW*farmH).toLocaleString()} m²</div>
               </div>
-              <div style={{fontSize:11, color:C.t3, marginBottom:16}}>Zones outside the new bounds snap back in when you next move them.</div>
+              <div style={{fontSize:11, color:C.t3, marginBottom:16}}>Areas are kept inside the space when its size changes. Recheck planting rows after shrinking an area.</div>
+
+              <section className="q-inset"><h3>Ground & paths</h3><div className="q-grid2">{[
+                ['groundMaterial','Ground material',[['meadow','Grass'],['soil','Soil'],['gravel','Gravel'],['stone','Stone']]],
+                ['groundColor','Ground color',[['natural','Natural'],['dry','Warm / dry'],['deep','Deep green']]],
+                ['pathMaterial','Path material',[['gravel','Gravel'],['stone','Stone'],['earth','Earth']]],
+                ['pathColor','Path color',[['light','Light'],['warm','Warm sand'],['dark','Slate']]],
+              ].map(([key,label,options])=><label key={key}>{label}<select value={data.mapStyle?.[key]||options[0][0]} onChange={e=>setData({...data,mapStyle:{...data.mapStyle,[key]:e.target.value}})}>{options.map(([value,text])=><option key={value} value={value}>{text}</option>)}</select></label>)}</div></section>
 
               <div style={{fontSize:11, fontWeight:700, color:C.t2, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:6}}>Climate region</div>
               <div style={{display:"flex", gap:8, alignItems:"center", marginBottom:10}}>
@@ -625,6 +650,7 @@ function Setup({data, setData, onPlantInZone, onBack}) {
               </div>
               {curRegion && <div style={{fontSize:11,color:C.t2,fontStyle:"italic", marginBottom:16}}>{regionCropCount} crops available for {curRegion.name} climate</div>}
 
+              <MapLines data={data} setData={setData}/>
               {data.zones.length === 0 && (
                 <div>
                   <div style={{fontSize:11, fontWeight:700, color:C.t2, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:6}}>Templates</div>
@@ -660,80 +686,19 @@ function Setup({data, setData, onPlantInZone, onBack}) {
 function Farming({data, setData, pageData, clearPageData}) {
   const [showAdd,setShowAdd]=useState(false);
   const [selP,setSelP]=useState(null);
-  const [form,setForm]=useState({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});
-  const [cropSearch,setCropSearch]=useState("");
-  const [cropDropdownOpen,setCropDropdownOpen]=useState(false);
-
-  // Auto-open add form when arriving from Seasonal Calendar with a specific crop
-  useEffect(() => {
-    if (pageData?.crop || pageData?.zone) {
-      setForm(f => ({...f,
-        ...(pageData.crop ? {crop: pageData.crop} : {}),
-        ...(pageData.plantDate ? {plantDate: pageData.plantDate} : {}),
-        ...(pageData.zone ? {zone: pageData.zone} : {}),
-      }));
-      setShowAdd(true);
-      if (clearPageData) clearPageData();
-    }
-  }, [pageData, clearPageData]);
-  const ci=rCM(data.region).get(form.crop);
-  const vi=ci && form.variety ? getRegionalVarieties(ci.name, data.region).find(v=>v.name===form.variety) : null;
-  const effectiveDays = vi?.days || ci?.days || 0;
-  const autoMeasure = ci ? cropMeasureType(ci.name, data.region) : "plants";
-  const activeMeasure = form.measureType || autoMeasure;
-  const plantsCalc = activeMeasure==="area" ? plantsFromArea(ci?.name, +form.qty||0, data.region) : null;
-  const yieldCalc = ci && form.qty ? expectedYield(ci.name, +form.qty||0, activeMeasure, vi?.yld, data.region) : null;
-  const autoH=()=>form.plantDate&&ci?addDaysToLocalKey(form.plantDate, effectiveDays):"";
-  const vegZ=data.zones.filter(z=>["veg","orchard","herbs","greenhouse","raised","container"].includes(z.type));
-  const zoneSpace = useMemo(() => buildZoneSpaceMap(data.zones, data.garden.plots, data.farmW||100, data.farmH||60, data.region), [data.zones, data.garden.plots, data.farmW, data.farmH, data.region]);
-
-  const add=()=>{
-    if(!form.crop)return;
-    const c=rCM(data.region).get(form.crop);
-    const v=form.variety?getRegionalVarieties(form.crop, data.region).find(vr=>vr.name===form.variety):null;
-    const displayName=form.name||(form.variety?`${form.crop} (${form.variety})`:form.crop);
-    const _measure = form.measureType || (c ? cropMeasureType(c.name, data.region) : "plants");
-    const _qty = (form.qty && +form.qty > 0) ? +form.qty : null;
-    const _plants = _qty ? (_measure==="area" ? plantsFromArea(form.crop,_qty,data.region) : _qty) : null;
-    const _yieldKg = _qty ? expectedYield(form.crop, _qty, _measure, v?.yld, data.region) : null;
-    const p={id:uid(),crop:form.crop,variety:form.variety||"",name:displayName,plantDate:form.plantDate,harvestDate:autoH(),status:form.plantDate?"planted":"planned",zone:form.zone,varietyNote:v?.note||"",steps:c?c.steps.map(s=>({...s,done:false})):[],qty:_qty,measureType:_measure,plantCount:_plants,expectedYieldKg:_yieldKg};
-    const nd={...data,garden:{plots:[...data.garden.plots,p]},log:appendLog(data.log,{text:`🌱 Planted ${displayName}${_plants?` (${_plants} plants)`:""}`})};
-    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`Seeds: ${displayName}`,date:todayLocalKey(),cat:"Seeds"}]};
-    setData(nd);setForm({crop:"",variety:"",name:"",zone:"",plantDate:"",cost:"",qty:"",measureType:""});setCropSearch("");setCropDropdownOpen(false);setShowAdd(false);
-  };
-  // tog/del/harv moved into PlotOverlay component — no longer needed here
+  const [initial,setInitial]=useState({});
+  useEffect(()=>{if(pageData?.crop||pageData?.zone){setInitial(pageData);setShowAdd(true);clearPageData?.();}},[pageData,clearPageData]);
   const sp=data.garden.plots.find(p=>p.id===selP);
-
   // Pre-computed values to avoid IIFEs in JSX (IIFEs crash the app)
   const _active=data.garden.plots.filter(function(p){return p.status!=="harvested";});
   const _totalPlants=_active.reduce(function(s,p){return s+(p.plantCount||0);},0);
   const _totalArea=_active.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
   const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
   const _ready=_active.filter(function(p){return p.harvestDate&&localDateFromKey(p.harvestDate)<=localDateFromKey(todayLocalKey());}).length;
-  // Plot overlay now computes its own zone / companion / card state — removed unused locals
-  const _formZoneObj=form.zone?vegZ.find(function(z){return z.id===form.zone;}):null;
-  const _formZoneStats=form.zone?zoneSpace[form.zone]:null;
-  const _formZoneFill=_formZoneStats?(_formZoneStats.pct>=0.95?C.red:_formZoneStats.pct>=0.7?C.orange:C.green):C.green;
-
-  // Crop picker: filter by search + group by type (Veggies/Fruits/Herbs/Grains)
-  const _cropSearchQ = cropSearch.trim().toLowerCase();
-  const _cropsForPicker = rCR(data.region).filter(function(c){
-    if (!_cropSearchQ) return true;
-    const n = c.name.toLowerCase();
-    return n.startsWith(_cropSearchQ) || n.includes(_cropSearchQ);
-  });
-  const _cropGroupsForPicker = [
-    {label:"🥬 Veggies",  crops: _cropsForPicker.filter(function(c){return c.cat === "Vegetable";})},
-    {label:"🍎 Fruits",   crops: _cropsForPicker.filter(function(c){return c.cat === "Fruit" || c.cat === "Fruit Tree" || c.cat === "Nut Tree";})},
-    {label:"🌿 Herbs",    crops: _cropsForPicker.filter(function(c){return c.cat === "Herb";})},
-    {label:"🌾 Grains",   crops: _cropsForPicker.filter(function(c){return c.cat === "Grain";})}
-  ];
-  const _cropPickerHasResults = _cropGroupsForPicker.some(function(g){return g.crops.length > 0;});
-
   return (
     <div className="page-enter" style={SX.mw800}>
       <div style={SX.pageHead}>
-        <div><h2 style={SX.headerH2}>🌱 Farming</h2><p style={SX.pageSubHead}>Track your crops from seed to harvest</p></div>
+        <div><h2 style={SX.headerH2}>Your crops</h2><p style={SX.pageSubHead}>Track your crops from seed to harvest</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
@@ -747,9 +712,8 @@ function Farming({data, setData, pageData, clearPageData}) {
         <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
       <div style={{display:"grid",gap:8}}>{data.garden.plots.filter(p=>p.status!=="harvested").map(p=>{
         const c=rCM(data.region).get(p.crop);
-        const done=p.steps?p.steps.filter(s=>s.done).length:0;
-        const total=p.steps?p.steps.length:0;
-        const pct=total>0?done/total:0;
+        const growth=growthOf(p,c,todayLocalKey());
+        const pct=growth.progress;
         const todayDate = localDateFromKey(todayLocalKey());
         const harvestDate = localDateFromKey(p.harvestDate);
         const isR=p.harvestDate&&harvestDate<=todayDate;
@@ -760,7 +724,7 @@ function Farming({data, setData, pageData, clearPageData}) {
           <div key={p.id}>
           <Card onClick={()=>setSelP(p.id)} style={isR?{boxShadow:`0 0 0 2px ${C.orange}`}:{}}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
-              <Ring pct={pct} color={isR?C.orange:C.green}>{c?.emoji||"🌱"}</Ring>
+              <Ring pct={pct} size={60} color={isR?C.orange:C.green}><PlantArt crop={p.crop} stage={growth.index} size={48}/></Ring>
               <div style={SX.flex1}>
                 <div style={{fontSize:15,fontWeight:600}}>{p.name||p.crop}</div>
                 <div style={{fontSize:12,color:C.t2,marginTop:2,display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -772,8 +736,8 @@ function Farming({data, setData, pageData, clearPageData}) {
                 </div>
               </div>
               <div style={{display:"flex",gap:4,flexDirection:"column",alignItems:"flex-end"}}>
-                {isR&&<Pill c={C.orange} bg={C.harvestBg}>🧺 Ready</Pill>}
-                {dL>0&&<Pill>{dL}d</Pill>}
+                {isR&&<Pill c={C.orange} bg={C.harvestBg}>Harvest window</Pill>}
+                {dL>0&&<Pill>~{dL}d</Pill>}<small style={{fontSize:11,color:C.t2}}>{growth.label}</small>
               </div>
             </div>
           </Card>
@@ -783,125 +747,7 @@ function Farming({data, setData, pageData, clearPageData}) {
 
       {sp && <PlotOverlay plot={sp} data={data} setData={setData} onClose={()=>setSelP(null)}/>}
 
-      {showAdd&&(
-        <Overlay title="🌱 Plant a Crop" onClose={()=>{setShowAdd(false);setCropSearch("");setCropDropdownOpen(false);}}>
-          <div style={SX.mb12}>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,fontFamily:F.body}}>Crop</label>
-            <div style={{position:"relative"}}>
-              <input
-                type="text"
-                placeholder={form.crop ? "" : "Type a letter (e.g. T) or tap to browse…"}
-                value={cropDropdownOpen ? cropSearch : (form.crop ? ((rCM(data.region).get(form.crop)?.emoji||"🌱")+" "+form.crop) : "")}
-                onFocus={function(){setCropDropdownOpen(true);setCropSearch("");}}
-                onChange={function(e){setCropSearch(e.target.value);setCropDropdownOpen(true);}}
-                onBlur={function(){setTimeout(function(){setCropDropdownOpen(false);},150);}}
-                style={{width:"100%",padding:"10px 14px",paddingRight:36,border:`1.5px solid ${cropDropdownOpen?C.green:C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}
-              />
-              <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:12,color:C.t2}}>{cropDropdownOpen?"▲":"▼"}</div>
-              {cropDropdownOpen && (
-                <div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:C.card,border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",maxHeight:320,overflowY:"auto",zIndex:10}}>
-                  {!_cropPickerHasResults && (
-                    <div style={{padding:"14px 16px",fontSize:13,color:C.t2,textAlign:"center"}}>No crops match "{cropSearch}"</div>
-                  )}
-                  {_cropGroupsForPicker.map(function(g){
-                    if (g.crops.length === 0) return null;
-                    return (
-                      <div key={g.label}>
-                        <div style={{padding:"6px 12px",fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",background:C.bg,position:"sticky",top:0,letterSpacing:"0.03em"}}>{g.label}</div>
-                        {g.crops.map(function(c){
-                          const isSel = c.name === form.crop;
-                          return (
-                            <div
-                              key={c.name}
-                              onMouseDown={function(e){e.preventDefault();setForm({...form,crop:c.name,variety:""});setCropSearch("");setCropDropdownOpen(false);}}
-                              style={{padding:"9px 14px",fontSize:14,cursor:"pointer",background:isSel?C.soft:"transparent",color:C.text,borderBottom:`1px solid ${C.bdr}`}}
-                              onMouseEnter={function(e){e.currentTarget.style.background=C.soft;}}
-                              onMouseLeave={function(e){e.currentTarget.style.background=isSel?C.soft:"transparent";}}
-                            >
-                              <FarmIcon name={c.name} emoji={c.emoji} size={17}/> {c.name}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-          {ci && getRegionalVarieties(ci.name, data.region).length > 0 && (
-            <Sel label="Variety / Breed" value={form.variety} onChange={e=>setForm({...form,variety:e.target.value})} options={[{value:"",label:"— Any / General —"},...getRegionalVarieties(ci.name, data.region).map(v=>({value:v.name,label:`${v.name} — ${v.note.slice(0,50)}`}))]}/>
-          )}
-          {vi && <Card style={{marginBottom:10,background:C.soft,padding:12}}><div style={SX.lblGreen}>🧬 {vi.name}</div><div style={{fontSize:12,marginTop:4}}>{vi.note}</div>{vi.days!==ci.days&&<div style={{fontSize:11,color:C.gl,marginTop:2}}>Adjusted harvest: ~{vi.days} days (vs {ci.days} general)</div>}</Card>}
-          {ci&&<Card style={{marginBottom:14,background:C.gp}}><div style={SX.s13}>Harvest ~<strong>{effectiveDays}d</strong> · {ci.waterFreq} · {ci.sun} · {ci.spacing}cm</div>{COMP[ci.name]&&<div style={{fontSize:12,color:C.gl,marginTop:4}}>✓ Good with: {COMP[ci.name].good.join(", ")}{COMP[ci.name].bad.length>0?` · ✕ Bad: ${COMP[ci.name].bad.join(", ")}`:""}</div>}</Card>}
-          {vegZ.length>0&&(
-            <div style={SX.mb12}>
-              <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>Zone</label>
-              <select value={form.zone} onChange={e=>setForm({...form,zone:e.target.value})}
-                style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,background:C.card,fontSize:16,fontFamily:F.body,color:C.text,outline:"none",boxSizing:"border-box"}}>
-                <option value="">Select zone...</option>
-                {vegZ.map(z=>{
-                  const sp=zoneSpace[z.id]||{totalM2:0,freeM2:0,pct:0};
-                  const label = sp.totalM2 > 0
-                    ? (sp.pct>=0.95 ? `📍 ${z.name} — FULL`
-                    : `📍 ${z.name} — ${sp.freeM2}m² free of ${sp.totalM2.toFixed(0)}m²`)
-                    : `📍 ${z.name}`;
-                  return <option key={z.id} value={z.id}>{label}</option>;
-                })}
-              </select>
-              {form.zone && _formZoneObj && _formZoneStats && _formZoneStats.totalM2 > 0 && (
-                <div style={{marginTop:6}}>
-                  <div style={{height:4,borderRadius:2,background:C.bdr,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${Math.min(100,_formZoneStats.pct*100).toFixed(0)}%`,background:_formZoneFill,borderRadius:2}}/>
-                  </div>
-                  <div style={{fontSize:11,color:_formZoneFill,marginTop:3,fontWeight:600}}>
-                    {_formZoneStats.pct>=0.95?"⚠ Zone full — consider another zone or expand this zone"
-                      :`${_formZoneStats.freeM2}m² available in this zone`}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Quantity section — smart defaults based on crop type */}
-          {ci && (
-            <div style={{background:C.bg,borderRadius:C.rs,padding:"12px 14px",marginBottom:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:8}}>HOW MUCH ARE YOU PLANTING?</div>
-              <div style={{display:"flex",gap:6,marginBottom:10}}>
-                {["plants","area"].map(m=>(
-                  <button key={m} onClick={()=>setForm({...form,measureType:m,qty:""})}
-                    style={{padding:"5px 14px",borderRadius:16,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",
-                      background:activeMeasure===m?C.green:C.card,color:activeMeasure===m?"#fff":C.t2}}>
-                    {m==="plants"?"🌱 By plant count":"📐 By area (m²)"}
-                  </button>
-                ))}
-              </div>
-              <div style={SX.grid2}>
-                <div>
-                  <label style={{display:"block",fontSize:12,fontWeight:600,color:C.t2,marginBottom:5}}>
-                    {activeMeasure==="area"?"Area (m²)":"Number of plants"}
-                  </label>
-                  <input type="number" min="0" step={activeMeasure==="area"?"0.5":"1"} value={form.qty}
-                    onChange={e=>setForm({...form,qty:e.target.value})}
-                    placeholder={activeMeasure==="area"?"e.g. 4":"e.g. 6"}
-                    style={{width:"100%",padding:"10px 14px",border:`1.5px solid ${C.bdr}`,borderRadius:C.rs,fontSize:14,fontFamily:F.body,boxSizing:"border-box"}}/>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",justifyContent:"flex-end",paddingBottom:2}}>
-                  {plantsCalc!=null&&<div style={{fontSize:12,color:C.green,fontWeight:600}}>🌱 ~{plantsCalc} plants</div>}
-                  {yieldCalc!=null&&<div style={{fontSize:12,color:C.orange,fontWeight:600}}>📦 ~{yieldCalc}kg yield</div>}
-                  {ci.spacing&&<div style={SX.t2_11}>Spacing: {ci.spacing}cm</div>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <Inp label="Name (optional)" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
-          <Inp label="Plant Date" type="date" value={form.plantDate} max={todayLocalKey()} onChange={e=>setForm({...form,plantDate:e.target.value})}/>
-          {form.plantDate&&ci&&<div style={{fontSize:12,color:C.green,marginBottom:10}}>🧺 Harvest: {autoH()}</div>}
-          <Inp label="Seed Cost (€)" type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
-          <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>{setShowAdd(false);setCropSearch("");setCropDropdownOpen(false);}}>Cancel</Btn><Btn onClick={add} dis={!form.crop}>Plant</Btn></div>
-        </Overlay>
-      )}
+      {showAdd&&<PlantingForm data={data} setData={setData} initial={initial} onClose={()=>{setShowAdd(false);setInitial({});}}/>}
     </div>
   );
 }
@@ -949,4 +795,5 @@ function CropsScreen(props) {
 
 export { MapScreen, CropsScreen, Setup };
 export default MapScreen;
+
 

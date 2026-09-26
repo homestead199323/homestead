@@ -63,7 +63,7 @@ export default function Financials({data, setData}) {
   return (
     <div className="page-enter" style={SX.mw800}>
       <div style={SX.pageHead}>
-        <div><h2 style={SX.headerH2}>💰 Financials</h2><p style={SX.pageSubHead}>Income, expenses, and profitability</p></div>
+        <div><h2 style={SX.headerH2}>Financials</h2><p style={SX.pageSubHead}>Income, expenses, and profitability</p></div>
         <Btn onClick={()=>setShowAdd(true)}>+ Add Entry</Btn>
       </div>
       {/* 6.6.1 — empty state replaces the body when there are zero entries */}
@@ -167,3 +167,4 @@ export default function Financials({data, setData}) {
     </div>
   );
 }
+

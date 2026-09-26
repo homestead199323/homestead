@@ -18,10 +18,11 @@ export function buildTaskQueue(data) {
     const dSince = daysBetweenLocalKeys(p.plantDate, now);
     const zone = zoneById.get(p.zone);
     const loc = zone ? zone.name : "Farm";
-    const dLeft = crop.days - dSince;
+    const days = p.harvestDate ? daysBetweenLocalKeys(p.plantDate, p.harvestDate) : crop.days;
+    const dLeft = days - dSince;
 
     // Harvest ready
-    if (dSince >= crop.days) {
+    if (dSince >= days) {
       tasks.push({ key: `plot-${p.id}-harvest`, pri: 0, type: "harvest", emoji: crop.emoji, cropName: p.crop, title: `Harvest ${p.name || p.crop}`, desc: `Ready! Est. yield available.`, loc, plotId: p.id, daysOut: 0 });
     }
 
@@ -46,7 +47,7 @@ export function buildTaskQueue(data) {
 
     // Harvest forecast (upcoming) — info-only, no Done button
     if (dLeft > 0 && dLeft <= 14) {
-      const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
+      const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, days));
       const estYld = p.expectedYieldKg || crop.yld || 3;
       tasks.push({ key: `plot-${p.id}-forecast`, pri: 4, type: "forecast", emoji: "📅", title: `${p.name || p.crop} harvest in ${dLeft}d`, desc: `Expected: ${hDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}. ~${estYld}kg yield.`, loc, plotId: p.id, daysOut: dLeft });
     }
@@ -140,3 +141,4 @@ export function buildTaskQueue(data) {
   filtered.sort((a, b) => a.pri - b.pri || a.daysOut - b.daysOut);
   return filtered;
 }
+

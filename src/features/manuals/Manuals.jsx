@@ -473,16 +473,17 @@ export function SeasonalCalendar({data, setPage, embedded}) {
 
 function Blueprint({type}) {
   const src = BLUEPRINT_IMAGES[type];
+  const [failed,setFailed]=useState(null);
   if (!src) return null;
   return (
     <div style={{background:C.card,border:`1px solid ${C.bdr}`,borderRadius:C.rs,padding:"12px",marginBottom:12}}>
       <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>📐 Step-by-Step Blueprint</div>
-      <img
-        src={src}
-        alt={`${type} build manual`}
+      {failed===src?<p role="status">The illustration could not load. The written instructions and materials below are still available. <button onClick={()=>setFailed(null)}>Retry illustration</button></p>:<a href={src} target="_blank" rel="noreferrer" aria-label="Open full-size blueprint"><img
+        onError={()=>setFailed(src)} src={src}
+        alt={`${type.replaceAll('_',' ')} build manual`}
         loading="lazy"
         style={{width:"100%",height:"auto",display:"block",borderRadius:C.rs}}
-      />
+      /></a>}
     </div>
   );
 }
@@ -605,3 +606,4 @@ function Projects({embedded}) {
 }
 
 export default Manuals;
+

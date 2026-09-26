@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module">
+// Isolated QA origin: never seeds the user's development or production preview.
+if(location.port!=='5174')throw new Error('Use the isolated QA server on port 5174.');
+import {fixture} from './fixture.js';
+const data={...fixture,farmW:40,farmH:35,profile:{...fixture.profile,environment:'farm'},zones:[
+{id:'home',type:'house',name:'Home',xM:2,yM:2,wM:8,hM:7},
+{id:'coop',type:'barn',name:'Ten metre barn',xM:14,yM:2,wM:10,hM:10},
+{id:'orchard',type:'orchard',name:'Orchard',xM:27,yM:2,wM:11,hM:14},
+{id:'bed1',type:'veg',name:'Kitchen bed',xM:2,yM:13,wM:10,hM:9,rowCount:15},
+{id:'bed2',type:'veg',name:'Empty bed',xM:15,yM:16,wM:4,hM:3,rowCount:6},
+{id:'glass',type:'greenhouse',name:'Greenhouse',xM:15,yM:23,wM:4,hM:7,rowCount:10},
+{id:'hive',type:'beehive',name:'Beehive',xM:28,yM:25,wM:2,hM:2}],garden:{plots:[]}};
+if(!localStorage.getItem('qa_september_24')){localStorage.setItem('hfm_data_v7',JSON.stringify(data));localStorage.setItem('hfm_page','home');localStorage.setItem('qa_september_24','1');}
+await import('/src/main.jsx');
+</script></body></html>

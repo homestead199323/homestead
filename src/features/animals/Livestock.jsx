@@ -6,7 +6,7 @@ import { LDB } from "../../data/livestock";
 import { BREEDS } from "../../data/breeds";
 import { Btn, Card, Inp, Sel, Overlay, Stat } from "../../components/ui";
 import AnimalOverlay from "./AnimalOverlay";
-import FarmIcon from "../../components/FarmIcon";
+import AnimalArt from "../quiet/AnimalArt";
 
 /* ═══════════════════════════════════════════
    LIVESTOCK
@@ -15,15 +15,16 @@ function Livestock({data, setData}) {
   const [showAdd,setShowAdd]=useState(false);const [sel,setSel]=useState(null);const [showK,setShowK]=useState(null);const [kQ,setKQ]=useState("1");
   const [showCollect,setShowCollect]=useState(null); // {animal, produce}
   const [collectQty,setCollectQty]=useState("");
-  const [form,setForm]=useState({name:"",type:"Chicken",breed:"",count:"1",cost:""});
+  const [form,setForm]=useState({name:"",type:"Chicken",breed:"",count:"1",cost:"",zone:""});
 
   const breedOptions = BREEDS[form.type] || [];
   const selectedBreed = breedOptions.find(b => b.name === form.breed);
 
   const add=()=>{
-    const nd={...data,livestock:{animals:[...data.livestock.animals,{...form,id:uid(),count:+form.count||1}]},log:appendLog(data.log,{text:`🐄 Added ${form.count} ${form.type}${form.breed?` (${form.breed})`:""}`})};
+    if(!Number.isInteger(+form.count)||+form.count<1)return;
+    const nd={...data,livestock:{...data.livestock,animals:[...data.livestock.animals,{...form,id:uid(),count:+form.count||1}]},log:appendLog(data.log,{text:`🐄 Added ${form.count} ${form.type}${form.breed?` (${form.breed})`:""}`})};
     if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:todayLocalKey(),cat:"Animals"}]};
-    setData(nd);setForm({name:"",type:"Chicken",breed:"",count:"1",cost:""});setShowAdd(false);
+    setData(nd);setForm({name:"",type:"Chicken",breed:"",count:"1",cost:"",zone:""});setShowAdd(false);
   };
   // del moved into AnimalOverlay component — no longer needed here
 
@@ -38,19 +39,20 @@ function Livestock({data, setData}) {
     setShowCollect(null);setCollectQty("");
   };
 
-  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...data,livestock:{animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:{items:[...data.pantry.items,{id:uid(),name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",addedDate:todayLocalKey(),storageNote:mp.s}]},log:appendLog(data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`})});setShowK(null);};
+  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(!Number.isInteger(q)||q<1||q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...data,livestock:{...data.livestock,animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:{items:[...data.pantry.items,{id:uid(),name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",addedDate:todayLocalKey(),storageNote:mp.s}]},log:appendLog(data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`})});setShowK(null);};
   const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;
 
   return (
     <div className="page-enter" style={SX.mw800}>
-      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>🐄 Animals</h2><p style={SX.pageSubHead}>Manage your animals, collect produce, track care</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
+      <div style={SX.pageHead}><div><h2 style={SX.headerH2}>Your animals</h2><p style={SX.pageSubHead}>Manage your animals, collect produce, track care</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add</Btn></div>
       <Stat label="Total" value={data.livestock.animals.reduce((s,a)=>s+a.count,0)}/>
       <div style={{marginTop:16,display:"grid",gap:8}}>{data.livestock.animals.length===0?<Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🐄</div><div style={SX.s15Bold}>No animals yet</div><div style={{color:C.t2,marginTop:6,fontSize:12.5}}>Add chickens, goats, or any livestock to track them</div></Card>:data.livestock.animals.map(a=>{const db=LDB[a.type];return (
         <Card key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setSel(a.id)}>
-            <FarmIcon name={a.type} emoji={db?.e} size={28}/><div><strong style={{fontSize:15}}>{a.name||a.type}</strong>{a.breed?<span style={SX.t2_12}> ({a.breed})</span>:null}<div style={SX.t2_12}>×{a.count} · Tap for guide</div></div>
-          </div>
+          <button className="q-animal-open" onClick={()=>setSel(a.id)}>
+            <AnimalArt species={a.type} size={72}/><div><strong style={{fontSize:15}}>{a.name||a.type}</strong>{a.breed?<span style={SX.t2_12}> ({a.breed})</span>:null}<div style={SX.t2_12}>×{a.count} · Guide & details</div></div>
+          </button>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <select aria-label={`Area for ${a.name||a.type}`} value={a.zone||""} onChange={e=>setData({...data,livestock:{...data.livestock,animals:data.livestock.animals.map(x=>x.id===a.id?{...x,zone:e.target.value}:x)}})}><option value="">Automatic area</option>{data.zones.filter(z=>['pasture','barn','beehive'].includes(z.type)).map(z=><option key={z.id} value={z.id}>{z.name}</option>)}</select>
             {db?.prod.includes("Eggs")&&<Btn sm v="secondary" onClick={()=>{setShowCollect({animal:a,produce:"Eggs"});setCollectQty(String(Math.round(a.count*0.7)))}}>🥚 Collect Eggs</Btn>}
             {db?.prod.includes("Milk")&&<Btn sm v="secondary" onClick={()=>{setShowCollect({animal:a,produce:"Milk"});setCollectQty(String(Math.round(a.count*2.5*10)/10))}}>🥛 Milk</Btn>}
             {db?.prod.includes("Honey")&&<Btn sm v="secondary" onClick={()=>{setShowCollect({animal:a,produce:"Honey"});setCollectQty(String(Math.round(a.count*0.5*10)/10))}}>🍯 Honey</Btn>}
@@ -91,15 +93,17 @@ function Livestock({data, setData}) {
           <Sel label="Breed" value={form.breed} onChange={e=>setForm({...form,breed:e.target.value})} options={[{value:"",label:"— Select breed —"},...breedOptions.map(b=>({value:b.name,label:b.name}))]}/>
         )}
         {selectedBreed && <Card style={{marginBottom:12,background:C.tGreen,padding:12}}><div style={SX.lblGreen}>🧬 {selectedBreed.name}</div><div style={{fontSize:12,marginTop:4}}>{selectedBreed.note}</div></Card>}
+        <Sel label="Area" value={form.zone||""} onChange={e=>setForm({...form,zone:e.target.value})} options={[{value:"",label:"Automatic area"},...data.zones.filter(z=>["barn","pasture","beehive"].includes(z.type)).map(z=>({value:z.id,label:z.name}))]}/>
         <Inp label="Name / Label" placeholder="e.g. Layer Flock A" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
         <div style={SX.grid2}>
           <Inp label="Count" type="number" min="1" value={form.count} onChange={e=>setForm({...form,count:e.target.value})}/>
           <Inp label="Cost (€)" type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
         </div>
-        <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
+        <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add} disabled={!Number.isInteger(+form.count)||+form.count<1}>Add</Btn></div>
       </Overlay>}
     </div>
   );
 }
 
 export default Livestock;
+
