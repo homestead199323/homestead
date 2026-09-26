@@ -35,9 +35,12 @@ const GROUPS = [
   { test: SMALL, label: "small-seeded", sow: [2.5, 4], pot: [4, 6.5], sowDefault: 104, potDefault: 40 },
   { test: /./, label: "leafy and brassica", sow: [3.5, 5.5], pot: [5, 8], sowDefault: 77, potDefault: 40 },
 ];
-function best(range, fallback, cells) {
-  const fits = TRAYS.filter((t) => t.cellCM >= range[0] && t.cellCM <= range[1]);
-  if (!cells || !fits.length) return fallback;
+function best(range, fallback, cells, minCell = 0) {
+  let fits = TRAYS.filter((t) => t.cellCM >= range[0] && t.cellCM <= range[1] && t.cellCM > minCell);
+  // Nothing in range is bigger than the sowing cells: take the next sizes up.
+  if (!fits.length) fits = TRAYS.filter((t) => t.cellCM > minCell).slice(-2);
+  if (!fits.length) return fallback;
+  if (!cells) return fits.some((t) => t.cells === fallback) ? fallback : fits[fits.length - 1].cells;
   // Fewest trays first, then fewest empty cells, then the crop's usual tray.
   const score = (t) => [
     Math.ceil(cells / t.cells),
@@ -54,17 +57,25 @@ const rangeText = (r) => `${r[0]}–${r[1]} cm`;
  * The crop decides the cell-size range; with a cell count, the tray in range needing the fewest trays,
  * then leaving the fewest empty cells, is suggested. Returns a short reason too.
  */
-export function suggestTrays(crop, cells) {
+export function suggestTrays(crop, cells, sowTray) {
   const name = crop?.name || "",
     g = GROUPS.find((x) => x.test.test(name));
-  const tray = best(g.sow, g.sowDefault, cells),
-    potTray = g.pot ? best(g.pot, g.potDefault, cells) : null;
+  const tray = best(g.sow, g.sowDefault, cells);
+  // Potting on only helps if the new cells are clearly bigger (≥30%) than the ones sown in.
+  const sowCell = trayOf(sowTray || tray).cellCM,
+    potTray = g.pot ? best(g.pot, g.potDefault, cells, sowCell * 1.3) : null;
   return {
     tray,
     potTray,
     sowReason: `${name || "This crop"} grows well from ${rangeText(g.sow)} cells${cells ? `; for ${cells} cells, ${tray} needs the fewest trays with the least left empty` : ""}.`,
     potReason: g.pot
-      ? `Potting on needs ${rangeText(g.pot)} cells${cells ? `; for ${cells} seedlings, ${potTray} needs the fewest trays with the least left empty` : ""}.`
+      ? `Potting on needs ${rangeText(g.pot)} cells, clearly bigger than the ${sowCell} cm cells sown in${cells ? `; for ${cells} seedlings, ${potTray} needs the fewest trays with the least left empty` : ""}.`
       : "",
   };
+}
+
+/** The pot-on tray to use: the grower's choice if its cells are bigger than the sowing tray's, else the suggestion. */
+export function potTrayFor(chosen, sowTray, crop, cells) {
+  if (chosen && trayOf(chosen).cellCM > trayOf(sowTray).cellCM) return Number(chosen);
+  return suggestTrays(crop, cells, sowTray).potTray;
 }

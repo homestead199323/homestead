@@ -1,6 +1,6 @@
 import { propagationOf, PERENNIALS, FROST_HARDY_HARVEST } from "../../data/propagation.js";
 import { REGION_MAP } from "../../data/regions.js";
-import { suggestTrays, trayOf } from "../../data/trays.js";
+import { suggestTrays, trayOf, potTrayFor } from "../../data/trays.js";
 import { SEEDLING_STAGES } from "../../lib/seedling-stage.js";
 import { addDaysToLocalKey, localDateFromKey } from "../../lib/utils.js";
 
@@ -99,7 +99,9 @@ export function planBatch({
       germDays: prop.germDays || 7,
       potOn: !!prop.potOn,
       tray: Number(tray) || suggestTrays(crop, cells).tray,
-      potTray: prop.potOn ? Number(potTray) || suggestTrays(crop, cells).potTray || 24 : null,
+      potTray: prop.potOn
+        ? potTrayFor(potTray, Number(tray) || suggestTrays(crop, cells).tray, crop, cells)
+        : null,
       weeks,
       stage: null,
       stageDates: {},
@@ -294,7 +296,11 @@ export const inDays = (key) => {
 /** Cells the batch uses right now: the sowing tray, or the pot-on tray once moved on. */
 export function currentTray(batch) {
   const potted = batch.potTray && ["potted", "hardening", "planted"].includes(batch.stage);
-  return trayOf(potted ? batch.potTray : batch.tray || 60);
+  return trayOf(
+    potted
+      ? potTrayFor(batch.potTray, batch.tray || 60, { name: batch.crop }, batch.cells)
+      : batch.tray || 60,
+  );
 }
 
 const todayKey = () => {

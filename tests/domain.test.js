@@ -275,3 +275,19 @@ test('Seedling steps are always in order and planting out waits for the plants',
   assert.equal(sched(cases[1]).delayedFrom, null);
   assert.equal(earliestPlantOut({ germDays: 7, potOn: true }, '2026-09-26'), '2026-10-27');
 });
+
+import { PROPAGATION as PROP } from '../src/data/propagation.js';
+import { trayOf as trayFor, potTrayFor } from '../src/data/trays.js';
+test('Pot-on trays always have clearly bigger cells than the sowing tray', () => {
+  for (const name of Object.keys(PROP)) {
+    for (const n of [5, 12, 36, 60, 120, 300]) {
+      const s = suggestTrays({ name }, n);
+      if (!s.potTray) continue;
+      assert(trayFor(s.potTray).cellCM >= trayFor(s.tray).cellCM * 1.3, `${name} ${n}: ${s.tray} -> ${s.potTray}`);
+    }
+  }
+  // A chosen pot tray no bigger than the sowing tray is replaced by the suggestion.
+  assert.equal(potTrayFor(60, 60, { name: 'Tomato' }, 36), suggestTrays({ name: 'Tomato' }, 36, 60).potTray);
+  assert(trayFor(potTrayFor(60, 60, { name: 'Tomato' }, 36)).cellCM > trayFor(60).cellCM);
+  assert.equal(potTrayFor(24, 104, { name: 'Tomato' }, 36), 24);
+});

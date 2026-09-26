@@ -3,6 +3,8 @@
 // frost-free date) and RHS guidance on planting out tender plants.
 //
 // [method, daysToSprout, weeksIndoors, potOn, plantOutWeeks]
+//   potOn         moved into bigger cells once (crops sown in small cells); brassicas sown in module
+//                 cells go straight out, so they are not potted on
 //   method        "transplant" raised in trays · "either" direct or trays · (absent) = sown direct
 //   plantOutWeeks weeks relative to the region's average last spring frost:
 //                 negative = hardy, goes out before it; positive = tender, needs frost-free weeks first
@@ -11,11 +13,11 @@ export const PROPAGATION = {
   "Pepper (Sweet)": ["transplant", 10, 9, true, 2],
   "Pepper (Hot)": ["transplant", 10, 9, true, 2],
   Eggplant: ["transplant", 10, 8, true, 3],
-  Cabbage: ["transplant", 5, 5, true, -3],
-  Broccoli: ["transplant", 5, 5, true, -3],
-  Cauliflower: ["transplant", 5, 5, true, -2],
-  Kale: ["transplant", 5, 5, true, -3],
-  "Brussels Sprouts": ["transplant", 5, 5, true, -2],
+  Cabbage: ["transplant", 5, 5, false, -3],
+  Broccoli: ["transplant", 5, 5, false, -3],
+  Cauliflower: ["transplant", 5, 5, false, -2],
+  Kale: ["transplant", 5, 5, false, -3],
+  "Brussels Sprouts": ["transplant", 5, 5, false, -2],
   Lettuce: ["transplant", 5, 4, false, -3],
   Onion: ["transplant", 10, 10, false, -4],
   Leek: ["transplant", 10, 9, false, -2],

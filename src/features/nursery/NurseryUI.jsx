@@ -5,7 +5,7 @@ import { todayLocalKey, appendLog, addDaysToLocalKey, localDateFromKey } from ".
 import { applySeedlingStage } from "../../lib/seedling-stage";
 import { rCR, rCM } from "../../lib/regional";
 import { propagationOf } from "../../data/propagation";
-import { suggestTrays } from "../../data/trays";
+import { suggestTrays, potTrayFor, trayOf } from "../../data/trays";
 import {
   suggestDates,
   earliestPlantOut,
@@ -251,15 +251,18 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
         cells={batch.cells}
         suggested={suggestTrays({ name: batch.crop }, batch.cells).tray}
         reason={suggestTrays({ name: batch.crop }, batch.cells).sowReason}
-        onChange={(n) => update({ tray: n })}
+        onChange={(n) =>
+          update({ tray: n, potTray: potTrayFor(batch.potTray, n, { name: batch.crop }, batch.cells) })
+        }
       />
       {batch.potOn && (
         <TrayPicker
           label="Pot on into"
-          value={batch.potTray || 24}
+          value={potTrayFor(batch.potTray, batch.tray || 60, { name: batch.crop }, batch.cells)}
+          minCell={trayOf(batch.tray || 60).cellCM}
           cells={batch.cells}
-          suggested={suggestTrays({ name: batch.crop }, batch.cells).potTray}
-          reason={suggestTrays({ name: batch.crop }, batch.cells).potReason}
+          suggested={suggestTrays({ name: batch.crop }, batch.cells, batch.tray).potTray}
+          reason={suggestTrays({ name: batch.crop }, batch.cells, batch.tray).potReason}
           onChange={(n) => update({ potTray: n })}
         />
       )}
@@ -307,7 +310,8 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
         })
       : null;
   const cellsNeeded = +form.plants > 0 ? Math.ceil(+form.plants * 1.2) : undefined;
-  const suggested = crop ? suggestTrays(crop, cellsNeeded) : {};
+  const suggested = crop ? suggestTrays(crop, cellsNeeded, form.tray) : {};
+  const potValue = crop ? potTrayFor(form.potTray, form.tray || suggested.tray, crop, cellsNeeded) : null;
   function save() {
     if (!plan) return;
     const batch = { ...plan.batch, id: uid() };
@@ -370,7 +374,8 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
       {crop && propagationOf(crop).potOn && (
         <TrayPicker
           label="Pot on into"
-          value={form.potTray || suggested.potTray}
+          value={potValue}
+          minCell={trayOf(form.tray || suggested.tray).cellCM}
           cells={plan?.batch.cells}
           suggested={suggested.potTray}
           reason={suggested.potReason}

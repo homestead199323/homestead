@@ -19,7 +19,7 @@ import {
   earliestPlantOut,
 } from "../nursery/nursery-model";
 import { applySeedlingStage } from "../../lib/seedling-stage";
-import { suggestTrays } from "../../data/trays";
+import { suggestTrays, potTrayFor, trayOf } from "../../data/trays";
 import { TrayPicker, SeedTimeline, SeedlingTray } from "../nursery/NurseryVisuals";
 const empty = {
   crop: "",
@@ -350,10 +350,16 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
               {prop.potOn && (
                 <TrayPicker
                   label="Pot on into"
-                  value={form.potTray || suggestTrays(crop, seedPlan?.batch.cells).potTray}
+                  value={potTrayFor(
+                    form.potTray,
+                    form.tray || suggestTrays(crop, seedPlan?.batch.cells).tray,
+                    crop,
+                    seedPlan?.batch.cells,
+                  )}
+                  minCell={trayOf(form.tray || suggestTrays(crop, seedPlan?.batch.cells).tray).cellCM}
                   cells={seedPlan?.batch.cells}
-                  suggested={suggestTrays(crop, seedPlan?.batch.cells).potTray}
-                  reason={suggestTrays(crop, seedPlan?.batch.cells).potReason}
+                  suggested={suggestTrays(crop, seedPlan?.batch.cells, form.tray).potTray}
+                  reason={suggestTrays(crop, seedPlan?.batch.cells, form.tray).potReason}
                   onChange={(n) => update({ ...form, potTray: n })}
                 />
               )}
