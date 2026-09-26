@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Pill, Ring, Stat } from "../../components/ui";
 import {bedRows, growthOf} from "../quiet/farm-model";
+import {isTreeCrop} from "../quiet/planting-plan";
 import PlantArt from "../quiet/PlantArt";
 import MapLines from "../quiet/MapLines";
 import { REGIONS, REGION_MAP } from "../../data/regions";
@@ -691,26 +692,18 @@ function Farming({data, setData, pageData, clearPageData}) {
   const sp=data.garden.plots.find(p=>p.id===selP);
   // Pre-computed values to avoid IIFEs in JSX (IIFEs crash the app)
   const _active=data.garden.plots.filter(function(p){return p.status!=="harvested";});
-  const _totalPlants=_active.reduce(function(s,p){return s+(p.plantCount||0);},0);
   const _totalArea=_active.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
   const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
   const _ready=_active.filter(function(p){return p.harvestDate&&localDateFromKey(p.harvestDate)<=localDateFromKey(todayLocalKey());}).length;
-  return (
-    <div className="page-enter" style={SX.mw800}>
-      <div style={SX.pageHead}>
-        <div><h2 style={SX.headerH2}>Your crops</h2><p style={SX.pageSubHead}>Track your crops from seed to harvest</p></div>
-        <Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
-        <Stat label="Active Crops" value={_active.length}/>
-        {_totalPlants>0&&<Stat label="Total Plants" value={_totalPlants} sub="across all beds"/>}
-        {_totalArea>0&&<Stat label="Total Area" value={`${_totalArea.toFixed(0)}m²`} sub="under cultivation"/>}
-        {_totalYield>0&&<Stat label="Est. Yield" value={`${_totalYield.toFixed(0)}kg`} sub="at harvest" color={C.green}/>}
-        <Stat label="Ready" value={_ready} sub="to harvest" color={C.orange}/>
-      </div>
-      {data.garden.plots.filter(p=>p.status!=="harvested").length===0?
-        <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
-      <div style={{display:"grid",gap:8}}>{data.garden.plots.filter(p=>p.status!=="harvested").map(p=>{
+  // Trees (orchard crops or any fruit/nut tree) get their own section, separate from vegetable beds.
+  const _isTree=function(p){const z=data.zones.find(z=>z.id===p.zone);return z?.type==="orchard"||isTreeCrop(rCM(data.region).get(p.crop));};
+  const _trees=_active.filter(_isTree),_beds=_active.filter(function(p){return !_isTree(p);});
+  const _sum=function(list,key){return list.reduce(function(s,p){return s+(+p[key]||0);},0);};
+  const _sections=[
+    {key:"beds",title:"Beds & garden",unit:"plants",plots:_beds,count:_sum(_beds,"plantCount"),kg:_sum(_beds,"expectedYieldKg")},
+    {key:"orchard",title:"Orchard",unit:"trees",plots:_trees,count:_sum(_trees,"plantCount"),kg:_sum(_trees,"expectedYieldKg")},
+  ];
+  function renderCrop(p,unit){
         const c=rCM(data.region).get(p.crop);
         const growth=growthOf(p,c,todayLocalKey());
         const pct=growth.progress;
@@ -729,7 +722,7 @@ function Farming({data, setData, pageData, clearPageData}) {
                 <div style={{fontSize:15,fontWeight:600}}>{p.name||p.crop}</div>
                 <div style={{fontSize:12,color:C.t2,marginTop:2,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {zone&&<span>📍 {zone.name}</span>}
-                  {p.plantCount&&<span>🌱 {p.plantCount} plants</span>}
+                  {p.plantCount&&<span>{unit==="trees"?"🌳":"🌱"} {p.plantCount} {p.plantCount===1?unit.slice(0,-1):unit}</span>}
                   {p.qty&&p.measureType==="area"&&<span>📐 {p.qty}m²</span>}
                   {p.expectedYieldKg&&<span>📦 ~{p.expectedYieldKg}kg</span>}
                   {!hasQty&&p.plantDate&&<span>{p.plantDate}</span>}
@@ -743,7 +736,31 @@ function Farming({data, setData, pageData, clearPageData}) {
           </Card>
           </div>
         );
-      })}</div>}
+  }
+  return (
+    <div className="page-enter" style={SX.mw800}>
+      <div style={SX.pageHead}>
+        <div><h2 style={SX.headerH2}>Your crops</h2><p style={SX.pageSubHead}>Track your crops from seed to harvest</p></div>
+        <Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
+        <Stat label="Active Crops" value={_active.length}/>
+        {_sections[0].count>0&&<Stat label="Plants" value={_sections[0].count} sub="in beds"/>}
+        {_sections[1].count>0&&<Stat label="Trees" value={_sections[1].count} sub="fruit &amp; nut"/>}
+        {_totalArea>0&&<Stat label="Total Area" value={`${_totalArea.toFixed(0)}m²`} sub="under cultivation"/>}
+        {_totalYield>0&&<Stat label="Est. Yield" value={`${_totalYield.toFixed(0)}kg`} sub="at harvest" color={C.green}/>}
+        <Stat label="Ready" value={_ready} sub="to harvest" color={C.orange}/>
+      </div>
+      {_active.length===0?
+        <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
+      <>{_sections.map(function(sec){return sec.plots.length>0&&(
+        <section key={sec.key} style={{marginBottom:22}}>
+          <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,margin:"4px 2px 10px"}}>
+            <h3 style={{margin:0,fontSize:17,fontWeight:650}}>{sec.title}</h3>
+            <small style={{color:C.t2,fontSize:12}}>{sec.plots.length} {sec.plots.length===1?"crop":"crops"} · {sec.count} {sec.unit}{sec.kg>0?` · ~${Math.round(sec.kg)}kg`:""}</small>
+          </div>
+          <div style={{display:"grid",gap:8}}>{sec.plots.map(function(p){return renderCrop(p,sec.unit);})}</div>
+        </section>);})}</>}
 
       {sp && <PlotOverlay plot={sp} data={data} setData={setData} onClose={()=>setSelP(null)}/>}
 
