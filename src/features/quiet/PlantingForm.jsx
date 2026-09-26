@@ -10,7 +10,7 @@ import PlantingControls from "./PlantingControls";
 import CompanionPanel from "./CompanionPanel";
 import FarmIcon from "../../components/FarmIcon";
 import { propagationOf } from "../../data/propagation";
-import { planBatch, nurseryZones, suggestDates, seasonNote } from "../nursery/nursery-model";
+import { planBatch, nurseryZones, suggestDates, seasonNote, frostDates } from "../nursery/nursery-model";
 import { applySeedlingStage } from "../../lib/seedling-stage";
 import { suggestTrays } from "../../data/trays";
 import { TrayPicker, SeedTimeline, SeedlingTray } from "../nursery/NurseryVisuals";
@@ -59,7 +59,10 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
     nurseries = nurseryZones(data),
     canNursery = !!crop && prop.method !== "direct" && !initial.fromBatch && zone?.type !== "orchard";
   const fromSeed = canNursery && nurseries.length > 0 && (form.fromSeed ?? prop.method === "transplant");
-  const plantOutDate = form.plantOutDate || (crop ? suggestDates(crop, todayLocalKey()).plantOutDate : "");
+  const frost = frostDates(data),
+    covered = zone?.type === "greenhouse";
+  const plantOutDate =
+    form.plantOutDate || (crop ? suggestDates(crop, todayLocalKey(), frost, covered).plantOutDate : "");
   const nurseryId = nurseries.some((z) => z.id === form.nursery) ? form.nursery : nurseries[0]?.id;
   const seedPlan =
     fromSeed && plan?.count
@@ -348,8 +351,8 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
               {seedPlan && <SeedTimeline batch={seedPlan.batch} />}
               {seedPlan && <SeedlingTray batch={seedPlan.batch} max={2} />}
               {seedPlan?.warning && <p className="q-warning">{seedPlan.warning}</p>}
-              {seedPlan && seasonNote(crop, seedPlan.batch.sowDate) && (
-                <p className="q-warning">{seasonNote(crop, seedPlan.batch.sowDate)}</p>
+              {seedPlan && seasonNote(crop, plantOutDate, frost, covered) && (
+                <p className="q-warning">{seasonNote(crop, plantOutDate, frost, covered)}</p>
               )}
             </>
           ) : (

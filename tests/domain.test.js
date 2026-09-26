@@ -210,15 +210,32 @@ test('Walk visits the nursery for seedling tasks', () => {
   assert.equal(stops.length, 1);
   assert.equal(stops[0].zoneId, 'nur');
 });
-import { sowMonths, suggestDates, seasonNote } from '../src/features/nursery/nursery-model.js';
-test('Nursery dates follow the crop sowing window', () => {
-  assert.deepEqual([...sowMonths('Feb-Apr, Sep')].sort((a, b) => a - b), [1, 2, 3, 8]);
+import { sowMonths, suggestDates, seasonNote, plantOutWindow, frostDates } from '../src/features/nursery/nursery-model.js';
+import { applySeedlingStage } from '../src/lib/seedling-stage.js';
+test('Nursery dates follow the region frost dates', () => {
   assert.deepEqual([...sowMonths('Nov-Feb')].sort((a, b) => a - b), [0, 1, 10, 11]);
-  const tomato = { name: 'Tomato', sowIn: 'Feb-Apr' };
-  assert.deepEqual(suggestDates(tomato, '2026-09-26'), { sowDate: '2027-02-01', plantOutDate: '2027-03-22' });
-  assert.equal(suggestDates(tomato, '2027-03-10').sowDate, '2027-03-10');
-  assert.match(seasonNote(tomato, '2026-09-26'), /outside the usual window/);
-  assert.equal(seasonNote(tomato, '2027-03-01'), '');
+  const we = frostDates({ region: 'western_europe' }), med = frostDates({ region: 'mediterranean' });
+  assert.equal(we.last, '05-01');
+  assert.equal(frostDates({ region: 'mediterranean', frost: { last: '04-15' } }).last, '04-15');
+  const tomato = { name: 'Tomato', days: 95 };
+  // Tender: two weeks after last frost; sow seven weeks before that.
+  assert.deepEqual(suggestDates(tomato, '2026-09-26', we), { sowDate: '2027-03-27', plantOutDate: '2027-05-15', window: plantOutWindow(tomato, 2027, we) });
+  assert.equal(suggestDates(tomato, '2026-09-26', med).plantOutDate, '2027-03-29');
+  // Under glass the season opens four weeks earlier.
+  assert.equal(suggestDates(tomato, '2026-09-26', we, true).plantOutDate, '2027-04-17');
+  // Hardy: three weeks before last frost; and still possible in autumn when there is time.
+  const cabbage = { name: 'Cabbage', days: 70 };
+  assert.equal(suggestDates(cabbage, '2027-01-10', we).plantOutDate, '2027-04-10');
+  assert.equal(suggestDates(cabbage, '2027-06-01', we).plantOutDate, '2027-07-06');
+  assert.match(seasonNote(tomato, '2027-04-20', we), /frost-tender/);
+  assert.equal(seasonNote(tomato, '2027-05-20', we), '');
+  assert.match(seasonNote(tomato, '2027-09-01', we), /may not mature/);
+});
+test('Sowing on a different day moves the plant-out date with it', () => {
+  const data = { garden: { plots: [{ id: 'p', status: 'planned', plannedDate: '2027-05-15' }] }, nursery: { batches: [{ id: 'b', sowDate: '2027-03-27', plantOutDate: '2027-05-15', plotId: 'p', stageDates: {} }] } };
+  const next = applySeedlingStage(data, 'b', 'sown', '2027-04-03');
+  assert.equal(next.nursery.batches[0].plantOutDate, '2027-05-22');
+  assert.equal(next.garden.plots[0].plannedDate, '2027-05-22');
 });
 import { TRAYS, suggestTrays } from '../src/data/trays.js';
 test('Tray sizes are whole grids and batches remember their trays', () => {

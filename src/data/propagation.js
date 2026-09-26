@@ -1,54 +1,87 @@
-// How each crop is usually started, for the seedling nursery. Approximate guide values the grower
-// can override per batch: days for seeds to sprout, weeks from sowing to planting out, and whether
-// seedlings are usually moved ("potted on" / pricked out) into bigger cells on the way.
-//   method "transplant" — normally raised in trays, then planted out
-//   method "either"     — sown direct or raised in modules; the nursery is optional
-//   method "direct"     — sown or planted straight into the bed (roots, legumes, tubers, cloves, canes, trees)
+// How each crop is usually started, for the seedling nursery. Guide values the grower can override.
+// Sources: Johnny's Selected Seeds seed-starting calculator (weeks indoors, transplant timing vs the
+// frost-free date) and RHS guidance on planting out tender plants.
+//
+// [method, daysToSprout, weeksIndoors, potOn, plantOutWeeks]
+//   method        "transplant" raised in trays · "either" direct or trays · (absent) = sown direct
+//   plantOutWeeks weeks relative to the region's average last spring frost:
+//                 negative = hardy, goes out before it; positive = tender, needs frost-free weeks first
 export const PROPAGATION = {
-  Tomato: ["transplant", 7, 7, true],
-  "Pepper (Sweet)": ["transplant", 10, 9, true],
-  "Pepper (Hot)": ["transplant", 10, 9, true],
-  Eggplant: ["transplant", 10, 9, true],
-  Cabbage: ["transplant", 6, 5, true],
-  Broccoli: ["transplant", 6, 5, true],
-  Cauliflower: ["transplant", 6, 5, true],
-  Kale: ["transplant", 6, 5, true],
-  "Brussels Sprouts": ["transplant", 6, 5, true],
-  Lettuce: ["transplant", 7, 4, false],
-  Onion: ["transplant", 10, 9, false],
-  Leek: ["transplant", 12, 10, false],
-  Celery: ["transplant", 18, 10, true],
-  Celeriac: ["transplant", 18, 10, true],
-  Basil: ["transplant", 8, 6, true],
-  Parsley: ["transplant", 21, 8, false],
-  Cucumber: ["transplant", 6, 4, false],
-  Zucchini: ["transplant", 6, 4, false],
-  Pumpkin: ["transplant", 6, 4, false],
-  Melon: ["transplant", 7, 4, false],
-  Watermelon: ["transplant", 7, 4, false],
-  Corn: ["transplant", 7, 3, false],
-  "Swiss Chard": ["transplant", 8, 4, false],
-  Sunflower: ["transplant", 8, 3, false],
-  Artichoke: ["transplant", 14, 8, true],
-  Okra: ["transplant", 10, 5, false],
-  Fennel: ["transplant", 10, 4, false],
-  Chamomile: ["transplant", 10, 6, false],
-  Thyme: ["transplant", 14, 8, false],
-  Oregano: ["transplant", 10, 8, false],
-  Sage: ["transplant", 14, 8, false],
-  Lavender: ["transplant", 21, 10, true],
-  Rosemary: ["transplant", 21, 12, true],
-  Beetroot: ["either", 8, 4, false],
-  Spinach: ["either", 8, 3, false],
-  Pea: ["either", 8, 3, false],
-  "Broad Bean": ["either", 10, 4, false],
-  Dill: ["either", 10, 4, false],
+  Tomato: ["transplant", 7, 7, true, 2],
+  "Pepper (Sweet)": ["transplant", 10, 9, true, 2],
+  "Pepper (Hot)": ["transplant", 10, 9, true, 2],
+  Eggplant: ["transplant", 10, 8, true, 3],
+  Cabbage: ["transplant", 5, 5, true, -3],
+  Broccoli: ["transplant", 5, 5, true, -3],
+  Cauliflower: ["transplant", 5, 5, true, -2],
+  Kale: ["transplant", 5, 5, true, -3],
+  "Brussels Sprouts": ["transplant", 5, 5, true, -2],
+  Lettuce: ["transplant", 5, 4, false, -3],
+  Onion: ["transplant", 10, 10, false, -4],
+  Leek: ["transplant", 10, 9, false, -2],
+  Celery: ["transplant", 18, 11, true, 1],
+  Celeriac: ["transplant", 18, 11, true, 1],
+  Basil: ["transplant", 7, 6, true, 3],
+  Parsley: ["transplant", 21, 8, false, -2],
+  Cucumber: ["transplant", 5, 4, false, 2],
+  Zucchini: ["transplant", 6, 4, false, 1],
+  Pumpkin: ["transplant", 6, 4, false, 1],
+  Melon: ["transplant", 7, 4, false, 2],
+  Watermelon: ["transplant", 7, 4, false, 2],
+  Artichoke: ["transplant", 14, 10, true, 0],
+  Okra: ["transplant", 10, 5, false, 3],
+  Fennel: ["transplant", 10, 4, false, 0],
+  Chamomile: ["transplant", 10, 6, false, 0],
+  Thyme: ["transplant", 14, 8, false, 0],
+  Oregano: ["transplant", 10, 8, false, 0],
+  Sage: ["transplant", 14, 8, false, 0],
+  Lavender: ["transplant", 21, 10, true, 0],
+  Rosemary: ["transplant", 21, 12, true, 1],
+  Corn: ["either", 7, 3, false, 1],
+  Sunflower: ["either", 8, 3, false, 1],
+  "Swiss Chard": ["either", 8, 4, false, -1],
+  Beetroot: ["either", 8, 4, false, -2],
+  Spinach: ["either", 8, 3, false, -4],
+  Pea: ["either", 8, 3, false, -4],
+  "Broad Bean": ["either", 10, 4, false, -6],
+  Dill: ["either", 10, 4, false, 0],
 };
 
-/** { method, germDays, weeks, potOn } for a crop; unknown crops are treated as direct-sown. */
+/** Perennials: planted out to establish, not to mature in one season (need ~6 weeks before first frost). */
+export const PERENNIALS = new Set([
+  "Artichoke",
+  "Thyme",
+  "Oregano",
+  "Sage",
+  "Lavender",
+  "Rosemary",
+  "Asparagus",
+  "Rhubarb",
+]);
+/** Crops that stand and keep being harvested through light frost, so they may mature after the first frost. */
+export const FROST_HARDY_HARVEST = new Set([
+  "Cabbage",
+  "Broccoli",
+  "Cauliflower",
+  "Kale",
+  "Brussels Sprouts",
+  "Leek",
+  "Onion",
+  "Celery",
+  "Celeriac",
+  "Parsley",
+  "Swiss Chard",
+  "Beetroot",
+  "Spinach",
+  "Lettuce",
+  "Pea",
+  "Broad Bean",
+]);
+
+/** { method, germDays, weeks, potOn, frostWeeks, hardy } for a crop; unknown crops are sown direct. */
 export function propagationOf(crop) {
   const row = PROPAGATION[crop?.name || crop];
-  if (!row) return { method: "direct", germDays: 0, weeks: 0, potOn: false };
-  const [method, germDays, weeks, potOn] = row;
-  return { method, germDays, weeks, potOn };
+  if (!row) return { method: "direct", germDays: 0, weeks: 0, potOn: false, frostWeeks: 0, hardy: false };
+  const [method, germDays, weeks, potOn, frostWeeks] = row;
+  return { method, germDays, weeks, potOn, frostWeeks, hardy: frostWeeks < 0 };
 }

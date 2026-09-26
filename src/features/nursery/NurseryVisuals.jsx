@@ -3,7 +3,7 @@ import { Check } from "lucide-react";
 import { todayLocalKey, localDateFromKey } from "../../lib/utils";
 import { propagationOf } from "../../data/propagation";
 import { TRAYS, trayOf } from "../../data/trays";
-import { STAGE_LABELS, stagesOf, scheduleOf, fmt, inDays, currentTray } from "./nursery-model";
+import { STAGE_LABELS, stagesOf, scheduleOf, fmt, currentTray } from "./nursery-model";
 import FarmIcon from "../../components/FarmIcon";
 
 /** One module tray from above; `used` cells drawn at a growth level (0 empty … 4 hardened). */
@@ -154,17 +154,33 @@ export function SeedTimeline({ batch, compact = false }) {
     end = localDateFromKey(schedule.planted),
     total = Math.max(1, (end - start) / 864e5);
   const W = 320,
-    pad = 18,
-    y = compact ? 12 : 26;
-  const xOf = (key) =>
-    pad + Math.min(1, Math.max(0, (localDateFromKey(key) - start) / 864e5 / total)) * (W - pad * 2);
+    pad = 14,
+    y = 22;
+  const xOfDate = (d) => pad + Math.min(1, Math.max(0, (d - start) / 864e5 / total)) * (W - pad * 2);
+  const xOf = (key) => xOfDate(localDateFromKey(key));
   const today = todayLocalKey(),
-    tx = xOf(today),
-    dayNo = Math.round((localDateFromKey(today) - start) / 864e5);
+    dayNo = Math.round((localDateFromKey(today) - start) / 864e5),
+    tx = xOf(today);
+  // Month ticks along the line; thinned so labels never collide.
+  const ticks = [];
+  for (
+    let m = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    m <= end;
+    m = new Date(m.getFullYear(), m.getMonth() + 1, 1)
+  )
+    ticks.push(m);
+  const step = Math.max(1, Math.ceil(ticks.length / 6));
+  // Dots too close to each other are nudged apart so numbers stay readable.
+  const xs = [];
+  stages.forEach((s, i) => {
+    let x = xOf(schedule[s]);
+    if (i && x - xs[i - 1] < 17) x = xs[i - 1] + 17;
+    xs.push(Math.min(W - pad, x));
+  });
   return (
     <div className="q-seed-timeline">
       <svg
-        viewBox={`0 0 ${W} ${compact ? 24 : 64}`}
+        viewBox={`0 0 ${W} 50`}
         role="img"
         aria-label={`From sowing ${fmt(schedule.sown)} to planting out ${fmt(schedule.planted)}`}
       >
@@ -188,46 +204,60 @@ export function SeedTimeline({ batch, compact = false }) {
             strokeLinecap="round"
           />
         )}
+        {ticks
+          .filter((_, i) => i % step === 0)
+          .map((m) => (
+            <g key={m.toISOString()}>
+              <line x1={xOfDate(m)} x2={xOfDate(m)} y1={y + 6} y2={y + 10} stroke="var(--color-text-3)" />
+              <text x={xOfDate(m)} y={y + 21} textAnchor="middle" fontSize="9" fill="var(--color-text-3)">
+                {m.toLocaleDateString("en-GB", { month: "short" })}
+              </text>
+            </g>
+          ))}
         {stages.map((s, i) => {
-          const x = xOf(schedule[s]),
-            done = i <= at,
+          const done = i <= at,
             next = i === at + 1;
           return (
             <g key={s}>
               <circle
-                cx={x}
+                cx={xs[i]}
                 cy={y}
-                r={next ? 6 : 5}
-                fill={done ? "var(--color-green)" : "var(--color-card)"}
+                r="8"
+                fill={done ? "var(--color-green)" : next ? "var(--color-green-pale)" : "var(--color-card)"}
                 stroke={done || next ? "var(--color-green)" : "var(--color-text-3)"}
-                strokeWidth="2"
+                strokeWidth="1.5"
               />
-              {!compact && (
-                <text
-                  x={x}
-                  y={i % 2 ? y + 22 : y - 12}
-                  textAnchor={i === 0 ? "start" : i === stages.length - 1 ? "end" : "middle"}
-                  fontSize="9.5"
-                  fill={next ? "var(--color-green-dark)" : "var(--color-text-2)"}
-                  fontWeight={next ? 700 : 500}
-                >
-                  {STAGE_LABELS[s]} · {fmt(done ? batch.stageDates?.[s] || schedule[s] : schedule[s])}
-                </text>
-              )}
+              <text
+                x={xs[i]}
+                y={y + 3.3}
+                textAnchor="middle"
+                fontSize="9"
+                fontWeight="700"
+                fill={done ? "#fff" : next ? "var(--color-green-dark)" : "var(--color-text-2)"}
+              >
+                {done ? "✓" : i + 1}
+              </text>
             </g>
           );
         })}
-        {dayNo >= 0 && dayNo <= total && <path d={`M${tx - 4} ${y - 11}h8l-4 5z`} fill="var(--color-text)" />}
+        {dayNo >= 0 && dayNo <= total && (
+          <g>
+            <path d={`M${tx - 4} ${y - 14}h8l-4 5z`} fill="var(--color-text)" />
+            <text
+              x={Math.min(W - 20, Math.max(20, tx))}
+              y={y - 16}
+              textAnchor="middle"
+              fontSize="8.5"
+              fill="var(--color-text)"
+            >
+              Today
+            </text>
+          </g>
+        )}
       </svg>
-      {compact && (
-        <small>
-          {dayNo < 0
-            ? `Sow ${inDays(schedule.sown)}`
-            : dayNo > total
-              ? "Ready to plant out"
-              : `Day ${dayNo} of ${Math.round(total)}`}
-        </small>
-      )}
+      <small>
+        {fmt(schedule.sown)} → {fmt(schedule.planted)} · {Math.round(total / 7)} weeks in the nursery
+      </small>
     </div>
   );
 }

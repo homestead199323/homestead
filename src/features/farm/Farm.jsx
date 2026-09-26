@@ -653,6 +653,23 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                 </div>
               </div>
               {curRegion && <div style={{fontSize:11,color:C.t2,fontStyle:"italic", marginBottom:16}}>{regionCropCount} crops available for {curRegion.name} climate</div>}
+              {curRegion && curRegion.frost && (
+                <div className="q-frost-edit" style={{marginBottom:16}}>
+                  <div style={{fontSize:11,fontWeight:600,color:C.t2,marginBottom:6}}>Frost dates (used for seedling and planting-out timing)</div>
+                  <div className="q-grid2">
+                    {[["last","Last spring frost"],["first","First autumn frost"]].map(function([key,label]){
+                      const v=(data.frost&&data.frost[key])||curRegion.frost[key];
+                      return <label key={key} style={{fontSize:12,color:C.t2}}>{label}
+                        <input type="date" value={`2026-${v}`} onChange={function(e){if(e.target.value)setData({...data,frost:{...(data.frost||{}),[key]:e.target.value.slice(5)}});}}
+                          style={{display:"block",width:"100%",marginTop:4,padding:"8px 10px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:16,background:C.card,color:C.text,boxSizing:"border-box"}}/></label>;
+                    })}
+                  </div>
+                  <small style={{fontSize:11,color:C.t2}}>
+                    {data.frost?"Your own dates. ":"Average for "+curRegion.name+". Adjust for your location — hills and valleys can differ by weeks. "}
+                    {data.frost&&<button type="button" className="q-text-button" onClick={function(){const {frost:_f,...rest}=data;setData(rest);}}>Use region average</button>}
+                  </small>
+                </div>
+              )}
 
               <MapLines data={data} setData={setData}/>
               {data.zones.length === 0 && (

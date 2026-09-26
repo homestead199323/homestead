@@ -9,6 +9,7 @@ import { suggestTrays } from "../../data/trays";
 import {
   suggestDates,
   seasonNote,
+  frostDates,
   fmt,
   inDays,
   currentTray,
@@ -129,6 +130,21 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
       {rCM(data.region).get(batch.crop) && <CropSeedInfo crop={rCM(data.region).get(batch.crop)} />}
       <SeedlingTray batch={batch} />
       <SeedTimeline batch={batch} />
+      {seasonNote(
+        rCM(data.region).get(batch.crop),
+        schedule.planted,
+        frostDates(data),
+        data.zones.find((z) => z.id === batch.targetZoneId)?.type === "greenhouse",
+      ) && (
+        <p className="q-warning">
+          {seasonNote(
+            rCM(data.region).get(batch.crop),
+            schedule.planted,
+            frostDates(data),
+            data.zones.find((z) => z.id === batch.targetZoneId)?.type === "greenhouse",
+          )}
+        </p>
+      )}
       <ol className="q-seed-steps">
         {stages.map((s, i) => {
           const done = i <= at,
@@ -137,7 +153,7 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
             <li key={s} className={done ? "is-done" : isNext ? "is-next" : ""}>
               <div className="q-row q-between">
                 <strong>
-                  {done ? "✓ " : ""}
+                  <span className="q-step-no">{done ? "✓" : i + 1}</span>
                   {STAGE_LABELS[s]}
                 </strong>
                 <small>
@@ -223,7 +239,9 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
     potTray: null,
   });
   const crop = rCM(data.region).get(form.crop);
-  const plantOutDate = form.plantOutDate || (crop ? suggestDates(crop, todayLocalKey()).plantOutDate : "");
+  const frost = frostDates(data);
+  const plantOutDate =
+    form.plantOutDate || (crop ? suggestDates(crop, todayLocalKey(), frost).plantOutDate : "");
   const plan =
     crop && form.zone && +form.plants > 0 && plantOutDate
       ? planBatch({
@@ -317,8 +335,14 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
         </>
       )}
       {plan?.warning && <p className="q-warning">{plan.warning}</p>}
-      {plan && seasonNote(crop, plan.batch.sowDate) && (
-        <p className="q-warning">{seasonNote(crop, plan.batch.sowDate)}</p>
+      {crop && (
+        <small className="q-frost-note">
+          {frost.custom ? "Your" : frost.regionName} frost dates: last ~{fmt(`2000-${frost.last}`)}, first ~
+          {fmt(`2000-${frost.first}`)}. Change them in Edit layout → Region.
+        </small>
+      )}
+      {plan && seasonNote(crop, plantOutDate, frost) && (
+        <p className="q-warning">{seasonNote(crop, plantOutDate, frost)}</p>
       )}
       <div className="q-row">
         <Btn v="secondary" onClick={onClose}>

@@ -1,4 +1,5 @@
-import { propagationOf } from "../../data/propagation.js";
+import { propagationOf, PERENNIALS, FROST_HARDY_HARVEST } from "../../data/propagation.js";
+import { REGION_MAP } from "../../data/regions.js";
 import { suggestTrays, trayOf } from "../../data/trays.js";
 import { SEEDLING_STAGES } from "../../lib/seedling-stage.js";
 import { addDaysToLocalKey, localDateFromKey } from "../../lib/utils.js";
@@ -21,14 +22,19 @@ export function stagesOf(batch) {
   return SEEDLING_STAGES.filter((s) => s !== "potted" || batch.potOn);
 }
 
+const days = (from, to) => Math.round((localDateFromKey(to) - localDateFromKey(from)) / 864e5);
+
 /** Planned or actual date for every stage. Actual dates shift the ones that follow. */
 export function scheduleOf(batch) {
   const d = batch.stageDates || {};
   const sown = d.sown || batch.sowDate;
   const sprouted = d.sprouted || addDaysToLocalKey(sown, batch.germDays || 7);
   const potted = batch.potOn ? d.potted || addDaysToLocalKey(sprouted, 14) : null;
-  const hardening = d.hardening || addDaysToLocalKey(batch.plantOutDate, -7);
-  const planted = d.planted || batch.plantOutDate;
+  // Sown earlier or later than planned: the rest of the plan moves with it.
+  const shift = d.sown && batch.sowDate && d.sown !== batch.sowDate ? days(batch.sowDate, d.sown) : 0;
+  const plantOut = shift ? addDaysToLocalKey(batch.plantOutDate, shift) : batch.plantOutDate;
+  const hardening = d.hardening || addDaysToLocalKey(plantOut, -7);
+  const planted = d.planted || plantOut;
   return { sown, sprouted, potted, hardening, planted };
 }
 
@@ -37,8 +43,6 @@ export function nextStage(batch) {
     at = batch.stage ? stages.indexOf(batch.stage) : -1;
   return stages[at + 1] || null;
 }
-
-const days = (from, to) => Math.round((localDateFromKey(to) - localDateFromKey(from)) / 864e5);
 
 /**
  * Plan a seedling batch. Counts back from the planting-out date using the crop's weeks in the
@@ -193,33 +197,67 @@ export function sowMonths(sowIn = "") {
     });
   return out;
 }
+/** Average last spring / first autumn frost (MM-DD) for the farm: its own override, else its region's. */
+export function frostDates(data) {
+  const region = REGION_MAP.get(data?.region) || REGION_MAP.get("western_europe");
+  return {
+    last: data?.frost?.last || region.frost.last,
+    first: data?.frost?.first || region.frost.first,
+    regionName: region.name,
+    custom: !!(data?.frost?.last || data?.frost?.first),
+  };
+}
+const onYear = (year, mmdd) => `${year}-${mmdd}`;
 /**
- * Default dates for raising a crop from seed: sow today if we're in its sowing window, otherwise on
- * the 1st of the next window month; plant out after its weeks in the nursery.
+ * Plant-out window for a crop in a given year: from its weeks before/after the last frost, to the
+ * last date it can still mature before the first autumn frost. Crops harvested through light frost get
+ * five extra weeks; perennials only need about six weeks to establish before the first frost.
+ * Under glass (unheated) the frost-free season is taken as four weeks longer at each end.
  */
-export function suggestDates(crop, today) {
-  const months = sowMonths(crop?.sowIn),
-    weeks = propagationOf(crop).weeks || 4;
-  let sow = today;
-  if (months.size && !months.has(localDateFromKey(today).getMonth())) {
-    const d = localDateFromKey(today);
-    for (let i = 1; i <= 12; i++) {
-      const m = new Date(d.getFullYear(), d.getMonth() + i, 1);
-      if (months.has(m.getMonth())) {
-        sow = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-01`;
-        break;
-      }
-    }
+export function plantOutWindow(crop, year, frost, covered = false) {
+  const p = propagationOf(crop),
+    cover = covered ? 28 : 0;
+  const earliest = addDaysToLocalKey(onYear(year, frost.last), p.frostWeeks * 7 - cover);
+  const name = crop?.name,
+    grow = Number(crop?.days) || 60;
+  const latest = PERENNIALS.has(name)
+    ? addDaysToLocalKey(onYear(year, frost.first), cover - 42)
+    : addDaysToLocalKey(onYear(year, frost.first), cover - grow + (FROST_HARDY_HARVEST.has(name) ? 35 : 0));
+  return { earliest, latest, open: earliest <= latest };
+}
+/**
+ * Default dates for raising a crop from seed: the earliest plant-out date in its window that still
+ * leaves time to raise seedlings from today, this year or next. Sowing counts back the nursery weeks.
+ */
+export function suggestDates(crop, today, frost, covered = false) {
+  const weeks = propagationOf(crop).weeks || 4,
+    year = localDateFromKey(today).getFullYear(),
+    ready = addDaysToLocalKey(today, weeks * 7);
+  for (const y of [year, year + 1]) {
+    const w = plantOutWindow(crop, y, frost, covered);
+    if (!w.open) continue;
+    const plantOut = ready > w.earliest ? ready : w.earliest;
+    if (plantOut <= w.latest)
+      return { sowDate: addDaysToLocalKey(plantOut, -weeks * 7), plantOutDate: plantOut, window: w };
   }
-  return { sowDate: sow, plantOutDate: addDaysToLocalKey(sow, weeks * 7) };
+  return { sowDate: today, plantOutDate: ready, window: null };
 }
-/** Warning text when a sow date falls outside the crop's usual sowing window, else "". */
-export function seasonNote(crop, sowDate) {
-  const months = sowMonths(crop?.sowIn);
-  if (!months.size || !sowDate || months.has(localDateFromKey(sowDate).getMonth())) return "";
-  return `That means sowing outside the usual window for ${crop.name} (${crop.sowIn}). Fine under cover with heat and light; otherwise pick a later date.`;
+/** Warning when a plant-out date falls outside the crop's window for the region, else "". */
+export function seasonNote(crop, plantOutDate, frost, covered = false) {
+  if (!crop || !plantOutDate || !frost) return "";
+  const p = propagationOf(crop),
+    w = plantOutWindow(crop, localDateFromKey(plantOutDate).getFullYear(), frost, covered);
+  const where = covered ? "under glass" : "outdoors";
+  if (!w.open)
+    return `${crop.name} doesn't have a long enough frost-free season ${where} in this region to mature. Grow it under cover.`;
+  if (plantOutDate < w.earliest)
+    return p.hardy
+      ? `Early: ${crop.name} can go out from about ${fmt(w.earliest)} ${where} (${-p.frostWeeks} weeks before your last frost, ~${fmt(onYear(2000, frost.last))}).`
+      : `Too early: ${crop.name} is frost-tender. Plant out ${where} from about ${fmt(w.earliest)}${p.frostWeeks ? ` (${p.frostWeeks} week${p.frostWeeks === 1 ? "" : "s"} after your last frost, ~${fmt(onYear(2000, frost.last))})` : ""}, or keep it under cover.`;
+  if (plantOutDate > w.latest)
+    return `Late: planted out after about ${fmt(w.latest)}, ${crop.name} may not mature before the first frost (~${fmt(onYear(2000, frost.first))}) ${where}.`;
+  return "";
 }
-
 export const fmt = (key) =>
   key ? localDateFromKey(key).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
 export const inDays = (key) => {
