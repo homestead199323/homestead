@@ -97,3 +97,9 @@ body{font-family:var(--font-body);letter-spacing:-.015em}button,input,select,tex
 .fd-line-open small{color:var(--color-text-2);font-weight:500}
 .fd-line-del{width:42px;min-height:42px;border-radius:12px;border:1px solid var(--color-border);background:transparent;color:var(--color-text-2);cursor:pointer}
 .fd-line-del:hover{color:#c2482f;border-color:#c2482f}
+.fd-snap{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+.fd-snap .q-seg{display:inline-flex;background:var(--surface-soft);border-radius:12px;padding:3px;gap:3px}
+.fd-snap .q-seg button{min-height:38px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--color-text-2);font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.fd-snap .q-seg button[aria-pressed=true]{background:var(--color-card);color:var(--color-text);box-shadow:0 1px 3px #0002}
+.fd-snap select{min-height:38px}
+@media (max-width:500px){.fd-draw-bar{padding:8px 10px}.fd-draw-bar small{display:none}.fd-draw-actions button{min-height:34px}}

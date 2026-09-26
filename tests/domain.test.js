@@ -375,3 +375,14 @@ test('Drawing your own paths: straightens, joins existing corners, finishes on t
   assert.equal(lineLength(d.points),8);
   assert.equal(addDraftPoint(d,{xM:9.1,yM:1.1},20,20,[]).finish,true);
 });
+
+import {snapZone,snapTo} from '../src/features/grove/path-draw.js';
+test('Snapping: paths land on the grid with square corners; zones snap to grid or neighbour edges', () => {
+  assert.deepEqual(snapPoint(null,{xM:3.3,yM:4.8},20,20,[],{grid:1}),{xM:3,yM:5});
+  assert.deepEqual(snapPoint({xM:3,yM:5},{xM:9.2,yM:7.1},20,20,[],{grid:1}),{xM:9,yM:5});
+  assert.deepEqual(snapPoint({xM:3,yM:5},{xM:4.1,yM:11.6},20,20,[],{grid:1}),{xM:3,yM:12});
+  assert.equal(snapTo(7.26,0.5,20),7.5);
+  const g=snapZone({xM:3.2,yM:4.9,wM:2,hM:1},[],1,20,20);assert.equal(g.xM,3);assert.equal(g.yM,5);
+  const n=snapZone({xM:5.3,yM:2,wM:2,hM:1},[{xM:1,yM:2,wM:4.2,hM:1}],1,20,20);assert.equal(n.xM,5.2);
+  const r=snapZone({xM:2,yM:2,wM:2.7,hM:0.2},[],1,20,20,true);assert.equal(r.wM,3);assert.equal(r.hM,1);
+});

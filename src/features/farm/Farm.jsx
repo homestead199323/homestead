@@ -10,7 +10,7 @@ import { activeBatches } from "../nursery/nursery-model";
 import {isTreeCrop} from "../quiet/planting-plan";
 import PlantArt from "../quiet/PlantArt";
 import MapLines from "../quiet/MapLines";
-import { addDraftPoint, lineLength } from "../grove/path-draw";
+import { addDraftPoint, lineLength, snapPoint, lineAnchors, snapZone, defaultGrid } from "../grove/path-draw";
 import { REGIONS, REGION_MAP } from "../../data/regions";
 import { ZT, ZT_MAP } from "../../data/zones";
 import { searchCity } from "../../data/cities";
@@ -175,8 +175,14 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
       wM: Math.round(wM * 10) / 10, hM: Math.round(hM * 10) / 10,
     };
   }
-  function handleZoneGeom(id, g) {
-    const c = clampGeom(g);
+  // Snapping (grid + neighbour edges) applies while dragging; typed measurements stay exact.
+  const snapOn = data.designerSnap ? data.designerSnap.on !== false : true;
+  const grid = (data.designerSnap && data.designerSnap.grid) || defaultGrid(farmW, farmH);
+  const activeGrid = snapOn ? grid : 0;
+  function setSnap(patch) { saveData({...data, designerSnap: {on: snapOn, grid: grid, ...patch}}); }
+  function handleZoneGeom(id, g, opts) {
+    const snapped = opts && opts.drag && activeGrid ? snapZone(g, zones.filter(function(z){ return z.id !== id; }), activeGrid, farmW, farmH, opts.resize) : g;
+    const c = clampGeom(snapped);
     upZ(id, {...c, x: c.xM / farmW * 100, y: c.yM / farmH * 100, w: c.wM / farmW * 100, h: c.hM / farmH * 100});
   }
   function handlePlaceAt(xM, yM, type) {
@@ -185,7 +191,8 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
     const t = type || armedType;
     if (!t || !ZT_MAP.get(t)) { setArmedType(null); return; }
     const defaultWM = Math.min(farmW*.3, t==="beehive"?1:t==="house"?8:3), defaultHM = Math.min(farmH*.3,t==="beehive"?1:t==="house"?6:1.2);
-    const c = clampGeom({xM: xM - defaultWM / 2, yM: yM - defaultHM / 2, wM: defaultWM, hM: defaultHM});
+    const raw = {xM: xM - defaultWM / 2, yM: yM - defaultHM / 2, wM: defaultWM, hM: defaultHM};
+    const c = clampGeom(activeGrid ? snapZone(raw, zones, activeGrid, farmW, farmH) : raw);
     const zt2 = ZT_MAP.get(t);
     const baseName = zt2 ? zt2.label : t;
     const existing = data.zones.filter(z => z.type === t).length;
@@ -238,7 +245,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
     setDraw(null);
   }
   function drawPoint(q) {
-    const next = addDraftPoint(draw, q, farmW, farmH, mapLines);
+    const next = addDraftPoint(draw, q, farmW, farmH, mapLines, { grid: activeGrid });
     if (next.finish) finishDraw(next);
     else setDraw(next);
   }
@@ -349,6 +356,8 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                 onOrnamentMove:handleOrnamentMove,
                 draw:draw,
                 onDrawPoint:drawPoint,
+                grid:activeGrid,
+                snapPreview:function(q){ const last = draw && draw.points[draw.points.length - 1]; return snapPoint(last, q, farmW, farmH, lineAnchors(mapLines), { grid: activeGrid }); },
                 selectedLineId:selLine,
                 onLineSelect:function(id){ setSelLine(id); if(id){ setSel(null); setSelOrn(null); } },
               }}
@@ -360,7 +369,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
           <div className="fd-draw-bar" onClick={function(e){e.stopPropagation();}}>
             <span>
               <strong>{draw.points.length === 0 ? `Tap where the ${draw.kind} starts` : `Tap to add corners · ${lineLength(draw.points).toFixed(1)} m`}</strong>
-              <small>Nearly straight lines snap level · tapping near a corner joins it · tap the last point again to finish</small>
+              <small>{activeGrid ? `Snapping to a ${grid} m grid with square corners` : "Free drawing · nearly straight lines snap level"} · tapping near a corner joins it · tap the last point again to finish</small>
             </span>
             <span className="fd-draw-actions">
               <button type="button" disabled={!draw.points.length} onClick={function(){ setDraw({...draw, points: draw.points.slice(0, -1)}); }}>Undo point</button>
@@ -488,7 +497,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
       <div style={{flex:"0 0 auto", background:C.card, borderTop:`1px solid ${C.bdr}`,
         maxHeight:"43dvh",overflowY:"auto",padding:"10px 14px calc(10px + env(safe-area-inset-bottom))"}}>
         <div style={{maxWidth:720, margin:"0 auto"}}>
-          <div className="q-row" style={{marginBottom:10}}><button className="q-secondary" disabled={!history.past.length} onClick={()=>travel(false)}>Undo</button><button className="q-secondary" disabled={!history.future.length} onClick={()=>travel(true)}>Redo</button><small style={{color:C.t2}}>Top view · edits save automatically</small></div>
+          <div className="q-row q-wrap" style={{marginBottom:10}}><button className="q-secondary" disabled={!history.past.length} onClick={()=>travel(false)}>Undo</button><button className="q-secondary" disabled={!history.future.length} onClick={()=>travel(true)}>Redo</button><div className="fd-snap" role="group" aria-label="Snapping"><div className="q-seg"><button type="button" aria-pressed={snapOn} onClick={()=>setSnap({on:true})}>🧲 Snap</button><button type="button" aria-pressed={!snapOn} onClick={()=>setSnap({on:false})}>Free</button></div>{snapOn&&<select aria-label="Grid size" value={grid} onChange={e=>setSnap({grid:+e.target.value})}>{[0.25,0.5,1,2,5,10].filter(g=>Math.max(farmW,farmH)/g<=400).map(g=><option key={g} value={g}>{g} m grid</option>)}</select>}</div></div>
 
           {sz && (
             <div className="fd-panel" data-fd-zone-panel>

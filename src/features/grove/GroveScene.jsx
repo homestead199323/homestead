@@ -487,7 +487,8 @@ export default function GroveScene({
   }
   function move(e) {
     if (edit?.draw) {
-      setDrawHover(coords(e));
+      const q = coords(e);
+      setDrawHover(edit.snapPreview ? edit.snapPreview(q) : q);
       return;
     }
     if (!drag.current) return;
@@ -510,6 +511,7 @@ export default function GroveScene({
       d.resize
         ? { ...d.orig, wM: d.orig.wM + dx, hM: d.orig.hM + dy }
         : { ...d.orig, xM: d.orig.xM + dx, yM: d.orig.yM + dy },
+      { drag: true, resize: d.resize },
     );
   }
   function end() {
@@ -544,7 +546,7 @@ export default function GroveScene({
     } else if (edit && !edit.armed && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
       e.preventDefault();
       edit.onSelect(z.id);
-      const step = e.shiftKey ? 1 : 0.1;
+      const step = edit.grid > 0 ? edit.grid : e.shiftKey ? 1 : 0.1;
       edit.onZoneGeom(z.id, {
         ...z,
         xM: z.xM + (e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0),
@@ -674,6 +676,30 @@ export default function GroveScene({
             })}
 
           <g clipPath={`url(#${id}-boundary)`}>
+            {edit?.grid > 0 && fW / edit.grid <= 400 && fH / edit.grid <= 400 && (
+              <g stroke="#ffffff" strokeWidth={0.6 * labelUnit} opacity=".22" pointerEvents="none">
+                {Array.from({ length: Math.floor(fW / edit.grid) + 1 }, (_, i) => (
+                  <line
+                    key={`gx${i}`}
+                    x1={i * edit.grid}
+                    y1="0"
+                    x2={i * edit.grid}
+                    y2={fH}
+                    strokeWidth={i % 5 === 0 ? 1.4 * labelUnit : 0.6 * labelUnit}
+                  />
+                ))}
+                {Array.from({ length: Math.floor(fH / edit.grid) + 1 }, (_, i) => (
+                  <line
+                    key={`gy${i}`}
+                    x1="0"
+                    y1={i * edit.grid}
+                    x2={fW}
+                    y2={i * edit.grid}
+                    strokeWidth={i % 5 === 0 ? 1.4 * labelUnit : 0.6 * labelUnit}
+                  />
+                ))}
+              </g>
+            )}
             <g fill="none" strokeLinejoin="round" strokeLinecap="round">
               {allPaths.map((line, i) => (
                 <polyline key={i} points={points(line)} stroke="#71825b" strokeWidth={roadWidth + 0.15} />
