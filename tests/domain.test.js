@@ -14,7 +14,7 @@ test('Growth uses saved variety harvest date and never calls 85 percent ready',(
 test('Rows reject overlap, fractions, overflow and excess plant counts',()=>{const p=[{id:'a',zone:'bed',layout:{startRow:1,rowCount:1,lengthM:4},status:'planted'}];assert.match(validatePlantingLayout(z,p,{startRow:1,rowCount:1,lengthM:4},3),/already/);assert.match(validatePlantingLayout(z,p,{startRow:4,rowCount:2,lengthM:4},3),/within/);assert.match(validatePlantingLayout(z,[],{startRow:1,rowCount:1,lengthM:5},3),/length/);assert.match(validatePlantingLayout(z,[],{startRow:1,rowCount:1,lengthM:4},3.5),/whole/);assert.match(validatePlantingLayout(z,[],{startRow:1,rowCount:1,lengthM:4},20,50),/fits/);assert.equal(validatePlantingLayout(z,p,{startRow:2,rowCount:1,lengthM:4},4),'');});
 test('Rotation retains physical row length',()=>{assert.equal(bedLength({...z,wM:2,hM:4,rowAxis:'vertical'}),4);assert.equal(bedRows({...z,rowAxis:'vertical'}),4);});
 test('Animals assigned to one area and bees resolve to beehives',()=>{assert.equal(animalZone({type:'Chicken'},fixture.zones).id,'coop');assert.equal(animalZone({type:'Bee'},fixture.zones).id,'hive');assert.equal(animalZone({type:'Chicken',zone:'hive'},fixture.zones).id,'hive');});
-test('Full round includes task-free zones; quick round groups by area',()=>{const tasks=[{key:'a',plotId:'tom',daysOut:0,type:'water'},{key:'b',plotId:'basil',daysOut:0,type:'step'}];assert.equal(planRound(tasks,fixture).length,1);assert.equal(planRound([],fixture,'full').length,6);assert.equal(planRound([],fixture,'full','hive')[0].id,'hive');assert(roundMinutes(planRound(tasks,fixture),fixture)>0);});
+test('Walk stops are per crop planting; full round adds task-free areas but not the house',()=>{const tasks=[{key:'a',plotId:'tom',daysOut:0,type:'water'},{key:'b',plotId:'basil',daysOut:0,type:'step'},{key:'c',plotId:'tom',daysOut:0,type:'step'}];const quick=planRound(tasks,fixture);assert.equal(quick.length,2);assert.deepEqual(quick.map(s=>s.plotId).sort(),['basil','tom']);assert.equal(quick.find(s=>s.plotId==='tom').tasks.length,2);assert.notEqual(quick[0].yM,quick[1].yM);const full=planRound([],fixture,'full');assert.equal(full.length,6);assert(!full.some(s=>s.type==='house'));assert.equal(planRound([],fixture,'full','hive')[0].id,'hive');assert(roundMinutes(planRound(tasks,fixture),fixture)>0);});
 test('Completing a harvest cannot duplicate pantry inventory',()=>{const task={key:'plot-lettuce-harvest',type:'harvest',plotId:'lettuce'};const next=applyTaskCompletion(fixture,task,2.4);assert.equal(next.pantry.items.length,1);assert.equal(next.pantry.items[0].qty,2.4);assert.equal(next.garden.plots.find(p=>p.id==='lettuce').status,'harvested');assert.equal(applyTaskCompletion(next,task,2.4),next);assert(next.completions[todayLocalKey()].includes(task.key));});
 test('Egg completion is idempotent and care steps persist',()=>{const task={key:'species-Chicken-eggs',type:'eggs'};const next=applyTaskCompletion(fixture,task,3);assert.equal(applyTaskCompletion(next,task,3).pantry.items.length,1);const data={...fixture,garden:{plots:[{id:'a',steps:[{done:false}]}]}};assert.equal(applyTaskCompletion(data,{type:'step',plotId:'a',stepIdx:0,key:'step'},null).garden.plots[0].steps[0].done,true);});
 test('Queue and visual harvest windows agree with stored date',()=>{const queue=buildTaskQueue(fixture);assert(queue.some(t=>t.plotId==='lettuce'&&t.type==='harvest'));assert(!queue.some(t=>t.plotId==='tom'&&t.type==='harvest'));});
@@ -99,4 +99,67 @@ test('Nearby manually drawn paths are connection points',()=>{
 test('Architectural details remain metre-sized rather than scaling with a building',()=>{
  assert.equal(buildingScale(10,10,'barn').door,buildingScale(20,20,'barn').door);assert.equal(buildingScale(10,10,'barn').roofDepth,7.8);assert.equal(buildingScale(3,2,'barn').small,true);
  assert.equal(buildingScale(10,10,'house').window,buildingScale(20,20,'house').window);
+});
+
+import { spacingGuide, crowdingFactor } from '../src/data/spacing.js';
+import { plantingInput, plantingRows, occupiedRects } from '../src/features/quiet/planting-plan.js';
+import { modernRect, axisOf } from '../src/features/quiet/farm-model.js';
+test('A planting can run vertically in a horizontal bed and rotates with the bed', () => {
+  const bed = { id: 'bed', type: 'veg', wM: 4, hM: 2.4 };
+  const carrot = { name: 'Carrot', cat: 'Vegetable', spacing: 4 };
+  const plan = planPlanting(bed, [], { plantCount: 120, axis: 'vertical', spacingCM: 4, rowSpacingCM: 15 }, carrot);
+  assert.equal(plan.error, '');
+  assert.equal(axisOf(bed, plan.layout), 'vertical');
+  const rows = plantingRows(bed, { plantCount: 120, layout: plan.layout });
+  assert(rows.every((r) => r.vertical));
+  assert.equal(rows.reduce((n, r) => n + r.points.length, 0), 120);
+  for (const r of rows) assert(r.points.every((q) => q.xM === r.atM && q.yM > 0 && q.yM < bed.hM));
+  const rotated = { ...bed, wM: 2.4, hM: 4, rowAxis: 'vertical' };
+  assert.equal(axisOf(rotated, plan.layout), 'horizontal');
+});
+test('Plantings in both directions share a bed without overlapping', () => {
+  const bed = { id: 'bed', type: 'veg', wM: 4, hM: 2.4 };
+  const tomato = { name: 'Tomato', cat: 'Vegetable', spacing: 50 };
+  const carrot = { name: 'Carrot', cat: 'Vegetable', spacing: 4 };
+  const a = planPlanting(bed, [], { plantCount: 7, spacingCM: 50, rowSpacingCM: 60 }, tomato);
+  const saved = { id: 'a', zone: 'bed', plantCount: a.count, layout: a.layout };
+  const b = planPlanting(bed, [saved], { plantCount: 100, axis: 'vertical', spacingCM: 4, rowSpacingCM: 15 }, carrot);
+  assert.equal(b.error, '');
+  assert.equal(b.shortened, true);
+  const r1 = modernRect(bed, a.layout), r2 = modernRect(bed, b.layout);
+  assert(!(r1.x0 < r2.x1 && r1.x1 > r2.x0 && r1.y0 < r2.y1 && r1.y1 > r2.y0));
+  assert(r2.y1 <= bed.hM + 1e-9 && r2.x1 <= bed.wM + 1e-9);
+  assert.equal(occupiedRects(bed, [saved, { id: 'b', zone: 'bed', plantCount: b.count, layout: b.layout }]).length, 2);
+});
+test('Plant count fills rows and row count fills plants', () => {
+  const bed = { id: 'bed', type: 'veg', wM: 4, hM: 2.4 };
+  const lettuce = { name: 'Lettuce', cat: 'Vegetable', spacing: 25 };
+  const byPlants = planPlanting(bed, [], plantingInput({ plantCount: 30 }, lettuce, bed), lettuce);
+  assert.equal(byPlants.error, '');
+  assert.equal(byPlants.rows, 2);
+  const byRows = planPlanting(bed, [], plantingInput({ mode: 'rows', rowCount: 3 }, lettuce, bed), lettuce);
+  assert.equal(byRows.count, 45);
+});
+test('Grid defaults follow the pattern and crowding caps yield', () => {
+  const carrot = { name: 'Carrot', spacing: 4 };
+  assert.deepEqual(spacingGuide(carrot, 'rows'), { inRowCM: 4, rowCM: 15, hexCM: 8 });
+  assert.equal(spacingGuide(carrot, 'offset').rowCM, 6.9);
+  assert.equal(crowdingFactor(carrot, 4, 15), 1);
+  assert.equal(crowdingFactor(carrot, 8, 6.9), 1);
+  assert(crowdingFactor(carrot, 4, 3.5) < 0.3);
+  const bed = { id: 'bed', type: 'veg', wM: 4, hM: 2.4 };
+  const input = plantingInput({ pattern: 'offset', plantCount: 10 }, carrot, bed);
+  assert.equal(input.spacingCM, 8);
+  assert.equal(input.rowSpacingCM, 6.9);
+});
+test('Orchards default to natural scattered trees, and shuffling moves them', () => {
+  const orchard = { id: 'fruit', type: 'orchard', wM: 20, hM: 20 };
+  const apple = { name: 'Apple', cat: 'Fruit', spacing: 300 };
+  const input = plantingInput({ plantCount: 5 }, apple, orchard);
+  assert.equal(input.pattern, 'scatter');
+  const a = planPlanting(orchard, [], input, apple);
+  const b = planPlanting(orchard, [], { ...input, seed: '42' }, apple);
+  assert.equal(a.error, '');
+  assert.equal(b.error, '');
+  assert.notDeepEqual(a.layout.points, b.layout.points);
 });

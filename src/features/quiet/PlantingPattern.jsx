@@ -1,4 +1,0 @@
-const choices=[['rows','Straight rows','Plants line up across rows.'],['offset','Offset grid','Alternate rows shift by half a space.']];
-export default function PlantingPattern({value='rows',onChange}) {
- return <fieldset className="q-pattern-picker"><legend>Planting pattern</legend><div className="q-grid2">{choices.map(([key,label,description])=><label key={key} className={value===key?'is-selected':''}><input type="radio" name="planting-pattern" value={key} checked={value===key} onChange={()=>onChange(key)}/><svg viewBox="0 0 92 44" aria-hidden="true">{Array.from({length:3},(_,r)=>Array.from({length:5},(_,c)=><circle key={`${r}-${c}`} cx={10+c*16+(key==='offset'&&r%2?8:0)} cy={7+r*15} r="3.6"/>))}</svg><strong>{label}</strong><small>{description}</small></label>)}</div><p>Offset grids suit staggered planting. Your plant count stays the same; use your bed’s real row spacing.</p></fieldset>;
-}

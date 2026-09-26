@@ -18,3 +18,21 @@ body{font-family:var(--font-body);letter-spacing:-.015em}button,input,select,tex
 .q-pattern-picker label.is-selected strong{color:#244330}.q-pattern-picker label.is-selected small{color:#526657}
 /* Crop selection uses finished produce, with a bounded, keyboard-accessible list. */
 .q-crop-picker{position:relative;margin-bottom:16px}.q-crop-picker>label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--color-text-2)}.q-crop-picker>input{box-sizing:border-box;width:100%;padding:12px 14px;font:inherit;font-size:16px;color:var(--color-text);background:var(--color-card);border:1px solid var(--color-border);border-radius:12px}.q-crop-options{max-height:280px;overflow:auto;border:1px solid var(--color-border);border-radius:12px;margin-top:6px;background:var(--color-card)}.q-crop-options button{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:9px 14px;border:0;border-bottom:1px solid var(--color-border);font:inherit;text-align:left;background:var(--color-card);color:var(--color-text);cursor:pointer}.q-crop-options button:hover,.q-crop-options button:focus-visible{background:var(--color-green-pale)}.q-planting-controls>.q-row{margin:16px 0;flex-wrap:wrap}.q-planting-controls button[aria-pressed="true"]{background:var(--color-green);border-color:var(--color-green);color:#fff}.q-planting-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:16px 0;font-size:14px}.q-planting-controls>small{display:block;line-height:1.6;color:var(--color-text-2)}.quiet-scene svg,.quiet-scene svg *{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.q-bed-plan .q-row-number{direction:ltr;unicode-bidi:isolate;letter-spacing:0}
+/* Walk: live map of the current stop + compact crop card */
+.q-walk-step{margin:8px 0 6px;font-size:12px;color:var(--color-text-2)}.q-walk-step strong{color:var(--color-text);font-size:13px}
+.q-walk-map-live{border-radius:16px;overflow:hidden;margin:0 0 6px;border:1px solid var(--color-border)}.q-walk-map-live .quiet-map-top,.q-walk-map-live .quiet-map-bottom{display:none}
+.q-walk-pin{animation:q-pin-bob 1.6s ease-in-out infinite}.q-walk-focus rect{animation:q-focus-pulse 1.6s ease-in-out infinite}
+@keyframes q-pin-bob{0%,100%{translate:0 0}50%{translate:0 -3%}}@keyframes q-focus-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.q-walk-pin,.q-walk-focus rect{animation:none}}
+.q-walk-stop-head{display:flex;gap:12px;align-items:center;margin:6px 0 4px}.q-walk-stop-head h2{font-size:22px;font-weight:650;letter-spacing:-.04em;margin:0}
+.q-walk-stop-art{width:72px;height:72px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:16px;background:radial-gradient(ellipse at 50% 70%,#eff1e4,#f6f7f100 70%)}.q-walk-stop-art img{max-width:64px;max-height:64px;object-fit:contain}
+.q-walk-where{display:flex;align-items:center;gap:4px;margin:2px 0 6px;font-size:12px;color:var(--color-text-2)}
+.q-walk-last{font-size:12px;color:var(--color-text-2);background:var(--color-bg);border-radius:10px;padding:8px 10px;margin:8px 0}
+.q-walk-tasks{display:flex;flex-direction:column;gap:6px;margin:10px 0}.q-walk-tasks .q-task-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--color-border);border-radius:12px;cursor:pointer}.q-walk-tasks p{margin:2px 0 0;font-size:11px;color:var(--color-text-2)}
+.q-walk-amount{width:100%;box-sizing:border-box;padding:10px;margin-top:6px;border:1px solid var(--color-border);border-radius:10px;font-size:16px}
+.q-walk-question{font-weight:600;margin:14px 0 0}
+.q-walk-status button small{font-size:10px;color:var(--color-text-3)}.q-walk-good{background:var(--color-green-pale)!important;border-color:var(--color-green)!important;color:var(--color-green-dark)}
+.q-walk-saves-to{display:block;font-size:11px;color:var(--color-text-3);margin:4px 0 8px}
+/* Planting form */
+.q-spacing-guide{font-size:12px;color:var(--color-text-2);margin:8px 0}
+.q-planting-preview{margin-top:12px}.q-planting-preview>small{display:block;font-size:11px;color:var(--color-text-2);margin-bottom:6px}.q-planting-preview .q-bed-plan-tools{display:none}
