@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Overlay, Inp, Sel, Btn } from "../../components/ui";
 import { uid } from "../../lib/storage";
-import { todayLocalKey, appendLog } from "../../lib/utils";
+import { todayLocalKey, appendLog, addDaysToLocalKey, localDateFromKey } from "../../lib/utils";
 import { applySeedlingStage } from "../../lib/seedling-stage";
 import { rCR, rCM } from "../../lib/regional";
 import { propagationOf } from "../../data/propagation";
@@ -89,6 +89,28 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
       },
     });
   }
+  // Changing the plant-out date: before sowing, the sowing date moves with it (never into the past);
+  // after sowing, only the plant-out date changes. The reserved bed date follows.
+  function movePlantOut(value) {
+    const sown = batch.stageDates?.sown;
+    const planned = addDaysToLocalKey(value, -(batch.weeks || 4) * 7);
+    const sowDate = sown || (planned < today ? today : planned);
+    setData({
+      ...data,
+      nursery: {
+        ...data.nursery,
+        batches: data.nursery.batches.map((b) =>
+          b.id === batch.id ? { ...b, plantOutDate: value, sowDate } : b,
+        ),
+      },
+      garden: {
+        ...data.garden,
+        plots: data.garden.plots.map((p) =>
+          p.id === batch.plotId && p.status === "planned" ? { ...p, plannedDate: value } : p,
+        ),
+      },
+    });
+  }
   function remove() {
     if (
       !window.confirm(
@@ -130,6 +152,15 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
       {rCM(data.region).get(batch.crop) && <CropSeedInfo crop={rCM(data.region).get(batch.crop)} />}
       <SeedlingTray batch={batch} />
       <SeedTimeline batch={batch} />
+      {Math.round((localDateFromKey(schedule.planted) - localDateFromKey(schedule.sown)) / 864e5) <
+        (batch.weeks || 4) * 7 * 0.75 && (
+        <p className="q-warning">
+          Only{" "}
+          {Math.round((localDateFromKey(schedule.planted) - localDateFromKey(schedule.sown)) / 7 / 864e5)}{" "}
+          weeks from sowing to planting out — {batch.crop} usually needs about {batch.weeks}. Seedlings will
+          be small; move the plant-out date later or buy young plants.
+        </p>
+      )}
       {seasonNote(
         rCM(data.region).get(batch.crop),
         schedule.planted,
@@ -184,9 +215,9 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
         <Inp
           label="Plant out on"
           type="date"
-          min={batch.sowDate}
-          value={batch.plantOutDate}
-          onChange={(e) => e.target.value && update({ plantOutDate: e.target.value })}
+          min={batch.stageDates?.sown ? addDaysToLocalKey(batch.stageDates.sown, 7) : today}
+          value={schedule.planted}
+          onChange={(e) => e.target.value && movePlantOut(e.target.value)}
         />
         <Inp
           label="Cells sown"
