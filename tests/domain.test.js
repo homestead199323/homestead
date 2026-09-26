@@ -291,3 +291,30 @@ test('Pot-on trays always have clearly bigger cells than the sowing tray', () =>
   assert(trayFor(potTrayFor(60, 60, { name: 'Tomato' }, 36)).cellCM > trayFor(60).cellCM);
   assert.equal(potTrayFor(24, 104, { name: 'Tomato' }, 36), 24);
 });
+
+import {tasksByZone,taskAction,rewardText} from '../src/features/grove/zone-tasks.js';
+test('Dairy groups get a daily milking task that fills the pantry, unless switched off', () => {
+  const goats={...fixture,livestock:{animals:[...(fixture.livestock?.animals||[]),{id:'g1',type:'Goat',count:2}]}};
+  const milk=buildTaskQueue(goats).find(t=>t.type==='milk');
+  assert(milk&&milk.speciesType==='Goat');
+  assert.equal(milk.expected,5);
+  const next=applyTaskCompletion(goats,milk,4.5);
+  const item=next.pantry.items.at(-1);
+  assert.equal(item.qty,4.5);assert.equal(item.unit,'L');assert.equal(item.category,'Dairy');
+  assert(!buildTaskQueue(next).some(t=>t.type==='milk'));
+  const dry={...goats,livestock:{animals:goats.livestock.animals.map(a=>a.type==='Goat'?{...a,milking:false}:a)}};
+  assert(!buildTaskQueue(dry).some(t=>t.type==='milk'));
+  const sheep={...fixture,livestock:{animals:[{id:'s1',type:'Sheep',count:3}]}};
+  assert(!buildTaskQueue(sheep).some(t=>t.type==='milk'));
+});
+test('Map badges group today’s jobs by the area where they happen', () => {
+  const tasks=[{key:'a',plotId:'tom',daysOut:0,type:'water',pri:2},{key:'b',type:'eggs',speciesType:'Chicken',daysOut:0,pri:1},{key:'c',type:'upcoming',plotId:'tom',daysOut:2},{key:'d',type:'seedling',zoneId:'coop',daysOut:0,pri:1}];
+  const by=tasksByZone(tasks,fixture);
+  const tomZone=fixture.garden.plots.find(p=>p.id==='tom').zone;
+  assert.deepEqual(by[tomZone].map(t=>t.key),['a']);
+  assert.deepEqual(by.coop.map(t=>t.key).sort(),['b','d']);
+  const eggs=taskAction({type:'eggs',speciesType:'Chicken',headCount:10},fixture);
+  assert.equal(eggs.verb,'Collect');assert.equal(eggs.amount.value,7);
+  assert.equal(rewardText({},eggs,'9'),'+9 🥚');
+  assert.equal(taskAction({type:'feed'},fixture).cheer,'Fed!');
+});

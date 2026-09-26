@@ -4,6 +4,7 @@ import { LDB } from "../../data/livestock";
 import { BREEDS } from "../../data/breeds";
 import { Btn, Card, Overlay, Pill, Inp, Sel } from "../../components/ui";
 import FarmIcon from "../../components/FarmIcon";
+import { isMilking } from "../../lib/task-queue";
 
 /* ═══════════════════════════════════════════
    ANIMAL OVERLAY — shared popup used from Livestock, TaskQueue, Dashboard
@@ -24,6 +25,8 @@ function AnimalOverlay({animal, data, setData, onClose}) {
     setData({...data, livestock: {...data.livestock,animals: data.livestock.animals.filter(a => a.id !== id)}});
     onClose();
   };
+  const milk = db.out?.Milk ? isMilking(animal) : null;
+  const setMilking = on => setData({...data, livestock: {...data.livestock, animals: data.livestock.animals.map(a => a.id === animal.id ? {...a, milking: on} : a)}});
   const breedInfo = animal.breed ? (BREEDS[animal.type] || []).find(b => b.name === animal.breed) : null;
 
   return (
@@ -35,6 +38,12 @@ function AnimalOverlay({animal, data, setData, onClose}) {
         {animal.breed && <Pill c={C.blue} bg={C.tBlue}>{animal.breed}</Pill>}
         {db.prod.map(p => <Pill key={p} c={C.green} bg={C.gp}>{p}</Pill>)}
       </div>
+      {milk !== null && (
+        <label className="q-check-row">
+          <input type="checkbox" checked={milk} onChange={e => setMilking(e.target.checked)}/>
+          <span><strong>Milking this group</strong><small>Adds a daily milking task. Turn off for dry, pregnant-late, male or meat animals.</small></span>
+        </label>
+      )}
       {breedInfo && (
         <Card style={{marginBottom:8,background:C.tBlue}}>
           <div style={{fontSize:12,fontWeight:700,color:C.blue}}>🧬 Breed: {breedInfo.name}</div>

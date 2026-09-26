@@ -9,6 +9,7 @@ import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } fr
 import { ZT_MAP } from "../../data/zones";
 import { rCM } from "../../lib/regional";
 import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, markTaskDone } from "../../lib/utils";
+import { milkingHead } from "../../lib/task-queue";
 import { useFlip } from "../../lib/use-flip";
 
 /* ═══════════════════════════════════════════
@@ -224,6 +225,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
       if (POULTRY_SPECIES.has(type)) {
         dailies.push({type: "eggs", emoji: "🥚", title: `Collect eggs — ${speciesLabel}`, keySuffix: "eggs"});
       }
+      if (db.out?.Milk && milkingHead(data, type) > 0) {
+        dailies.push({type: "milk", emoji: "🥛", title: `Milk ${animalPlural(type, milkingHead(data, type))}`, keySuffix: "milk"});
+      }
       dailies.forEach(dt => {
         for (let d = 0; d <= 60; d++) {
           const dueDate = new Date(now.getTime() + d * 864e5);
@@ -403,6 +407,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       if (typeSuffix === "feed")       title = `Feed ${speciesLabel}`;
       else if (typeSuffix === "water"){ title = `Water ${speciesLabel}`; emoji = "💧"; }
       else if (typeSuffix === "eggs") { title = `Collect eggs — ${speciesLabel}`; emoji = "🥚"; }
+      else if (typeSuffix === "milk") { title = `Milk ${speciesLabel}`; emoji = "🥛"; }
       else if (typeSuffix === "clean"){ title = `Clean housing — ${speciesLabel}`; emoji = "🧹"; }
       else if (typeSuffix === "bedding"){title = `Full bedding change — ${speciesLabel}`; emoji = "🛏️"; }
       else if (typeSuffix === "paddock"){title = `Rotate paddock — ${speciesLabel}`; emoji = "🔄"; }

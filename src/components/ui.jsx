@@ -99,10 +99,10 @@ export function Overlay({title,onClose,children,wide,sheet}) {
 
   if (!isSheet) {
     return createPortal(
-      <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
+      <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(18,26,20,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
         <div
           onClick={function(e){e.stopPropagation();}}
-          className="overlay-sheet page-enter" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
+          className="overlay-sheet overlay-pop" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
           style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
           <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
             <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
@@ -117,9 +117,9 @@ export function Overlay({title,onClose,children,wide,sheet}) {
 
   // Sheet variant — spring drag-to-dismiss
   return createPortal(
-    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",overflowX:"hidden"}}>
+    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
       {/* Backdrop fades as sheet is dragged down */}
-      <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",opacity}} onClick={onClose}/>
+      <div style={{position:"absolute",inset:0,background:"rgba(18,26,20,.3)",opacity}} onClick={onClose}/>
       <div
         onClick={function(e){e.stopPropagation();}}
         style={{
@@ -128,16 +128,17 @@ export function Overlay({title,onClose,children,wide,sheet}) {
           transition: startY === null ? "transform .25s ease, opacity .25s ease" : "none",
           position:"relative",
           background:C.card,
-          borderRadius:"20px 20px 0 0",
+          borderRadius:C.r+4,
           width:"100%",
-          maxHeight:"90dvh",
+          maxWidth:wide?720:600,
+          maxHeight:"min(86dvh, 860px)",
           display:"flex",
           flexDirection:"column",
           overflow:"hidden",
           boxSizing:"border-box",
-          boxShadow:"0 -4px 32px rgba(0,0,0,.18)",
+          boxShadow:"0 20px 60px rgba(0,0,0,.22), 0 8px 20px rgba(0,0,0,.1)",
         }}
-        className="overlay-sheet overlay-sheet--drag" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
+        className="overlay-sheet overlay-sheet--drag overlay-pop" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
       >
         {/* Drag zone — ONLY this top area drags the sheet. The body below
             scrolls normally on touch (previously the whole sheet captured
@@ -146,17 +147,15 @@ export function Overlay({title,onClose,children,wide,sheet}) {
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          style={{flexShrink:0,background:C.card,borderRadius:"20px 20px 0 0",cursor:"grab",touchAction:"none"}}
+          style={{flexShrink:0,background:C.card,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`,cursor:"grab",touchAction:"none"}}
         >
-          {/* Drag handle pill */}
-          <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 0"}}/>
-          <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 24px 8px"}}>
+          <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px 8px 24px"}}>
             <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
             <button data-icon aria-label="Close dialog" onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,width:44,height:44,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",touchAction:"manipulation"}}><X size={18} strokeWidth={2}/></button>
           </div>
         </div>
         {/* Scrollable body */}
-        <div style={{padding:"8px 24px 24px",paddingBottom:"max(24px, env(safe-area-inset-bottom, 24px))",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",touchAction:"pan-y",flex:1}}>{children}</div>
+        <div style={{padding:"8px 24px 24px",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",touchAction:"pan-y",flex:1}}>{children}</div>
       </div>
     </div>,
     document.body

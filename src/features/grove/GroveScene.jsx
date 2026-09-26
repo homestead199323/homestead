@@ -7,6 +7,7 @@ import { isPlantZone } from "../farm/living/visuals";
 import { zoneGeometry, growthOf, animalZone, bedRows, layoutPlots } from "../quiet/farm-model";
 import { plantingRows, plantingBounds } from "../quiet/planting-plan";
 import GroveZoneCard from "./GroveZoneCard";
+import ZoneTaskPopup from "./ZoneTaskPopup";
 import { AerialDefs, Building, CropCrown, Fence, OverheadAnimal, Ornament, Canopy } from "./AerialArtwork";
 import { accessPaths, plantedRows, plantPosition, buildingScale } from "./aerial-layout";
 import { srand } from "./sceneMath";
@@ -359,6 +360,9 @@ export default function GroveScene({
   onPlantInZone,
   onShowCrops,
   onZoneClick,
+  onOpenTasks,
+  taskZoneId = null,
+  onTaskZone,
   interactive = true,
   showEditButton = true,
   showHelperText = true,
@@ -372,6 +376,9 @@ export default function GroveScene({
   const svg = useRef(null),
     drag = useRef(null),
     moved = useRef(false);
+  const [ownTaskZone, setOwnTaskZone] = useState(null);
+  const taskZone = onTaskZone ? taskZoneId : ownTaskZone,
+    setTaskZone = onTaskZone || setOwnTaskZone;
   const [selected, setSelected] = useState(null),
     [zoom, setZoom] = useState(1),
     [screenWidth, setScreenWidth] = useState(800);
@@ -831,8 +838,6 @@ export default function GroveScene({
             </g>
           )}
           {zones.map((z) => {
-            const marks = tasksByZone[z.id],
-              count = Array.isArray(marks) ? marks.reduce((s, m) => s + m.count, 0) : marks ? 1 : 0;
             const labelWidth = Math.min(140, z.name.length * 5.7 + 20),
               cy = Math.min(fH - 0.18, z.yM + z.hM + 0.33);
             return (
@@ -861,17 +866,49 @@ export default function GroveScene({
                 >
                   {z.name.length > 23 ? z.name.slice(0, 22) + "…" : z.name}
                 </text>
-                {count > 0 && (
-                  <g transform={`translate(${labelWidth / 2 - 2} -9)`}>
-                    <circle r="7.5" fill="#f5f1df" stroke="#93a47c" strokeWidth="1" />
-                    <text textAnchor="middle" y="3" fontSize="8.5" fill="#3d5b3e">
-                      {count}
-                    </text>
-                  </g>
-                )}
               </g>
             );
           })}
+          {!edit &&
+            zones.map((z) => {
+              const list = tasksByZone[z.id] || [];
+              if (!list.length) return null;
+              const labelWidth = Math.min(140, z.name.length * 5.7 + 20),
+                cy = Math.min(fH - 0.18, z.yM + z.hM + 0.33),
+                pillW = list.length > 9 ? 40 : 34;
+              return (
+                <g
+                  key={`badge-${z.id}`}
+                  className="q-zone-badge"
+                  transform={`translate(${z.xM + z.wM / 2 + labelWidth / 2 * labelUnit} ${cy - 9 * labelUnit}) scale(${labelUnit})`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${list.length} job${list.length === 1 ? "" : "s"} waiting at ${z.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTaskZone(z.id);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setTaskZone(z.id);
+                    }
+                  }}
+                >
+                  <circle r="22" fill="transparent" />
+                  <g className="q-badge-bob">
+                    <rect className="q-badge-ring" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" fill="none" stroke="#eea92b" strokeWidth="2" />
+                    <rect className="q-badge-pill" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" fill="#f7c552" stroke="#c9851a" strokeWidth="1.2" />
+                    <text x={-pillW / 2 + 10} y="4.2" textAnchor="middle" fontSize="11">
+                      {list[0].emoji || "✅"}
+                    </text>
+                    <text x={pillW / 2 - 9} y="4" textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#4b2f06">
+                      {list.length}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
           {edit &&
             zones
               .filter((z) => z.id === edit.selectedId)
@@ -956,6 +993,17 @@ export default function GroveScene({
       </div>
       {zones.length === 0 && (
         <p className="q-empty">Make this space yours. Add your first bed in Edit layout.</p>
+      )}
+      {taskZone && zones.find((z) => z.id === taskZone) && (
+        <ZoneTaskPopup
+          zone={zones.find((z) => z.id === taskZone)}
+          tasks={tasksByZone[taskZone] || []}
+          data={data}
+          setData={setData}
+          onClose={() => setTaskZone(null)}
+          onOpenTasks={onOpenTasks}
+          onOpenZone={() => setSelected(taskZone)}
+        />
       )}
       {selectedZone && (
         <GroveZoneCard

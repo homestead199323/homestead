@@ -124,16 +124,15 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpe
   const moreItems = isAdmin ? [...MORE_ITEMS, ADMIN_NAV] : MORE_ITEMS;
   return createPortal(
     <>
-      <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:500}}/>
-      <div style={{
-        position:"fixed", bottom:"calc(56px + env(safe-area-inset-bottom))",
-        left:0, right:0, zIndex:501,
-        background:C.card, borderRadius:"20px 20px 0 0",
-        paddingBottom:8, boxShadow:"0 -4px 32px rgba(0,0,0,.14)",
-        animation:"slideUp .22s cubic-bezier(.25,.46,.45,.94) both",
-        maxHeight:"70vh", overflowY:"auto",
+      <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(18,26,20,.3)",zIndex:2100}}/>
+      <div className="overlay-pop" role="dialog" aria-modal="true" aria-label="More" style={{
+        position:"fixed", top:"50%", left:"50%", zIndex:2101,
+        translate:"-50% -50%",
+        width:"min(400px, calc(100vw - 24px))",
+        background:C.card, borderRadius:C.r+4,
+        padding:"8px 0", boxShadow:"0 20px 60px rgba(0,0,0,.22), 0 8px 20px rgba(0,0,0,.1)",
+        maxHeight:"min(80dvh, 640px)", overflowY:"auto", overscrollBehavior:"contain",
       }}>
-        <div style={{width:36,height:4,borderRadius:2,background:C.bdr,margin:"12px auto 8px"}}/>
         {/* Profile section */}
         <div style={{display:"flex",alignItems:"center",gap:14,padding:"10px 20px 14px",borderBottom:`1px solid ${C.bdr}`}}>
           <div style={{width:44,height:44,borderRadius:22,background:C.grdHero,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>

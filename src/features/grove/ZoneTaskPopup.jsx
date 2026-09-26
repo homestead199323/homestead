@@ -1,0 +1,254 @@
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { X, Minus, Plus, ArrowRight, Check } from "lucide-react";
+import { ZT_MAP } from "../../data/zones";
+import { applyTaskCompletion } from "../quiet/complete-task";
+import { animalZone } from "../quiet/farm-model";
+import AnimalArt from "../quiet/AnimalArt";
+import PlantArt from "../quiet/PlantArt";
+import { taskAction, rewardText } from "./zone-tasks";
+import "./zone-tasks.css";
+
+const BURST = Array.from({ length: 14 }, (_, i) => ({
+  angle: (i / 14) * 360,
+  dist: 60 + (i % 3) * 22,
+  hue: ["#f2b33d", "#6aa66f", "#e0714f", "#5b9bd5"][i % 4],
+}));
+
+function buzz(ms) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  } catch {
+    /* haptics are optional */
+  }
+}
+
+function TaskArt({ task, data }) {
+  if (task.speciesType) return <AnimalArt species={task.speciesType} size={44} />;
+  const crop = task.cropName || data.garden?.plots.find((p) => p.id === task.plotId)?.crop;
+  if (crop) return <PlantArt crop={crop} stage={task.type === "harvest" ? 5 : 3} size={44} />;
+  return <span className="q-tp-emoji">{task.emoji || "✅"}</span>;
+}
+
+function TaskTile({ task, data, index, done, onDone, onOpen }) {
+  const action = taskAction(task, data);
+  const [value, setValue] = useState(action.amount ? String(action.amount.value) : "");
+  const amount = action.amount;
+  const step = amount?.step || 1;
+  const nudge = (dir) => {
+    const n = Math.max(step, Math.round(((Number(value) || 0) + dir * step) * 10) / 10);
+    setValue(String(n));
+    buzz(5);
+  };
+  return (
+    <li className={`q-tp-task${done ? " is-done" : ""}`} style={{ "--i": index }}>
+      <span className="q-tp-icon">
+        <TaskArt task={task} data={data} />
+        <span className="q-tp-sticker" aria-hidden="true">
+          {done ? "✓" : task.emoji}
+        </span>
+      </span>
+      <div className="q-tp-body">
+        <strong>{task.title}</strong>
+        {!done && task.desc && <small>{task.desc}</small>}
+        {!done && amount && (
+          <div className="q-tp-amount">
+            <button type="button" aria-label={`Less ${amount.unit}`} onClick={() => nudge(-1)}>
+              <Minus size={16} />
+            </button>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step={step}
+              value={value}
+              aria-label={`Amount in ${amount.unit}`}
+              onChange={(e) => setValue(e.target.value)}
+            />
+            <span>{amount.unit}</span>
+            <button type="button" aria-label={`More ${amount.unit}`} onClick={() => nudge(1)}>
+              <Plus size={16} />
+            </button>
+          </div>
+        )}
+        {!done && action.final && <small className="q-tp-final">{action.final}</small>}
+      </div>
+      {done ? (
+        <span className="q-tp-reward">
+          <Check size={15} />
+          {done}
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="q-tp-go"
+          onClick={() => (action.open ? onOpen() : onDone(task, rewardText(task, action, value), value))}
+        >
+          {action.verb}
+        </button>
+      )}
+      {done && (
+        <span className="q-tp-float" aria-hidden="true">
+          {done}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Game-style list of what is waiting in one map area. Tasks are ticked off in place
+ * (eggs, milk and harvests go to the pantry); the list is a snapshot so finished jobs
+ * stay visible with their reward until the popup closes.
+ */
+export default function ZoneTaskPopup({ zone, tasks, data, setData, onClose, onOpenTasks, onOpenZone }) {
+  const [list] = useState(tasks);
+  const [done, setDone] = useState({});
+  const [drag, setDrag] = useState(0);
+  const start = useRef(null),
+    sheet = useRef(null),
+    dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+  useEffect(() => {
+    sheet.current?.focus();
+    const key = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [onClose]);
+  const finished = list.filter((t) => done[t.key]).length,
+    total = list.length,
+    clear = total > 0 && finished === total;
+  function complete(task, reward, value) {
+    const next = applyTaskCompletion(dataRef.current, task, value);
+    dataRef.current = next;
+    setData(next);
+    setDone((d) => ({ ...d, [task.key]: reward }));
+    buzz(finished + 1 === total ? [18, 40, 28] : 14);
+  }
+  const zt = ZT_MAP.get(zone.type);
+  const animal = (data.livestock?.animals || []).find((a) => animalZone(a, data.zones || [])?.id === zone.id);
+  const crop = (data.garden?.plots || []).find((p) => p.zone === zone.id && p.status !== "harvested")?.crop;
+  function down(e) {
+    start.current = e.clientY;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  }
+  function move(e) {
+    if (start.current != null) setDrag(Math.max(0, e.clientY - start.current));
+  }
+  function up() {
+    if (start.current == null) return;
+    start.current = null;
+    if (drag > 90) onClose();
+    else setDrag(0);
+  }
+  return createPortal(
+    <div className="q-tp-backdrop" onClick={onClose}>
+      <section
+        ref={sheet}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="q-tp-title"
+        className={`q-tp${clear ? " is-clear" : ""}`}
+        style={drag ? { transform: `translateY(${drag}px)`, transition: "none" } : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="q-tp-drag" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+          <header className="q-tp-head">
+            <span className="q-tp-hero" aria-hidden="true">
+              {animal ? (
+                <AnimalArt species={animal.type} size={58} />
+              ) : crop ? (
+                <PlantArt crop={crop} stage={4} size={58} />
+              ) : (
+                <span className="q-tp-emoji">{zt?.icon || "📍"}</span>
+              )}
+            </span>
+            <div className="q-grow">
+              <span className="q-eyebrow">
+                {clear ? "All clear" : `${total - finished} waiting · ${zt?.label || "Area"}`}
+              </span>
+              <h2 id="q-tp-title">{zone.name}</h2>
+              <div
+                className="q-tp-meter"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={total}
+                aria-valuenow={finished}
+                aria-label="Jobs done"
+              >
+                <span style={{ width: `${total ? (finished / total) * 100 : 0}%` }} />
+              </div>
+            </div>
+            <button type="button" className="q-tp-close" aria-label="Close" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </header>
+        </div>
+        {total === 0 ? (
+          <p className="q-empty">Nothing waiting here right now.</p>
+        ) : (
+          <ul className="q-tp-list">
+            {list.map((t, i) => (
+              <TaskTile
+                key={t.key}
+                task={t}
+                data={data}
+                index={i}
+                done={done[t.key]}
+                onDone={complete}
+                onOpen={() => {
+                  onClose();
+                  onOpenZone?.();
+                }}
+              />
+            ))}
+          </ul>
+        )}
+        {clear && (
+          <div className="q-tp-clear" role="status">
+            <span className="q-tp-burst" aria-hidden="true">
+              {BURST.map((b, i) => (
+                <i
+                  key={i}
+                  style={{ "--a": `${b.angle}deg`, "--d": `${b.dist}px`, background: b.hue }}
+                />
+              ))}
+            </span>
+            <strong>🎉 {zone.name} is all done</strong>
+            <small>
+              {total} job{total === 1 ? "" : "s"} ticked off today
+            </small>
+          </div>
+        )}
+        <footer className="q-tp-foot">
+          {onOpenZone && (
+            <button
+              type="button"
+              className="q-secondary"
+              onClick={() => {
+                onClose();
+                onOpenZone();
+              }}
+            >
+              Area details
+            </button>
+          )}
+          <button
+            type="button"
+            className="q-button"
+            onClick={() => {
+              onClose();
+              onOpenTasks?.();
+            }}
+          >
+            All tasks <ArrowRight size={16} />
+          </button>
+        </footer>
+      </section>
+    </div>,
+    document.body,
+  );
+}

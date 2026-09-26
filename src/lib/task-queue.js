@@ -3,6 +3,17 @@ import { rCM } from "./regional";
 import { nurseryTasks } from "../features/nursery/nursery-model.js";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../data/livestock";
 
+/** Dairy species milked by default; sheep only when the keeper says so. A group can be switched off (dry, bucks, meat herd). */
+const MILKED_BY_DEFAULT = new Set(["Goat", "Cow"]);
+export function isMilking(animal) {
+  return animal.milking ?? MILKED_BY_DEFAULT.has(animal.type);
+}
+export function milkingHead(data, type) {
+  return (data.livestock?.animals || [])
+    .filter((a) => a.type === type && isMilking(a))
+    .reduce((n, a) => n + (a.count || 1), 0);
+}
+
 export function buildTaskQueue(data) {
   const now = new Date(); now.setHours(0,0,0,0);
   const todayKey = toLocalDateKey(now);
@@ -96,6 +107,11 @@ export function buildTaskQueue(data) {
     if (POULTRY_SPECIES.has(type)) {
       const eggNote = db.out?.Eggs?.s || "";
       tasks.push({ key: `species-${type}-eggs`, pri: 1, type: "eggs", emoji: "🥚", title: `Collect eggs — ${speciesLabel}`, desc: `Check nests daily. ${eggNote}`, loc: animalLoc, speciesType: type, headCount, daysOut: 0, routine: true });
+    }
+    if (db.out?.Milk && milkingHead(data, type) > 0) {
+      const milkHead = milkingHead(data, type);
+      const litres = Math.round(db.out.Milk.p * milkHead * 10) / 10;
+      tasks.push({ key: `species-${type}-milk`, pri: 1, type: "milk", emoji: "🥛", title: `Milk ${animalPlural(type, milkHead)}`, desc: `Milk at the same times each day. About ${litres} L expected. Strain and chill fast.`, loc: animalLoc, speciesType: type, headCount: milkHead, expected: litres, daysOut: 0, routine: true });
     }
     if (type !== "Bee" && (dayNum + sHash) % 7 === 0) {
       tasks.push({ key: `species-${type}-clean`, pri: 2, type: "clean", emoji: "🧹", title: `Clean housing — ${speciesLabel}`, desc: `Remove soiled bedding, refresh straw, check for damp.`, loc: animalLoc, speciesType: type, headCount, daysOut: 0 });

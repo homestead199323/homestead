@@ -54,6 +54,27 @@ export function applyTaskCompletion(data, task, logValue) {
     return markTaskDone(next, task.key);
   }
 
+  // Milk — add litres to the pantry, log.
+  if (task.type === "milk") {
+    const litres = Number(logValue) > 0 ? Math.round(Number(logValue) * 10) / 10 : (task.expected || 1);
+    const item = {
+      id: uid(),
+      name: (task.speciesType ? task.speciesType + " " : "") + "Milk",
+      category: "Dairy",
+      qty: litres,
+      unit: "L",
+      source: "farm",
+      addedDate: todayLocalKey(),
+      storageNote: "Strain and chill below 4°C within 2 hours. Use within 3–5 days, or make cheese.",
+    };
+    const next = {
+      ...data,
+      pantry: { items: [...((data.pantry && data.pantry.items) || []), item] },
+      log: appendLog(data.log, { text: "🥛 Milked " + litres + "L" + (task.speciesType ? " from the " + task.speciesType.toLowerCase() + "s" : "") }),
+    };
+    return markTaskDone(next, task.key);
+  }
+
   // Water — log the amount only.
   if (task.type === "water") {
     const litres = Number(logValue) > 0 ? Number(logValue) : null;

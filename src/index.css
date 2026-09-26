@@ -417,38 +417,16 @@ button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-/* ── Overlay → bottom sheet on phone ── */
+/* ── Popups: small centered cards over a lightly faded page, on every screen size ── */
+.overlay-pop { animation: overlayPop .26s cubic-bezier(.2,1.2,.4,1) both; }
+@keyframes overlayPop { from { opacity: 0; transform: scale(.94) translateY(8px); } }
 @media (max-width: 479px) {
-  .overlay-backdrop {
-    align-items: flex-end !important;
-    padding: 0 !important;
-  }
-  .overlay-sheet {
-    max-width: 100% !important;
-    width: 100% !important;
-    max-height: 92vh !important;
-    border-radius: 24px 24px 0 0 !important;
-    animation: slideUp 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) both !important;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  .overlay-handle-row {
-    border-radius: 24px 24px 0 0 !important;
-  }
-  /* drag handle indicator — only for the non-drag (form) sheet variant.
-     The draggable detail sheet renders its own pill + safe-area padding in JSX. */
-  .overlay-sheet:not(.overlay-sheet--drag)::before {
-    content: "";
-    display: block;
-    width: 40px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--color-border);
-    margin: 12px auto 0;
-  }
-  .overlay-sheet--drag {
-    padding-bottom: 0 !important;
-  }
+  .overlay-backdrop { padding: 12px !important; }
+  .overlay-sheet { max-height: 88dvh !important; }
+  .overlay-handle-row { padding-left: 18px !important; padding-right: 10px !important; }
+  .overlay-sheet > div:last-child { padding-left: 18px !important; padding-right: 18px !important; }
 }
+@media (prefers-reduced-motion: reduce) { .overlay-pop { animation: none; } }
 
 /* Touch target compliance — iOS HIG 44px minimum */
 .nav-item { min-height: 44px; }
