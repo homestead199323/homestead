@@ -10,7 +10,14 @@ import PlantingControls from "./PlantingControls";
 import CompanionPanel from "./CompanionPanel";
 import FarmIcon from "../../components/FarmIcon";
 import { propagationOf } from "../../data/propagation";
-import { planBatch, nurseryZones, suggestDates, seasonNote, frostDates } from "../nursery/nursery-model";
+import {
+  planBatch,
+  nurseryZones,
+  suggestDates,
+  seasonNote,
+  frostDates,
+  earliestPlantOut,
+} from "../nursery/nursery-model";
 import { applySeedlingStage } from "../../lib/seedling-stage";
 import { suggestTrays } from "../../data/trays";
 import { TrayPicker, SeedTimeline, SeedlingTray } from "../nursery/NurseryVisuals";
@@ -320,7 +327,7 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
                 <Inp
                   label="Plant out on"
                   type="date"
-                  min={todayLocalKey()}
+                  min={earliestPlantOut(prop, todayLocalKey())}
                   value={plantOutDate}
                   onChange={(e) => update({ ...form, plantOutDate: e.target.value })}
                 />

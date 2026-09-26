@@ -247,3 +247,21 @@ test('Tray sizes are whole grids and batches remember their trays', () => {
   assert.equal(b.potTray, 24);
   assert.equal(planBatch({ crop: { name: 'Lettuce' }, zoneId: 'n', plants: 10, plantOutDate: '2027-05-20', id: 'x', today: '2027-03-01' }).batch.potTray, null);
 });
+import { scheduleOf as sched, stagesOf as stagesFor, earliestPlantOut } from '../src/features/nursery/nursery-model.js';
+test('Seedling steps are always in order and planting out waits for the plants', () => {
+  const cases = [
+    { sowDate: '2026-09-26', plantOutDate: '2026-09-27', germDays: 7, potOn: true, weeks: 7, stageDates: {} },
+    { sowDate: '2027-03-27', plantOutDate: '2027-05-15', germDays: 7, potOn: true, weeks: 7, stageDates: {} },
+    { sowDate: '2027-03-27', plantOutDate: '2027-04-20', germDays: 7, potOn: true, weeks: 7, stageDates: { sown: '2027-03-27', sprouted: '2027-04-15' } },
+    { sowDate: '2027-03-01', plantOutDate: '2027-03-05', germDays: 5, potOn: false, weeks: 4, stageDates: {} },
+  ];
+  for (const b of cases) {
+    const s = sched(b), order = stagesFor(b).map((k) => s[k]);
+    for (let i = 1; i < order.length; i++) assert(order[i] > order[i - 1], JSON.stringify(s));
+  }
+  const s = sched(cases[0]);
+  assert.equal(s.delayedFrom, '2026-09-27');
+  assert.equal(s.planted, '2026-10-27');
+  assert.equal(sched(cases[1]).delayedFrom, null);
+  assert.equal(earliestPlantOut({ germDays: 7, potOn: true }, '2026-09-26'), '2026-10-27');
+});

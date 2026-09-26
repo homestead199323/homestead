@@ -8,6 +8,7 @@ import { propagationOf } from "../../data/propagation";
 import { suggestTrays } from "../../data/trays";
 import {
   suggestDates,
+  earliestPlantOut,
   seasonNote,
   frostDates,
   fmt,
@@ -23,6 +24,14 @@ import {
 } from "./nursery-model";
 import PlantingForm from "../quiet/PlantingForm";
 import { SeedlingTray, TrayPicker, SeedTimeline, CropSeedInfo, StageTrack } from "./NurseryVisuals";
+
+const STEP_WHY = {
+  sown: (b) => `Sow ${b.cells} cells, label the tray, water from below.`,
+  sprouted: (b) => `Usually ${b.germDays} days after sowing. Move into full light as soon as they're up.`,
+  potted: () => "About 2 weeks after sprouting, when the first true leaves show.",
+  hardening: () => "One week before planting out: outside a few hours a day, longer each day.",
+  planted: () => "After a week of hardening off, into the bed at grid spacing. Water in well.",
+};
 
 function nextStepText(batch) {
   const next = nextStage(batch);
@@ -91,7 +100,27 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
   }
   // Changing the plant-out date: before sowing, the sowing date moves with it (never into the past);
   // after sowing, only the plant-out date changes. The reserved bed date follows.
-  function movePlantOut(value) {
+  const sownOn = batch.stageDates?.sown;
+  const minOut = sownOn
+    ? scheduleOf({ ...batch, sowDate: sownOn, plantOutDate: sownOn }).planted
+    : earliestPlantOut(batch, today);
+  const weeksIn = Math.round(
+    (localDateFromKey(schedule.planted) - localDateFromKey(schedule.sown)) / 7 / 864e5,
+  );
+  const notes = [
+    schedule.delayedFrom &&
+      `Plant-out moved from ${fmt(schedule.delayedFrom)} to ${fmt(schedule.planted)}: seedlings need time to sprout${batch.potOn ? ", be potted on" : ""} and harden off first.`,
+    weeksIn < (batch.weeks || 4) * 0.75 &&
+      `Only ${weeksIn} weeks in the nursery — ${batch.crop} usually needs about ${batch.weeks}, so seedlings will be small.`,
+    seasonNote(
+      rCM(data.region).get(batch.crop),
+      schedule.planted,
+      frostDates(data),
+      data.zones.find((z) => z.id === batch.targetZoneId)?.type === "greenhouse",
+    ),
+  ].filter(Boolean);
+  function movePlantOut(input) {
+    const value = input < minOut ? minOut : input;
     const sown = batch.stageDates?.sown;
     const planned = addDaysToLocalKey(value, -(batch.weeks || 4) * 7);
     const sowDate = sown || (planned < today ? today : planned);
@@ -152,29 +181,12 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
       {rCM(data.region).get(batch.crop) && <CropSeedInfo crop={rCM(data.region).get(batch.crop)} />}
       <SeedlingTray batch={batch} />
       <SeedTimeline batch={batch} />
-      {Math.round((localDateFromKey(schedule.planted) - localDateFromKey(schedule.sown)) / 864e5) <
-        (batch.weeks || 4) * 7 * 0.75 && (
-        <p className="q-warning">
-          Only{" "}
-          {Math.round((localDateFromKey(schedule.planted) - localDateFromKey(schedule.sown)) / 7 / 864e5)}{" "}
-          weeks from sowing to planting out — {batch.crop} usually needs about {batch.weeks}. Seedlings will
-          be small; move the plant-out date later or buy young plants.
-        </p>
-      )}
-      {seasonNote(
-        rCM(data.region).get(batch.crop),
-        schedule.planted,
-        frostDates(data),
-        data.zones.find((z) => z.id === batch.targetZoneId)?.type === "greenhouse",
-      ) && (
-        <p className="q-warning">
-          {seasonNote(
-            rCM(data.region).get(batch.crop),
-            schedule.planted,
-            frostDates(data),
-            data.zones.find((z) => z.id === batch.targetZoneId)?.type === "greenhouse",
-          )}
-        </p>
+      {notes.length > 0 && (
+        <div className="q-warning q-notes">
+          {notes.map((n) => (
+            <p key={n}>{n}</p>
+          ))}
+        </div>
       )}
       <ol className="q-seed-steps">
         {stages.map((s, i) => {
@@ -191,6 +203,7 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
                   {done ? fmt(batch.stageDates?.[s]) : `${fmt(schedule[s])} · ${inDays(schedule[s])}`}
                 </small>
               </div>
+              {!done && <small className="q-step-why">{STEP_WHY[s](batch)}</small>}
               {isNext && (
                 <button className="q-button" onClick={() => advance(s)}>
                   {s === "sown"
@@ -215,7 +228,7 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
         <Inp
           label="Plant out on"
           type="date"
-          min={batch.stageDates?.sown ? addDaysToLocalKey(batch.stageDates.sown, 7) : today}
+          min={minOut}
           value={schedule.planted}
           onChange={(e) => e.target.value && movePlantOut(e.target.value)}
         />
@@ -227,6 +240,11 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
           onChange={(e) => +e.target.value >= 1 && update({ cells: Math.round(+e.target.value) })}
         />
       </div>
+      <small className="q-step-why">
+        Earliest plant-out {sownOn ? "for this sowing" : "if you sow today"}: {fmt(minOut)} — ~
+        {batch.germDays} days to sprout{batch.potOn ? ", 2 weeks to pot on" : ""}, 1 week hardening off.
+        Usual: {batch.weeks} weeks in the nursery.
+      </small>
       <TrayPicker
         label="Sowing tray"
         value={batch.tray || 60}
@@ -331,6 +349,7 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
         <Inp
           label="Plant out around"
           type="date"
+          min={crop ? earliestPlantOut(propagationOf(crop), todayLocalKey()) : undefined}
           value={plantOutDate}
           onChange={(e) => setForm({ ...form, plantOutDate: e.target.value })}
         />

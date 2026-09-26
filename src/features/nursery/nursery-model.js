@@ -24,18 +24,36 @@ export function stagesOf(batch) {
 
 const days = (from, to) => Math.round((localDateFromKey(to) - localDateFromKey(from)) / 864e5);
 
-/** Planned or actual date for every stage. Actual dates shift the ones that follow. */
+const later = (a, b) => (a > b ? a : b);
+/**
+ * Planned or actual date for every stage, always in order and following the plants: sprouting after
+ * the crop's germination days, potting on two weeks later (if needed), at least a few days before
+ * hardening off starts, and a week of hardening off before planting out. Recorded dates are kept.
+ * If the chosen plant-out date is too early for that, planting out moves later (`delayedFrom`).
+ */
 export function scheduleOf(batch) {
   const d = batch.stageDates || {};
   const sown = d.sown || batch.sowDate;
-  const sprouted = d.sprouted || addDaysToLocalKey(sown, batch.germDays || 7);
-  const potted = batch.potOn ? d.potted || addDaysToLocalKey(sprouted, 14) : null;
   // Sown earlier or later than planned: the rest of the plan moves with it.
   const shift = d.sown && batch.sowDate && d.sown !== batch.sowDate ? days(batch.sowDate, d.sown) : 0;
   const plantOut = shift ? addDaysToLocalKey(batch.plantOutDate, shift) : batch.plantOutDate;
-  const hardening = d.hardening || addDaysToLocalKey(plantOut, -7);
-  const planted = d.planted || plantOut;
-  return { sown, sprouted, potted, hardening, planted };
+  const sprouted = d.sprouted || addDaysToLocalKey(sown, batch.germDays || 7);
+  const potted = batch.potOn ? d.potted || addDaysToLocalKey(sprouted, 14) : null;
+  const hardening =
+    d.hardening || later(addDaysToLocalKey(plantOut, -7), addDaysToLocalKey(potted || sprouted, 3));
+  const planted = d.planted || later(plantOut, addDaysToLocalKey(hardening, 7));
+  return {
+    sown,
+    sprouted,
+    potted,
+    hardening,
+    planted,
+    delayedFrom: !d.planted && planted > plantOut ? plantOut : null,
+  };
+}
+/** Earliest sensible plant-out date for a batch sown on `sowDate` (from the same rules). */
+export function earliestPlantOut(batch, sowDate) {
+  return scheduleOf({ ...batch, sowDate, plantOutDate: sowDate, stageDates: {} }).planted;
 }
 
 export function nextStage(batch) {
