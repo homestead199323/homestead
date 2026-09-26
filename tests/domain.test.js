@@ -362,3 +362,16 @@ test('Pantry works as farm inventory: stock in, FIFO out, sales become income', 
   const old=migratePantry({...fixture,pantry:{items:[{id:'a',name:'Eggs',category:'Eggs',qty:20,unit:'count'},{id:'b',name:'Goat Milk',category:'Dairy',qty:5,unit:'kg'}]}});
   assert.deepEqual(old.pantry.items.map(i=>`${i.name} ${i.qty} ${i.unit}`),['Chicken Eggs 20 pcs','Goat Milk 5 L']);
 });
+
+import {snapPoint,addDraftPoint,lineLength} from '../src/features/grove/path-draw.js';
+test('Drawing your own paths: straightens, joins existing corners, finishes on the last point', () => {
+  assert.deepEqual(snapPoint({xM:2,yM:5},{xM:10,yM:5.8},20,20),{xM:10,yM:5});
+  assert.deepEqual(snapPoint({xM:2,yM:5},{xM:2.6,yM:12},20,20),{xM:2,yM:12});
+  assert.deepEqual(snapPoint(null,{xM:30,yM:-2},20,20),{xM:20,yM:0});
+  assert.deepEqual(snapPoint({xM:0,yM:0},{xM:7.3,yM:9.2},20,20,[{xM:7,yM:9}]),{xM:7,yM:9});
+  let d={kind:'path',points:[]};
+  d=addDraftPoint(d,{xM:1,yM:1},20,20,[]);d=addDraftPoint(d,{xM:9,yM:1.4},20,20,[]);
+  assert.deepEqual(d.points,[{xM:1,yM:1},{xM:9,yM:1}]);
+  assert.equal(lineLength(d.points),8);
+  assert.equal(addDraftPoint(d,{xM:9.1,yM:1.1},20,20,[]).finish,true);
+});

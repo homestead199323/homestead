@@ -378,6 +378,7 @@ export default function GroveScene({
     drag = useRef(null),
     moved = useRef(false);
   const [ownTaskZone, setOwnTaskZone] = useState(null);
+  const [drawHover, setDrawHover] = useState(null);
   const taskZone = onTaskZone ? taskZoneId : ownTaskZone,
     setTaskZone = onTaskZone || setOwnTaskZone;
   const [selected, setSelected] = useState(null),
@@ -450,6 +451,9 @@ export default function GroveScene({
     [zones, fW, fH, data.roadsEnabled, data.mapLines],
   );
   const roadWidth = Math.max(0.25, Math.min(0.75, Math.min(fW, fH) * 0.04));
+  // Drawn paths render exactly like the automatic ones (same width, colour and texture).
+  const drawnPaths = (data.mapLines || []).filter((l) => l.kind === "path" && (l.points || []).length > 1);
+  const allPaths = [...roads, ...drawnPaths.map((l) => l.points)];
   const style = data.mapStyle || {},
     ground = style.groundMaterial || (env === "balcony" ? "stone" : "meadow");
   const pathTexture = style.pathMaterial === "earth" ? "soil" : style.pathMaterial || "gravel";
@@ -464,7 +468,7 @@ export default function GroveScene({
     return { xM: q.x, yM: q.y };
   }
   function start(e, z, resize = false) {
-    if (!edit || edit.armed || edit.ornamentMode || e.button !== 0) return;
+    if (!edit || edit.armed || edit.draw || edit.ornamentMode || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     moved.current = false;
@@ -473,7 +477,7 @@ export default function GroveScene({
     e.currentTarget.setPointerCapture(e.pointerId);
   }
   function startOrnament(e, o) {
-    if (!edit || edit.armed || e.button !== 0) return;
+    if (!edit || edit.armed || edit.draw || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     moved.current = false;
@@ -482,6 +486,10 @@ export default function GroveScene({
     e.currentTarget.setPointerCapture(e.pointerId);
   }
   function move(e) {
+    if (edit?.draw) {
+      setDrawHover(coords(e));
+      return;
+    }
     if (!drag.current) return;
     const q = coords(e),
       d = drag.current,
@@ -512,6 +520,10 @@ export default function GroveScene({
     e.stopPropagation();
     if (moved.current) {
       moved.current = false;
+      return;
+    }
+    if (edit?.draw) {
+      edit.onDrawPoint(coords(e));
       return;
     }
     if (edit) {
@@ -585,8 +597,12 @@ export default function GroveScene({
                 return;
               }
               const q = coords(e);
-              if (edit.armed) edit.onPlaceAt(q.xM, q.yM);
-              else edit.onSelect(null);
+              if (edit.draw) edit.onDrawPoint(q);
+              else if (edit.armed) edit.onPlaceAt(q.xM, q.yM);
+              else {
+                edit.onSelect(null);
+                edit.onLineSelect?.(null);
+              }
             }
           }}
           onDragOver={(e) => {
@@ -659,13 +675,13 @@ export default function GroveScene({
 
           <g clipPath={`url(#${id}-boundary)`}>
             <g fill="none" strokeLinejoin="round" strokeLinecap="round">
-              {roads.map((line, i) => (
+              {allPaths.map((line, i) => (
                 <polyline key={i} points={points(line)} stroke="#71825b" strokeWidth={roadWidth + 0.15} />
               ))}
-              {roads.map((line, i) => (
+              {allPaths.map((line, i) => (
                 <polyline key={i} points={points(line)} stroke={pathColor} strokeWidth={roadWidth} />
               ))}
-              {roads.map((line, i) => (
+              {allPaths.map((line, i) => (
                 <polyline
                   key={i}
                   points={points(line)}
@@ -675,18 +691,6 @@ export default function GroveScene({
                 />
               ))}
             </g>
-            {(data.mapLines || [])
-              .filter((l) => l.kind === "path")
-              .map((l) => (
-                <polyline
-                  key={l.id}
-                  points={points(l.points)}
-                  fill="none"
-                  stroke={pathColor}
-                  strokeWidth={roadWidth}
-                  strokeLinejoin="round"
-                />
-              ))}
             {zones.map((z) => (
               <Area
                 key={z.id}
@@ -736,7 +740,8 @@ export default function GroveScene({
                 onPointerDown={(e) => startOrnament(e, o)}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (edit?.armed) {
+                  if (edit?.draw) edit.onDrawPoint(coords(e));
+                  else if (edit?.armed) {
                     const q = coords(e);
                     edit.onPlaceAt(q.xM, q.yM);
                   } else edit?.onOrnamentSelect?.(o.id);
@@ -763,6 +768,77 @@ export default function GroveScene({
             fill={`url(#${id}-sun)`}
             pointerEvents="none"
           />
+          {edit &&
+            !edit.draw &&
+            (data.mapLines || [])
+              .filter((l) => (l.points || []).length > 1)
+              .map((l) => (
+                <g key={`hit-${l.id}`}>
+                  {edit.selectedLineId === l.id && (
+                    <polyline
+                      points={points(l.points)}
+                      fill="none"
+                      stroke="#f7c552"
+                      strokeWidth={Math.max(roadWidth, 0.2) + 0.3}
+                      strokeOpacity=".75"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  )}
+                  <polyline
+                    points={points(l.points)}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth={Math.max(roadWidth, 0.2) + 0.8}
+                    strokeLinecap="round"
+                    style={{ cursor: "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      edit.onLineSelect?.(l.id);
+                    }}
+                  />
+                </g>
+              ))}
+          {edit?.draw && (
+            <g pointerEvents="none">
+              {edit.draw.points.length > 0 && drawHover && (
+                <line
+                  x1={edit.draw.points[edit.draw.points.length - 1].xM}
+                  y1={edit.draw.points[edit.draw.points.length - 1].yM}
+                  x2={drawHover.xM}
+                  y2={drawHover.yM}
+                  stroke="#fff8dc"
+                  strokeWidth={Math.max(roadWidth * 0.5, 0.12)}
+                  strokeDasharray=".3 .2"
+                  strokeLinecap="round"
+                  opacity=".8"
+                />
+              )}
+              {edit.draw.points.length > 1 && (
+                <polyline
+                  points={points(edit.draw.points)}
+                  fill="none"
+                  stroke={edit.draw.kind === "path" ? pathColor : "#dbceb0"}
+                  strokeWidth={edit.draw.kind === "path" ? roadWidth : 0.14}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  opacity=".95"
+                />
+              )}
+              {edit.draw.points.map((p, i) => (
+                <circle
+                  key={i}
+                  cx={p.xM}
+                  cy={p.yM}
+                  r={(i === edit.draw.points.length - 1 ? 7 : 5) * labelUnit}
+                  fill={i === edit.draw.points.length - 1 ? "#f7c552" : "#fffdf3"}
+                  stroke="#2b5948"
+                  strokeWidth={1.5 * labelUnit}
+                />
+              ))}
+            </g>
+          )}
           {route.length > 1 && (
             <polyline
               points={points(route.map(stopPoint))}

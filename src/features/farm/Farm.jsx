@@ -1,5 +1,6 @@
 import PlantingForm from '../quiet/PlantingForm';
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Pill, Ring, Stat } from "../../components/ui";
 import {bedRows, growthOf} from "../quiet/farm-model";
@@ -9,6 +10,7 @@ import { activeBatches } from "../nursery/nursery-model";
 import {isTreeCrop} from "../quiet/planting-plan";
 import PlantArt from "../quiet/PlantArt";
 import MapLines from "../quiet/MapLines";
+import { addDraftPoint, lineLength } from "../grove/path-draw";
 import { REGIONS, REGION_MAP } from "../../data/regions";
 import { ZT, ZT_MAP } from "../../data/zones";
 import { searchCity } from "../../data/cities";
@@ -115,7 +117,10 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
   const [selOrn, setSelOrn] = useState(null);       // selected ornament id (for move/delete)
   const [armedType, setArmedType] = useState(null); // tap-to-place: id of armed palette type, or null
   const [armedOrn, setArmedOrn] = useState(null);   // tap-to-place: id of armed ornament type, or null
-  const [tray, setTray] = useState("zones");        // bottom tray tab: zones | decor
+  const [tray, setTray] = useState("zones");        // bottom tray tab: zones | decor | paths
+  const [draw, setDraw] = useState(null);           // drawing a path/fence: {kind, points}
+  const [selLine, setSelLine] = useState(null);     // selected drawn path/fence id
+  const [lineKind, setLineKind] = useState("path");
   const [sheet, setSheet] = useState(null);         // null | "settings"
   const [farmW, setFarmW] = useState(data.farmW || 100);
   const [farmH, setFarmH] = useState(data.farmH || 60);
@@ -221,6 +226,32 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
     setData({...data, ornaments: ornaments.filter(o => o.id !== id)});
     setSelOrn(null);
   }
+  /* ── Drawn paths & fences (data.mapLines) ── */
+  const mapLines = data.mapLines || [];
+  function finishDraw(d) {
+    const cur = d || draw;
+    if (cur && cur.points.length >= 2) {
+      const line = { id: uid(), kind: cur.kind, points: cur.points };
+      setData({...data, mapLines: [...mapLines, line]});
+      setSelLine(line.id);
+    }
+    setDraw(null);
+  }
+  function drawPoint(q) {
+    const next = addDraftPoint(draw, q, farmW, farmH, mapLines);
+    if (next.finish) finishDraw(next);
+    else setDraw(next);
+  }
+  function startDraw(kind) {
+    setSel(null); setSelOrn(null); setArmedType(null); setArmedOrn(null); setSelLine(null);
+    setDraw({ kind, points: [] });
+  }
+  function delLine(id) {
+    setData({...data, mapLines: mapLines.filter(l => l.id !== id)});
+    setSelLine(null);
+  }
+  const sLine = mapLines.find(l => l.id === selLine);
+  const LINE_LABEL = { path: "Path", fence: "Fence", gate: "Gate" };
   const sOrn = ornaments.find(o => o.id === selOrn);
   const sz = zones.find(z => z.id === sel);
   const szT = sz ? ZT_MAP.get(sz.type) : null;
@@ -272,7 +303,8 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
 
   const isPlantZone = sz && ["veg", "orchard", "herbs", "greenhouse", "raised", "container"].includes(sz.type);
 
-  return (
+  // Portal to <body> so the designer covers the whole screen, including the phone nav bar.
+  return createPortal(
     <div data-fd-root style={{position:"fixed", inset:0, zIndex:2100, background:C.bg, display:"flex", flexDirection:"column"}}>
       <style>{FD_CSS}</style>
 
@@ -315,11 +347,28 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                 ornamentSelectedId:selOrn,
                 onOrnamentSelect:function(id){ setSelOrn(id); if(id) setSel(null); },
                 onOrnamentMove:handleOrnamentMove,
+                draw:draw,
+                onDrawPoint:drawPoint,
+                selectedLineId:selLine,
+                onLineSelect:function(id){ setSelLine(id); if(id){ setSel(null); setSelOrn(null); } },
               }}
             />
           </div>
         )}
 
+        {draw && (
+          <div className="fd-draw-bar" onClick={function(e){e.stopPropagation();}}>
+            <span>
+              <strong>{draw.points.length === 0 ? `Tap where the ${draw.kind} starts` : `Tap to add corners · ${lineLength(draw.points).toFixed(1)} m`}</strong>
+              <small>Nearly straight lines snap level · tapping near a corner joins it · tap the last point again to finish</small>
+            </span>
+            <span className="fd-draw-actions">
+              <button type="button" disabled={!draw.points.length} onClick={function(){ setDraw({...draw, points: draw.points.slice(0, -1)}); }}>Undo point</button>
+              <button type="button" onClick={function(){ setDraw(null); }}>Cancel</button>
+              <button type="button" className="is-primary" disabled={draw.points.length < 2} onClick={function(){ finishDraw(); }}>Finish</button>
+            </span>
+          </div>
+        )}
         {armedType && (
           <div style={{
             position: "absolute", top: 8, left: 8, right: 8,
@@ -352,7 +401,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
         )}
 
         {/* Idle hint pill */}
-        {zones.length > 0 && !armedType && !armedOrn && !sz && !sOrn && (
+        {zones.length > 0 && !armedType && !armedOrn && !sz && !sOrn && !draw && !sLine && (
           <div style={{position:"absolute", bottom:10, left:"50%", transform:"translateX(-50%)",
             background:"rgba(30,40,32,.72)", color:"#fff", fontSize:10.5, fontWeight:600,
             padding:"5px 12px", borderRadius:99, whiteSpace:"nowrap", pointerEvents:"none", maxWidth:"92%",
@@ -502,7 +551,22 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
             </div>
           )}
 
-          {!sz && !sOrn && (
+          {!sz && !sOrn && sLine && !draw && (
+            <div className="fd-panel" data-fd-line-panel>
+              <div style={{display:"flex", alignItems:"center", gap:10, flexWrap:"wrap"}}>
+                <span style={{fontSize:22}}>{sLine.kind === "path" ? "🛤️" : "🚧"}</span>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontSize:14, fontWeight:700, fontFamily:F.head}}>{LINE_LABEL[sLine.kind] || "Line"} · {lineLength(sLine.points).toFixed(1)} m</div>
+                  <div style={{fontSize:11, color:C.t3}}>{sLine.points.length} points</div>
+                </div>
+                <Btn v="secondary" sm onClick={function(){ setData({...data, mapLines: mapLines.map(function(l){ return l.id === sLine.id ? {...l, kind: l.kind === "path" ? "fence" : "path"} : l; })}); }}>Make it a {sLine.kind === "path" ? "fence" : "path"}</Btn>
+                <Btn v="danger" sm onClick={function() { delLine(sLine.id); }}>Delete</Btn>
+                <Btn v="ghost" sm onClick={function() { setSelLine(null); }}>Done</Btn>
+              </div>
+            </div>
+          )}
+
+          {!sz && !sOrn && !sLine && (
             <div data-fd-tray-root>
               <div className="fd-seg" style={{marginBottom:8}}>
                 <button type="button"
@@ -515,6 +579,11 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                   style={{background: tray==="decor" ? C.card : "transparent",
                     color: tray==="decor" ? (ornaments.length>=MAX_ORNAMENTS ? "#c0392b" : C.text) : C.t2,
                     boxShadow: tray==="decor" ? "0 1px 4px rgba(0,0,0,.12)" : "none"}}>Decor {ornaments.length}/{MAX_ORNAMENTS}</button>
+                <button type="button"
+                  onClick={function() { setTray("paths"); setArmedType(null); setArmedOrn(null); }}
+                  style={{background: tray==="paths" ? C.card : "transparent",
+                    color: tray==="paths" ? C.text : C.t2,
+                    boxShadow: tray==="paths" ? "0 1px 4px rgba(0,0,0,.12)" : "none"}}>Paths {mapLines.length || ""}</button>
               </div>
 
               {tray === "zones" && (
@@ -538,6 +607,42 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                       </button>
                     );
                   })}
+                </div>
+              )}
+
+              {tray === "paths" && (
+                <div className="fd-paths" data-fd-tray="paths">
+                  <div className="fd-paths-row">
+                    <div className="q-seg" role="group" aria-label="What to draw">
+                      {[["path","🛤️ Path"],["fence","🚧 Fence"]].map(function(k){
+                        return <button key={k[0]} type="button" aria-pressed={lineKind===k[0]} onClick={function(){ setLineKind(k[0]); }}>{k[1]}</button>;
+                      })}
+                    </div>
+                    <button type="button" className="q-button" disabled={!!draw} onClick={function(){ startDraw(lineKind); }}>
+                      ✏️ Draw {lineKind === "path" ? "a path" : "a fence"}
+                    </button>
+                  </div>
+                  <label className="fd-auto-paths">
+                    <input type="checkbox" checked={data.roadsEnabled !== false}
+                      onChange={function(e){ setData({...data, roadsEnabled: e.target.checked}); }}/>
+                    <span><strong>Automatic paths</strong><small>Connect every area to the entrance. Turn off to draw every path yourself — your own paths are always kept.</small></span>
+                  </label>
+                  {mapLines.length > 0 && (
+                    <ul className="fd-lines">
+                      {mapLines.map(function(l, i) {
+                        return (
+                          <li key={l.id}>
+                            <button type="button" className="fd-line-open" onClick={function(){ setSelLine(l.id); }}>
+                              <span>{l.kind === "path" ? "🛤️" : l.kind === "gate" ? "⛩️" : "🚧"}</span>
+                              <span className="q-grow">{LINE_LABEL[l.kind] || "Line"} {i + 1}</span>
+                              <small>{lineLength(l.points).toFixed(1)} m</small>
+                            </button>
+                            <button type="button" className="fd-line-del" aria-label={`Delete ${LINE_LABEL[l.kind] || "line"} ${i + 1}`} onClick={function(){ delLine(l.id); }}>✕</button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               )}
 
@@ -696,7 +801,8 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
