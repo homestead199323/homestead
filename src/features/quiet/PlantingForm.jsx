@@ -12,6 +12,8 @@ import FarmIcon from "../../components/FarmIcon";
 import { propagationOf } from "../../data/propagation";
 import { planBatch, nurseryZones, suggestDates, seasonNote } from "../nursery/nursery-model";
 import { applySeedlingStage } from "../../lib/seedling-stage";
+import { suggestTrays } from "../../data/trays";
+import { TrayPicker, SeedTimeline, SeedlingTray } from "../nursery/NurseryVisuals";
 const empty = {
   crop: "",
   zone: "",
@@ -69,6 +71,8 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
           plantOutDate,
           id: "preview",
           today: todayLocalKey(),
+          tray: form.tray,
+          potTray: form.potTray,
         })
       : null;
   function save() {
@@ -122,6 +126,8 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
         targetZoneId: zone.id,
         id: uid(),
         today: todayLocalKey(),
+        tray: form.tray,
+        potTray: form.potTray,
       }).batch;
       next.nursery = { ...(data.nursery || {}), batches: [...(data.nursery?.batches || []), batch] };
     }
@@ -323,6 +329,24 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
                   until you plant out.
                 </small>
               )}
+              <TrayPicker
+                label="Sowing tray"
+                value={form.tray || suggestTrays(crop).tray}
+                cells={seedPlan?.batch.cells}
+                suggested={suggestTrays(crop).tray}
+                onChange={(n) => update({ ...form, tray: n })}
+              />
+              {prop.potOn && (
+                <TrayPicker
+                  label="Pot on into"
+                  value={form.potTray || suggestTrays(crop).potTray}
+                  cells={seedPlan?.batch.cells}
+                  suggested={suggestTrays(crop).potTray}
+                  onChange={(n) => update({ ...form, potTray: n })}
+                />
+              )}
+              {seedPlan && <SeedTimeline batch={seedPlan.batch} />}
+              {seedPlan && <SeedlingTray batch={seedPlan.batch} max={2} />}
               {seedPlan?.warning && <p className="q-warning">{seedPlan.warning}</p>}
               {seedPlan && seasonNote(crop, seedPlan.batch.sowDate) && (
                 <p className="q-warning">{seasonNote(crop, seedPlan.batch.sowDate)}</p>

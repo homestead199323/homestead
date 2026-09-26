@@ -220,3 +220,13 @@ test('Nursery dates follow the crop sowing window', () => {
   assert.match(seasonNote(tomato, '2026-09-26'), /outside the usual window/);
   assert.equal(seasonNote(tomato, '2027-03-01'), '');
 });
+import { TRAYS, suggestTrays } from '../src/data/trays.js';
+test('Tray sizes are whole grids and batches remember their trays', () => {
+  for (const t of TRAYS) assert(Number.isInteger(t.rows) && t.rows * t.cols === t.cells);
+  assert.deepEqual(suggestTrays({ name: 'Tomato' }), { tray: 104, potTray: 24 });
+  assert.deepEqual(suggestTrays({ name: 'Zucchini' }), { tray: 24, potTray: null });
+  const b = planBatch({ crop: { name: 'Tomato' }, zoneId: 'n', plants: 10, plantOutDate: '2027-05-20', id: 'x', today: '2027-03-01', tray: 60 }).batch;
+  assert.equal(b.tray, 60);
+  assert.equal(b.potTray, 24);
+  assert.equal(planBatch({ crop: { name: 'Lettuce' }, zoneId: 'n', plants: 10, plantOutDate: '2027-05-20', id: 'x', today: '2027-03-01' }).batch.potTray, null);
+});

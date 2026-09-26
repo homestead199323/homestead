@@ -1,4 +1,5 @@
 import { propagationOf } from "../../data/propagation.js";
+import { suggestTrays, trayOf } from "../../data/trays.js";
 import { SEEDLING_STAGES } from "../../lib/seedling-stage.js";
 import { addDaysToLocalKey, localDateFromKey } from "../../lib/utils.js";
 
@@ -53,6 +54,8 @@ export function planBatch({
   targetZoneId = null,
   id,
   today,
+  tray,
+  potTray,
 }) {
   const prop = propagationOf(crop);
   const weeks = prop.weeks || 4;
@@ -73,6 +76,8 @@ export function planBatch({
       plantOutDate,
       germDays: prop.germDays || 7,
       potOn: !!prop.potOn,
+      tray: Number(tray) || suggestTrays(crop).tray,
+      potTray: prop.potOn ? Number(potTray) || suggestTrays(crop).potTray || 24 : null,
       weeks,
       stage: null,
       stageDates: {},
@@ -214,3 +219,29 @@ export function seasonNote(crop, sowDate) {
   if (!months.size || !sowDate || months.has(localDateFromKey(sowDate).getMonth())) return "";
   return `That means sowing outside the usual window for ${crop.name} (${crop.sowIn}). Fine under cover with heat and light; otherwise pick a later date.`;
 }
+
+export const fmt = (key) =>
+  key ? localDateFromKey(key).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
+export const inDays = (key) => {
+  const d = Math.round((localDateFromKey(key) - localDateFromKey(todayKey())) / 864e5);
+  return d === 0
+    ? "today"
+    : d === 1
+      ? "tomorrow"
+      : d > 1
+        ? `in ${d} days`
+        : d === -1
+          ? "yesterday"
+          : `${-d} days ago`;
+};
+
+/** Cells the batch uses right now: the sowing tray, or the pot-on tray once moved on. */
+export function currentTray(batch) {
+  const potted = batch.potTray && ["potted", "hardening", "planted"].includes(batch.stage);
+  return trayOf(potted ? batch.potTray : batch.tray || 60);
+}
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};

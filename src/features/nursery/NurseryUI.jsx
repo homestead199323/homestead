@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { Check } from "lucide-react";
 import { Overlay, Inp, Sel, Btn } from "../../components/ui";
 import { uid } from "../../lib/storage";
-import { todayLocalKey, appendLog, localDateFromKey } from "../../lib/utils";
+import { todayLocalKey, appendLog } from "../../lib/utils";
 import { applySeedlingStage } from "../../lib/seedling-stage";
 import { rCR, rCM } from "../../lib/regional";
 import { propagationOf } from "../../data/propagation";
+import { suggestTrays } from "../../data/trays";
 import {
   suggestDates,
   seasonNote,
+  fmt,
+  inDays,
+  currentTray,
   STAGE_LABELS,
   stagesOf,
   scheduleOf,
@@ -18,105 +21,7 @@ import {
   activeBatches,
 } from "./nursery-model";
 import PlantingForm from "../quiet/PlantingForm";
-import FarmIcon from "../../components/FarmIcon";
-
-const TRAY = 60,
-  COLS = 10;
-const fmt = (key) =>
-  key ? localDateFromKey(key).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
-const inDays = (key) => {
-  const d = Math.round((localDateFromKey(key) - localDateFromKey(todayLocalKey())) / 864e5);
-  return d === 0
-    ? "today"
-    : d === 1
-      ? "tomorrow"
-      : d > 1
-        ? `in ${d} days`
-        : d === -1
-          ? "yesterday"
-          : `${-d} days ago`;
-};
-
-/** Top view of the batch's trays: one cell per seed, drawn at its current stage. */
-export function SeedlingTray({ batch, max = 3 }) {
-  const trays = Math.max(1, Math.ceil(batch.cells / TRAY)),
-    shown = Math.min(trays, max),
-    stage = batch.stage;
-  const level = { sown: 1, sprouted: 2, potted: 3, hardening: 4, planted: 4 }[stage] || 0;
-  return (
-    <div
-      className="q-trays"
-      aria-label={`${batch.cells} cells in ${trays} tray${trays === 1 ? "" : "s"}, ${STAGE_LABELS[stage] || "not sown yet"}`}
-    >
-      {Array.from({ length: shown }, (_, t) => {
-        const count = Math.min(TRAY, batch.cells - t * TRAY),
-          rows = Math.ceil(TRAY / COLS);
-        return (
-          <svg key={t} viewBox={`0 0 ${COLS * 10 + 4} ${rows * 10 + 4}`} className="q-tray">
-            <rect width={COLS * 10 + 4} height={rows * 10 + 4} rx="3" fill="#2b2f2a" />
-            {Array.from({ length: TRAY }, (_, i) => {
-              const x = 2 + (i % COLS) * 10,
-                y = 2 + Math.floor(i / COLS) * 10,
-                used = i < count;
-              return (
-                <g key={i} transform={`translate(${x} ${y})`}>
-                  <rect
-                    x=".6"
-                    y=".6"
-                    width="8.8"
-                    height="8.8"
-                    rx="1.4"
-                    fill={used && level ? "#5b3f2a" : "#3b403a"}
-                  />
-                  {used && level === 1 && <circle cx="5" cy="5" r="1" fill="#c9a36a" />}
-                  {used && level >= 2 && (
-                    <g fill={level >= 4 ? "#3f7d3a" : "#72b35a"}>
-                      <ellipse
-                        cx={5 - level * 0.6}
-                        cy="5"
-                        rx={0.9 + level * 0.45}
-                        ry={0.6 + level * 0.25}
-                        transform="rotate(-25 5 5)"
-                      />
-                      <ellipse
-                        cx={5 + level * 0.6}
-                        cy="5"
-                        rx={0.9 + level * 0.45}
-                        ry={0.6 + level * 0.25}
-                        transform="rotate(25 5 5)"
-                      />
-                    </g>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
-        );
-      })}
-      {trays > shown && (
-        <small>
-          +{trays - shown} more tray{trays - shown === 1 ? "" : "s"}
-        </small>
-      )}
-    </div>
-  );
-}
-
-/** Horizontal stage track: done ✓, current highlighted, upcoming dimmed. */
-export function StageTrack({ batch }) {
-  const stages = stagesOf(batch),
-    at = batch.stage ? stages.indexOf(batch.stage) : -1;
-  return (
-    <ol className="q-stage-track">
-      {stages.map((s, i) => (
-        <li key={s} className={i <= at ? "is-done" : i === at + 1 ? "is-next" : ""}>
-          <span>{i <= at ? <Check size={11} /> : i + 1}</span>
-          <small>{STAGE_LABELS[s]}</small>
-        </li>
-      ))}
-    </ol>
-  );
-}
+import { SeedlingTray, TrayPicker, SeedTimeline, CropSeedInfo, StageTrack } from "./NurseryVisuals";
 
 function nextStepText(batch) {
   const next = nextStage(batch);
@@ -137,10 +42,12 @@ export function BatchCard({ batch, data, onOpen }) {
           {batch.variety ? ` (${batch.variety})` : ""}
         </strong>
         <small>
-          {batch.cells} cells · {nursery || "Nursery"}
+          {batch.cells} cells in {currentTray(batch).cells}-cell tray
+          {batch.cells > currentTray(batch).cells ? "s" : ""} · {nursery || "Nursery"}
           {bed ? ` → ${bed}` : ""}
         </small>
         <StageTrack batch={batch} />
+        <SeedTimeline batch={batch} compact />
         <small className="q-batch-next">Next: {nextStepText(batch)}</small>
       </div>
     </button>
@@ -215,11 +122,13 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
   return (
     <Overlay title={`${batch.crop} seedlings`} onClose={onClose}>
       <p className="q-zone-meta">
-        {batch.cells} cells for {batch.plants} plants
-        {bed ? ` in ${bed}` : ""} · {Math.ceil(batch.cells / TRAY)} tray{batch.cells > TRAY ? "s" : ""} of{" "}
-        {TRAY}
+        {batch.cells} cells for {batch.plants} plants{bed ? ` in ${bed}` : ""} ·{" "}
+        {Math.ceil(batch.cells / currentTray(batch).cells)} × {currentTray(batch).cells}-cell tray
+        {batch.cells > currentTray(batch).cells ? "s" : ""}
       </p>
+      {rCM(data.region).get(batch.crop) && <CropSeedInfo crop={rCM(data.region).get(batch.crop)} />}
       <SeedlingTray batch={batch} />
+      <SeedTimeline batch={batch} />
       <ol className="q-seed-steps">
         {stages.map((s, i) => {
           const done = i <= at,
@@ -271,6 +180,22 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
           onChange={(e) => +e.target.value >= 1 && update({ cells: Math.round(+e.target.value) })}
         />
       </div>
+      <TrayPicker
+        label="Sowing tray"
+        value={batch.tray || 60}
+        cells={batch.cells}
+        suggested={suggestTrays({ name: batch.crop }).tray}
+        onChange={(n) => update({ tray: n })}
+      />
+      {batch.potOn && (
+        <TrayPicker
+          label="Pot on into"
+          value={batch.potTray || 24}
+          cells={batch.cells}
+          suggested={suggestTrays({ name: batch.crop }).potTray}
+          onChange={(n) => update({ potTray: n })}
+        />
+      )}
       <small>
         Timings are guides for {batch.crop}: about {batch.germDays} days to sprout and {batch.weeks} weeks
         before planting out.
@@ -294,6 +219,8 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
     zone: zoneId || zones[0]?.id || "",
     plants: "",
     plantOutDate: "",
+    tray: null,
+    potTray: null,
   });
   const crop = rCM(data.region).get(form.crop);
   const plantOutDate = form.plantOutDate || (crop ? suggestDates(crop, todayLocalKey()).plantOutDate : "");
@@ -306,8 +233,11 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
           plantOutDate,
           id: "preview",
           today: todayLocalKey(),
+          tray: form.tray,
+          potTray: form.potTray,
         })
       : null;
+  const suggested = crop ? suggestTrays(crop) : {};
   function save() {
     if (!plan) return;
     const batch = { ...plan.batch, id: uid() };
@@ -334,15 +264,7 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
           ...crops.map((c) => ({ value: c.name, label: c.name })),
         ]}
       />
-      {crop && (
-        <div className="q-row" style={{ margin: "8px 0" }}>
-          <FarmIcon name={crop.name} emoji={crop.emoji} size={36} />
-          <small>
-            {propagationOf(crop).method === "either" ? "Can also be sown direct. " : ""}
-            About {propagationOf(crop).weeks} weeks in the nursery.
-          </small>
-        </div>
-      )}
+      {crop && <CropSeedInfo crop={crop} />}
       <Sel
         label="Nursery"
         value={form.zone}
@@ -364,13 +286,35 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
           onChange={(e) => setForm({ ...form, plantOutDate: e.target.value })}
         />
       </div>
+      {crop && (
+        <TrayPicker
+          label="Sowing tray"
+          value={form.tray || suggested.tray}
+          cells={plan?.batch.cells}
+          suggested={suggested.tray}
+          onChange={(n) => setForm({ ...form, tray: n })}
+        />
+      )}
+      {crop && propagationOf(crop).potOn && (
+        <TrayPicker
+          label="Pot on into"
+          value={form.potTray || suggested.potTray}
+          cells={plan?.batch.cells}
+          suggested={suggested.potTray}
+          onChange={(n) => setForm({ ...form, potTray: n })}
+        />
+      )}
       {plan && (
-        <p className="q-planting-summary">
-          <strong>
-            Sow {plan.batch.cells} cells on {fmt(plan.batch.sowDate)}
-          </strong>
-          <span>Includes {plan.batch.cells - plan.batch.plants} spare for losses.</span>
-        </p>
+        <>
+          <p className="q-planting-summary">
+            <strong>
+              Sow {plan.batch.cells} cells on {fmt(plan.batch.sowDate)}
+            </strong>
+            <span>Includes {plan.batch.cells - plan.batch.plants} spare for losses.</span>
+          </p>
+          <SeedTimeline batch={plan.batch} />
+          <SeedlingTray batch={plan.batch} />
+        </>
       )}
       {plan?.warning && <p className="q-warning">{plan.warning}</p>}
       {plan && seasonNote(crop, plan.batch.sowDate) && (
