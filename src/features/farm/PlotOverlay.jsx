@@ -2,8 +2,8 @@ import React, { useMemo } from "react";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Overlay, Pill, StepChecklist, StorageCard, WaterCard } from "../../components/ui";
 import { COMP } from "../../data/companions";
-import { uid } from "../../lib/storage";
-import { appendLog, todayLocalKey, localDateFromKey } from "../../lib/utils";
+import { todayLocalKey, localDateFromKey } from "../../lib/utils";
+import { applyTaskCompletion } from "../quiet/complete-task";
 import { rCM } from "../../lib/regional";
 import { plotAreaM2, buildZoneSpaceMap } from "../../lib/farm-calc";
 import FarmIcon from "../../components/FarmIcon";
@@ -44,16 +44,11 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
     setData({...data, garden: {plots: data.garden.plots.filter(p => p.id !== id)}});
     onClose();
   };
+  // Same path as harvesting from tasks: stock in the pantry, and trees/perennials stay planted.
   const harv = (p) => {
     const c = rCM(data.region).get(p.crop);
     const qty = p.expectedYieldKg || (p.plantCount && c ? p.plantCount * (c.yld || 3) : c?.cat === "Herb" ? 0.5 : c?.cat === "Grain" ? 5 : c?.yld || 3);
-    const item = {id: uid(), name: p.crop, category: "Fresh Produce", qty, unit: "kg", source: "farm", addedDate: todayLocalKey(), storageNote: c?.storage || ""};
-    setData({
-      ...data,
-      garden: {plots: data.garden.plots.map(x => x.id === p.id ? {...x, status: "harvested"} : x)},
-      pantry: {items: [...data.pantry.items, item]},
-      log: appendLog(data.log, {text: `🧺 Harvested ${qty}kg ${p.crop}`}),
-    });
+    setData(applyTaskCompletion(data, { key: `plot-${p.id}-harvest`, type: "harvest", plotId: p.id }, qty));
     onClose();
   };
 

@@ -4,11 +4,12 @@ import { uid } from "../../lib/storage";
 import { todayLocalKey } from "../../lib/utils";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Stat } from "../../components/ui";
+import { undoSale, markPaid, unpaidTotal } from "../../lib/inventory";
 
 const CAT_COLORS = {
   Seeds: "#27ae60", Tools: "#8d6e63", Feed: "#ffa726",
   Animals: "#e65100", Fuel: "#5e35b1", Infrastructure: "#37474f",
-  "Produce Sales": "#42a5f5", Other: "#90a4ae",
+  "Produce Sales": "#42a5f5", "Stock purchases": "#8e6bb8", Other: "#90a4ae",
 };
 
 /* ═══════════════════════════════════════════
@@ -22,7 +23,10 @@ export default function Financials({data, setData}) {
   const [form,setForm]=useState({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey()});
   const items = useMemo(() => data.costs?.items || [], [data.costs?.items]);
   const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey()});setShowAdd(false);};
-  const del=id=>setData({...data,costs:{items:items.filter(i=>i.id!==id)}});
+  // Deleting a pantry sale puts the sold stock back in the pantry.
+  const del=id=>{const it=items.find(i=>i.id===id);setData(it&&it.source==="pantry"&&it.type==="income"?undoSale(data,id,todayLocalKey()):{...data,costs:{...(data.costs||{}),items:items.filter(i=>i.id!==id)}});};
+  const unpaid=unpaidTotal(data);
+  const unpaidSales=items.filter(i=>i.type==="income"&&i.paid===false);
   const {exp,inc,net,catT}=useMemo(()=>{let e=0,r=0;const ct={};items.forEach(i=>{if(i.type==="expense"){e+=i.amount;ct[i.cat]=(ct[i.cat]||0)+i.amount;}else r+=i.amount;});return{exp:e,inc:r,net:r-e,catT:ct};},[items]);
   const mN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const mData=useMemo(()=>{const acc=Array.from({length:12},()=>({e:0,r:0}));items.forEach(i=>{const m=new Date(i.date).getMonth();if(i.type==="expense")acc[m].e+=i.amount;else acc[m].r+=i.amount;});return acc;},[items]);
@@ -82,7 +86,7 @@ export default function Financials({data, setData}) {
       <>
       <div className="g3" style={{gap:10,marginBottom:20}}>
         <Stat label="Spent" value={E+exp.toFixed(0)} color={C.red}/>
-        <Stat label="Revenue" value={E+inc.toFixed(0)} color={C.green}/>
+        <Stat label="Revenue" value={E+inc.toFixed(0)} sub={unpaid>0?`${E}${unpaid.toFixed(2)} to collect`:undefined} color={C.green}/>
         <Stat label="Net" value={E+Math.abs(net).toFixed(0)} sub={net>=0?"Profit":"Loss"} color={net>=0?C.green:C.red}/>
       </div>
       <Card style={{marginBottom:16}}>
@@ -145,12 +149,24 @@ export default function Financials({data, setData}) {
           </div>
         </Card>
       )}
+      {unpaidSales.length>0&&(
+        <Card style={{marginBottom:16}}>
+          <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,marginBottom:10}}>To collect · {E}{unpaid.toFixed(2)}</div>
+          {unpaidSales.map(i=>(
+            <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:`1px solid ${C.bdr}`}}>
+              <div style={SX.flex1}><div style={{fontSize:13.5,fontWeight:600}}>{i.buyer||"No buyer named"}</div><div style={SX.t2_12}>{i.date} · {i.label}</div></div>
+              <div style={{fontSize:15,fontWeight:700}}>{E}{i.amount.toFixed(2)}</div>
+              <Btn sm v="secondary" onClick={()=>setData(markPaid(data,i.id))}>Mark paid</Btn>
+            </div>
+          ))}
+        </Card>
+      )}
       <div style={{fontSize:15,fontWeight:700,fontFamily:F.head,marginBottom:10}}>Recent Transactions</div>
       {last5.length===0?<Card style={{textAlign:"center",padding:32}}><div style={{color:C.t2}}>No transactions yet</div></Card>:
       <div style={{display:"grid",gap:6}}>{last5.map(i=>(
         <Card key={i.id}><div style={SX.rowCenterG10}>
-          <div style={{width:36,height:36,borderRadius:18,background:i.type==="expense"?"#fce4ec":"#e8f5e9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{i.type==="expense"?"📤":"📥"}</div>
-          <div style={SX.flex1}><div style={{fontSize:14,fontWeight:600}}>{i.label}</div><div style={SX.t2_12}>{i.date} {" "} {i.cat}</div></div>
+          <div style={{width:36,height:36,borderRadius:18,background:"var(--surface-soft)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{i.source==="pantry"?(i.type==="income"?"🧺":"📦"):i.type==="expense"?"📤":"📥"}</div>
+          <div style={SX.flex1}><div style={{fontSize:14,fontWeight:600}}>{i.label}</div><div style={SX.t2_12}>{i.date} · {i.cat}{i.paid===false?" · to be paid":""}</div></div>
           <div style={{fontSize:16,fontWeight:700,color:i.type==="expense"?C.red:C.green,fontFamily:F.mono}}>{i.type==="expense"?"-":"+"}{E}{i.amount.toFixed(2)}</div>
           <Btn sm v="ghost" onClick={()=>del(i.id)}><Trash2 size={14} strokeWidth={1.8}/></Btn>
         </div></Card>
@@ -161,7 +177,7 @@ export default function Financials({data, setData}) {
         <div style={{display:"flex",gap:8,marginBottom:14}}>{["expense","income"].map(t=><Card key={t} onClick={()=>setForm({...form,type:t})} active={form.type===t} style={{flex:1,textAlign:"center",cursor:"pointer"}}><div style={SX.s20}>{t==="expense"?"📤":"📥"}</div><div style={{fontSize:13,fontWeight:600,marginTop:4}}>{t==="expense"?"Expense":"Income"}</div></Card>)}</div>
         <Inp label="Amount" type="number" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
         <Inp label="Description" value={form.label} onChange={e=>setForm({...form,label:e.target.value})}/>
-        <div style={SX.grid2}><Sel label="Category" value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} options={["Seeds","Tools","Feed","Animals","Fuel","Infrastructure","Produce Sales","Other"]}/><Inp label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
+        <div style={SX.grid2}><Sel label="Category" value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} options={["Seeds","Tools","Feed","Animals","Fuel","Infrastructure","Produce Sales","Stock purchases","Other"]}/><Inp label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
         <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
       </Overlay>}
     </div>

@@ -338,3 +338,27 @@ test('Fruit trees and perennials stay planted after harvest and come back next s
   const tom={...data,garden:{plots:data.garden.plots.map(p=>p.id==='tom'?{...p,status:'harvested'}:p)}};
   assert.equal(migratePerennials(tom,CROP_MAP,'2026-09-26').garden.plots.find(p=>p.id==='tom').status,'harvested');
 });
+
+import {addStock,takeStock,sellStock,undoSale,markPaid,stockLines,stockValue,unpaidTotal,migratePantry,normalizeUnit} from '../src/lib/inventory.js';
+test('Pantry works as farm inventory: stock in, FIFO out, sales become income', () => {
+  let d={...fixture,pantry:{items:[]},costs:{items:[]}};
+  d=addStock(d,{name:'Chicken Eggs',category:'Eggs',qty:12,unit:'eggs'},'2026-09-20');
+  d=addStock(d,{name:'Chicken Eggs',category:'Eggs',qty:10,unit:'pcs'},'2026-09-25');
+  const [line]=stockLines(d.pantry.items);
+  assert.equal(line.qty,22);assert.equal(line.unit,'pcs');assert.equal(line.lots.length,2);
+  d=sellStock(d,{key:line.key,qty:15,price:0.3,buyer:'Market',paid:false,today:'2026-09-26'});
+  assert.deepEqual(d.pantry.items.map(i=>i.qty),[7]);
+  assert.equal(d.pantry.items[0].addedDate,'2026-09-25');
+  const sale=d.costs.items.at(-1);
+  assert.equal(sale.type,'income');assert.equal(sale.amount,4.5);assert.equal(sale.paid,false);
+  assert.equal(unpaidTotal(d),4.5);assert.equal(stockValue(d),2.1);
+  assert.equal(d.pantry.prices[line.key],0.3);assert.deepEqual(d.pantry.buyers,['Market']);
+  assert.equal(unpaidTotal(markPaid(d,sale.id)),0);
+  const back=undoSale(d,sale.id,'2026-09-26');
+  assert.equal(stockLines(back.pantry.items)[0].qty,22);assert(!back.costs.items.some(c=>c.id===sale.id));
+  const used=takeStock(d,{key:line.key,qty:100,kind:'waste',today:'2026-09-26'});
+  assert.equal(used.pantry.items.length,0);assert.equal(used.pantry.moves.at(-1).qty,-7);
+  assert.deepEqual(normalizeUnit('lbs',10),{unit:'kg',qty:4.536});
+  const old=migratePantry({...fixture,pantry:{items:[{id:'a',name:'Eggs',category:'Eggs',qty:20,unit:'count'},{id:'b',name:'Goat Milk',category:'Dairy',qty:5,unit:'kg'}]}});
+  assert.deepEqual(old.pantry.items.map(i=>`${i.name} ${i.qty} ${i.unit}`),['Chicken Eggs 20 pcs','Goat Milk 5 L']);
+});

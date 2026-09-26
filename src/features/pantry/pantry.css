@@ -1,0 +1,92 @@
+/* Pantry & stock — same card, button and popup language as the rest of the app. */
+.q-stock-page{max-width:800px;margin:0 auto;color:var(--color-text)}
+.q-stock-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
+.q-stock-head h2{font-size:28px;font-weight:650;letter-spacing:-.04em;margin:0 0 4px}
+.q-stock-head p{margin:0;font-size:13px;color:var(--color-text-2);line-height:1.5}
+.q-stock-head .q-secondary{flex-shrink:0;min-height:44px;border-radius:14px}
+.q-stock-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.q-stock-stats>div{background:var(--color-card);border:1px solid var(--color-border);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.q-stock-stats small{font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-2)}
+.q-stock-stats strong{font-size:24px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.q-stock-stats span{font-size:12px;color:var(--color-text-2)}
+.q-stock-stats span.is-due{color:#c9851a;font-weight:600}
+.q-stock-filters{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;margin-bottom:6px;scrollbar-width:none}
+.q-stock-filters::-webkit-scrollbar{display:none}
+.q-stock-filters button{flex-shrink:0;min-height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--color-border);background:var(--color-card);color:var(--color-text-2);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.q-stock-filters button[aria-pressed=true]{background:#356b53;border-color:#356b53;color:#fff}
+.q-stock-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.q-stock-row{display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;background:var(--color-card);border:1px solid var(--color-border)}
+.q-stock-icon{width:52px;height:52px;flex-shrink:0;border-radius:16px;background:var(--surface-soft);display:flex;align-items:center;justify-content:center}
+.q-stock-icon.is-big{width:64px;height:64px;border-radius:20px}
+.q-stock-emoji{font-size:26px;line-height:1}
+.q-stock-icon.is-big .q-stock-emoji{font-size:34px}
+.q-stock-body{flex:1;min-width:0}
+.q-stock-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.q-stock-title strong{font-size:15px}
+.q-stock-cat{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--color-green-pale);color:var(--color-green-dark)}
+.q-stock-qty{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.q-stock-qty small{font-size:13px;font-weight:600;color:var(--color-text-2)}
+.q-stock-qty em{font-style:normal;font-size:12.5px;font-weight:600;color:var(--color-green);margin-left:8px}
+.q-stock-meta{display:block;font-size:12px;color:var(--color-text-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-stock-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.q-stock-actions .q-secondary{min-height:42px;padding:0 14px;border-radius:12px;font-size:13px}
+.q-stock-sell{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 16px;border:0;border-radius:12px;background:linear-gradient(180deg,#f7c552,#eea92b);color:#4b2f06;font:inherit;font-size:13.5px;font-weight:750;cursor:pointer;box-shadow:0 3px 0 #c9851a}
+.q-stock-sell:active{transform:translateY(2px);box-shadow:0 1px 0 #c9851a}
+.q-stock-trash{width:42px;height:42px;min-height:42px;border-radius:12px;border:1px solid var(--color-border);background:transparent;color:var(--color-text-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.q-stock-trash:hover{color:#c2482f;border-color:#c2482f}
+.q-stock-empty{text-align:center;padding:48px 20px;border-radius:20px;background:var(--color-card);border:1px dashed var(--color-border)}
+.q-stock-empty span{font-size:48px;display:block;margin-bottom:8px}
+.q-stock-empty strong{font-size:15px}
+.q-stock-empty p{font-size:13px;color:var(--color-text-2);max-width:340px;margin:8px auto 0;line-height:1.5}
+.q-stock-moves{margin-top:18px;background:var(--color-card);border:1px solid var(--color-border);border-radius:18px;overflow:hidden}
+.q-stock-moves-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border:0;background:transparent;color:var(--color-text);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.q-stock-moves ul{list-style:none;margin:0;padding:0 16px 10px}
+.q-stock-moves li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--color-border);font-size:13px}
+.q-stock-moves li small{color:var(--color-text-2)}
+.q-move-kind{font-size:11px;font-weight:650;padding:3px 8px;border-radius:999px;background:var(--surface-soft);color:var(--color-text-2);min-width:62px;text-align:center}
+.q-move-kind.is-in,.q-move-kind.is-return{background:var(--color-green-pale);color:var(--color-green-dark)}
+.q-move-kind.is-sell{background:#fbeccb;color:#7a4d0c}
+.q-move-kind.is-waste,.q-move-kind.is-remove{background:#f8e1dc;color:#a34f45}
+.q-stock-moves .is-in{color:var(--color-green);font-weight:650;font-variant-numeric:tabular-nums}
+.q-stock-moves .is-out{font-weight:650;font-variant-numeric:tabular-nums}
+.q-move-money{min-width:62px;text-align:right;font-weight:650;font-variant-numeric:tabular-nums}
+.q-move-date{min-width:78px;text-align:right}
+/* Dialogs */
+.q-stock-dialog{display:flex;flex-direction:column;gap:14px}
+.q-stock-dialog-hero{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--color-text-2)}
+.q-stock-dialog-hero strong{color:var(--color-text)}
+.q-field{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:600;color:var(--color-text-2)}
+.q-field small{font-weight:500}
+.q-field input:not([type=checkbox]),.q-field select{width:100%;box-sizing:border-box;min-height:46px;padding:0 14px;border-radius:12px;border:1px solid var(--color-border);background:var(--color-card);color:var(--color-text);font:inherit;font-size:16px;font-weight:500}
+.q-field input:focus{outline:none;border-color:var(--color-green)}
+.q-field .q-tp-amount{margin-top:0}
+.q-field .q-stock-stepper input[type=number]{width:64px;min-height:36px;padding:0;border:0;border-radius:8px;background:transparent;font-weight:700;text-align:center;box-shadow:none}
+.q-seg{display:inline-flex;background:var(--surface-soft);border-radius:12px;padding:3px;gap:3px;flex-wrap:wrap}
+.q-seg button{min-height:40px;padding:0 14px;border:0;border-radius:10px;background:transparent;color:var(--color-text-2);font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.q-seg button[aria-pressed=true]{background:var(--color-card);color:var(--color-text);box-shadow:0 1px 3px #0002}
+.q-stock-total{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px;border-radius:14px;background:var(--color-green-pale)}
+.q-stock-total span{font-size:13px;font-weight:650;color:var(--color-green)}
+.q-stock-total strong{font-size:26px;letter-spacing:-.03em;color:var(--color-green);font-variant-numeric:tabular-nums}
+.q-stock-note{margin:-6px 0 0;font-size:12px;color:var(--color-text-2)}
+.q-stock-buttons{display:flex;gap:10px}
+.q-stock-buttons .q-secondary{flex:0 0 auto}
+.q-stock-buttons .q-button{flex:1}
+.q-stock-buttons .q-button:disabled{opacity:.45;cursor:not-allowed}
+[data-theme=dark] .q-move-kind.is-sell{background:#3d3018;color:#f0c36a}
+[data-theme=dark] .q-move-kind.is-waste,[data-theme=dark] .q-move-kind.is-remove{background:#3b2220;color:#f0a497}
+@media (max-width:640px){
+  .q-stock-head h2{font-size:24px}
+  .q-stock-head .q-secondary{padding:0 12px}
+  .q-stock-stats{gap:6px}
+  .q-stock-stats>div{padding:10px;border-radius:14px}
+  .q-stock-stats strong{font-size:18px}
+  .q-stock-stats small{font-size:9.5px;letter-spacing:.04em}
+  .q-stock-stats span{font-size:11px}
+  .q-stock-row{flex-wrap:wrap;gap:12px;padding:12px}
+  .q-stock-body{flex:1 1 0;min-width:0}
+  .q-stock-meta{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .q-stock-actions{width:100%}
+  .q-stock-actions .q-stock-sell,.q-stock-actions .q-secondary{flex:1;justify-content:center}
+  .q-stock-moves li{flex-wrap:wrap;gap:6px}
+  .q-move-date{min-width:0;margin-left:auto}
+}
