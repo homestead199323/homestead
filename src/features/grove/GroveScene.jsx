@@ -8,6 +8,7 @@ import { zoneGeometry, growthOf, animalZone, bedRows, layoutPlots } from "../qui
 import { plantingRows, plantingBounds } from "../quiet/planting-plan";
 import GroveZoneCard from "./GroveZoneCard";
 import ZoneTaskPopup from "./ZoneTaskPopup";
+import { taskGlyph } from "./zone-tasks";
 import { AerialDefs, Building, CropCrown, Fence, OverheadAnimal, Ornament, Canopy } from "./AerialArtwork";
 import { accessPaths, plantedRows, plantPosition, buildingScale } from "./aerial-layout";
 import { srand } from "./sceneMath";
@@ -900,7 +901,7 @@ export default function GroveScene({
                     <rect className="q-badge-ring" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" fill="none" stroke="#eea92b" strokeWidth="2" />
                     <rect className="q-badge-pill" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" fill="#f7c552" stroke="#c9851a" strokeWidth="1.2" />
                     <text x={-pillW / 2 + 10} y="4.2" textAnchor="middle" fontSize="11">
-                      {list[0].emoji || "✅"}
+                      {taskGlyph(list[0])}
                     </text>
                     <text x={pillW / 2 - 9} y="4" textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#4b2f06">
                       {list.length}

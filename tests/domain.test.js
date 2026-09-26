@@ -318,3 +318,23 @@ test('Map badges group today’s jobs by the area where they happen', () => {
   assert.equal(rewardText({},eggs,'9'),'+9 🥚');
   assert.equal(taskAction({type:'feed'},fixture).cheer,'Fed!');
 });
+
+import {isRecurringCrop,nextHarvestDate,migratePerennials} from '../src/lib/perennial.js';
+import {CROP_MAP} from '../src/data/crops.js';
+test('Fruit trees and perennials stay planted after harvest and come back next season', () => {
+  const fig=CROP_MAP.get('Fig');
+  assert(isRecurringCrop(fig));assert(!isRecurringCrop(CROP_MAP.get('Tomato')));
+  assert.equal(nextHarvestDate(fig,'2026-09-26'),'2027-08-01');
+  assert.equal(nextHarvestDate(fig,'2026-03-01'),'2026-08-01');
+  const data={...fixture,zones:[...fixture.zones,{id:'orch',type:'orchard',name:'Orchard',xM:1,yM:11,wM:6,hM:3}],garden:{plots:[...fixture.garden.plots,{id:'fig',crop:'Fig',zone:'orch',status:'planted',plantDate:'2025-01-01',harvestDate:'2026-08-01',plantCount:3,steps:[{done:false}]}]}};
+  const next=applyTaskCompletion(data,{key:'plot-fig-harvest',type:'harvest',plotId:'fig'},40);
+  const tree=next.garden.plots.find(p=>p.id==='fig');
+  assert.equal(tree.status,'planted');assert(tree.harvestDate>todayLocalKey());assert.equal(tree.harvests,1);
+  assert.equal(next.pantry.items.at(-1).qty,40);
+  assert(!buildTaskQueue(next).some(t=>t.plotId==='fig'&&t.type==='harvest'));
+  assert(growthOf(tree,fig,todayLocalKey()).index>=3);
+  const lost={...data,garden:{plots:data.garden.plots.map(p=>p.id==='fig'?{...p,status:'harvested'}:p)}};
+  assert.equal(migratePerennials(lost,CROP_MAP,'2026-09-26').garden.plots.find(p=>p.id==='fig').status,'planted');
+  const tom={...data,garden:{plots:data.garden.plots.map(p=>p.id==='tom'?{...p,status:'harvested'}:p)}};
+  assert.equal(migratePerennials(tom,CROP_MAP,'2026-09-26').garden.plots.find(p=>p.id==='tom').status,'harvested');
+});

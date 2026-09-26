@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react";
 import { uid } from "../../lib/storage";
 import { appendLog, todayLocalKey } from "../../lib/utils";
 import { rCM } from "../../lib/regional";
-import { LDB } from "../../data/livestock";
+import FarmIcon from "../../components/FarmIcon";
 import { C, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Pill, SwipeableRow } from "../../components/ui";
 
@@ -33,21 +33,15 @@ export default function Pantry({data, setData}) {
           ? `${_freshKg} kg fresh from your farm — your shelf is starting to fill`
           : "Stocked and ready",
   };
-  const itemIcon = (item) => {
-    if (item.source === "farm") {
-      const crop = rCM(data.region).get(item.name);
-      return crop?.emoji || "🌱";
-    }
-    if (item.source === "livestock") {
-      // Item names are like "Chicken Eggs", "Goat Milk", "Duck Meat"
-      const animalType = Object.keys(LDB).find(k => item.name.startsWith(k));
-      if (animalType) return LDB[animalType].e;
-      // Category fallback
-      if (item.category === "Eggs") return "🥚";
-      if (item.category === "Meat") return "🥩";
-      if (item.category === "Dairy") return "🧀";
-      return "🐄";
-    }
+  // Icon shows the product itself (egg, milk, fig), not the animal or a placeholder dot.
+  const itemIcon = (item, size = 24) => {
+    const name = item.name || "";
+    if (item.category === "Eggs" || /\beggs?\b/i.test(name)) return "🥚";
+    if (/\bmilk\b/i.test(name)) return "🥛";
+    if (/\bhoney\b/i.test(name)) return "🍯";
+    if (/\bwool\b/i.test(name)) return "🧶";
+    const crop = rCM(data.region).get(name);
+    if (crop) return <FarmIcon name={crop.name} emoji={crop.emoji} size={size} harvest />;
     if (item.category === "Eggs") return "🥚";
     if (item.category === "Meat") return "🥩";
     if (item.category === "Dairy") return "🧀";
@@ -85,7 +79,7 @@ export default function Pantry({data, setData}) {
       <div style={{display:"grid",gap:6}}>{fil.map(item=>(
         <SwipeableRow key={item.id} onSwipeLeft={function(){del(item.id);}} leftActionLabel="🗑 Remove">
         <Card><div style={SX.rowCenterG10}>
-          <span style={SX.s20}>{itemIcon(item)}</span>
+          <span style={{...SX.s20,width:28,display:"inline-flex",justifyContent:"center",flexShrink:0}}>{itemIcon(item)}</span>
           <div style={SX.flex1}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><strong style={{fontSize:14}}>{item.name}</strong><Pill>{item.category}</Pill><span style={{fontSize:15,fontWeight:700}}>{item.qty} {item.unit}</span></div>
           {item.storageNote&&<div style={SX.t2_11mt2}>💡 {item.storageNote.slice(0,80)}</div>}</div>
           <div style={{display:"flex",gap:4}}><Btn sm v="secondary" onClick={()=>{setShowEat(item);setEatQty(item.unit==="eggs"?"1":"0.5")}}>Eat</Btn><Btn sm v="ghost" onClick={()=>del(item.id)}><Trash2 size={14} strokeWidth={1.8}/></Btn></div>
@@ -95,7 +89,7 @@ export default function Pantry({data, setData}) {
       {/* Eat / Take Modal */}
       {showEat&&<Overlay title={`🍽 Use ${showEat.name}`} onClose={()=>setShowEat(null)}>
         <div style={{textAlign:"center",marginBottom:20}}>
-          <div style={{fontSize:48,marginBottom:8}}>{showEat.category==="Eggs"?"🥚":showEat.category==="Meat"?"🥩":showEat.category==="Dairy"?"🧀":"🍽"}</div>
+          <div style={{fontSize:48,marginBottom:8}}>{itemIcon(showEat, 52)}</div>
           <div style={{fontSize:16,fontWeight:600}}>{showEat.name}</div>
           <div style={{fontSize:14,color:C.t2,marginTop:4}}>In stock: <strong style={{color:C.text}}>{showEat.qty} {showEat.unit}</strong></div>
         </div>

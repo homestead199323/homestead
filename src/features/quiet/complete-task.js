@@ -1,6 +1,7 @@
 import {markTaskDone,todayLocalKey,appendLog} from "../../lib/utils";
 import {uid} from "../../lib/storage";
 import {rCM} from "../../lib/regional";
+import {isRecurringCrop, afterRecurringHarvest} from "../../lib/perennial";
 export function applyTaskCompletion(data, task, logValue) {
   if (!task) return data;
   if ((data.completions?.[todayLocalKey()] || []).includes(task.key)) return data;
@@ -23,9 +24,11 @@ export function applyTaskCompletion(data, task, logValue) {
         addedDate: todayLocalKey(),
         storageNote: (crop && crop.storage) || "",
       };
+      // Trees, soft fruit and perennial herbs stay planted and are due again next season.
+      const recurring = isRecurringCrop(crop);
       const next = {
         ...data,
-        garden: { ...data.garden, plots: plots.map(function(x) { return x.id === plot.id ? { ...x, status: "harvested" } : x; }) },
+        garden: { ...data.garden, plots: plots.map(function(x) { return x.id === plot.id ? (recurring ? afterRecurringHarvest(x, crop, todayLocalKey()) : { ...x, status: "harvested" }) : x; }) },
         pantry: { items: [...((data.pantry && data.pantry.items) || []), item] },
         log: appendLog(data.log, { text: "🧺 Harvested " + kg + "kg " + plot.crop }),
       };
@@ -38,11 +41,11 @@ export function applyTaskCompletion(data, task, logValue) {
     const count = Number(logValue) > 0 ? Math.round(Number(logValue)) : 1;
     const item = {
       id: uid(),
-      name: "Eggs",
+      name: (task.speciesType ? task.speciesType + " " : "") + "Eggs",
       category: "Eggs",
       qty: count,
-      unit: "count",
-      source: "farm",
+      unit: "eggs",
+      source: "livestock",
       addedDate: todayLocalKey(),
       storageNote: "Refrigerate within 2 hours of collection.",
     };
@@ -63,7 +66,7 @@ export function applyTaskCompletion(data, task, logValue) {
       category: "Dairy",
       qty: litres,
       unit: "L",
-      source: "farm",
+      source: "livestock",
       addedDate: todayLocalKey(),
       storageNote: "Strain and chill below 4°C within 2 hours. Use within 3–5 days, or make cheese.",
     };

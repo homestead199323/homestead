@@ -16,7 +16,10 @@ import {
 import { C, F, SX } from "./lib/theme";
 import { todayLocalKey } from "./lib/utils";
 import { buildTaskQueue } from "./lib/task-queue";
-import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, migrateProfile, updateGamify } from "./lib/migrations";
+import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, migrateProfile as migrateProfileBase, updateGamify } from "./lib/migrations";
+import { migratePerennials } from "./lib/perennial";
+import { CROP_MAP } from "./data/crops";
+const migrateProfile = (d) => migratePerennials(migrateProfileBase(d), CROP_MAP, todayLocalKey());
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
 import Manuals from "./features/manuals/Manuals";

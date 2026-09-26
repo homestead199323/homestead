@@ -6,7 +6,7 @@ import { applyTaskCompletion } from "../quiet/complete-task";
 import { animalZone } from "../quiet/farm-model";
 import AnimalArt from "../quiet/AnimalArt";
 import PlantArt from "../quiet/PlantArt";
-import { taskAction, rewardText } from "./zone-tasks";
+import { taskAction, rewardText, taskGlyph } from "./zone-tasks";
 import "./zone-tasks.css";
 
 const BURST = Array.from({ length: 14 }, (_, i) => ({
@@ -27,7 +27,7 @@ function TaskArt({ task, data }) {
   if (task.speciesType) return <AnimalArt species={task.speciesType} size={44} />;
   const crop = task.cropName || data.garden?.plots.find((p) => p.id === task.plotId)?.crop;
   if (crop) return <PlantArt crop={crop} stage={task.type === "harvest" ? 5 : 3} size={44} />;
-  return <span className="q-tp-emoji">{task.emoji || "✅"}</span>;
+  return <span className="q-tp-emoji">{taskGlyph(task)}</span>;
 }
 
 function TaskTile({ task, data, index, done, onDone, onOpen }) {
@@ -45,7 +45,7 @@ function TaskTile({ task, data, index, done, onDone, onOpen }) {
       <span className="q-tp-icon">
         <TaskArt task={task} data={data} />
         <span className="q-tp-sticker" aria-hidden="true">
-          {done ? "✓" : task.emoji}
+          {done ? "✓" : taskGlyph(task)}
         </span>
       </span>
       <div className="q-tp-body">

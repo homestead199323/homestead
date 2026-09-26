@@ -10,6 +10,7 @@ import { ZT_MAP } from "../../data/zones";
 import { rCM } from "../../lib/regional";
 import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, markTaskDone } from "../../lib/utils";
 import { milkingHead } from "../../lib/task-queue";
+import { animalZone as zoneOfAnimal } from "../quiet/farm-model";
 import { useFlip } from "../../lib/use-flip";
 
 /* ═══════════════════════════════════════════
@@ -148,6 +149,11 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const zoneByName = useMemo(() => new Map((data.zones || []).map(z => [z.name, z])), [data.zones]);
   const animalZone = useMemo(() => (data.zones || []).find(z => ["barn","pasture"].includes(z.type)) || null, [data.zones]);
   const animalLocName = animalZone ? animalZone.name : "Farm";
+  const speciesLocName = useCallback((type) => {
+    const a = (data.livestock?.animals || []).find((x) => x.type === type);
+    return (a && zoneOfAnimal(a, data.zones || [])?.name) || animalLocName;
+  }, [data.livestock, data.zones, animalLocName]);
+  const animalLocOf = useCallback((a) => zoneOfAnimal(a, data.zones || [])?.name || animalLocName, [data.zones, animalLocName]);
 
   // ── CONSOLIDATED: compute calendar events AND by-time list in ONE pass over plots ──
   const { calendarEvents, byTime } = useMemo(() => {
@@ -191,7 +197,6 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
     // ─── Animal tasks projected forward (species-grouped + per-animal) ───
     const today0 = Math.floor(now.getTime() / 864e5);
-    const aLoc = animalLocName;
 
     // Hash helper (local — matches buildTaskQueue)
     const hashStr2 = (str) => {
@@ -235,7 +240,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const taskKey = `species-${type}-${dt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
           evts[key].push({type: dt.type, emoji: dt.emoji, label: dt.title, speciesType: type, key: taskKey, routine: true});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: aLoc, speciesType: type, key: taskKey, routine: true});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: dt.type, emoji: dt.emoji, title: dt.title, loc: speciesLocName(type), speciesType: type, key: taskKey, routine: true});
         }
       });
 
@@ -256,7 +261,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const taskKey = `species-${type}-${pt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
           evts[key].push({type: pt.type, emoji: pt.emoji, label: pt.title, speciesType: type, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: aLoc, speciesType: type, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: pt.type, emoji: pt.emoji, title: pt.title, loc: speciesLocName(type), speciesType: type, key: taskKey});
         }
       });
     });
@@ -277,7 +282,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const taskKey = `animal-${a.id}-health`;
           if (!evts[key]) evts[key] = [];
           evts[key].push({type: "health", emoji: "🩺", label: `Health check — ${label}`, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "health", emoji: "🩺", title: `Health check — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "health", emoji: "🩺", title: `Health check — ${label}`, loc: animalLocOf(a), animalId: a.id, key: taskKey});
         }
       }
 
@@ -290,7 +295,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const taskKey = `animal-${a.id}-hoof`;
           if (!evts[key]) evts[key] = [];
           evts[key].push({type: "hoof", emoji: "🦶", label: `Hoof check — ${label}`, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate, type: "hoof", emoji: "🦶", title: `Hoof check — ${label}`, loc: animalLocOf(a), animalId: a.id, key: taskKey});
         }
       }
 
@@ -305,7 +310,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           const taskKey = `animal-${a.id}-hive`;
           if (!evts[key]) evts[key] = [];
           evts[key].push({type: "hive", emoji: "🐝", label: `Hive inspection — ${label}`, animalId: a.id, key: taskKey});
-          if (d <= 30) timeline.push({daysOut: d, dueDate: due, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, loc: aLoc, animalId: a.id, key: taskKey});
+          if (d <= 30) timeline.push({daysOut: d, dueDate: due, type: "hive", emoji: "🐝", title: `Hive inspection — ${label}`, loc: animalLocOf(a), animalId: a.id, key: taskKey});
         }
       }
     });
@@ -319,7 +324,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
 
     filteredTimeline.sort((a,b) => a.daysOut - b.daysOut);
     return { calendarEvents: evts, byTime: filteredTimeline };
-  }, [data, animalLocName, zoneById]);
+  }, [data, zoneById, speciesLocName, animalLocOf]);
 
   // ─── Group today's tasks by location (Option D: location-batched with attention banner) ───
   const todayStr = toLocalDateKey(new Date());
@@ -401,7 +406,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       const headCount = animals.reduce((sum, x) => sum + (x.count || 1), 0);
       const db = LDB[speciesType];
       const speciesLabel = animalPlural(speciesType, headCount);
-      const loc = animalLocName;
+      const loc = speciesLocName(speciesType);
       let emoji = db?.e || "🐾";
       let title = speciesLabel;
       if (typeSuffix === "feed")       title = `Feed ${speciesLabel}`;
@@ -418,7 +423,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
       const db = LDB[a.type];
       // Per-animal keys are now only health/hoof/hive — use animal's individual label
       const label = a.name ? `${a.name} (${a.type})` : a.type;
-      const loc = animalLocName;
+      const loc = animalLocOf(a);
       let emoji = db?.e || "🐾";
       let title = label;
       if (typeSuffix === "health"){title = `Health check — ${label}`; emoji = "🩺"; }

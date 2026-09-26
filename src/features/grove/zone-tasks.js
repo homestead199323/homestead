@@ -1,6 +1,7 @@
 import { LDB } from "../../data/livestock.js";
 import { rCM } from "../../lib/regional.js";
 import { animalZone } from "../quiet/farm-model.js";
+import { isRecurringCrop } from "../../lib/perennial.js";
 
 /** Tasks due today, grouped by the map area where they are done. */
 export function tasksByZone(tasks, data) {
@@ -23,6 +24,29 @@ export function tasksByZone(tasks, data) {
   const rank = (t) => (["harvest", "eggs", "milk"].includes(t.type) ? -1 : (t.pri ?? 9));
   Object.values(out).forEach((list) => list.sort((a, b) => rank(a) - rank(b)));
   return out;
+}
+
+// What to do, shown as the task's badge/sticker. Crop emojis are not used here: many crops have
+// placeholder dots (🟣, 🤎) instead of a real emoji; the crop itself is drawn with its own art.
+const GLYPHS = {
+  harvest: "🧺",
+  eggs: "🥚",
+  milk: "🥛",
+  feed: "🌾",
+  water: "💧",
+  clean: "🧹",
+  bedding: "🛏️",
+  paddock: "🔄",
+  health: "🩺",
+  hoof: "🦶",
+  hive: "🐝",
+  step: "🌱",
+  forecast: "📅",
+  upcoming: "📅",
+};
+export function taskGlyph(task) {
+  if (task.type === "seedling") return task.emoji || "🌱";
+  return GLYPHS[task.type] || "✅";
 }
 
 const VERBS = {
@@ -71,7 +95,7 @@ export function taskAction(task, data) {
     return {
       verb,
       amount: { value: plot?.expectedYieldKg || crop?.yld || 3, step: 0.5, unit: "kg", icon: "🧺" },
-      final: "Marks the whole planting as harvested.",
+      final: isRecurringCrop(crop) ? "Stays planted — due again next season." : "Marks the whole planting as harvested.",
     };
   }
   const seed = /^seed-(.+)-planted$/.exec(task.key || "");

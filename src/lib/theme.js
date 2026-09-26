@@ -87,7 +87,8 @@ export const C = {
 export const F = {
   body: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
   head: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-  mono: "'JetBrains Mono','SF Mono','Cascadia Code',monospace",
+  // One typeface across the app; numbers use Inter's tabular figures via the body font.
+  mono: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
 };
 
 /* Type scale — mirrors --text-* CSS vars. Use TS.sm, TS.base etc in inline styles. */

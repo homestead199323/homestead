@@ -12,16 +12,17 @@ import { useSwipe } from "../lib/use-swipe";
    ═══════════════════════════════════════════ */
 export const Btn = React.memo(function Btn({children,onClick,v="primary",sm,dis,disabled,style:s}) {
   dis = dis || disabled;
+  // Same look as the popup buttons (.q-button / .q-secondary) so every screen matches.
   const st={
-    primary:{bg:C.grd,c:"#fff",shadow:"0 2px 8px color-mix(in srgb, var(--color-green-dark) 30%, transparent)"},
-    secondary:{bg:"transparent",c:C.green,border:`1.5px solid ${C.bdr}`,shadow:"none"},
-    danger:{bg:"#a34f45",c:"#fff",shadow:"0 2px 8px rgba(239,68,68,.25)"},
+    primary:{bg:"#356b53",c:"#fff",shadow:"0 2px 0 #24503c"},
+    secondary:{bg:"var(--color-card)",c:"var(--color-text)",border:"1px solid var(--color-border)",shadow:"none"},
+    danger:{bg:"#a34f45",c:"#fff",shadow:"0 2px 0 #7c3a33"},
     ghost:{bg:"transparent",c:C.t2,shadow:"none"},
-    success:{bg:"#356b53",c:"#fff",shadow:"0 2px 8px rgba(34,197,94,.25)"},
-    orange:{bg:"#966a32",c:"#fff",shadow:"0 2px 8px rgba(245,158,11,.25)"}
+    success:{bg:"#356b53",c:"#fff",shadow:"0 2px 0 #24503c"},
+    orange:{bg:"#966a32",c:"#fff",shadow:"0 2px 0 #6f4e24"}
   };
   const b=st[v]||st.primary;
-  return <button type="button" disabled={dis} onClick={dis?undefined:onClick} style={{background:b.bg,color:b.c,border:b.border||"none",borderRadius:C.rs,fontFamily:F.body,fontWeight:600,fontSize:sm?12:13,padding:sm?"7px 14px":"11px 22px",cursor:dis?"not-allowed":"pointer",opacity:dis?0.4:1,display:"inline-flex",alignItems:"center",gap:7,transition:"all .2s cubic-bezier(.25,.46,.45,.94)",boxShadow:dis?"none":b.shadow,letterSpacing:"0.01em",...s}}>{children}</button>;
+  return <button type="button" disabled={dis} onClick={dis?undefined:onClick} style={{background:b.bg,color:b.c,border:b.border||"1px solid transparent",borderRadius:sm?12:14,fontFamily:F.body,fontWeight:600,fontSize:sm?13:14,minHeight:sm?40:46,padding:sm?"0 14px":"0 20px",boxSizing:"border-box",justifyContent:"center",cursor:dis?"not-allowed":"pointer",opacity:dis?0.4:1,display:"inline-flex",alignItems:"center",gap:7,transition:"background .2s, transform .08s",boxShadow:dis?"none":b.shadow,...s}}>{children}</button>;
 });
 
 export const Card = React.memo(function Card({children,onClick,active,style:s,p=true,className=""}) {

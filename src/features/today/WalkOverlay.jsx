@@ -10,6 +10,8 @@ import {
   Leaf,
   TriangleAlert,
   NotebookPen,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { uid, flushFarm } from "../../lib/storage";
 import { todayLocalKey, appendLog } from "../../lib/utils";
@@ -17,7 +19,9 @@ import { rCM } from "../../lib/regional";
 import { planRound, roundMinutes } from "../quiet/walk-model";
 import { applyTaskCompletion } from "../quiet/complete-task";
 import GroveScene from "../grove/GroveScene";
-import BedDetail from "../quiet/BedDetail";
+import { taskAction, taskGlyph } from "../grove/zone-tasks";
+import "../grove/zone-tasks.css";
+import "./walk-popup.css";
 import PlantArt from "../quiet/PlantArt";
 import AnimalArt from "../quiet/AnimalArt";
 import { art } from "../quiet/art";
@@ -94,33 +98,49 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
       setPhotoBusy(false);
     }
   }
-  function finish(status) {
+  const amountTypes = ["harvest", "eggs", "milk"];
+  function toggle(t) {
+    const on = !checked.includes(t.key);
+    const amount = taskAction(t, data).amount;
+    update({
+      checked: on ? [...checked, t.key] : checked.filter((k) => k !== t.key),
+      amounts:
+        on && amount && draft.amounts?.[t.key] == null
+          ? { ...draft.amounts, [t.key]: String(amount.value) }
+          : draft.amounts,
+    });
+  }
+  function nudge(t, dir) {
+    const step = taskAction(t, data).amount?.step || 1;
+    const n = Math.max(0, Math.round(((Number(draft.amounts?.[t.key]) || 0) + dir * step) * 10) / 10);
+    update({ amounts: { ...draft.amounts, [t.key]: String(n) } });
+  }
+  function finish() {
     const invalid = stop.tasks.find(
       (t) =>
         checked.includes(t.key) &&
-        ["harvest", "eggs"].includes(t.type) &&
+        amountTypes.includes(t.type) &&
         (!Number.isFinite(+draft.amounts?.[t.key]) ||
           +draft.amounts?.[t.key] <= 0 ||
           (t.type === "eggs" && !Number.isInteger(+draft.amounts?.[t.key]))),
     );
     if (invalid) {
-      setError(
-        "Enter the actual amount for each ticked harvest or egg task, or untick it if you collected nothing.",
-      );
+      setError("Enter how much you collected for each ticked job, or untick it if you got nothing.");
       return;
     }
-    onAdvance(true, status);
+    onAdvance(true, draft.status || "healthy");
   }
   const title = heroPlot ? heroPlot.name || heroPlot.crop : stop.label;
+  const today = data.completions?.[todayLocalKey()] || [];
   return (
     <>
       <div className="q-walk-card">
         <div className="q-walk-stop-head">
           <div className="q-walk-stop-art">
             {heroPlot ? (
-              <PlantArt crop={heroPlot.crop} stage={stage.index} size={72} />
+              <PlantArt crop={heroPlot.crop} stage={stage.index} size={60} />
             ) : animal ? (
-              <AnimalArt species={animal.type} size={72} />
+              <AnimalArt species={animal.type} size={60} />
             ) : art(stop.type) ? (
               <img src={art(stop.type)} alt="" />
             ) : (
@@ -135,7 +155,7 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
               </p>
             )}
             {stage && (
-              <span className="q-pill">
+              <span className="q-walk-stage">
                 {stage.label}
                 {stage.estimated ? " · estimate" : ""}
               </span>
@@ -154,75 +174,117 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
           </p>
         )}
         {stop.tasks.length > 0 && (
-          <div className="q-walk-tasks">
-            {stop.tasks.map((t) => {
-              const done = (data.completions?.[todayLocalKey()] || []).includes(t.key);
+          <ul className="q-tp-list q-walk-jobs">
+            {stop.tasks.map((t, i) => {
+              const done = today.includes(t.key),
+                on = checked.includes(t.key) || done,
+                action = taskAction(t, data),
+                amount = amountTypes.includes(t.type) && action.amount;
               return (
-                <label className="q-task-row" key={t.key}>
-                  <input
-                    className="q-check"
-                    type="checkbox"
-                    checked={checked.includes(t.key) || done}
-                    disabled={done}
-                    onChange={(e) =>
-                      update({
-                        checked: e.target.checked ? [...checked, t.key] : checked.filter((k) => k !== t.key),
-                      })
-                    }
-                  />
-                  <div className="q-grow">
-                    <strong>{t.title}</strong>
-                    {t.desc && <p>{t.desc}</p>}
-                    {t.otherZones?.length > 0 && (
-                      <p className="q-warning">
-                        Also covers {t.otherZones.join(", ")}. Check every group before ticking.
-                      </p>
-                    )}
-                    {["harvest", "eggs"].includes(t.type) && !done && checked.includes(t.key) && (
-                      <input
-                        className="q-walk-amount"
-                        type="number"
-                        min="0"
-                        inputMode="decimal"
-                        step={t.type === "eggs" ? 1 : 0.1}
-                        value={draft.amounts?.[t.key] ?? ""}
-                        placeholder={t.type === "harvest" ? "How many kg?" : "How many eggs?"}
-                        onChange={(e) => update({ amounts: { ...draft.amounts, [t.key]: e.target.value } })}
+                <li key={t.key} className={`q-tp-task${on ? " is-done" : ""}`} style={{ "--i": i }}>
+                  <span className="q-tp-icon">
+                    {t.speciesType ? (
+                      <AnimalArt species={t.speciesType} size={44} />
+                    ) : t.cropName || t.plotId ? (
+                      <PlantArt
+                        crop={t.cropName || data.garden.plots.find((p) => p.id === t.plotId)?.crop}
+                        stage={t.type === "harvest" ? 5 : 3}
+                        size={44}
                       />
+                    ) : (
+                      <span className="q-tp-emoji">{taskGlyph(t)}</span>
+                    )}
+                    <span className="q-tp-sticker" aria-hidden="true">
+                      {on ? "✓" : taskGlyph(t)}
+                    </span>
+                  </span>
+                  <div className="q-tp-body">
+                    <strong>{t.title}</strong>
+                    {!on && t.desc && <small>{t.desc}</small>}
+                    {t.otherZones?.length > 0 && !on && (
+                      <small className="q-tp-final">Also covers {t.otherZones.join(", ")}.</small>
+                    )}
+                    {amount && checked.includes(t.key) && !done && (
+                      <div className="q-tp-amount">
+                        <button type="button" aria-label={`Less ${amount.unit}`} onClick={() => nudge(t, -1)}>
+                          <Minus size={16} />
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step={amount.step}
+                          value={draft.amounts?.[t.key] ?? ""}
+                          aria-label={`Amount in ${amount.unit}`}
+                          onChange={(e) => update({ amounts: { ...draft.amounts, [t.key]: e.target.value } })}
+                        />
+                        <span>{amount.unit}</span>
+                        <button type="button" aria-label={`More ${amount.unit}`} onClick={() => nudge(t, 1)}>
+                          <Plus size={16} />
+                        </button>
+                      </div>
                     )}
                   </div>
-                </label>
+                  {done ? (
+                    <span className="q-tp-reward">
+                      <Check size={15} />
+                      Done
+                    </span>
+                  ) : on ? (
+                    <button
+                      type="button"
+                      className="q-tp-undo"
+                      aria-label={`Untick ${t.title}`}
+                      onClick={() => toggle(t)}
+                    >
+                      <Check size={20} />
+                    </button>
+                  ) : (
+                    <button type="button" className="q-tp-go" onClick={() => toggle(t)}>
+                      {action.open ? "Done" : action.verb}
+                    </button>
+                  )}
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-        <p className="q-walk-question">How does it look today?</p>
-        <div className="q-walk-status">
-          <button className="q-secondary q-walk-good" disabled={photoBusy} onClick={() => finish("healthy")}>
-            <Leaf size={22} />
+        <p className="q-walk-question">How does it look?</p>
+        <div className="q-walk-status" role="group" aria-label="How does it look">
+          <button
+            type="button"
+            className="q-secondary"
+            aria-pressed={draft.status !== "issue"}
+            onClick={() => update({ status: "healthy" })}
+          >
+            <Leaf size={18} />
             <span>Looks good</span>
-            <small>Save & next</small>
           </button>
           <button
-            className="q-secondary"
+            type="button"
+            className="q-secondary q-walk-issue"
             aria-pressed={draft.status === "issue"}
             onClick={() => {
               update({ status: "issue" });
               setShowNote(true);
             }}
           >
-            <TriangleAlert size={22} />
+            <TriangleAlert size={18} />
             <span>Needs attention</span>
-            <small>Add a note</small>
           </button>
         </div>
         <div className="q-walk-capture">
-          <button className="q-secondary" onClick={() => setShowNote(!showNote)} aria-expanded={showNote}>
-            <NotebookPen size={17} /> {draft.note ? "Edit note" : "Note"}
+          <button
+            type="button"
+            className="q-secondary"
+            onClick={() => setShowNote(!showNote)}
+            aria-expanded={showNote}
+          >
+            <NotebookPen size={16} /> {draft.note ? "Edit note" : "Add note"}
           </button>
           <label className="q-secondary q-photo-button">
-            <Camera size={17} />
-            {photoBusy ? "Preparing…" : draft.photo ? "Retake" : "Photo"}
+            <Camera size={16} />
+            {photoBusy ? "Preparing…" : draft.photo ? "Retake photo" : "Add photo"}
             <input
               type="file"
               accept="image/*"
@@ -235,7 +297,7 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
         </div>
         {showNote && (
           <label className="q-note-field">
-            {heroPlot ? "Note for this planting" : "Note"}
+            <span className="q-visually-hidden">{heroPlot ? "Note for this planting" : "Note"}</span>
             <textarea
               value={draft.note || ""}
               maxLength={2000}
@@ -245,19 +307,14 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
           </label>
         )}
         {draft.photo && (
-          <div>
+          <div className="q-walk-photo">
             <img className="q-photo-preview" src={draft.photo} alt="Observation to save" />
-            <button className="q-text-button" onClick={() => update({ photo: null })}>
+            <button type="button" className="q-text-button" onClick={() => update({ photo: null })}>
               Remove photo
             </button>
           </div>
         )}
-        {heroPlot && (
-          <small className="q-walk-saves-to">
-            Notes and photos are saved to this {heroPlot.crop.toLowerCase()} planting.
-          </small>
-        )}
-        <details className="q-inset">
+        <details className="q-walk-tips">
           <summary>What to look for</summary>
           <p>
             {plant
@@ -270,11 +327,10 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
             </p>
           )}
         </details>
-        {plant && zone && (
-          <details className="q-inset">
-            <summary>Close-up of {zone.name}</summary>
-            <BedDetail zone={zone} data={data} setData={setData} highlightId={heroPlot?.id} />
-          </details>
+        {heroPlot && (
+          <small className="q-walk-saves-to">
+            Notes and photos are saved to this {heroPlot.crop.toLowerCase()} planting.
+          </small>
         )}
         {error && (
           <p role="alert" className="q-warning">
@@ -284,16 +340,10 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
       </div>
       <div className="q-walk-footer">
         <button className="q-secondary" disabled={photoBusy} onClick={() => onAdvance(false)}>
-          Skip for now
+          Skip
         </button>
-        <button
-          className="q-button"
-          disabled={photoBusy}
-          onClick={() =>
-            finish(draft.status || (draft.note || draft.photo || checked.length ? "checked" : "healthy"))
-          }
-        >
-          <Check size={17} /> Save & next
+        <button className="q-button" disabled={photoBusy} onClick={finish}>
+          <Check size={17} /> {draft.status === "issue" ? "Save & next" : "Looks good · next"}
         </button>
       </div>
     </>
@@ -306,6 +356,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
     [online, setOnline] = useState(navigator.onLine);
   const [saveStatus, setSaveStatus] = useState("saved");
   const dialog = useRef(null),
+    shell = useRef(null),
     close = useRef(onClose);
   useEffect(() => {
     close.current = onClose;
@@ -365,7 +416,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
     };
   }, []);
   useEffect(() => {
-    dialog.current?.scrollTo({ top: 0 });
+    shell.current?.scrollTo({ top: 0 });
   }, [session?.index, session?.status]);
   function begin() {
     setData({
@@ -433,33 +484,58 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
       lock.current = false;
     }, 300);
   }
+  const saveLabel =
+    saveStatus === "error"
+      ? "Could not save on this device"
+      : saveStatus === "saving"
+        ? "Saving…"
+        : online
+          ? "Saved on this device"
+          : "Offline · saved on this device";
   return (
-    <div ref={dialog} className="q-walk" role="dialog" aria-modal="true" aria-label="Morning farm walk">
-      <div className="q-walk-shell">
-        <header className="q-walk-header">
-          <div>
-            <h1>Morning walk</h1>
-          </div>
-          <button
-            className="q-icon"
-            aria-label={active ? "Pause and close walk" : "Close walk"}
-            onClick={onClose}
-          >
-            <X size={20} />
-          </button>
-        </header>
-        <div className="q-row q-between">
-          <span className="q-pill">
-            {saveStatus === "error"
-              ? "Could not save on this device"
-              : saveStatus === "saving"
-                ? "Saving…"
-                : online
-                  ? "Saved on this device"
-                  : "Offline · saved on this device"}
-          </span>
-          {!online && <CloudOff size={18} />}{" "}
-          {active && <small>{session.mode === "quick" ? "Quick" : "Full"} round</small>}
+    <div
+      ref={dialog}
+      className="q-walk q-walk-pop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Morning farm walk"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="q-walk-shell" ref={shell}>
+        <div className="q-walk-top">
+          <header className="q-walk-header">
+            <div className="q-grow">
+              <h1>Morning walk</h1>
+              <div className="q-walk-sub">
+                {active && stop ? (
+                  <>
+                    <strong>
+                      Stop {session.index + 1} of {session.stops.length}
+                    </strong>
+                    {session.stops[session.index + 1] && (
+                      <span>· Next: {session.stops[session.index + 1].label}</span>
+                    )}
+                  </>
+                ) : (
+                  <span>{active ? (session.mode === "quick" ? "Quick round" : "Full round") : "Your daily round"}</span>
+                )}
+                <span className={`q-walk-saved${saveStatus === "error" ? " is-error" : ""}`}>{saveLabel}</span>
+                {!online && <CloudOff size={14} />}
+              </div>
+            </div>
+            <button
+              className="q-icon"
+              aria-label={active ? "Pause and close walk" : "Close walk"}
+              onClick={onClose}
+            >
+              <X size={20} />
+            </button>
+          </header>
+          {active && stop && (
+            <div className="q-walk-progress">
+              <span style={{ width: `${((session.index + 1) / session.stops.length) * 100}%` }} />
+            </div>
+          )}
         </div>
         {saveStatus === "error" && (
           <p role="alert" className="q-warning">
@@ -474,17 +550,6 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
         )}
         {active && stop ? (
           <>
-            <div className="q-walk-progress" style={{ marginTop: 12 }}>
-              <span style={{ width: `${(session.index / session.stops.length) * 100}%` }} />
-            </div>
-            <div className="q-row q-between q-walk-step">
-              <strong>
-                Stop {session.index + 1} of {session.stops.length}
-              </strong>
-              {session.stops[session.index + 1] && (
-                <small>Next: {session.stops[session.index + 1].label}</small>
-              )}
-            </div>
             <div className="q-walk-map-live">
               <GroveScene
                 data={data}
@@ -512,7 +577,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
             />
           </>
         ) : finished ? (
-          <div className="q-walk-card">
+          <div className="q-walk-card q-walk-start">
             <Sun size={36} />
             <h2>A little more in tune with your farm.</h2>
             <p>
@@ -534,7 +599,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
             </button>
           </div>
         ) : (
-          <>
+          <div className="q-walk-start">
             <h2>Start with a look around.</h2>
             <p>A guided round of your own space, with practical checks and a journal that grows with you.</p>
             <div className="q-walk-choices">
@@ -594,7 +659,7 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
               Open the app once online before heading out. Your saved farm, checks and photos remain available
               offline.
             </p>
-          </>
+          </div>
         )}
       </div>
     </div>

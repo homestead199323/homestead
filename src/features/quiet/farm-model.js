@@ -11,23 +11,21 @@ export function growthOf(plot, crop, today = new Date().toLocaleDateString("en-C
   const observed = Number.isInteger(plot.observedStage) && plot.observedStage >= 1 && plot.observedStage <= 5;
   if (!observed && (!plot.plantDate || plot.status === "planned"))
     return { index: 0, progress: 0, label: STAGES[0], estimated: true };
-  const duration = day(plot.harvestDate) - day(plot.plantDate);
+  // Trees and perennials that have cropped before count the season from their last harvest,
+  // and never drop back to seedling art.
+  const start = plot.lastHarvest || plot.plantDate,
+    floor = plot.lastHarvest ? 3 : 1;
+  const duration = day(plot.harvestDate) - day(start);
   const progress =
     Math.min(
       1,
-      Math.max(0, (day(today) - day(plot.plantDate)) / (duration > 0 ? duration : crop?.days || 90)),
+      Math.max(0, (day(today) - day(start)) / (duration > 0 ? duration : crop?.days || 90)),
     ) || 0;
   const index = observed
     ? plot.observedStage
     : progress >= 1
       ? 5
-      : progress >= 0.72
-        ? 4
-        : progress >= 0.3
-          ? 3
-          : progress >= 0.08
-            ? 2
-            : 1;
+      : Math.max(floor, progress >= 0.72 ? 4 : progress >= 0.3 ? 3 : progress >= 0.08 ? 2 : 1);
   return { index, progress, label: STAGES[index], estimated: !observed };
 }
 export function relation(a, b) {
