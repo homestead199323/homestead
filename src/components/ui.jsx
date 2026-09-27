@@ -303,7 +303,7 @@ export const StepChecklist = React.memo(function StepChecklist({steps, plantDate
         const stepDate = localDateFromKey(addDaysToLocalKey(plantDate, s.d));
         const sd = stepDate ? stepDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
         return (
-          <div key={i} onClick={e => {e.stopPropagation(); onToggle?.(plotId, i);}} style={{display:"flex",gap:10,padding:"10px 12px",background:s.done?"#f0faf0":C.card,border:`1px solid ${s.done?C.gm:C.bdr}`,borderRadius:C.rs,marginBottom:4,cursor:"pointer"}}>
+          <div key={i} role="checkbox" aria-checked={!!s.done} tabIndex={0} onClick={e => {e.stopPropagation(); onToggle?.(plotId, i);}} onKeyDown={e => {if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onToggle?.(plotId, i);}}} style={{display:"flex",gap:10,padding:"10px 12px",background:s.done?"#f0faf0":C.card,border:`1px solid ${s.done?C.gm:C.bdr}`,borderRadius:C.rs,marginBottom:4,cursor:"pointer"}}>
             <div style={{width:22,height:22,borderRadius:22,border:`2px solid ${s.done?C.green:C.bdr}`,background:s.done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0}}>{s.done?"✓":""}</div>
             <div style={SX.flex1}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -319,9 +319,11 @@ export const StepChecklist = React.memo(function StepChecklist({steps, plantDate
   );
 });
 
-export const WaterCard = React.memo(function WaterCard({waterNote}) {
-  if (!waterNote) return null;
-  return <Card style={{marginBottom:12,background:C.tBlue}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Watering</div><div style={SX.s13mt4}>{waterNote}</div></Card>;
+export const WaterCard = React.memo(function WaterCard({waterNote, waterFreq}) {
+  if (!waterNote && !waterFreq) return null;
+  // The note often covers more than water (site, support, succession), so the
+  // heading carries the watering rhythm and the note reads as a growing tip.
+  return <Card style={{marginBottom:12,background:C.tBlue}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 {waterFreq ? `Water ${String(waterFreq).toLowerCase()}` : "Growing tip"}</div>{waterNote && <div style={SX.s13mt4}>{waterNote}</div>}</Card>;
 });
 
 export const StorageCard = React.memo(function StorageCard({storage}) {

@@ -14,7 +14,12 @@ import { getRegionalCrop } from "../../lib/regional";
 import { uid } from "../../lib/storage";
 import FarmIcon from "../../components/FarmIcon";
 import { todayLocalKey, addDaysToLocalKey } from "../../lib/utils";
-import { suggestCrops, buildStarterZone, buildSevenDayPlan, toNum, ftToM, r1 } from "../../lib/suggest";
+import { suggestCrops, describeSuggestion, buildStarterZone, buildSevenDayPlan, starterKit, starterCount, toNum, ftToM, r1 } from "../../lib/suggest";
+import { planPlanting, plantingInput } from "../quiet/planting-plan";
+import { expectedYield } from "../../lib/farm-calc";
+import { sowVerb, waitingLabel } from "../../lib/sowing";
+import { DEF } from "../../app/state";
+import GroveScene from "../grove/GroveScene";
 
 /* ─── Option constants ──────────────────────────────────── */
 const ENVIRONMENTS = [
@@ -103,7 +108,8 @@ const S = {
     fontFamily:F.body, overflowY:"auto",
   },
   inner: {
-    flex:1, display:"flex", flexDirection:"column",
+    // grow with the content (the overlay scrolls) instead of squashing long lists into one screen
+    flex:"1 0 auto", display:"flex", flexDirection:"column",
     maxWidth:520, width:"100%", margin:"0 auto",
     padding:"32px 24px 48px", minHeight:"100vh", boxSizing:"border-box",
   },
@@ -547,14 +553,10 @@ function ScreenAssets({ assets, setAssets, onNext, onBack }) {
 }
 
 /* ─── Screen 10 — Plant suggestions ─────────────────────── */
-function ScreenPlants({ profileDraft, region, maxPicks, selected, setSelected, onNext, onBack }) {
-  var list = useMemo(function() {
-    return suggestCrops(profileDraft, region, { limit: 9 });
-  }, [profileDraft, region]);
-
+function ScreenPlants({ list, maxPicks, selected, setSelected, onNext, onBack }) {
   // Prune selections invalidated by back-navigation (changed environment,
   // dislikes, or a smaller time budget) so stale picks can't reach the farm.
-  var listNames = list.map(function(c){ return c.name; });
+  var listNames = list.map(function(c){ return c.crop.name; });
   var pruned = selected.filter(function(n){ return listNames.includes(n); }).slice(0, maxPicks);
 
   function toggle(name) {
@@ -565,35 +567,47 @@ function ScreenPlants({ profileDraft, region, maxPicks, selected, setSelected, o
       return [...cur, name];
     });
   }
+  var nowList = list.filter(function(c){ return c.info.now; });
+  var laterList = list.filter(function(c){ return !c.info.now; });
+
+  function row(c) {
+    var name = c.crop.name, info = c.info;
+    var active = pruned.includes(name);
+    var full = !active && pruned.length >= maxPicks;
+    return (
+      <button key={name} type="button" aria-pressed={active} style={{...S.selCard(active), alignItems:"center", opacity: full ? 0.55 : 1, marginBottom:8}}
+        onClick={function(){ toggle(name); }}>
+        <span style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <FarmIcon name={name} emoji={c.crop.emoji} size={34} harvest/>
+        </span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+            <span style={{...S.cardLabel, marginBottom:0}}>{name}</span>
+            <span style={{fontSize:10.5,fontWeight:700,color:info.now ? C.green : C.t2,background:info.now ? C.gp : C.soft,borderRadius:8,padding:"2px 7px"}}>{info.when}</span>
+          </div>
+          <div style={{fontSize:12,color:C.t2,marginTop:3}}>{info.reason} · {info.effort} · {info.ready}</div>
+        </div>
+        <span aria-hidden="true" style={{width:22,height:22,borderRadius:11,flexShrink:0,border:"2px solid " + (active ? C.green : C.bdr),background:active ? C.green : "transparent",color:"#fff",fontSize:12,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{active ? "✓" : ""}</span>
+      </button>
+    );
+  }
 
   return (
     <>
       <h2 style={S.heading}>Your matched plants</h2>
       <p style={S.sub}>
         Picked for your space, light, experience and the time of year.
-        Choose up to {maxPicks} — fewer plants, better habits. Or skip for
-        now and plant later.
+        Choose up to {maxPicks} — fewer plants, better habits. You can add more any time.
       </p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-        {list.map(function(c) {
-          var active = pruned.includes(c.name);
-          return (
-            <button key={c.name} style={S.cropCard(active)} onClick={function(){ toggle(c.name); }}>
-              {active && <span style={S.checkBadge}>✓</span>}
-              <span style={{marginBottom:6,display:"flex",justifyContent:"center"}}><FarmIcon name={c.name} emoji={c.emoji} size={28}/></span>
-              <span style={{fontSize:12,fontWeight:700,color:C.text,lineHeight:1.3,display:"block"}}>{c.name}</span>
-              <span style={{fontSize:10,color:C.t3,marginTop:2,display:"block"}}>{c.days}d</span>
-            </button>
-          );
-        })}
+      {nowList.length > 0 && <div style={{...S.label, marginBottom:8}}>In season now</div>}
+      {nowList.map(row)}
+      {laterList.length > 0 && <div style={{...S.label, margin:"14px 0 8px"}}>Plan ahead</div>}
+      {laterList.map(row)}
+      <div style={{...S.hint, margin:"4px 0 14px", textAlign:"center"}}>
+        {pruned.length === maxPicks ? maxPicks + " picked — tap one to swap it" : pruned.length + " of " + maxPicks + " picked"}
       </div>
-      {pruned.length === maxPicks && (
-        <div style={{fontSize:12,color:C.green,fontWeight:600,textAlign:"center",marginBottom:8}}>
-          {maxPicks} selected — deselect one to swap
-        </div>
-      )}
       <button style={S.btnPrimary(true)} onClick={function(){ setSelected(pruned); onNext(); }}>
-        {pruned.length > 0 ? "Continue" : "Continue — leave unplanted"}
+        {pruned.length > 0 ? "Continue" : "Continue — decide later"}
       </button>
       <button style={S.btnBack} onClick={onBack}>← Back</button>
     </>
@@ -601,29 +615,39 @@ function ScreenPlants({ profileDraft, region, maxPicks, selected, setSelected, o
 }
 
 /* ─── Screen 11 — Initial map ────────────────────────────── */
-function ScreenMap({ environment, zonePlan, selected, onNext, onBack }) {
-  var sp = zonePlan.spec;
+// The real map, drawn from the draft farm: the first moment the person sees
+// their own space. Read-only here; editing lives in the farm designer.
+function ScreenMap({ environment, draft, dims, onNext, onBack }) {
+  var sp = draft.zp.spec;
+  var zone = draft.zone;
+  var picked = draft.plots.filter(function(p){ return !p.sowFrom; });
+  var later = draft.plots.filter(function(p){ return !!p.sowFrom; });
+  var noop = function(){};
+  var bedWord = environment === "balcony" ? "Planters" : sp.label;
   return (
     <>
       <h2 style={S.heading}>Here's your starter map</h2>
-      <p style={S.sub}>We've laid out your first growing zone. Resize it, move it, or add more zones any time in Map → Edit Layout.</p>
+      <p style={S.sub}>Your space at its real size, with a first {environment === "balcony" ? "row of planters" : "bed"} sized for the time you have.</p>
+      <div style={{borderRadius:16,overflow:"hidden",border:"1.5px solid " + C.bdr,marginBottom:12,background:C.card}}>
+        <GroveScene data={draft.data} setData={noop} interactive={false} showEditButton={false} showHelperText={false} noBorder/>
+      </div>
       <div style={S.previewCard}>
-        <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:10}}>
-          <span style={{fontSize:32}}>{sp.emoji}</span>
+        <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:8}}>
+          <span style={{fontSize:30}}>{sp.emoji}</span>
           <div>
-            <div style={{fontSize:16, fontWeight:800, color:C.text}}>{sp.label}</div>
-            <div style={{fontSize:12, color:C.t2}}>{zonePlan.areaM2} m² of growing space</div>
+            <div style={{fontSize:16, fontWeight:800, color:C.text}}>{bedWord} · {zone.wM} × {zone.hM} m</div>
+            <div style={{fontSize:12, color:C.t2}}>{zone.areaM2} m² of growing space{dims ? " in your " + dims : ""}</div>
           </div>
         </div>
         <div style={{fontSize:13, color:C.t2, lineHeight:1.6}}>
-          <div>🗺️ Map canvas: {zonePlan.farmW} × {zonePlan.farmH} m ({environment === "farm" ? "with room to expand" : "your real space"})</div>
-          <div>{selected.length > 0
-            ? "🌱 Planted with: " + selected.join(", ")
-            : "🌱 Unplanted for now — add crops any time from the Crops screen"}</div>
+          {picked.length > 0
+            ? picked.map(function(p){ return p.plantCount + " " + p.crop.toLowerCase(); }).join(" · ")
+            : "Nothing planted yet — add crops any time from the Crops screen."}
+          {later.length > 0 && <div>Planned for later: {later.map(function(p){ return p.crop; }).join(", ")}</div>}
         </div>
       </div>
       <div style={{...S.hint, marginBottom:20}}>
-        Your equipment (greenhouse, coop, trees…) can be added as zones from the map editor whenever you're ready.
+        Move it, resize it or add a greenhouse, coop or trees any time with the pencil on your map.
       </div>
       <button style={S.btnPrimary(true)} onClick={onNext}>Looks good</button>
       <button style={S.btnBack} onClick={onBack}>← Back</button>
@@ -632,15 +656,36 @@ function ScreenMap({ environment, zonePlan, selected, onNext, onBack }) {
 }
 
 /* ─── Screen 12 — 7-day plan ─────────────────────────────── */
-function ScreenPlan({ selected, region, onFinish, onBack }) {
+function ScreenPlan({ draft, region, onFinish, onBack }) {
+  var picked = draft.plots.filter(function(p){ return !p.sowFrom; }).map(function(p){ return p.crop; });
+  var later = draft.plots.filter(function(p){ return !!p.sowFrom; });
   var plan = useMemo(function() {
-    return buildSevenDayPlan(selected, region);
-  }, [selected, region]);
+    return buildSevenDayPlan(picked, region, { kit: draft.kit, environment: draft.data.profile.environment });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- picked is derived from draft
+  }, [draft, region]);
+  var needKit = draft.kit.length > 0 && picked.length > 0;
   return (
     <>
       <h2 style={S.heading}>Your first week</h2>
-      <p style={S.sub}>These tasks will show up on your Today screen, one day at a time. Tick them off to build your streak.</p>
-      <div style={{...S.previewCard, paddingTop:6, paddingBottom:6, marginBottom:20}}>
+      <p style={S.sub}>These jobs show up on your Today screen, one day at a time. Nothing sown yet? No rush — the sowing job waits for you.</p>
+      {needKit && (
+        <div style={{...S.previewCard, marginBottom:14}}>
+          <div style={{fontSize:14,fontWeight:800,color:C.text,marginBottom:2}}>🛒 Your starter kit</div>
+          <div style={{fontSize:12,color:C.t2,marginBottom:8}}>Everything to buy before you start. It stays on your Today screen as a checklist.</div>
+          {draft.kit.map(function(k) {
+            return (
+              <div key={k.id} style={{display:"flex",gap:10,padding:"7px 0",borderTop:"1px solid " + C.bdr}}>
+                <span aria-hidden="true" style={{width:16,height:16,marginTop:2,borderRadius:4,border:"1.5px solid " + C.bdr,flexShrink:0}}/>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.text}}>{k.label}</div>
+                  <div style={{fontSize:11.5,color:C.t2}}>{k.detail}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div style={{...S.previewCard, paddingTop:6, paddingBottom:6, marginBottom:later.length ? 12 : 20}}>
         {plan.map(function(d) {
           return (
             <div key={d.day} style={{...S.planDay, borderBottom: d.day === 7 ? "none" : S.planDay.borderBottom}}>
@@ -655,10 +700,99 @@ function ScreenPlan({ selected, region, onFinish, onBack }) {
           );
         })}
       </div>
+      {later.length > 0 && (
+        <div style={{...S.hint, fontSize:12, marginBottom:20}}>
+          📅 Coming up: {later.map(function(p){ return p.crop + " (" + waitingLabel(p, todayLocalKey()).toLowerCase() + ")"; }).join(", ")}. We'll remind you when it's time.
+        </div>
+      )}
       <button style={S.btnPrimary(true)} onClick={onFinish}>Start farming 🌱</button>
       <button style={S.btnBack} onClick={onBack}>← Back</button>
     </>
   );
+}
+
+/* ─── Draft farm from the answers ────────────────────────── */
+// Place up to `want` plants with the same planner as "Plant a crop". Wide beds
+// get short rows across the bed, one block of rows per crop along its length
+// (how most raised beds are planted); narrow planters keep rows along the strip.
+// If the full number does not fit, try fewer plants.
+function fitPlanting(zone, plots, crop, want, share) {
+  var across = zone.hM >= 1 && zone.wM > zone.hM;
+  // Rows along a narrow planter get an equal share of its length, so every pick has a place.
+  var tries = across
+    ? [{ axis: "vertical" }, { axis: "horizontal" }]
+    : [{ axis: "horizontal", lengthM: Math.floor((zone.wM / Math.max(1, share)) * 10) / 10 }, { axis: "horizontal" }, { axis: "vertical" }];
+  for (var i = 0; i < tries.length; i++) {
+    var n = want;
+    while (n >= 1) {
+      var input = plantingInput({ plantCount: n, mode: "plants", axis: tries[i].axis, lengthM: tries[i].lengthM }, crop, zone);
+      var plan = planPlanting(zone, plots, input, crop);
+      if (!plan.error) return plan;
+      n = n > 12 ? Math.floor(n * 0.8) : n - 1;
+    }
+  }
+  return null;
+}
+
+// One source for the map preview, the first-week plan and what gets saved:
+// the starter zone, a planting per pick laid out in rows with the same
+// planner as "Plant a crop", and the starter kit to buy.
+function buildDraft(a) {
+  var zp = a.zp;
+  var zone = {
+    id: a.zoneId, name: zp.spec.label, emoji: zp.spec.emoji,
+    type: zp.spec.type, areaM2: zp.areaM2, soilType: "loam", notes: "",
+    xM: zp.xM, yM: zp.yM, wM: zp.wM, hM: zp.hM,
+  };
+  var today = todayLocalKey();
+  var plots = [];
+  a.selected.forEach(function(cropName, idx) {
+    var crop = CROPS.find(function(c){ return c.name === cropName; });
+    if (!crop) return;
+    var rc = getRegionalCrop(crop, a.region) || crop;
+    var info = describeSuggestion(crop, a.profile, a.region);
+    var want = starterCount(rc, a.people);
+    var plan = fitPlanting(zone, plots, rc, want, a.selected.length);
+    var count = plan ? plan.count : 1;
+    var later = !info.now && info.month != null;
+    var yieldKg = expectedYield(crop.name, count, "plants", null, a.region);
+    var plot = {
+      id: a.plotIds[idx],
+      zone: zone.id,
+      crop: cropName,
+      variety: "",
+      name: cropName,
+      plantDate: later ? "" : today,
+      harvestDate: later ? "" : addDaysToLocalKey(today, rc.days || crop.days || 60),
+      status: later ? "planned" : "planted",
+      plantCount: count,
+      qty: count,
+      measureType: "plants",
+      expectedYieldKg: yieldKg ? Math.round(yieldKg * (plan && plan.yieldFactor != null ? plan.yieldFactor : 1) * 10) / 10 : 0,
+      growDays: rc.days || crop.days,
+      varietyNote: "",
+      notes: "",
+      steps: (rc.steps || crop.steps || []).map(function(s){ return {...s, done:false}; }),
+    };
+    if (plan) { plot.layout = plan.layout; plot.plantingPattern = plan.layout.pattern; }
+    if (later) {
+      var y = new Date().getFullYear() + (info.month < new Date().getMonth() ? 1 : 0);
+      plot.sowFrom = y + "-" + String(info.month + 1).padStart(2, "0");
+    } else {
+      plot.sowPending = true; // not in the ground yet — see lib/sowing.js
+    }
+    plots.push(plot);
+  });
+  var kit = starterKit({
+    environment: a.environment, assets: a.assets, zone: zone,
+    picks: plots.map(function(p){ return { name: p.crop, count: p.plantCount, verb: sowVerb(p.steps), later: !!p.sowFrom }; }),
+  });
+  var data = {
+    ...DEF, setupDone: true, region: a.region, zones: [zone], garden: { plots: plots },
+    farmW: zp.farmW, farmH: zp.farmH,
+    profile: { ...DEF.profile, environment: a.environment },
+  };
+  return { zp: zp, zone: zone, plots: plots, kit: kit, data: data };
 }
 
 /* ─── Main export ────────────────────────────────────────── */
@@ -682,6 +816,8 @@ export default function Onboarding({ onComplete }) {
   var [dislikes, setDislikes] = useState([]);
   var [assets, setAssets] = useState([]);
   var [selected, setSelected] = useState([]);
+  // Stable ids so the preview map and the saved farm are the same objects.
+  var [ids] = useState(function() { return { zone: uid(), plots: Array.from({length: 6}, function(){ return uid(); }) }; });
 
   // Normalised metric dimensions
   var lenM = unit === "imperial" ? ftToM(toNum(lenStr)) : toNum(lenStr);
@@ -700,10 +836,22 @@ export default function Onboarding({ onComplete }) {
     };
   }, [environment, sunlight, experience, people, use, dislikes, assets]);
 
+  var suggestions = useMemo(function() {
+    return suggestCrops(profileDraft, region, { limit: 9 }).map(function(c) {
+      return { crop: c, info: describeSuggestion(c, profileDraft, region) };
+    });
+  }, [profileDraft, region]);
+
   var zonePlan = useMemo(function() {
-    if (!environment || !(lenM > 0) || !(widM > 0)) return null;
-    return buildStarterZone(environment, lenM, widM);
-  }, [environment, lenM, widM]);
+    return buildStarterZone(environment || "farm", lenM > 0 ? lenM : 6, widM > 0 ? widM : 4, timeBudget);
+  }, [environment, lenM, widM, timeBudget]);
+
+  var draft = useMemo(function() {
+    return buildDraft({
+      zp: zonePlan, zoneId: ids.zone, plotIds: ids.plots, selected: selected, region: region,
+      profile: profileDraft, people: people, environment: environment || "farm", assets: assets,
+    });
+  }, [zonePlan, ids, selected, region, profileDraft, people, environment, assets]);
 
   function next() { setStep(step + 1); }
   function back() { setStep(step - 1); }
@@ -727,48 +875,13 @@ export default function Onboarding({ onComplete }) {
   }
 
   function handleFinish() {
-    var zp = zonePlan || buildStarterZone(environment || "farm", lenM || 6, widM || 4);
+    var zp = draft.zp;
     var today = todayLocalKey();
-    var zoneId = uid();
-
-    var zone = {
-      id: zoneId, name: zp.spec.label, emoji: zp.spec.emoji,
-      type: zp.spec.type, areaM2: zp.areaM2, soilType: "loam", notes: "",
-      xM: zp.xM, yM: zp.yM, wM: zp.wM, hM: zp.hM,
-    };
-
-    var plots = selected.map(function(cropName) {
-      var crop = CROPS.find(function(c){ return c.name === cropName; });
-      var rc   = getRegionalCrop(crop, region) || crop;
-      var sp   = (rc.spacing || 30) / 100;
-      var plotShare = zp.areaM2 / selected.length;
-      var plantCount = Math.min(Math.max(1, Math.floor(plotShare / (sp * sp))), 20);
-      // Field names MUST match the canonical plot shape created in Farm.jsx
-      // (crop / plantDate / zone / status / plantCount / qty / measureType).
-      return {
-        id: uid(),
-        zone: zoneId,
-        crop: cropName,
-        variety: "",
-        name: cropName,
-        plantDate: today,
-        harvestDate: addDaysToLocalKey(today, rc.days || crop.days || 60),
-        status: "planted",
-        plantCount: plantCount,
-        qty: plantCount,
-        measureType: "plants",
-        expectedYieldKg: Math.round((rc.yld || crop.yld || 1) * plantCount / 4 * 10) / 10,
-        varietyNote: "",
-        notes: "",
-        steps: (rc.steps || crop.steps || []).map(function(s){ return {...s, done:false}; }),
-      };
-    });
-
-    onComplete({
+    var update = {
       region: region,
       city: city.trim(),
-      zones: [zone],
-      garden: { plots: plots },
+      zones: [draft.zone],
+      garden: { plots: draft.plots },
       farmW: zp.farmW,
       farmH: zp.farmH,
       setupDone: true,
@@ -787,8 +900,16 @@ export default function Onboarding({ onComplete }) {
         assets: assets,
         onboardingVersion: 2,
       },
-    });
+    };
+    if (draft.kit.length > 0 && draft.plots.some(function(p){ return !p.sowFrom; })) {
+      update.starterKit = { createdAt: today, items: draft.kit.map(function(k){ return { ...k, done: false }; }) };
+    }
+    onComplete(update);
   }
+
+  var dimsLabel = lenM > 0 && widM > 0
+    ? r1(lenM) + " × " + r1(widM) + " m " + (environment === "balcony" ? "balcony" : environment === "backyard" ? "garden" : "space")
+    : "";
 
   var screens = [
     <ScreenWelcome     key="w"  onNext={next} onSkip={handleSkip}/>,
@@ -807,20 +928,19 @@ export default function Onboarding({ onComplete }) {
     <ScreenHousehold   key="h"  people={people} setPeople={setPeople} use={use} setUse={setUse}
                        dislikes={dislikes} setDislikes={setDislikes} onNext={next} onBack={back}/>,
     <ScreenAssets      key="a"  assets={assets} setAssets={setAssets} onNext={next} onBack={back}/>,
-    <ScreenPlants      key="p"  profileDraft={profileDraft} region={region} maxPicks={maxPicks}
+    <ScreenPlants      key="p"  list={suggestions} maxPicks={maxPicks}
                        selected={selected} setSelected={setSelected} onNext={next} onBack={back}/>,
-    <ScreenMap         key="m"  environment={environment} zonePlan={zonePlan || buildStarterZone(environment || "farm", lenM || 6, widM || 4)}
-                       selected={selected} onNext={next} onBack={back}/>,
-    <ScreenPlan        key="7"  selected={selected} region={region} onFinish={handleFinish} onBack={back}/>,
+    <ScreenMap         key="m"  environment={environment || "farm"} draft={draft} dims={dimsLabel} onNext={next} onBack={back}/>,
+    <ScreenPlan        key="7"  draft={draft} region={region} onFinish={handleFinish} onBack={back}/>,
   ];
 
   var totalSteps = screens.length - 1; // 12 answer steps after welcome
 
   return (
-    <div style={S.overlay}>
+    <div style={S.overlay} role="dialog" aria-modal="true" aria-label="Set up MyTerra">
       <div style={S.inner}>
         {step > 0 && (
-          <div style={S.progress}>
+          <div style={S.progress} role="progressbar" aria-valuemin={1} aria-valuemax={totalSteps} aria-valuenow={step} aria-label={"Step " + step + " of " + totalSteps}>
             {Array.from({length: totalSteps}, function(_, i){ return i + 1; }).map(function(i) {
               return <div key={i} style={S.dot(step === i, step > i)}/>;
             })}

@@ -833,7 +833,7 @@ function Farming({data, setData, pageData, clearPageData}) {
   const _active=data.garden.plots.filter(function(p){return p.status!=="harvested";});
   const _totalArea=_active.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
   const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
-  const _ready=_active.filter(function(p){return p.harvestDate&&localDateFromKey(p.harvestDate)<=localDateFromKey(todayLocalKey());}).length;
+  const _ready=_active.filter(function(p){return !p.sowPending&&p.status!=="planned"&&p.harvestDate&&localDateFromKey(p.harvestDate)<=localDateFromKey(todayLocalKey());}).length;
   // Trees (orchard crops or any fruit/nut tree) get their own section, separate from vegetable beds.
   // Sections: vegetable beds, herbs, and trees (orchard areas or any fruit/nut tree, wherever planted).
   const _cropMap=rCM(data.region);
@@ -853,7 +853,7 @@ function Farming({data, setData, pageData, clearPageData}) {
         const pct=growth.progress;
         const todayDate = localDateFromKey(todayLocalKey());
         const harvestDate = localDateFromKey(p.harvestDate);
-        const isR=p.harvestDate&&harvestDate<=todayDate;
+        const isR=!growth.waiting&&p.harvestDate&&harvestDate<=todayDate;
         const dL=harvestDate?Math.ceil((harvestDate-todayDate)/864e5):null;
         const zone=data.zones.find(z=>z.id===p.zone);
         const hasQty = p.plantCount || p.qty;
@@ -869,13 +869,15 @@ function Farming({data, setData, pageData, clearPageData}) {
                   {p.plantCount&&<span>{unit==="trees"?"🌳":"🌱"} {p.plantCount} {p.plantCount===1?unit.slice(0,-1):unit}</span>}
                   {p.qty&&p.measureType==="area"&&<span>📐 {p.qty}m²</span>}
                   {p.expectedYieldKg&&<span>📦 ~{p.expectedYieldKg}kg</span>}
-                  {!hasQty&&p.plantDate&&<span>{p.plantDate}</span>}
+                  {!hasQty&&p.plantDate&&!growth.waiting&&<span>{localDateFromKey(p.plantDate).toLocaleDateString(undefined,{day:"numeric",month:"short"})}</span>}
                   {p.status==="planned"&&p.plannedDate&&<span>🌱 from nursery · plant out {localDateFromKey(p.plannedDate).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>}
                 </div>
               </div>
               <div style={{display:"flex",gap:4,flexDirection:"column",alignItems:"flex-end"}}>
-                {isR&&<Pill c={C.orange} bg={C.harvestBg}>Harvest window</Pill>}
-                {dL>0&&<Pill>~{dL}d</Pill>}<small style={{fontSize:11,color:C.t2}}>{growth.label}</small>
+                {isR&&!growth.waiting&&<Pill c={C.orange} bg={C.harvestBg}>Harvest window</Pill>}
+                {growth.waiting
+                  ? <Pill c={C.green} bg={C.gp}>{growth.label}</Pill>
+                  : <>{dL>0&&<Pill>{dL<=14?`${dL} days to harvest`:`~${Math.round(dL/7)} wk to harvest`}</Pill>}<small style={{fontSize:11,color:C.t2}}>{growth.label}</small></>}
               </div>
             </div>
           </Card>
@@ -909,7 +911,7 @@ function Farming({data, setData, pageData, clearPageData}) {
           {(openSec.seedlings??true)&&<NurseryList data={data} setData={setData}/>}
         </section>)}
       {_active.length===0?
-        <Card style={{textAlign:"center",padding:"56px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:240,margin:"6px auto 0"}}>Tap "Plant Crop" to add your first seeds and start tracking</div></Card>:
+        <Card style={{textAlign:"center",padding:"48px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:280,margin:"6px auto 14px",lineHeight:1.5}}>{data.zones.length?"Pick a crop and a bed: MyTerra lays out the rows at the right spacing and plans every step.":"Add a bed to your map first, then plant into it."}</div>{data.zones.length>0&&<Btn onClick={()=>setShowAdd(true)}>+ Plant a crop</Btn>}</Card>:
       <>{_sections.map(function(sec){
         if(!sec.plots.length)return null;
         const open=openSec[sec.key]??true, all=showAll[sec.key]||sec.plots.length<=_PREVIEW+1;

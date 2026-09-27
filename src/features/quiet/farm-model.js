@@ -1,5 +1,6 @@
 import { POULTRY_SPECIES } from "../../data/livestock.js";
 import { COMP } from "../../data/companions.js";
+import { isAwaitingSowing, waitingLabel } from "../../lib/sowing.js";
 export const STAGES = ["Planned", "Sown", "Seedling", "Growing", "Maturing", "Harvest window"];
 const day = (v) => {
   const [y, m, d] = String(v || "")
@@ -9,6 +10,9 @@ const day = (v) => {
 };
 export function growthOf(plot, crop, today = new Date().toLocaleDateString("en-CA")) {
   const observed = Number.isInteger(plot.observedStage) && plot.observedStage >= 1 && plot.observedStage <= 5;
+  // Onboarding plans wait for their seeds: nothing has been sown yet (lib/sowing.js).
+  if (!observed && isAwaitingSowing(plot))
+    return { index: 0, progress: 0, label: waitingLabel(plot, today), estimated: true, waiting: true };
   if (!observed && (!plot.plantDate || plot.status === "planned"))
     return { index: 0, progress: 0, label: STAGES[0], estimated: true };
   // Trees and perennials that have cropped before count the season from their last harvest,

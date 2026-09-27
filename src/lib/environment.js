@@ -14,3 +14,15 @@ export function resolveEnvironment(data) {
   const e = data && data.profile ? data.profile.environment : null;
   return e === "balcony" || e === "backyard" ? e : "farm";
 }
+
+/** Default name of the space for its environment ("My balcony", "My garden", "My farm"). */
+export function defaultSpaceTitle(data) {
+  const e = resolveEnvironment(data);
+  return e === "balcony" ? "My balcony" : e === "backyard" ? "My garden" : "My farm";
+}
+
+/** The name people see for their space. Settings writes `farmName`; older builds read `profile.farmName`. */
+export function spaceTitle(data) {
+  const custom = (data && (data.farmName || (data.profile && data.profile.farmName))) || "";
+  return String(custom).trim() || defaultSpaceTitle(data);
+}

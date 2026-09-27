@@ -1,5 +1,12 @@
 (function () {
   "use strict";
+  // Email links (confirm sign-up, reset password) can come back to the Site URL
+  // (this page) instead of /app. Forward the auth hash so the app can finish
+  // signing the person in or let them choose a new password.
+  if (/(^|[#&])(access_token|error_description|type)=/.test(location.hash)) {
+    location.replace("/app" + location.hash);
+    return;
+  }
   document.documentElement.classList.add("js");
 
   var nav = document.getElementById("nav");

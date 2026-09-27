@@ -140,6 +140,7 @@ export default function AIAssistant({data, lift }) {
     <>
       {/* 6.8.1 / 6.8.2 / 6.8.3 — Lucide icon, pulse on urgent, repositioned above mobile tab bar */}
       <button
+        className="mt-fab"
         onClick={() => setOpen(o => !o)}
         aria-label={open ? "Close farm assistant" : urgentCount > 0 ? `Open farm assistant — ${urgentCount} ${urgentCount === 1 ? "plot" : "plots"} need attention` : "Open farm assistant"}
         style={{

@@ -98,9 +98,14 @@ export function TrialBanner({ ent, onUpgrade }) {
 
   if (ent.state === "trial") {
     bg = C.gp;
+    const ends = ent.trialEndsAt
+      ? new Date(ent.trialEndsAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
+      : "";
     text = ent.trialDaysLeft === 1
-      ? "Free trial — last day. Pick a plan to keep full access."
-      : `Free trial — ${ent.trialDaysLeft} days left.`;
+      ? "Pro trial · last day. Pick a plan to keep editing — your farm stays safe either way."
+      : `Pro trial · ${ent.trialDaysLeft} days left${ends ? ` · ends ${ends}` : ""}`;
+    // Early in the trial the job is to show value, not to sell: a quiet link.
+    if (ent.trialDaysLeft > 2) cta = "See plans";
   } else if (ent.state === "trial_expired") {
     bg = "color-mix(in srgb, #f59e0b 14%, transparent)";
     text = "Your free trial has ended. The farm is read-only — your data is safe.";
@@ -171,10 +176,10 @@ export function UpgradeSheet({ open, onClose, ent }) {
         <div style={{ fontFamily: F.head, fontSize: 20, fontWeight: 800, color: C.text, marginBottom: 4 }}>
           {locked ? "Keep farming" : "Upgrade your farm"}
         </div>
-        <p style={{ fontSize: 13, color: C.t2, margin: "0 0 16px" }}>
+        <p style={{ fontSize: 13, color: C.t2, margin: "0 0 16px", lineHeight: 1.5 }}>
           {locked
             ? "Your farm and all its data are saved. Pick a plan to unlock editing again."
-            : "Pick the plan that fits how you farm."}
+            : "Pick the plan that fits how you farm. Nothing is charged until you choose one. Cancel any time, and your first payment has a 14-day money-back guarantee."}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -246,6 +251,7 @@ export function LockedAssistantFab({ lift, onClick }) {
 
   return (
     <button
+      className="mt-fab"
       onClick={onClick}
       aria-label="Farm assistant — available on the Pro plan"
       title="Farm Assistant (Pro)"

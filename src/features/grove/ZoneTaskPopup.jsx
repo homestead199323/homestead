@@ -6,6 +6,7 @@ import { applyTaskCompletion } from "../quiet/complete-task";
 import { animalZone } from "../quiet/farm-model";
 import AnimalArt from "../quiet/AnimalArt";
 import PlantArt from "../quiet/PlantArt";
+import FarmIcon from "../../components/FarmIcon";
 import { taskAction, rewardText, taskGlyph } from "./zone-tasks";
 import "./zone-tasks.css";
 
@@ -26,6 +27,8 @@ function buzz(ms) {
 function TaskArt({ task, data }) {
   if (task.speciesType) return <AnimalArt species={task.speciesType} size={44} />;
   const crop = task.cropName || data.garden?.plots.find((p) => p.id === task.plotId)?.crop;
+  // Nothing is growing yet: show what it will become, so radish and strawberry don't look alike.
+  if (crop && task.sowing) return <FarmIcon name={crop} emoji={task.emoji} size={38} harvest />;
   if (crop) return <PlantArt crop={crop} stage={task.type === "harvest" ? 5 : 3} size={44} />;
   return <span className="q-tp-emoji">{taskGlyph(task)}</span>;
 }

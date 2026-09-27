@@ -692,7 +692,7 @@ function plantingsOf(z, plots, crops, today) {
   const push = (x, y, size, crop, stage) => out.push({ x, y, size, crop, stage });
   const info = (plot) => {
     const g = growthOf(plot, crops.get(plot.crop), today);
-    const left = plot.harvestDate ? Math.round(dayNum(plot.harvestDate) - dayNum(today)) : null;
+    const left = plot.harvestDate && !g.waiting ? Math.round(dayNum(plot.harvestDate) - dayNum(today)) : null;
     return { id: plot.id, crop: plot.crop, name: plot.name, count: plot.plantCount || plot.qty || 0, stage: g.index, progress: g.progress, estimated: g.estimated, left, status: plot.status };
   };
   layoutPlots(z, plots).filter((p) => p.layout.version === 2 && p.layout.pattern !== "scatter").forEach((plot) => {
@@ -1556,10 +1556,12 @@ export default function Grove3D(props) {
     fullRef.current = full; const st = state.current;
     st?.controls?.setCooperative(!full);
     const prev = document.body.style.overflow; if (full) document.body.style.overflow = "hidden";
+    // Hide the bottom navigation and assistant button while the map owns the screen.
+    document.body.classList.toggle("g3-full-open", full);
     const key = (e) => { if (e.key === "Escape" && full) setFull(false); };
     window.addEventListener("keydown", key);
     if (st) { st.size(); st.reset(true, full && host.current && host.current.clientWidth < host.current.clientHeight ? .78 : 1); }
-    return () => { window.removeEventListener("keydown", key); if (full) document.body.style.overflow = prev === "hidden" ? "" : prev; };
+    return () => { window.removeEventListener("keydown", key); if (full) { document.body.style.overflow = prev === "hidden" ? "" : prev; document.body.classList.remove("g3-full-open"); } };
   }, [full]);
   useEffect(() => { if (!hint) return; const t = setTimeout(() => latest.current.dismissHint?.(), 6000); return () => clearTimeout(t); }, [hint]);
   const ctl = (f) => { const st = state.current; if (st?.controls) f(st.controls, st); };

@@ -11,6 +11,18 @@
    ═══════════════════════════════════════════ */
 import { createClient } from "@supabase/supabase-js";
 
+// Read the auth redirect BEFORE the client is created: supabase-js parses and
+// clears the URL hash while it initialises, so this is the only reliable
+// moment to know that the page was opened from a password-reset email
+// (#…type=recovery) or from an expired/used email link (#error_description=…).
+const bootHash = typeof window !== "undefined" ? String(window.location.hash || "") : "";
+export const recoveryInUrl = /(^|[#&])type=recovery(&|$)/.test(bootHash);
+export const authLinkError = (() => {
+  const m = /(?:^|[#&])error_description=([^&]*)/.exec(bootHash);
+  if (!m) return "";
+  try { return decodeURIComponent(m[1].replace(/\+/g, " ")); } catch { return "This link is invalid or has expired."; }
+})();
+
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 

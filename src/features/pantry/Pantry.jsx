@@ -6,10 +6,9 @@ import { addBoughtStock, takeStock, sellStock, stockLines, stockValue, unpaidTot
 import FarmIcon from "../../components/FarmIcon";
 import { Overlay } from "../../components/ui";
 import "./pantry.css";
+import { currencySymbol, formatMoney } from "../../lib/money";
 
 const CATS = ["Fresh Produce", "Meat", "Eggs", "Dairy", "Preserved", "Grain", "Other"];
-const E = "€";
-const money = (n) => `${E}${(Number(n) || 0).toFixed(2)}`;
 const fmtQty = (n) => (Math.round((Number(n) || 0) * 100) / 100).toString();
 const MOVE_LABEL = { in: "In", sell: "Sold", use: "Used", gift: "Given away", waste: "Spoiled", return: "Returned", remove: "Removed" };
 
@@ -61,6 +60,8 @@ function Segmented({ value, onChange, options, label }) {
    PANTRY — the farm's inventory, tied to Financials
    ═══════════════════════════════════════════ */
 export default function Pantry({ data, setData }) {
+  const E = currencySymbol(data).trim();
+  const money = (n) => formatMoney(n, data);
   const today = todayLocalKey();
   const [cat, setCat] = useState("All");
   const [sell, setSell] = useState(null);

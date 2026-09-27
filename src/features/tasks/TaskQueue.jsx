@@ -8,7 +8,12 @@ import AnimalOverlay from "../animals/AnimalOverlay";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../../data/livestock";
 import { ZT_MAP } from "../../data/zones";
 import { rCM } from "../../lib/regional";
-import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, markTaskDone } from "../../lib/utils";
+import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, todayLocalKey } from "../../lib/utils";
+import { applyTaskCompletion } from "../quiet/complete-task";
+import { taskAction } from "../grove/zone-tasks";
+import { toggleStep, isAwaitingSowing, firstStepIdx, nextStepAfter } from "../../lib/sowing";
+import { minutesLabel } from "../../lib/task-time";
+import { toast } from "../../lib/toast";
 import { milkingHead } from "../../lib/task-queue";
 import { animalZone as zoneOfAnimal } from "../quiet/farm-model";
 import { useFlip } from "../../lib/use-flip";
@@ -80,7 +85,8 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
           <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4,textDecoration:strikethrough}}>{t.title}</div>
           <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
             <span>📍 {t.loc}</span>
-            {dateLabel && <span style={{color:t.daysOut === 0 ? C.red : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
+            {dateLabel && <span style={{color:t.daysOut === 0 ? C.text : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
+            {t.type !== "forecast" && <span>⏱ {minutesLabel(t)}</span>}
           </div>
         </div>
         {t.type === "harvest" && onGoToFarm && (
@@ -117,12 +123,25 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const rowRefs = useRef({});
   const pendingFlips = useRef(new Set());
 
+  // Tick a care step. Ticking the sow step of a plot that was waiting starts
+  // its growing clock today (lib/sowing.js). Every tick says what comes next
+  // and can be undone for a few seconds.
   const togStep = (pid, si) => {
-    const plots = data.garden.plots.map(p => {
-      if (p.id === pid) { const st = [...p.steps]; st[si] = {...st[si], done: !st[si].done}; return {...p, steps: st}; }
-      return p;
+    const before = data;
+    const plot = data.garden.plots.find(p => p.id === pid);
+    if (!plot || !plot.steps || !plot.steps[si]) return;
+    const turningOn = !plot.steps[si].done;
+    const wasWaiting = isAwaitingSowing(plot) && si === firstStepIdx(plot.steps);
+    const crop = rCM(data.region).get(plot.crop);
+    const updated = toggleStep(plot, si, todayLocalKey(), crop && crop.days);
+    setData({...data, garden: {...data.garden, plots: data.garden.plots.map(p => p.id === pid ? updated : p)}});
+    if (!turningOn) return;
+    const next = nextStepAfter(updated, todayLocalKey());
+    toast(wasWaiting ? `${plot.name || plot.crop} is in the ground 🌱` : `${plot.name || plot.crop}: ${plot.steps[si].l} ✓`, {
+      detail: next ? `Next: ${next.label.toLowerCase()} ${next.inDays === 0 ? "today" : next.inDays === 1 ? "tomorrow" : `in ${next.inDays} days`}` : undefined,
+      actionLabel: "Undo",
+      onAction: () => setData(before),
     });
-    setData({...data, garden: {plots}});
   };
 
   // markDone with FLIP: snapshot the source row → open Done section → commit state change
@@ -133,8 +152,18 @@ function TaskQueue({data, setData, setPage, tasks}) {
       pendingFlips.current.add(key);
     }
     setDoneCollapsed(false);
-    setData(markTaskDone(data, key));
-  }, [data, setData, snapshot]);
+    // Same path as the map popup: eggs and milk land in the pantry with the
+    // expected amount (editable there), watering is logged.
+    const task = tasks.find(t => t.key === key) || { key };
+    const amount = taskAction(task, data).amount;
+    const before = data;
+    setData(applyTaskCompletion(data, task, amount ? amount.value : undefined));
+    toast(`${task.title || "Job"} ✓`, {
+      detail: amount ? `+${amount.value} ${amount.unit} added to your pantry` : undefined,
+      actionLabel: "Undo",
+      onAction: () => setData(before),
+    });
+  }, [data, setData, snapshot, tasks]);
 
   const openTask = (t) => {
     if (t.plotId) setOpenPlotId(t.plotId);
@@ -167,12 +196,15 @@ function TaskQueue({data, setData, setPage, tasks}) {
       if (!p.plantDate || p.status === "harvested") return;
       const crop = rCM(data.region).get(p.crop);
       if (!crop) return;
+      // Not in the ground yet: no harvest or step dates to project.
+      if (isAwaitingSowing(p)) return;
       const plantDate = localDateFromKey(p.plantDate);
       if (!plantDate) return;
       const loc = zoneById.get(p.zone)?.name || "Farm";
 
-      // Harvest date
-      const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, crop.days));
+      // Harvest date — the plot's own date (variety days, perennial seasons) wins over crop defaults,
+      // so the calendar agrees with Today and the map.
+      const hDate = localDateFromKey(p.harvestDate || addDaysToLocalKey(p.plantDate, crop.days));
       const hKey = toLocalDateKey(hDate);
       if (!evts[hKey]) evts[hKey] = [];
       evts[hKey].push({type:"harvest", emoji:crop.emoji, cropName:p.crop, label:`Harvest ${p.name||p.crop}`, plotId:p.id, key:`plot-${p.id}-harvest`});
@@ -351,6 +383,17 @@ function TaskQueue({data, setData, setPage, tasks}) {
     (t.daysOut === 0 && !["upcoming","forecast"].includes(t.type))  // periodic animal care due today
   );
 
+  // Calm by default: red only when food is ready and can go past its best.
+  const hasHarvestNow = attentionTasks.some(t => t.type === "harvest");
+  const allSowing = attentionTasks.length > 0 && attentionTasks.every(t => t.sowing);
+  const attentionTone = hasHarvestNow ? C.orange : C.green;
+  const attentionBg = hasHarvestNow ? C.harvestBg : C.gp;
+  const attentionNote = hasHarvestNow
+    ? "Harvests are ready — pick them before they go past their best."
+    : allSowing
+    ? "Your first jobs. They wait for you until the seeds or plants are in."
+    : "Due now. A day late is fine for most garden jobs.";
+
   // Group routine by location (for the daily walking lists)
   const routineByLoc = {};
   routineTasks.forEach(t => {
@@ -482,22 +525,22 @@ function TaskQueue({data, setData, setPage, tasks}) {
       {/* ── Section 1: TODAY — attention banner + location-grouped routine + done-today ── */}
       {/* ── Section 1: NEEDS ATTENTION — harvests, steps, periodic animal care ── */}
       {attentionTasks.length > 0 && (
-        <Card p={false} style={{overflow:"hidden",marginBottom:16,border:`1px solid ${C.red}`}}>
+        <Card p={false} style={{overflow:"hidden",marginBottom:16,border:`1px solid ${attentionTone}`}}>
           <button
             onClick={()=>setAttentionCollapsed(v=>!v)}
-            style={{width:"100%",display:"block",textAlign:"left",padding:"14px 18px 10px",borderBottom: attentionCollapsed ? "none" : `1px solid ${C.bdr}`,background:C.dangerBg,border:"none",cursor:"pointer"}}
+            style={{width:"100%",display:"block",textAlign:"left",padding:"14px 18px 10px",borderBottom: attentionCollapsed ? "none" : `1px solid ${C.bdr}`,background:attentionBg,border:"none",cursor:"pointer"}}
           >
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:18}}>⚠️</span>
-                <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.red,letterSpacing:"-0.01em"}}>Needs Attention</div>
+                <span style={{fontSize:18}}>{hasHarvestNow ? "🧺" : "🌱"}</span>
+                <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:attentionTone,letterSpacing:"-0.01em"}}>Do today</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:12}}>{attentionTasks.length}</span>
+                <span style={{background:attentionTone,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:12}}>{attentionTasks.length}</span>
                 <span style={{fontSize:12,color:C.t2,fontWeight:600,fontFamily:F.mono}}>{attentionCollapsed ? "Show ▾" : "Hide ▴"}</span>
               </div>
             </div>
-            <div style={{fontSize:12,color:C.t2,marginTop:3}}>Do these today — miss the window and plants bolt, fail, or spoil</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:3}}>{attentionNote}</div>
           </button>
           {!attentionCollapsed && (
             <div style={{padding:"12px 14px"}}>
@@ -549,12 +592,13 @@ function TaskQueue({data, setData, setPage, tasks}) {
               ))}
             </div>
           ) : (
-            <div style={{textAlign:"center",padding:"20px 16px",color:C.t2,fontSize:12}}>🌱 Nothing growing step or harvest in the next 7 days</div>
+            <div style={{textAlign:"center",padding:"20px 16px",color:C.t2,fontSize:12}}>🌱 No growing jobs or harvests in the next 7 days</div>
           )
         )}
       </Card>
 
       {/* ── Section 2b: COMING UP — ANIMALS (weekly+ periodic care, next 7 days) ── */}
+      {(data.livestock?.animals || []).length > 0 && (
       <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
         <button
           onClick={()=>setAnimalsWeekCollapsed(v=>!v)}
@@ -590,6 +634,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           )
         )}
       </Card>
+      )}
 
       {/* ── Section 3: DAILY ROUTINE — grouped by location, same every day ── */}
       <Card p={false} style={{overflow:"hidden",marginBottom:16}}>
@@ -611,7 +656,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           </div>
           <div style={{fontSize:12,color:C.t2,marginTop:3}}>
             {routineTasks.length === 0
-              ? "No routine tasks set up yet"
+              ? "Watering and animal care show up here"
               : `${routineTasks.length} task${routineTasks.length === 1 ? "" : "s"} · your daily walk`}
           </div>
         </button>
@@ -643,7 +688,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
           </div>
         ) : (
           <div style={{textAlign:"center",padding:"28px 20px",color:C.t2,fontSize:13}}>
-            ✨ All routine done for today
+            {doneTodayList.length > 0 ? "✨ All routine done for today" : "Nothing to water or feed today."}
           </div>
         ))}
       </Card>
@@ -736,7 +781,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
             const numberColor = isSel ? "#fff" : isToday ? C.green : C.text;
             const numberWeight = (isSel || isToday) ? 700 : 400;
             return (
-              <div key={i} onClick={()=>setSelectedDate(isSel?null:dateStr)} style={{textAlign:"center",padding:"6px 2px",borderRadius:10,background:bgColor,minHeight:52,cursor:"pointer",border:borderStyle,transition:"all 0.15s ease"}}>
+              <button type="button" key={i} onClick={()=>setSelectedDate(isSel?null:dateStr)} aria-pressed={isSel} aria-label={`${d} ${MN[viewMonth]}${isToday ? ", today" : ""}${evts.length ? `, ${evts.length} task${evts.length === 1 ? "" : "s"}` : ""}`} style={{textAlign:"center",padding:"6px 2px",borderRadius:10,background:bgColor,minHeight:52,cursor:"pointer",border:borderStyle,transition:"all 0.15s ease",font:"inherit",color:"inherit",width:"100%",display:"block"}}>
                 <div style={{fontSize:13,fontWeight:numberWeight,color:numberColor}}>{d}</div>
                 {evts.length > 0 && (
                   <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:3,flexWrap:"wrap"}}>
@@ -749,7 +794,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
                     <FarmIcon name={evts[0].cropName || evts[0].speciesType} emoji={evts[0].emoji} size={11}/>{evts.length>1?`+${evts.length-1}`:""}
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>

@@ -99,10 +99,13 @@ export function computeEntitlement(profile, nowMs) {
   const expiresAt = startedAt + TRIAL_DAYS * DAY_MS;
   if (startedAt > 0 && expiresAt > now) {
     const daysLeft = Math.max(1, Math.ceil((expiresAt - now) / DAY_MS));
-    return { plan: "trial", state: "trial", canWrite: true, isPro: true, trialDaysLeft: daysLeft };
+    return { plan: "trial", state: "trial", canWrite: true, isPro: true, trialDaysLeft: daysLeft, trialEndsAt: expiresAt };
   }
   return { plan: "trial", state: "trial_expired", canWrite: false, isPro: false, trialDaysLeft: 0 };
 }
+
+// planLabel / trialEndsAt live in a dependency-free module so they can be unit-tested.
+export { planLabel, trialEndsAt } from "./plan-label.js";
 
 // hasFeature(ent, 'ai' | 'multizone' | 'analytics' | anything-basic)
 // Unknown feature names are treated as basic-level (write access = has it).

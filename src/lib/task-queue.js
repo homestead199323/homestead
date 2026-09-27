@@ -1,5 +1,6 @@
 import { toLocalDateKey, daysBetweenLocalKeys, localDateFromKey, addDaysToLocalKey } from "./utils";
 import { rCM } from "./regional";
+import { isAwaitingSowing, sowWindowOpen, firstStepIdx, prepStepIdxs } from "./sowing.js";
 import { nurseryTasks } from "../features/nursery/nursery-model.js";
 import { animalZone as zoneOfAnimal } from "../features/quiet/farm-model.js";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../data/livestock";
@@ -25,13 +26,28 @@ export function buildTaskQueue(data) {
   const zoneById = new Map((data.zones || []).map(z => [z.id, z]));
 
   data.garden.plots.forEach(p => {
-    if (!p.plantDate || p.status === "harvested") return;
+    if (p.status === "harvested") return;
+    const waiting = isAwaitingSowing(p);
+    if (waiting && !sowWindowOpen(p, todayKey)) return; // planned for a later month
+    if (!p.plantDate && !waiting) return;
     const crop = rCM(data.region).get(p.crop);
     if (!crop || !crop.days) return;
     const dSince = daysBetweenLocalKeys(p.plantDate, now);
     const zone = zoneById.get(p.zone);
     const loc = zone ? zone.name : "Farm";
-    const days = p.harvestDate ? daysBetweenLocalKeys(p.plantDate, p.harvestDate) : crop.days;
+
+    // Planned but not in the ground yet (onboarding picks): one job — the first
+    // step — due every day until it is done. No watering or harvest countdown
+    // for seeds that have not been sown.
+    if (waiting) {
+      [...prepStepIdxs(p.steps), firstStepIdx(p.steps)].forEach((i) => {
+        const s = p.steps[i];
+        tasks.push({ key: `plot-${p.id}-step-${i}`, pri: 1, type: "step", emoji: crop.emoji, cropName: p.crop, title: `${p.name || p.crop}: ${s.l}`, desc: s.t, loc, plotId: p.id, stepIdx: i, daysOut: 0, sowing: true });
+      });
+      return;
+    }
+
+    const days = p.harvestDate ? daysBetweenLocalKeys(p.plantDate, localDateFromKey(p.harvestDate)) : crop.days;
     const dLeft = days - dSince;
 
     // Harvest ready

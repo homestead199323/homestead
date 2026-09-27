@@ -7,6 +7,7 @@ import { LDB } from "../../data/livestock";
 import { BREEDS } from "../../data/breeds";
 import { Btn, Card, Inp, Sel, Overlay } from "../../components/ui";
 import AnimalOverlay from "./AnimalOverlay";
+import { currencySymbol } from "../../lib/money";
 import AnimalArt from "../quiet/AnimalArt";
 
 /* ═══════════════════════════════════════════
@@ -97,7 +98,7 @@ function Livestock({data, setData}) {
         <Inp label="Name / Label" placeholder="e.g. Layer Flock A" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
         <div style={SX.grid2}>
           <Inp label="Count" type="number" min="1" value={form.count} onChange={e=>setForm({...form,count:e.target.value})}/>
-          <Inp label="Cost (€)" type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
+          <Inp label={`Cost (${currencySymbol(data).trim()})`} type="number" value={form.cost} onChange={e=>setForm({...form,cost:e.target.value})}/>
         </div>
         <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add} disabled={!Number.isInteger(+form.count)||+form.count<1}>Add</Btn></div>
       </Overlay>}

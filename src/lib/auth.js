@@ -16,13 +16,32 @@
    ═══════════════════════════════════════════ */
 import { supabase } from "./db";
 
+// Where email links (confirm sign-up, reset password) send people back to.
+// If this URL is not on the Supabase redirect allow-list, Supabase falls back
+// to the Site URL; the landing page forwards auth hashes to /app either way.
+function appUrl() {
+  return typeof window !== "undefined" ? window.location.origin + "/app" : undefined;
+}
+
 // ── Email + password ───────────────────────────────────────────────
 export async function signUpEmail(email, password) {
-  return supabase.auth.signUp({ email, password });
+  return supabase.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } });
 }
 
 export async function signInEmail(email, password) {
   return supabase.auth.signInWithPassword({ email, password });
+}
+
+// ── Password reset ─────────────────────────────────────────────────
+// Step 1: email a reset link. Step 2: the link opens /app with a recovery
+// session (supabase-js emits PASSWORD_RECOVERY) and the user picks a new
+// password via updatePassword.
+export async function sendPasswordReset(email) {
+  return supabase.auth.resetPasswordForEmail(email, { redirectTo: appUrl() });
+}
+
+export async function updatePassword(password) {
+  return supabase.auth.updateUser({ password });
 }
 
 // ── Google OAuth ───────────────────────────────────────────────────

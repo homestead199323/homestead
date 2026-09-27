@@ -2,6 +2,7 @@ import {markTaskDone,todayLocalKey,appendLog} from "../../lib/utils";
 import {addStock} from "../../lib/inventory";
 import {rCM} from "../../lib/regional";
 import {isRecurringCrop, afterRecurringHarvest} from "../../lib/perennial";
+import {toggleStep, isAwaitingSowing, firstStepIdx, sowVerb} from "../../lib/sowing";
 export function applyTaskCompletion(data, task, logValue) {
   if (!task) return data;
   if ((data.completions?.[todayLocalKey()] || []).includes(task.key)) return data;
@@ -61,16 +62,19 @@ export function applyTaskCompletion(data, task, logValue) {
     const plots = (data.garden && data.garden.plots) || [];
     const plot = plots.find(function(p) { return p.id === task.plotId; });
     if (plot && plot.steps && plot.steps[task.stepIdx]) {
-      const newSteps = plot.steps.map(function(s, i) {
-        return i === task.stepIdx ? { ...s, done: true } : s;
-      });
+      // Ticking the first step of a plot that is still waiting to be sown starts
+      // its growing clock today (see lib/sowing.js).
+      const sowing = isAwaitingSowing(plot) && task.stepIdx === firstStepIdx(plot.steps);
+      const crop = rCM(data.region).get(plot.crop);
+      const updated = plot.steps[task.stepIdx].done ? plot : toggleStep(plot, task.stepIdx, todayLocalKey(), crop && crop.days);
       const next = {
         ...data,
         garden: {
           ...(data.garden || {}),
-          plots: plots.map(function(x) { return x.id === plot.id ? { ...x, steps: newSteps } : x; }),
+          plots: plots.map(function(x) { return x.id === plot.id ? updated : x; }),
         },
       };
+      if (sowing) next.log = appendLog(data.log, { text: "🌱 " + (sowVerb(plot.steps) === "Plant" ? "Planted " : "Sowed ") + (plot.name || plot.crop) });
       return markTaskDone(next, task.key);
     }
   }

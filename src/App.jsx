@@ -31,10 +31,11 @@ import GroveHome from "./features/grove/GroveHome";
 import AIAssistant from "./features/assistant/AIAssistant";
 import FeedbackSurvey, { FeedbackPrompt } from "./features/feedback/FeedbackSurvey";
 import { BadgeCelebration } from "./components/BadgeCelebration";
+import Toaster from "./components/Toaster";
 import Onboarding from "./features/onboarding/Onboarding";
 import { NAV, BOTTOM_TABS, MORE_ITEMS, ADMIN_NAV } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
-import { isSupabaseConfigured } from "./lib/db";
+import { isSupabaseConfigured, recoveryInUrl, authLinkError } from "./lib/db";
 import { getSession, onAuthChange, signOut } from "./lib/auth";
 import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt, resetSync } from "./lib/sync";
 import { SyncStatus } from "./components/SyncStatus";
@@ -42,7 +43,8 @@ import AuthScreen from "./features/auth/AuthScreen";
 import SettingsPanel from "./features/settings/SettingsPanel";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import { checkIsAdmin } from "./lib/admin";
-import { fetchEntitlement, getCachedEntitlement, resetEntitlement, hasFeature } from "./services/payments/entitlements";
+import { fetchEntitlement, getCachedEntitlement, resetEntitlement, hasFeature, planLabel } from "./services/payments/entitlements";
+import { spaceTitle } from "./lib/environment";
 import { TrialBanner, UpgradeSheet, LockedAssistantFab } from "./features/payments/Paywall";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
@@ -124,7 +126,7 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
   );
 });
 
-const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpenSettings, isAdmin}) {
+const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpenSettings, isAdmin, title, plan, onUpgrade}) {
   const moreItems = isAdmin ? [...MORE_ITEMS, ADMIN_NAV] : MORE_ITEMS;
   return createPortal(
     <>
@@ -142,10 +144,15 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpe
           <div style={{width:44,height:44,borderRadius:22,background:C.grdHero,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <User size={22} strokeWidth={1.8} color="#fff"/>
           </div>
-          <div>
-            <div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:F.body}}>My Farm</div>
-            <div style={{fontSize:11,color:C.t2,marginTop:1}}>MyTerra · Free plan</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:14,fontWeight:700,color:C.text,fontFamily:F.body,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
+            <div style={{fontSize:11,color:C.t2,marginTop:1}}>{plan ? `MyTerra · ${plan}` : "MyTerra"}</div>
           </div>
+          {plan && plan !== "Lifetime Pro" && onUpgrade && (
+            <button type="button" onClick={function(){ onClose(); onUpgrade(); }} style={{border:`1px solid ${C.bdr}`,background:C.card,color:C.green,borderRadius:10,padding:"7px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F.body,whiteSpace:"nowrap"}}>
+              Plans
+            </button>
+          )}
         </div>
         <div style={{padding:"4px 0"}}>
           {moreItems.map(function(item) {
@@ -470,7 +477,6 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
             {showHeader && isTablet && idx!==0 && <div style={{height:1,background:C.bdr,margin:"6px 12px"}}/>}
             <button onClick={()=>{setPage(n.id);}} className="nav-item" aria-current={page===n.id?"page":undefined} style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
               <span style={{width:isTablet?undefined:24,display:"flex",alignItems:"center",justifyContent:"center",opacity:page===n.id?1:0.55,transition:"opacity .2s"}}><n.E size={isTablet?20:17} strokeWidth={page===n.id?2.2:1.8}/></span>{!isTablet&&n.l}
-              {n.id==="home"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #ef4444, #dc2626)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,minWidth:18,textAlign:"center",boxShadow:"0 2px 6px rgba(239,68,68,.3)"}}>{taskCount}</span>}
               {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
             </button>
             </React.Fragment>
@@ -487,19 +493,22 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
           </button>
         </nav>
         <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
-          <TrialBanner ent={ent} onUpgrade={() => setUpgradeOpen(true)}/>
-          {pg()}
+          {/* Nothing renders under the first-run setup: the 3D map would otherwise
+              animate behind it and drain a phone's battery for no one. */}
+          {!showOnboarding && <TrialBanner ent={ent} onUpgrade={() => setUpgradeOpen(true)}/>}
+          {!showOnboarding && pg()}
         </main>
       </div>
       {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
-      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} isAdmin={isAdmin} onClose={()=>setMoreOpen(false)} onOpenSettings={()=>{setMoreOpen(false);setSettingsOpen(true);}}/>}
+      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} isAdmin={isAdmin} title={spaceTitle(data)} plan={planLabel(ent)} onUpgrade={()=>setUpgradeOpen(true)} onClose={()=>setMoreOpen(false)} onOpenSettings={()=>{setMoreOpen(false);setSettingsOpen(true);}}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
-      {aiAllowed
+      {!showOnboarding && (aiAllowed
         ? <AIAssistant data={data} setData={setData} lift={page === "home"}/>
-        : <LockedAssistantFab lift={page === "home"} onClick={() => setUpgradeOpen(true)}/>}
+        : <LockedAssistantFab lift={page === "home"} onClick={() => setUpgradeOpen(true)}/>)}
+      <Toaster/>
       <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} ent={ent}/>
-      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} importData={importData} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut}/>}
+      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} importData={importData} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut} plan={planLabel(ent)} onUpgrade={()=>{setSettingsOpen(false);setUpgradeOpen(true);}}/>}
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}/>}
     </>
   );
@@ -521,7 +530,13 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
    entirely and run local-only — the app still works offline-first.
    ═══════════════════════════════════════════ */
 function AuthGate() {
-  const [phase, setPhase] = useState("checking"); // checking | signedout | reconciling | ready
+  const [phase, setPhase] = useState("checking"); // checking | signedout | recovery | reconciling | ready
+  // Opened from a password-reset email: hold the recovery session on the
+  // "choose a new password" screen instead of walking straight into the app.
+  const recoveryRef = useRef(recoveryInUrl);
+  const [authNotice, setAuthNotice] = useState(authLinkError
+    ? "That email link has expired or was already used. Sign in below, or use “Forgot password?” to get a new link."
+    : "");
   const [cloudData, setCloudData] = useState(null);
   // When true, AppInner's initData may seed from the local cache; when false
   // it ignores local and starts from DEF. Set per-account by reconcileAndReady
@@ -632,6 +647,11 @@ function AuthGate() {
     // Initial session check on load.
     getSession().then(session => {
       if (!active) return;
+      if (session && recoveryRef.current) { setPhase("recovery"); return; }
+      if (!session && recoveryRef.current) {
+        recoveryRef.current = false;
+        setAuthNotice("That reset link has expired or was already used. Request a new one with “Forgot password?”.");
+      }
       if (session) {
         if (reconciledFor.current !== session.user.id) {
           reconciledFor.current = session.user.id;
@@ -647,6 +667,12 @@ function AuthGate() {
     // Live auth-state subscription (sign-in, sign-out, token refresh).
     const unsub = onAuthChange((event, session) => {
       if (!active) return;
+      if (event === "PASSWORD_RECOVERY") {
+        recoveryRef.current = true;
+        setPhase("recovery");
+        return;
+      }
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && recoveryRef.current) return; // wait for the new password
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
         // Dedupe: SIGNED_IN re-fires on tab focus for an unchanged session.
         // Only a genuinely new user id triggers a fresh reconcile + remount.
@@ -665,6 +691,19 @@ function AuthGate() {
     });
 
     return () => { active = false; unsub(); };
+  }, [reconcileAndReady]);
+
+  // New password saved: drop the recovery hold and open the farm as a normal sign-in.
+  const finishRecovery = useCallback(async () => {
+    recoveryRef.current = false;
+    try { window.history.replaceState(null, "", window.location.pathname); } catch (e) { /* ignore */ }
+    const session = await getSession();
+    if (session && session.user) {
+      reconciledFor.current = session.user.id;
+      reconcileAndReady();
+    } else {
+      setPhase("signedout");
+    }
   }, [reconcileAndReady]);
 
   const handleSignOut = useCallback(async () => {
@@ -697,8 +736,12 @@ function AuthGate() {
     );
   }
 
+  if (phase === "recovery") {
+    return <AuthScreen initialMode="reset" onPasswordUpdated={finishRecovery}/>;
+  }
+
   if (phase === "signedout") {
-    return <AuthScreen/>;
+    return <AuthScreen initialNotice={authNotice}/>;
   }
 
   // ready

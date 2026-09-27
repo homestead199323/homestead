@@ -405,3 +405,98 @@ test('Walk route: beds are swept in order, never skipped and returned to, and ar
   assert.deepEqual(orderRoute(rows,0,5).map(s=>s.id),['p1','p2','p3','p4','p5']);
   assert.deepEqual(orderRoute(rows,9,5).map(s=>s.id),['p5','p4','p3','p2','p1']);
 });
+
+/* ── UX pass 2026-09-28: honest first plan, sowing clock, plans, money, auth copy ── */
+import {sowTiming,suggestCrops,describeSuggestion,buildStarterZone,starterKit,buildSevenDayPlan,starterCount} from '../src/lib/suggest.js';
+import {isAwaitingSowing,firstStepIdx,toggleStep,startGrowing,waitingLabel,nextStepAfter} from '../src/lib/sowing.js';
+import {planLabel} from '../src/services/payments/plan-label.js';
+import {formatMoney,currencyCode} from '../src/lib/money.js';
+import {initialAuthMode,friendlyAuthError} from '../src/lib/auth-messages.js';
+import {spaceTitle} from '../src/lib/environment.js';
+import {addDaysToLocalKey} from '../src/lib/utils.js';
+const lateSep=new Date(2026,8,27),midSep=new Date(2026,8,5);
+test('Sowing windows: open now, opening soon, or later — never months after they close',()=>{
+  assert.equal(sowTiming(CROP_MAP.get('Radish'),'western_europe',lateSep).status,'now');
+  assert.equal(sowTiming(CROP_MAP.get('Kale'),'western_europe',lateSep).status,'later'); // Apr-Jul
+  assert.equal(sowTiming(CROP_MAP.get('Garlic'),'western_europe',lateSep).status,'soon'); // Oct-Nov, second half of Sep
+  assert.equal(sowTiming(CROP_MAP.get('Garlic'),'western_europe',midSep).status,'later');
+  assert.equal(sowTiming(CROP_MAP.get('Strawberry'),'western_europe',lateSep).verb,'Plant');
+});
+test('Late-September beginner suggestions are sowable now and exclude out-of-season kale',()=>{
+  const profile={environment:'backyard',sunlight:'5to7',experience:'beginner',household:{dislikes:[]}};
+  const list=suggestCrops(profile,'western_europe',{limit:9,date:lateSep});
+  assert(list.length>=3);
+  assert(!list.some(c=>c.name==='Kale'));
+  const now=list.filter(c=>describeSuggestion(c,profile,'western_europe',lateSep).now);
+  assert(now.length>=3,'at least three crops are sowable now');
+  const d=describeSuggestion(CROP_MAP.get('Radish'),profile,'western_europe',lateSep);
+  assert.equal(d.when,'Sow now');assert.equal(d.effort,'Easy');assert.match(d.ready,/weeks/);
+});
+test('Starter bed is sized by time, 1.2 m wide, and never exceeds the space',()=>{
+  const b=buildStarterZone('backyard',8,5,'min15');
+  assert.equal(b.hM,1.2);assert.equal(b.wM,2);assert.equal(b.areaM2,2.4);
+  const big=buildStarterZone('backyard',8,5,'unlimited');assert(big.areaM2>b.areaM2&&big.areaM2<=8*5*0.8);
+  const bal=buildStarterZone('balcony',4,1.5,'min5');assert.equal(bal.hM,.45);assert(bal.wM<=4-0.5);
+  const tiny=buildStarterZone('balcony',1,1,'unlimited');assert(tiny.areaM2<=1);
+  assert(starterCount(CROP_MAP.get('Radish'),2)>starterCount(CROP_MAP.get('Lettuce'),2));
+});
+test('Starter kit lists only what is missing; the first week starts with it',()=>{
+  const zone={wM:2,hM:1.2,areaM2:2.4};
+  const none=starterKit({environment:'backyard',assets:['none'],zone,picks:[{name:'Radish',count:24,verb:'Sow'},{name:'Strawberry',count:6,verb:'Plant'}]});
+  const ids=none.map(i=>i.id);
+  assert(ids.includes('bed')&&ids.includes('compost')&&ids.includes('tools')&&ids.includes('crop-Radish'));
+  assert.match(none.find(i=>i.id==='crop-Strawberry').label,/plants/);
+  const owned=starterKit({environment:'backyard',assets:['raised_bed','tools'],zone,picks:[]}).map(i=>i.id);
+  assert(!owned.includes('bed')&&!owned.includes('tools'));
+  const plan=buildSevenDayPlan(['Radish'],'western_europe',{kit:none});
+  assert.match(plan[0].items[0],/starter kit/i);assert.match(plan[1].items[0],/sow/i);
+});
+const today=todayLocalKey();
+const pending=(extra={})=>({id:'r',crop:'Radish',name:'Radish',zone:'bed2',status:'planted',plantDate:addDaysToLocalKey(today,-10),harvestDate:addDaysToLocalKey(today,18),sowPending:true,plantCount:20,steps:CROP_MAP.get('Radish').steps.map(s=>({...s,done:false})),...extra});
+test('A planting waiting to be sown keeps only its sow job, even after the 3-day window',()=>{
+  const data={...fixture,garden:{plots:[pending()]}};
+  const q=buildTaskQueue(data).filter(t=>t.plotId==='r');
+  assert.equal(q.length,1);assert.equal(q[0].title,'Radish: Sow');assert.equal(q[0].sowing,true);
+  assert(!q.some(t=>t.type==='water'||t.type==='harvest'));
+  const g=growthOf(pending(),CROP_MAP.get('Radish'),today);assert.equal(g.index,0);assert.equal(g.label,'Ready to sow');
+});
+test('Doing the sow job starts the clock today and keeps the growing time',()=>{
+  const data={...fixture,garden:{plots:[pending()]}};
+  const task=buildTaskQueue(data).find(t=>t.plotId==='r');
+  const next=applyTaskCompletion(data,task,null);
+  const p=next.garden.plots[0];
+  assert.equal(p.plantDate,today);assert.equal(p.harvestDate,addDaysToLocalKey(today,28));
+  assert.equal(p.sowPending,undefined);assert.equal(p.steps[0].done,true);
+  assert.match(next.log.at(-1).text,/Sowed Radish/);
+  assert(!isAwaitingSowing(p));
+  assert.deepEqual(nextStepAfter(p,today),{label:'Thin',inDays:14});
+});
+test('Plans for a later month wait silently, then ask when the month comes',()=>{
+  const later={...pending(),status:'planned',plantDate:'',harvestDate:'',sowPending:undefined,sowFrom:'2099-02'};
+  assert.equal(buildTaskQueue({...fixture,garden:{plots:[later]}}).filter(t=>t.plotId==='r').length,0);
+  assert.equal(waitingLabel(later,today),'Sow from Feb');
+  const due={...later,sowFrom:today.slice(0,7)};
+  assert.equal(buildTaskQueue({...fixture,garden:{plots:[due]}}).filter(t=>t.plotId==='r').length,1);
+  const started=startGrowing(due,today,28);assert.equal(started.status,'planted');assert.equal(started.harvestDate,addDaysToLocalKey(today,28));
+});
+test('Toggling a later step never re-anchors; prep steps come before the sow step',()=>{
+  assert.equal(firstStepIdx([{d:-7,l:'Chit'},{d:0,l:'Plant'},{d:30,l:'Earth up'}]),1);
+  const p=pending();const t=toggleStep(p,1,today,28);assert.equal(t.plantDate,p.plantDate);assert.equal(t.steps[1].done,true);
+});
+test('Plan label tells the truth about trials and plans',()=>{
+  assert.equal(planLabel({state:'trial',trialDaysLeft:6}),'Pro trial · 6 days left');
+  assert.equal(planLabel({state:'trial',trialDaysLeft:1}),'Pro trial · last day');
+  assert.equal(planLabel({state:'trial_expired'}),'Trial ended · read-only');
+  assert.equal(planLabel({state:'active',plan:'basic'}),'Basic plan');
+  assert.equal(planLabel({state:'active',plan:'pro'}),'Pro plan');
+  assert.equal(planLabel({state:'lifetime'}),'Lifetime Pro');
+  assert.equal(planLabel({state:'unknown'}),'');
+});
+test('Money uses the chosen currency; auth copy opens sign-up from Start free',()=>{
+  assert.equal(currencyCode({currency:'GBP'}),'GBP');assert.equal(formatMoney(12.5,{currency:'GBP'}),'£12.50');
+  assert.equal(formatMoney(3,{currency:'SEK'},0),'kr 3');
+  assert.equal(initialAuthMode('?signup'),'signup');assert.equal(initialAuthMode(''),'signin');assert.equal(initialAuthMode('?mode=forgot'),'forgot');
+  assert.match(friendlyAuthError('Invalid login credentials','signin'),/don't match/);
+  assert.match(friendlyAuthError('User already registered','signup'),/Sign in instead/);
+  assert.equal(spaceTitle({profile:{environment:'balcony'}}),'My balcony');assert.equal(spaceTitle({farmName:' Plot 9 ',profile:{environment:'farm'}}),'Plot 9');
+});

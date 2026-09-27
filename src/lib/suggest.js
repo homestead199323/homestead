@@ -1,12 +1,23 @@
 /* ═══════════════════════════════════════════
-   SUGGEST — profile-aware crop suggestions (Launch Stage 3, 2026-07-14)
+   SUGGEST — profile-aware crop suggestions (Launch Stage 3, 2026-07-14;
+   UX pass 2026-09-28)
    Single source for "what should this person plant right now".
    Consumed by onboarding (plant picker) and reusable by the future
    Plan screen (Stage 5/6). Pure function of (profile, region, date).
+
+   2026-09-28: suggestions only count as "now" when the sowing window is
+   open (or opens within ~2 weeks). The old ±2-month tolerance suggested
+   kale in late September although its window closes in July. Off-season,
+   upcoming crops are offered as "from <month>" plans instead.
+   The starter bed is sized by the time the person has, not only by the
+   size of their space, and the first week starts with a shopping list
+   when they said they own nothing yet.
    ═══════════════════════════════════════════ */
 import { CROPS } from "../data/crops";
-import { CROP_DIFFICULTY, parseSowMonths } from "./calendar";
+import { CROP_DIFFICULTY, parseSowMonths, MN_ABR } from "./calendar";
 import { getRegionalCrop } from "./regional";
+import { isRecurringCrop } from "./perennial";
+import { sowVerb } from "./sowing";
 
 // Crops that thrive in pots/planters — used when environment is "balcony"
 // or the grower's only asset is containers.
@@ -35,25 +46,47 @@ function sunOk(crop, sunlight) {
   return sun !== "Full";                                     // 3to5: partial or full-partial
 }
 
-function inSowWindow(crop, region, monthIdx) {
+function asDate(date, month) {
+  if (date instanceof Date && !isNaN(date)) return date;
+  if (typeof month === "number") return new Date(new Date().getFullYear(), month, 10);
+  return new Date();
+}
+
+/**
+ * sowTiming(crop, region, date) → { status, verb, month, inMonths }
+ * status: "now"   — the sowing/planting window is open this month
+ *         "soon"  — it opens next month and we are in the second half of this one
+ *         "later" — it opens in `inMonths` months (month = first month)
+ *         "na"    — the crop is not grown in this region
+ */
+export function sowTiming(crop, region, date) {
+  var d = asDate(date);
   var regional = getRegionalCrop(crop, region);
-  if (!regional) return false;
-  var sowMonths = parseSowMonths(regional.sowIn || crop.sowIn);
-  return sowMonths.some(function(m) {
-    var diff = Math.abs(m - monthIdx);
-    return diff <= 2 || diff >= 10;
-  });
+  if (!regional) return { status: "na", verb: "Sow", month: null, inMonths: null };
+  var verb = sowVerb(regional.steps || crop.steps);
+  var months = parseSowMonths(regional.sowIn || crop.sowIn);
+  var m = d.getMonth();
+  if (!months.length || months.includes(m)) return { status: "now", verb: verb, month: m, inMonths: 0 };
+  var next = (m + 1) % 12;
+  if (months.includes(next) && d.getDate() >= 15) return { status: "soon", verb: verb, month: next, inMonths: 1 };
+  for (var k = 1; k <= 12; k++) {
+    var mm = (m + k) % 12;
+    if (months.includes(mm)) return { status: "later", verb: verb, month: mm, inMonths: k };
+  }
+  return { status: "now", verb: verb, month: m, inMonths: 0 };
 }
 
 /**
  * suggestCrops(profile, region, opts) → ranked CROPS subset.
  * Consumes: environment, sunlight, experience, household.dislikes, assets.
- * opts: { limit (default 9), month (0-11, default now), relaxIfEmpty (default true) }
+ * opts: { limit (default 9), date (default now) | month (0-11), relaxIfEmpty (default true) }
+ * Order: sowable now/soon first; then (off-season) crops whose window opens
+ * within 4 months; then, if still thin, sun is relaxed (shade-tolerant first).
  */
 export function suggestCrops(profile, region, opts) {
   var o = opts || {};
   var limit = o.limit || 9;
-  var monthIdx = typeof o.month === "number" ? o.month : new Date().getMonth();
+  var date = asDate(o.date, o.month);
   var p = profile || {};
   var dislikes = (p.household && p.household.dislikes) || [];
   var exp = p.experience || "beginner";
@@ -64,17 +97,13 @@ export function suggestCrops(profile, region, opts) {
   else if (exp === "some") allowedDifficulty = ["easy", "medium"];
   else allowedDifficulty = ["easy", "medium", "hard"];
 
-  function passes(c, strict) {
+  function passes(c) {
     if (dislikes.includes(c.name)) return false;
     if (containersOnly && !CONTAINER_FRIENDLY.includes(c.name)) return false;
     var dr = difficultyRank(c.name);
     if (dr === 0 && !allowedDifficulty.includes("easy")) return false;
     if (dr === 1 && !allowedDifficulty.includes("medium")) return false;
     if (dr === 2 && !allowedDifficulty.includes("hard")) return false;
-    if (strict) {
-      if (!sunOk(c, p.sunlight)) return false;
-      if (!inSowWindow(c, region, monthIdx)) return false;
-    }
     return true;
   }
 
@@ -87,32 +116,82 @@ export function suggestCrops(profile, region, opts) {
     return (a.days || 999) - (b.days || 999);
   }
 
-  var strictList = CROPS.filter(function(c){ return passes(c, true); }).sort(rank);
+  var timing = new Map(CROPS.map(function(c){ return [c.name, sowTiming(c, region, date)]; }));
+  var soonish = function(c){ var t = timing.get(c.name); return t.status === "now" || t.status === "soon"; };
+
+  var strictList = CROPS.filter(function(c){ return passes(c) && sunOk(c, p.sunlight) && soonish(c); }).sort(rank);
   if (strictList.length >= 3 || o.relaxIfEmpty === false) return strictList.slice(0, limit);
-  // Off-season / over-filtered fallback: drop sun + sow-window constraints,
-  // keep experience/dislikes/container constraints.
-  var relaxed = CROPS.filter(function(c){ return passes(c, false); }).sort(function(a, b) {
-    // In low light, shade-tolerant crops always outrank full-sun crops.
-    // Graded: Partial (0) < Full-Partial (1) < Full (2).
-    var shadeScore = function(c){ return c.sun === "Partial" ? 0 : c.sun === "Full-Partial" ? 1 : 2; };
+
+  // Off-season: plan ahead with crops whose window opens in the next few months.
+  var later = CROPS.filter(function(c) {
+    var t = timing.get(c.name);
+    return passes(c) && sunOk(c, p.sunlight) && t.status === "later" && t.inMonths <= 4;
+  }).sort(function(a, b) {
+    var d = timing.get(a.name).inMonths - timing.get(b.name).inMonths;
+    return d || rank(a, b);
+  });
+  var list = strictList.concat(later);
+  if (list.length >= 3) return list.slice(0, limit);
+
+  // Still thin (deep shade, many dislikes): relax the sun rule. In low light,
+  // shade-tolerant crops outrank full-sun ones. Graded: Partial < Full-Partial < Full.
+  var shadeScore = function(c){ return c.sun === "Partial" ? 0 : c.sun === "Full-Partial" ? 1 : 2; };
+  var relaxed = CROPS.filter(function(c){
+    return passes(c) && timing.get(c.name).status !== "na" && !list.includes(c);
+  }).sort(function(a, b) {
     var sa = shadeScore(a), sb = shadeScore(b);
     if (sa !== sb) return sa - sb;
+    var ta = timing.get(a.name).inMonths, tb = timing.get(b.name).inMonths;
+    if (ta !== tb) return ta - tb;
     return rank(a, b);
   });
-  return relaxed.slice(0, limit);
+  return list.concat(relaxed).slice(0, limit);
+}
+
+/**
+ * describeSuggestion(crop, profile, region, date) → what a beginner needs to
+ * decide: when ("Sow now" / "Plant from Oct"), how long until food, effort,
+ * and one reason it was picked for them.
+ */
+export function describeSuggestion(crop, profile, region, date) {
+  var p = profile || {};
+  var rc = getRegionalCrop(crop, region) || crop;
+  var t = sowTiming(crop, region, date);
+  var now = t.status === "now" || t.status === "soon";
+  var when = now ? t.verb + " now" : t.month != null ? t.verb + " from " + MN_ABR[t.month] : t.verb;
+  var days = rc.days || crop.days || 60;
+  var recurring = isRecurringCrop(rc);
+  var ready = days >= 300 ? "first crop next year" : days > 70 ? "food in ~" + Math.round(days / 30) + " months" : "food in ~" + Math.max(1, Math.round(days / 7)) + " weeks";
+  var dr = difficultyRank(crop.name);
+  var effort = dr === 0 ? "Easy" : dr === 1 ? "Some care" : "Advanced";
+  var shady = p.sunlight === "lt3" || p.sunlight === "3to5";
+  var reason;
+  if (!sunOk(rc, p.sunlight)) reason = "Wants more sun than you have — expect a smaller crop";
+  else if (p.environment === "balcony" && CONTAINER_FRIENDLY.includes(crop.name)) reason = "Happy in a pot";
+  else if (shady && rc.sun !== "Full") reason = "Copes with part shade";
+  else if (days <= 45) reason = "Quick win";
+  else if (recurring) reason = "Comes back every year";
+  else if (dr === 0 && (p.experience || "beginner") === "beginner") reason = "Very forgiving";
+  else reason = now ? "In season now" : "Plan ahead";
+  return { timing: t.status, now: now, when: when, month: t.month, ready: ready, effort: effort, reason: reason, verb: t.verb };
 }
 
 /* ─── Onboarding starter-map + first-week plan (Stage 3) ── */
-// Starter zone spec per environment. share = fraction of the space that
-// becomes the first growing zone (rest is walkway/lawn/etc). Assets do NOT
-// auto-create zones — the Basic zone-cap decision is still open; assets are
-// stored in profile.assets for later stages.
+// Starter zone spec per environment. Assets do NOT auto-create zones — the
+// Basic zone-cap decision is still open; assets are stored in profile.assets.
 const ENV_ZONE = {
-  balcony:  { type:"container", label:"Balcony Containers", emoji:"🪣", share:0.5,  minA:0.5, maxA:6,  inset:0.25, minW:3,  minH:2 },
-  backyard: { type:"raised",  label:"Raised Bed",         emoji:"🪴", share:0.25, minA:1,   maxA:12, inset:1,    minW:6,  minH:4 },
-  farm:     { type:"veg",     label:"Vegetable Bed",      emoji:"🌿", share:0.1,  minA:4,   maxA:24, inset:4,    minW:16, minH:10 },
+  balcony:  { type:"container", label:"Balcony Containers", emoji:"🪣", share:0.5,  minA:0.3, maxA:6,  inset:0.25, minW:3,  minH:2, depth:0.45 },
+  backyard: { type:"raised",  label:"Raised Bed",         emoji:"🪴", share:0.25, minA:1,   maxA:12, inset:1,    minW:6,  minH:4, depth:1.2 },
+  farm:     { type:"veg",     label:"Vegetable Bed",      emoji:"🌿", share:0.1,  minA:2,   maxA:24, inset:4,    minW:16, minH:10, depth:1.2 },
 };
 
+// First growing area by the time someone has (m²). A 1.2 × 2 m raised bed is
+// plenty for 15 minutes a day; a beginner with a 10 m² bed mostly weeds it.
+export const TIME_AREA = {
+  balcony:  { min5: 1,   min15: 1.5, weekly: 2,   daily: 3,   unlimited: 4 },
+  backyard: { min5: 1.2, min15: 2.4, weekly: 3.6, daily: 6,   unlimited: 10 },
+  farm:     { min5: 3,   min15: 6,   weekly: 10,  daily: 18,  unlimited: 24 },
+};
 
 export function toNum(v) {
   var n = parseFloat(String(v).replace(",", "."));
@@ -121,37 +200,97 @@ export function toNum(v) {
 export function ftToM(ft) { return Math.round(ft * 0.3048 * 10) / 10; }
 export function r1(n) { return Math.round(n * 10) / 10; }
 
-// Starter zone + canvas from environment and space dimensions.
-export function buildStarterZone(environment, lengthM, widthM) {
-  var spec = ENV_ZONE[environment] || ENV_ZONE.farm;
+/**
+ * Starter zone + canvas from environment, space dimensions and time budget.
+ * Beds are 1.2 m wide so the middle can be reached from both sides;
+ * balcony planters are a 45 cm deep strip (troughs along the railing).
+ */
+export function buildStarterZone(environment, lengthM, widthM, timeBudget) {
+  var env = ENV_ZONE[environment] ? environment : "farm";
+  var spec = ENV_ZONE[env];
   var areaM2 = r1(lengthM * widthM);
-  var usable = Math.min(Math.max(areaM2 * spec.share, spec.minA), spec.maxA);
-  usable = Math.min(usable, Math.max(areaM2 * 0.8, spec.minA));
-  usable = r1(usable);
+  var target = (TIME_AREA[env] || {})[timeBudget] || TIME_AREA[env].min15;
+  var usable = Math.min(Math.max(Math.min(target, areaM2 * 0.8), spec.minA), spec.maxA);
+  usable = r1(Math.max(usable, 0.3));
 
-  var farmW, farmH, xM, yM;
-  if (environment === "farm") {
-    // Larger canvas with breathing room (matches legacy behaviour)
-    var wM0 = Math.max(1, r1(Math.sqrt(usable * 1.5)));
-    var hM0 = Math.max(1, r1(usable / wM0));
+  var farmW, farmH, xM, yM, maxW, maxH;
+  if (env === "farm") {
     xM = spec.inset; yM = spec.inset;
-    farmW = Math.max(spec.minW, Math.ceil(xM + wM0 + 8));
-    farmH = Math.max(spec.minH, Math.ceil(yM + hM0 + 6));
-    return { spec:spec, areaM2:usable, wM:wM0, hM:hM0, xM:xM, yM:yM, farmW:farmW, farmH:farmH };
+    var fw = Math.max(1.2, r1(usable / spec.depth));
+    farmW = Math.max(spec.minW, Math.ceil(xM + fw + 8));
+    farmH = Math.max(spec.minH, Math.ceil(yM + spec.depth + 6));
+    maxW = farmW - xM - 2; maxH = farmH - yM - 2;
+  } else {
+    // Balcony/backyard: the canvas is the real space itself
+    farmW = Math.max(spec.minW, Math.ceil(Math.max(lengthM, widthM)));
+    farmH = Math.max(spec.minH, Math.ceil(Math.min(lengthM, widthM)));
+    xM = spec.inset; yM = spec.inset;
+    maxW = Math.max(0.5, farmW - spec.inset * 2);
+    maxH = Math.max(0.3, farmH - spec.inset * 2);
   }
-
-  // Balcony/backyard: canvas is the real space itself
-  farmW = Math.max(spec.minW, Math.ceil(Math.max(lengthM, widthM)));
-  farmH = Math.max(spec.minH, Math.ceil(Math.min(lengthM, widthM)));
-  xM = spec.inset; yM = spec.inset;
-  var maxW = farmW - spec.inset * 2;
-  var maxH = farmH - spec.inset * 2;
-  var wM = Math.min(r1(Math.sqrt(usable * 1.5)), maxW);
-  wM = Math.max(wM, 0.5);
-  var hM = r1(usable / wM);
-  if (hM > maxH) { hM = r1(maxH); usable = r1(wM * hM); }
-  hM = Math.max(hM, 0.5);
+  var hM = Math.min(spec.depth, maxH);
+  var wM = r1(Math.min(maxW, Math.max(0.5, usable / hM)));
+  // Space too narrow for the whole area in one strip: use more of the depth.
+  if (wM * hM < usable - 0.05) hM = Math.min(maxH, usable / wM);
+  hM = Math.max(0.3, Math.round(hM * 100) / 100);
+  usable = r1(wM * hM);
   return { spec:spec, areaM2:usable, wM:wM, hM:hM, xM:xM, yM:yM, farmW:farmW, farmH:farmH };
+}
+
+/**
+ * How many plants of a crop to start with for a household: small-spaced crops
+ * (radish, carrots) come in bigger numbers than lettuces or strawberries.
+ * The bed planner (planPlanting) trims this further if it does not fit.
+ */
+export function starterCount(crop, people) {
+  var n = Math.max(1, Math.min(6, Number(people) || 2));
+  var spacing = Number(crop && crop.spacing) || 30;
+  var perPerson = spacing < 10 ? 12 : spacing < 20 ? 8 : spacing < 40 ? 4 : spacing < 80 ? 1 : 0.5;
+  return Math.max(1, Math.round(n * perPerson));
+}
+
+/**
+ * The shopping list a beginner needs before day one, from what they told us
+ * they already own. items: [{ id, label, detail }]
+ */
+export function starterKit(opts) {
+  var o = opts || {};
+  var env = o.environment === "balcony" || o.environment === "backyard" ? o.environment : "farm";
+  var assets = o.assets || [];
+  var owns = function(id){ return assets.includes(id); };
+  var zone = o.zone || { wM: 2, hM: 1.2, areaM2: 2.4 };
+  var area = zone.areaM2 || r1(zone.wM * zone.hM);
+  var items = [];
+  (o.picks || []).forEach(function(pk) {
+    if (!pk || pk.later) return;
+    var plant = pk.verb === "Plant";
+    var label = pk.name + (plant ? " plants" : " seeds");
+    if (/^Garlic$/.test(pk.name)) label = "Garlic bulbs (for planting)";
+    else if (/^Onion$/.test(pk.name)) label = "Onion sets";
+    else if (/^Potato$/.test(pk.name)) label = "Seed potatoes";
+    items.push({ id: "crop-" + pk.name, label: label, detail: plant ? (pk.count || 1) + " to plant" : "1 packet · you'll sow about " + (pk.count || 10) });
+  });
+  if (env === "balcony") {
+    // A 60 cm balcony trough holds about 20 L of compost.
+    var troughs = Math.max(1, Math.ceil((zone.wM || 1.5) / 0.6) * Math.max(1, Math.round((zone.hM || 0.45) / 0.45)));
+    if (!owns("containers") && !owns("raised_bed")) {
+      items.push({ id: "containers", label: "Planters with drainage holes", detail: troughs + " × 60 cm troughs, or pots of at least 5 L each" });
+    }
+    var litres = troughs * 20;
+    items.push({ id: "compost", label: "Peat-free potting compost", detail: "About " + litres + " L (" + Math.max(1, Math.ceil(litres / 40)) + " × 40 L bag" + (Math.ceil(litres / 40) > 1 ? "s" : "") + ")" });
+  } else if (env === "backyard") {
+    if (!owns("raised_bed")) {
+      items.push({ id: "bed", label: "A raised bed " + zone.wM + " × " + zone.hM + " m", detail: "A kit or four planks — or simply dig a patch this size" });
+      var fill = Math.round(area * 0.25 * 1000 / 10) * 10;
+      items.push({ id: "compost", label: "Compost and topsoil to fill it", detail: "About " + fill + " L for a 25 cm deep bed; garden soil at the bottom keeps it cheap" });
+    } else {
+      items.push({ id: "compost", label: "Compost to top up your bed", detail: Math.max(1, Math.ceil(area / 1.2)) + " × 40 L bags, mixed into the top layer" });
+    }
+  } else {
+    items.push({ id: "compost", label: "Compost or well-rotted manure", detail: "About " + Math.max(2, Math.ceil(area)) + " × 40 L bags for " + area + " m², forked into the top layer" });
+  }
+  if (!owns("tools")) items.push({ id: "tools", label: "Trowel and watering can", detail: "A can with a rose (sprinkler head) so seeds don't wash away" });
+  return items;
 }
 
 function waterIntervalDays(freq) {
@@ -161,34 +300,42 @@ function waterIntervalDays(freq) {
   return m ? parseInt(m[1], 10) : 3;
 }
 
-// 7-day preview from the selected crops. Display-only — real tasks come
-// from buildTaskQueue once plots exist.
-export function buildSevenDayPlan(pickNames, region) {
-  var picks = pickNames.map(function(name) {
+/**
+ * 7-day preview. picks: crop names to sow/plant now. opts.kit: starterKit()
+ * items still to buy — day 1 becomes "get your kit" and sowing moves to day 2.
+ * Display-only — real tasks come from buildTaskQueue once plots exist.
+ */
+export function buildSevenDayPlan(pickNames, region, opts) {
+  var o = opts || {};
+  var names = pickNames || [];
+  var kit = o.kit || [];
+  var needKit = kit.length > 0 && names.length > 0;
+  var sowDay = needKit ? 2 : 1;
+  var picks = names.map(function(name) {
     var crop = CROPS.find(function(c){ return c.name === name; });
     var rc = crop ? (getRegionalCrop(crop, region) || crop) : null;
     return { name:name, interval: waterIntervalDays(rc && rc.waterFreq ? rc.waterFreq : (crop && crop.waterFreq)) };
   });
-  var hasPicks = pickNames.length > 0;
+  var hasPicks = names.length > 0;
   var days = [];
   for (var d = 1; d <= 7; d++) {
     var items = [];
-    if (d === 1) {
-      if (hasPicks) items.push("Sow / plant: " + pickNames.join(", "));
+    if (needKit && d === 1) items.push("Get your starter kit: " + kit.map(function(k){ return k.label.replace(/ \(.*\)$/, "").toLowerCase(); }).join(", "));
+    if (d === sowDay) {
+      if (hasPicks) items.push((needKit ? (o.environment === "balcony" ? "Fill your planters, then sow / plant: " : "Set up your bed, then sow / plant: ") : "Sow / plant: ") + names.join(", "));
       else items.push("Explore your map and get to know the app");
     }
     var waterNames = picks.filter(function(pk) {
-      if (d === 1) return false;
-      return (d - 1) % pk.interval === 0;
+      if (d <= sowDay) return false;
+      return (d - sowDay) % pk.interval === 0;
     }).map(function(pk){ return pk.name; });
-    if (waterNames.length) items.push("Water: " + waterNames.join(", "));
-    if (d === 3) {
-      if (hasPicks) items.push("Check seedlings — look for germination, thin crowded spots");
+    if (waterNames.length) items.push("Water if the soil feels dry: " + waterNames.join(", "));
+    if (d === sowDay + 3) {
+      if (hasPicks) items.push("Check the soil is still moist — first sprouts show within 1–2 weeks");
       else items.push("Browse the crop library — pick your first plant when you're ready");
     }
-    if (d === 7) items.push("Weekly check-in — log progress on your Today screen");
+    if (d === 7) items.push("Weekly check-in — look over your plants and log what you see");
     days.push({ day:d, items:items });
   }
   return days;
 }
-

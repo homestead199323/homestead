@@ -20,6 +20,7 @@ import {
 } from "../nursery/nursery-model";
 import { applySeedlingStage } from "../../lib/seedling-stage";
 import { suggestTrays, potTrayFor, trayOf } from "../../data/trays";
+import { currencySymbol } from "../../lib/money";
 import { TrayPicker, SeedTimeline, SeedlingTray } from "../nursery/NurseryVisuals";
 const empty = {
   crop: "",
@@ -389,7 +390,7 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
         />
       )}
       <Inp
-        label="Seed cost (€)"
+        label={`Seed cost (${currencySymbol(data).trim()})`}
         type="number"
         min="0"
         value={form.cost}

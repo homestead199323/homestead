@@ -5,8 +5,9 @@ import { SyncStatus } from "../../components/SyncStatus";
 import { getSession } from "../../lib/auth";
 import { rCR } from "../../lib/regional";
 import { LDB } from "../../data/livestock";
-import { resolveEnvironment } from "../../lib/environment";
+import { resolveEnvironment, defaultSpaceTitle } from "../../lib/environment";
 import { Download, Upload, Moon, Sun, LogOut } from "lucide-react";
+import { CURRENCIES, currencyCode } from "../../lib/money";
 
 /* ═══════════════════════════════════════════
    SETTINGS — single panel bundling account, appearance,
@@ -14,7 +15,7 @@ import { Download, Upload, Moon, Sun, LogOut } from "lucide-react";
    (desktop) and the More drawer (mobile).
    ═══════════════════════════════════════════ */
 export default function SettingsPanel({
-  onClose, data, setData, exportData, importData, darkMode, setDarkMode, onSignOut,
+  onClose, data, setData, exportData, importData, darkMode, setDarkMode, onSignOut, plan, onUpgrade,
 }) {
   const [email, setEmail] = useState("");
   useEffect(() => {
@@ -60,11 +61,18 @@ export default function SettingsPanel({
       <Card style={{ marginBottom: 18, padding: "14px 16px" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.t2, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>Email</div>
         <div style={{ fontSize: 14, color: C.text, marginBottom: 12, wordBreak: "break-all" }}>{email || "Local account"}</div>
-        <Inp label="Name" placeholder="My Farm" value={data.farmName || ""} onChange={(e) => setData({ ...data, farmName: e.target.value })} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-          <span style={{ fontSize: 13, color: C.t2 }}>Plan</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: C.green, background: C.gp, padding: "3px 11px", borderRadius: 12 }}>Free plan</span>
-        </div>
+        <Inp label="Name of your space" placeholder={defaultSpaceTitle(data)} value={data.farmName || ""} onChange={(e) => setData({ ...data, farmName: e.target.value })} />
+        {(plan || !onSignOut) && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 14 }}>
+            <span style={{ fontSize: 13, color: C.t2 }}>Plan</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.green, background: C.gp, padding: "3px 11px", borderRadius: 12 }}>{plan || "On this device only"}</span>
+              {plan && plan !== "Lifetime Pro" && onUpgrade && (
+                <button type="button" onClick={onUpgrade} style={{ border: `1px solid ${C.bdr}`, background: C.card, color: C.green, borderRadius: 10, padding: "5px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F.body }}>See plans</button>
+              )}
+            </span>
+          </div>
+        )}
       </Card>
 
       {/* My Space (Stage 4c) */}
@@ -93,6 +101,13 @@ export default function SettingsPanel({
         <div style={{ fontSize: 11.5, color: C.t3, marginTop: 10, lineHeight: 1.45 }}>
           Changes how your map looks. Your zones, plants, and data stay exactly as they are.
         </div>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.t2, textTransform: "uppercase", letterSpacing: "0.04em", margin: "16px 0 6px" }} htmlFor="settings-currency">Currency</label>
+        <select id="settings-currency" value={data.currency || ""} onChange={(e) => setData({ ...data, currency: e.target.value || undefined })}
+          style={{ width: "100%", padding: "10px 12px", border: `1.5px solid ${C.bdr}`, borderRadius: 10, background: C.card, color: C.text, fontSize: 15, fontFamily: F.body }}>
+          <option value="">Automatic ({currencyCode({ region: data.region })})</option>
+          {CURRENCIES.map(function (c) { return <option key={c.code} value={c.code}>{c.label}</option>; })}
+        </select>
+        <div style={{ fontSize: 11.5, color: C.t3, marginTop: 6, lineHeight: 1.45 }}>Only the symbol changes. Amounts you already entered stay as they are.</div>
       </Card>
 
       {/* Appearance */}

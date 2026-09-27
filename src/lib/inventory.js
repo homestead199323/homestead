@@ -8,6 +8,7 @@
 // Units are kg, pcs or L. Products with the same name and unit are one stock line; selling or using
 // takes from the oldest lot first (FIFO).
 
+import { formatMoney } from "./money.js";
 import { appendLog } from "./utils.js";
 
 export const UNITS = ["kg", "pcs", "L"];
@@ -157,7 +158,7 @@ export function sellStock(data, { key, qty, price, buyer = "", paid = true, toda
       buyers: cost.buyer ? [...new Set([cost.buyer, ...(pantry.buyers || [])])].slice(0, 30) : pantry.buyers || [],
     },
     costs: { ...(data.costs || {}), items: [...(data.costs?.items || []), cost] },
-    log: appendLogLite(data.log, `💶 Sold ${q} ${unit} ${name} for €${amount.toFixed(2)}${paid ? "" : " (to be paid)"}`),
+    log: appendLogLite(data.log, `💶 Sold ${q} ${unit} ${name} for ${formatMoney(amount, data)}${paid ? "" : " (to be paid)"}`),
   };
 }
 

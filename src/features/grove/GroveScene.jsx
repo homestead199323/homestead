@@ -377,6 +377,7 @@ export default function GroveScene({
   activeZoneId,
   route = [],
   focus = null,
+  onStartGuide,
 }) {
   const id = useId().replace(/:/g, "");
   const svg = useRef(null),
@@ -1203,7 +1204,7 @@ export default function GroveScene({
           {edit
             ? "Drag to move · corner to resize"
             : three
-              ? "Drag to look around · tap an area to open it"
+              ? interactive ? "Drag to look around · tap an area to open it" : "Drag to look around"
               : showHelperText
                 ? "Tap an area to explore"
                 : "Growth stages are estimates"}
@@ -1233,7 +1234,13 @@ export default function GroveScene({
         )}
       </div>
       {zones.length === 0 && (
-        <p className="q-empty">Make this space yours. Add your first bed in Edit layout.</p>
+        <div className="mt-empty-cta">
+          <p>Your space is empty. Answer a few questions and MyTerra draws a starter bed and plans your first week — or place everything yourself.</p>
+          <div className="q-row">
+            {onStartGuide && <button type="button" className="q-button" onClick={onStartGuide}>Set up with the guide</button>}
+            {onEditLayout && <button type="button" className="q-secondary" onClick={onEditLayout}>Add a bed myself</button>}
+          </div>
+        </div>
       )}
       {taskZone && zones.find((z) => z.id === taskZone) && (
         <ZoneTaskPopup

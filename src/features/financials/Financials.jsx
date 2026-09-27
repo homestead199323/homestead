@@ -5,6 +5,7 @@ import { todayLocalKey } from "../../lib/utils";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Inp, Sel, Overlay, Stat } from "../../components/ui";
 import { undoSale, markPaid, unpaidTotal } from "../../lib/inventory";
+import { currencySymbol } from "../../lib/money";
 
 const CAT_COLORS = {
   Seeds: "#27ae60", Tools: "#8d6e63", Feed: "#ffa726",
@@ -16,7 +17,7 @@ const CAT_COLORS = {
    FINANCIALS
    ═══════════════════════════════════════════ */
 export default function Financials({data, setData}) {
-  const E = "\u20ac";
+  const E = currencySymbol(data);
   const [showAdd,setShowAdd]=useState(false);
   const [chartMode,setChartMode]=useState("monthly");
   const [chartM,setChartM]=useState(new Date().getMonth());

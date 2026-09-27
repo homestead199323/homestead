@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { C, F, SX } from "../../lib/theme";
 import { Btn, Card, Overlay, Pill, StepChecklist, StorageCard, WaterCard } from "../../components/ui";
 import { COMP } from "../../data/companions";
@@ -8,7 +8,17 @@ import { rCM } from "../../lib/regional";
 import { plotAreaM2, buildZoneSpaceMap } from "../../lib/farm-calc";
 import FarmIcon from "../../components/FarmIcon";
 import Journal from "../quiet/Journal";
-import {relation} from "../quiet/farm-model";
+import {relation, growthOf} from "../quiet/farm-model";
+import { toggleStep, isAwaitingSowing, startGrowing, sowVerb, nextStepAfter } from "../../lib/sowing";
+import { toast } from "../../lib/toast";
+
+// "27 Sep" (or "27 Sep 2027" when it is not this year) instead of 2026-09-27.
+function niceDate(key) {
+  const d = localDateFromKey(key);
+  if (!d) return "—";
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(undefined, sameYear ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
+}
 
 /* ═══════════════════════════════════════════
    PLOT OVERLAY — shared popup used from Farming, TaskQueue, Dashboard
@@ -33,15 +43,32 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   const compBad  = compObj ? compZonePlots.filter(n => relation(plot.crop,n)==='avoid') : [];
   const showComp = plot.zone && compObj && compZonePlots.length > 0 && (compGood.length > 0 || compBad.length > 0);
 
+  const [confirmDel, setConfirmDel] = useState(false);
+  const growth = growthOf(plot, crop, todayLocalKey());
+  const waiting = isAwaitingSowing(plot);
+  const notStarted = waiting || plot.status === "planned" || !plot.plantDate;
+  const verb = sowVerb(plot.steps);
+  // Sowing the first step of a waiting planting starts its clock today (lib/sowing.js).
   const togStep = (pid, si) => {
-    const plots = data.garden.plots.map(p => {
-      if (p.id === pid) { const st = [...p.steps]; st[si] = {...st[si], done: !st[si].done}; return {...p, steps: st}; }
-      return p;
+    const plots = data.garden.plots.map(p => p.id === pid ? toggleStep(p, si, todayLocalKey(), crop && crop.days) : p);
+    setData({...data, garden: {...data.garden, plots}});
+  };
+  const startNow = () => {
+    const before = data;
+    const started = startGrowing(plot, todayLocalKey(), crop && crop.days);
+    setData({...data, garden: {...data.garden, plots: data.garden.plots.map(p => p.id === plot.id ? started : p)}});
+    const next = nextStepAfter(started, todayLocalKey());
+    toast(`${plot.name || plot.crop} is in the ground 🌱`, {
+      detail: next ? `Next: ${next.label.toLowerCase()} in ${next.inDays} days` : `Harvest from about ${niceDate(started.harvestDate)}`,
+      actionLabel: "Undo",
+      onAction: () => setData(before),
     });
-    setData({...data, garden: {plots}});
   };
   const del = id => {
-    setData({...data, garden: {plots: data.garden.plots.filter(p => p.id !== id)}});
+    if (!confirmDel) { setConfirmDel(true); return; }
+    const before = data;
+    setData({...data, garden: {...data.garden, plots: data.garden.plots.filter(p => p.id !== id)}});
+    toast(`${plot.name || plot.crop} removed`, { actionLabel: "Undo", onAction: () => setData(before) });
     onClose();
   };
   // Same path as harvesting from tasks: stock in the pantry, and trees/perennials stay planted.
@@ -63,7 +90,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   return (
     <Overlay title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={plot.crop} emoji={crop.emoji} size={24}/>{plot.name || plot.crop}</span>} onClose={onClose} sheet layoutId={layoutId}>
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-        <Pill>{plot.status}</Pill>
+        <Pill>{plot.status === "harvested" ? "Harvested" : growth.label}</Pill>
         <Pill>☀ {crop.sun}</Pill>
         <Pill>💧 {crop.waterFreq}</Pill>
         {zone && <Pill c={C.blue} bg={C.waterBg}>📍 {zone.name}</Pill>}
@@ -71,9 +98,9 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
 
       {(plot.plantCount || plot.qty || plot.expectedYieldKg) && (
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:14}}>
-          {plot.plantCount && <Card style={{background:C.soft,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{plot.plantCount}</div><div style={SX.t2_10}>estimated</div></Card>}
+          {plot.plantCount && <Card style={{background:C.soft,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{plot.plantCount}</div><div style={SX.t2_10}>{notStarted ? "planned" : "in the ground"}</div></Card>}
           {plot.qty && plot.measureType === "area" && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
-          {plot.qty && plot.measureType === "plants" && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}</div><div style={SX.t2_10}>plants</div></Card>}
+          {plot.qty && plot.measureType === "plants" && !plot.plantCount && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}</div><div style={SX.t2_10}>plants</div></Card>}
           {plot.expectedYieldKg && <Card style={{background:C.harvestBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{plot.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
           {plot.plantCount && crop.spacing ? <Card style={{background:C.surface,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:C.text}}>{plot.layout?.spacingCM||crop.spacing}cm</div><div style={SX.t2_10}>{plot.layout?.pattern==='scatter'?'minimum distance':'between plants'}</div></Card> : null}
         </div>
@@ -93,7 +120,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
           <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2}}>
             <span>Used: <strong style={{color:C.text}}>{zoneStats.usedM2}m²</strong></span>
             {zoneMyArea > 0 && <span>This crop: <strong style={{color:zoneFill}}>{Math.round(zoneMyArea*10)/10}m²</strong></span>}
-            <span>Free: <strong style={{color:zoneFill}}>{zoneStats.freeM2}m²</strong> of {zoneStats.totalM2.toFixed(0)}m²</span>
+            <span>Free: <strong style={{color:zoneFill}}>{zoneStats.freeM2}m²</strong> of {Math.round(zoneStats.totalM2*10)/10}m²</span>
           </div>
         </Card>
       )}
@@ -106,17 +133,26 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
         </Card>
       )}
 
-      <WaterCard waterNote={crop.waterNote}/>
+      {notStarted && plot.status !== "harvested" && (
+        <Card style={{marginBottom:12,background:C.gp,border:`1px solid ${C.gm}`}}>
+          <div style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Not in the ground yet</div>
+          <div style={{fontSize:12.5,color:C.t2,margin:"4px 0 10px",lineHeight:1.5}}>
+            {verb === "Plant" ? "Plant it" : "Sow it"} when you're ready. Tap below on the day you do: the growing steps and harvest date start from then.
+          </div>
+          <Btn sm onClick={startNow}>{verb === "Plant" ? "I planted it today" : "I sowed it today"}</Btn>
+        </Card>
+      )}
+      <WaterCard waterNote={crop.waterNote} waterFreq={crop.waterFreq}/>
       <div className="g2" style={{gap:8,marginBottom:16}}>
-        <Card><div style={SX.t2_11b}>PLANTED</div><div style={{fontSize:15,fontWeight:700}}>{plot.plantDate || "—"}</div></Card>
-        <Card><div style={SX.t2_11b}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{plot.harvestDate || "—"}</div></Card>
+        <Card><div style={SX.t2_11b}>{verb === "Plant" ? "PLANTED" : "SOWN"}</div><div style={{fontSize:15,fontWeight:700}}>{notStarted ? "Not yet" : niceDate(plot.plantDate)}</div></Card>
+        <Card><div style={SX.t2_11b}>HARVEST</div><div style={{fontSize:15,fontWeight:700}}>{notStarted ? `~${Math.round((plot.growDays || crop.days || 60) / 7)} wk after ${verb === "Plant" ? "planting" : "sowing"}` : niceDate(plot.harvestDate)}</div></Card>
       </div>
 
       <Card style={{marginBottom:12,background:C.soft,border:`1px solid ${C.gm}`}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{crop.pH && <Pill c={C.text} bg={C.warm}>pH {crop.pH}</Pill>}</div></Card>
       {crop.fert && <Card style={{marginBottom:12,background:C.soft}}><div style={SX.lblGreen}>🧪 Fertilizer Schedule</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5}}>{crop.fert}</div></Card>}
       {crop.pests && crop.pests.length > 0 && <Card style={{marginBottom:12,background:C.harvestBg}}><div style={{fontSize:12,fontWeight:700,color:C.orange}}>🐛 Pests & Solutions</div>{crop.pests.slice(0,3).map(function(pst,i){return <div key={i} style={{marginTop:4}}><strong style={{fontSize:11}}>{pst.n}</strong>{pst.t && <div style={SX.t2_11}>→ {pst.t}</div>}</div>;})}</Card>}
 
-      <StepChecklist steps={plot.steps} plantDate={plot.plantDate} onToggle={togStep} plotId={plot.id}/>
+      <StepChecklist steps={plot.steps} plantDate={notStarted ? null : plot.plantDate} onToggle={togStep} plotId={plot.id}/>
       <StorageCard storage={crop.storage}/>
       <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(crop.name + " growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:C.red,textDecoration:"none",fontWeight:600,padding:"8px 14px",background:C.dangerBg,borderRadius:C.rs,border:`1px solid ${C.bdr}`,marginBottom:8}}>▶ Watch: Complete {crop.name} Growing Guide</a>
       {setPage && (
@@ -126,7 +162,9 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
       )}
 
       <div style={SX.btnRowEnd}>
-        <Btn v="danger" sm onClick={()=>del(plot.id)}>Delete</Btn>
+        {confirmDel && <span style={{fontSize:12,color:C.t2,alignSelf:"center"}}>Remove this planting and its notes?</span>}
+        {confirmDel && <Btn v="secondary" sm onClick={()=>setConfirmDel(false)}>Keep</Btn>}
+        <Btn v="danger" sm onClick={()=>del(plot.id)}>{confirmDel ? "Yes, remove" : "Delete"}</Btn>
         {plot.status !== "harvested" && plot.harvestDate && localDateFromKey(plot.harvestDate) <= localDateFromKey(todayLocalKey()) && <Btn v="success" onClick={()=>harv(plot)}>🧺 Harvest</Btn>}
       </div>
     <Journal data={data} setData={setData} plotId={plot.id}/></Overlay>
