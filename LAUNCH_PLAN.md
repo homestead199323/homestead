@@ -102,6 +102,17 @@
     checks (Playwright, inline + full screen), ESLint, 46+3 tests, build; live bundle
     index-m0JK4sjp.js → Grove3D-C955PL0-.js ("g3-coop", "Use two fingers to move the map",
     "Full screen map" present; CSS "g3-ctl"). Real-device frame rate still unmeasured.
+  - [x] **4z-3 (2026-09-27, commit 4b58929): growth made visible.** Row markers with
+    stage-coloured tags on every planted row (Planned/Sown/Seedling/Growing/Maturing/Harvest
+    window), gold halo on rows in their harvest window, sprouts for sown rows, stage dots under
+    area names, mouse tooltips per row (crop, stage, days to harvest, count), growth-preview
+    panel (chips + 0–120-day slider, legend with counts; badges hidden while previewing).
+    Layout fix after the "menu disappeared" report: inline map height capped at 78% of the
+    window, controls moved to the map's top-right, body scroll always restored. Verified:
+    ESLint, 46+3 tests, build, 30 gesture checks, app screenshots at 1440/900/390 px with the
+    nav visible; live bundle index-wB2IpMT0.js → Grove3D-BB0FU84v.js ("Growth preview and
+    legend", "in its harvest window", "+2 wk" present; CSS g3-time/g3-tip). Still open:
+    real-device frame rate; exact cause of the reported missing menu not reproduced.
 - [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
   Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
   Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.
