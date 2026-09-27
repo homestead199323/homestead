@@ -42,6 +42,8 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Video: let the browser stream it (range requests); never cache it here.
+  if (/\.(mp4|webm)$/i.test(url.pathname)) return;
 
   const isNavigation = req.mode === 'navigate' || url.pathname === '/' ||
     url.pathname === '/app' || url.pathname.endsWith('.html');

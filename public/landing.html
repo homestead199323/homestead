@@ -3,576 +3,725 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>MyTerra — Everyone can be a farmer</title>
+    <meta name="description" content="Grow food without the guesswork. MyTerra turns your balcony, backyard or farm into a living 3D map and tells you what to plant, what to do today and what comes next. 70 crops, 14 animals, works offline. 7-day free trial, no card.">
+    <link rel="canonical" href="https://www.myterra.farm/">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <title>MyTerra — Grow real food, the way you'd play a game</title>
-    <meta name="description" content="MyTerra turns your land into a farm game that's real: draw your farm, follow daily quests, harvest actual food. 70 crops, 14 animals, works offline. Free for 7 days.">
-    <meta name="theme-color" content="#2e6b52">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="theme-color" content="#f4f6f4">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="MyTerra — Grow real food, the way you'd play a game">
-    <meta property="og:description" content="A farm game simulator running on real life. Draw your farm, follow daily quests, harvest actual food. Free for 7 days — no card.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://myterra-sigma.vercel.app/">
-    <meta property="og:image" content="https://myterra-sigma.vercel.app/og-image.png">
+    <meta property="og:site_name" content="MyTerra">
+    <meta property="og:title" content="MyTerra — Everyone can be a farmer">
+    <meta property="og:description" content="Build a living 3D map of your balcony, backyard or farm. MyTerra tells you what to plant, what to do today and what comes next. 7-day free trial, no card.">
+    <meta property="og:url" content="https://www.myterra.farm/">
+    <meta property="og:image" content="https://www.myterra.farm/og-image-v2.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="MyTerra — an illustrated farm map with today's quests">
+    <meta property="og:image:alt" content="MyTerra: a 3D farm map, the goat paddock job list and the morning walk, with the line Everyone can be a farmer">
+    <meta property="og:video" content="https://www.myterra.farm/landing/myterra-tour-720.mp4">
+    <meta property="og:video:type" content="video/mp4">
+    <meta property="og:video:width" content="720">
+    <meta property="og:video:height" content="1280">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="MyTerra — Grow real food, the way you'd play a game">
-    <meta name="twitter:description" content="A farm game simulator running on real life. Draw your farm, follow daily quests, harvest actual food. Free for 7 days.">
-    <meta name="twitter:image" content="https://myterra-sigma.vercel.app/og-image.png">
+    <meta name="twitter:title" content="MyTerra — Everyone can be a farmer">
+    <meta name="twitter:description" content="A farm game that runs on real life. Map your space in 3D, follow today's jobs, harvest real food. 7-day free trial.">
+    <meta name="twitter:image" content="https://www.myterra.farm/og-image-v2.jpg">
+
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"SoftwareApplication","name":"MyTerra","url":"https://www.myterra.farm/","applicationCategory":"LifestyleApplication","operatingSystem":"Web, iOS, Android (installable web app)","description":"Grow food without the guesswork: a living 3D map of your balcony, backyard or farm, with daily jobs, 70 crop and 14 animal guides, and offline use.","offers":[{"@type":"Offer","name":"Basic","price":"4.99","priceCurrency":"USD"},{"@type":"Offer","name":"Pro","price":"9.99","priceCurrency":"USD"},{"@type":"Offer","name":"Lifetime","price":"190","priceCurrency":"USD"}]}
+    </script>
+
     <!-- Umami analytics with SRI. If analytics stop working, the script was updated by Umami.
          Regenerate the hash: curl -s https://cloud.umami.is/script.js | openssl dgst -sha384 -binary | openssl base64 -A -->
-    <script defer src="https://cloud.umami.is/script.js" data-website-id="984807a4-e3c6-4d9e-9ed5-490db3aa0301" integrity="sha384-yRsxKUe1uwvKWyAzDiU58FsIbO8orQJUzy1kPcDQAfAuaczzL5MxTlI4K/AABHhq" crossorigin="anonymous"></script>
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="984807a4-e3c6-4d9e-9ed5-490db3aa0301" integrity="sha384-na2rtfGcck2U+oedd3Fj+22SUyB41DM4F/gLssqYa9ELN6oF1aJzA2p80zu7Vy6a" crossorigin="anonymous"></script>
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="/landing/tour-poster.webp" fetchpriority="high">
 
     <style>
-        /* ═══ TOKENS ═══ */
+        /* ═══ TOKENS — matched to the app's Daylight design system ═══ */
         :root {
-            --ink: #1c2b21;          /* deep forest text */
-            --ink-2: #55645a;        /* muted text */
-            --moss: #2e6b52;         /* app's forest green — primary */
-            --sprout: #3d9970;       /* lighter green */
-            --cream: #f7f6f3;        /* app background */
-            --grass: #eef4e4;        /* map-grass tint for panels */
-            --sun: #d98e22;          /* harvest amber — urgency */
-            --sun-soft: #fdf3e2;
-            --night: #101b14;        /* app dark mode */
-            --card: #ffffff;
-            --line: #e4e6df;
-            --r-lg: 22px;
-            --r-md: 14px;
-            --shadow-lg: 0 24px 60px rgba(28,43,33,.16);
-            --shadow-md: 0 10px 30px rgba(28,43,33,.10);
-            --shadow-sm: 0 3px 12px rgba(28,43,33,.08);
-            --font-d: 'Fraunces', Georgia, serif;
-            --font-b: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            --bg: #f4f6f4;
+            --paper: #ffffff;
+            --ink: #121a15;
+            --ink-2: #4c5b52;
+            --ink-3: #5f6d65;
+            --line: #e1e8e2;
+            --g: #128147;
+            --g-dark: #0c5e33;
+            --g-deep: #083d22;
+            --g-light: #1fa35c;
+            --g-pale: #e7f3ec;
+            --amber: #f6b93b;
+            --amber-ink: #3d2a03;
+            --amber-soft: #fdf4de;
+            --r-xl: 32px;
+            --r-lg: 24px;
+            --r-md: 16px;
+            --sh-1: 0 1px 2px rgba(16,24,18,.05), 0 4px 14px rgba(16,24,18,.06);
+            --sh-2: 0 10px 30px rgba(16,24,18,.10), 0 3px 10px rgba(16,24,18,.06);
+            --sh-3: 0 30px 70px rgba(16,24,18,.20), 0 10px 24px rgba(16,24,18,.08);
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --nav-h: 68px;
         }
 
-        /* ═══ RESET & BASE ═══ */
+        /* ═══ BASE ═══ */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; scroll-padding-top: 84px; overflow-x: clip; }
-        body {
-            font-family: var(--font-b);
-            color: var(--ink);
-            background: var(--cream);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-        h1, h2, h3 { font-family: var(--font-d); font-weight: 600; line-height: 1.12; letter-spacing: -0.01em; }
-        a { text-decoration: none; color: inherit; }
-        img { max-width: 100%; height: auto; display: block; }
-        section[id] { scroll-margin-top: 84px; }
-        .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+        html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 12px); overflow-x: clip; -webkit-text-size-adjust: 100%; }
+        body { font-family: var(--font); color: var(--ink); background: var(--bg); line-height: 1.6; overflow-x: clip; -webkit-font-smoothing: antialiased; }
+        h1, h2, h3 { font-weight: 800; letter-spacing: -0.035em; line-height: 1.06; text-wrap: balance; }
+        a { color: inherit; text-decoration: none; }
+        img, video { max-width: 100%; height: auto; display: block; }
+        button { font: inherit; }
+        :focus-visible { outline: 3px solid var(--g-light); outline-offset: 3px; border-radius: 8px; }
+        .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+        .skip { position: absolute; left: 12px; top: -60px; background: var(--g); color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 200; font-weight: 600; }
+        .skip:focus { top: 12px; }
 
-        .fade-in { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s ease; }
-        .fade-in.visible { opacity: 1; transform: translateY(0); }
-        :focus-visible { outline: 3px solid var(--sprout); outline-offset: 2px; border-radius: 6px; }
+        .js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+        .js .reveal.visible { opacity: 1; transform: none; }
 
-        .eyebrow {
-            display: inline-flex; align-items: center; gap: 8px;
-            font-size: 13px; font-weight: 600; letter-spacing: .04em;
-            color: var(--moss); text-transform: uppercase;
-        }
-        .btn {
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            font-family: var(--font-b); font-weight: 600; font-size: 16px;
-            padding: 15px 30px; border-radius: 999px; border: none; cursor: pointer;
-            transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
-        }
-        .btn-primary { background: var(--moss); color: #fff; box-shadow: 0 6px 20px rgba(46,107,82,.35); }
-        .btn-primary:hover { background: #275c46; transform: translateY(-2px); box-shadow: 0 10px 26px rgba(46,107,82,.4); }
-        .btn-ghost { background: transparent; color: var(--moss); border: 1.5px solid #c6d4c3; }
-        .btn-ghost:hover { border-color: var(--moss); background: #fff; }
+        .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--g); }
+        .eyebrow::before { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; opacity: .6; }
+        .section-head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
+        .section-head h2 { font-size: clamp(32px, 4.6vw, 54px); margin: 14px 0 16px; }
+        .section-head p { font-size: 18px; color: var(--ink-2); max-width: 620px; margin: 0 auto; }
+        .lede { font-size: 18px; color: var(--ink-2); }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; font-size: 16.5px; letter-spacing: -0.01em;
+            padding: 16px 28px; border-radius: 999px; border: 0; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; white-space: nowrap; }
+        .btn svg { width: 18px; height: 18px; flex: none; }
+        .btn-primary { background: var(--g); color: #fff; box-shadow: 0 10px 24px rgba(18,129,71,.32), inset 0 -2px 0 rgba(0,0,0,.12); }
+        .btn-primary:hover { background: var(--g-dark); transform: translateY(-2px); box-shadow: 0 14px 30px rgba(18,129,71,.38); }
+        .btn-ghost { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line), var(--sh-1); }
+        .btn-ghost:hover { box-shadow: inset 0 0 0 1.5px #c9d6cc, var(--sh-2); transform: translateY(-1px); }
+        .btn-light { background: #fff; color: var(--g-dark); box-shadow: 0 12px 28px rgba(0,0,0,.25); }
+        .btn-light:hover { transform: translateY(-2px); background: #f3faf5; }
+
+        .ticks { list-style: none; display: grid; gap: 12px; }
+        .ticks li { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; color: var(--ink); }
+        .ticks li::before { content: ""; flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%;
+            background: var(--g-pale) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23128147' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 13px no-repeat; }
+
+        /* ═══ DEVICE FRAMES ═══ */
+        .phone { position: relative; width: 100%; aspect-ratio: 390 / 844; border-radius: 15.5% / 7.2%; padding: 3%; background: #0e1612;
+            box-shadow: var(--sh-3), inset 0 0 0 1.5px rgba(255,255,255,.08); }
+        .phone img { width: 100%; height: 100%; object-fit: cover; border-radius: 12.8% / 5.9%; background: var(--bg); }
+        .phone::after { content: ""; position: absolute; top: 2.75%; left: 50%; width: 29%; height: 3.9%; transform: translateX(-50%); background: #0e1612; border-radius: 999px; }
+        .browser { border-radius: 18px; overflow: hidden; background: var(--paper); box-shadow: var(--sh-3); border: 1px solid rgba(16,24,18,.08); }
+        .browser-bar { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; background: #eef2ef; border-bottom: 1px solid var(--line); }
+        .browser-bar i { width: 11px; height: 11px; border-radius: 50%; background: #d3dbd5; }
+        .browser-bar span { margin-left: 10px; flex: 1; max-width: 320px; height: 22px; border-radius: 999px; background: #fff; font-size: 12px; color: var(--ink-3); display: flex; align-items: center; padding: 0 12px; }
 
         /* ═══ NAV ═══ */
-        nav {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            background: rgba(247,246,243,.9);
-            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            border-bottom: 1px solid rgba(28,43,33,.06);
-            transition: box-shadow .3s;
-        }
-        nav.scrolled { box-shadow: 0 2px 18px rgba(28,43,33,.08); }
-        .nav-inner {
-            display: flex; align-items: center; justify-content: space-between;
-            max-width: 1120px; margin: 0 auto; padding: 14px 24px;
-        }
-        .nav-logo { font-family: var(--font-d); font-weight: 700; font-size: 23px; color: var(--moss); display: flex; align-items: center; gap: 8px; }
-        .nav-links { display: flex; align-items: center; gap: 28px; }
+        .nav { position: fixed; inset: 0 0 auto 0; z-index: 100; background: rgba(244,246,244,.82); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+            border-bottom: 1px solid transparent; transition: border-color .3s, box-shadow .3s; }
+        .nav.scrolled { border-bottom-color: rgba(16,24,18,.07); box-shadow: 0 6px 20px rgba(16,24,18,.05); }
+        .nav-inner { height: var(--nav-h); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+        .logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 21px; letter-spacing: -0.035em; }
+        .logo-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--g); display: grid; place-items: center; box-shadow: 0 4px 10px rgba(18,129,71,.3); }
+        .logo-mark svg { width: 20px; height: 20px; }
+        .nav-links { display: flex; align-items: center; gap: 30px; }
         .nav-links a { font-size: 15px; font-weight: 500; color: var(--ink-2); transition: color .2s; }
-        .nav-links a:hover { color: var(--moss); }
-        .nav-cta {
-            background: var(--moss); color: #fff !important;
-            padding: 10px 22px; border-radius: 999px; font-weight: 600; font-size: 14px;
-            box-shadow: 0 3px 12px rgba(46,107,82,.3); transition: all .2s;
-        }
-        .nav-cta:hover { background: #275c46; transform: translateY(-1px); }
-        .mobile-menu-btn { display: none; background: none; border: none; font-size: 26px; cursor: pointer; color: var(--ink); padding: 4px 8px; }
-        .mobile-nav-open {
-            display: flex !important; flex-direction: column; align-items: flex-start;
-            position: absolute; top: 100%; left: 0; right: 0;
-            background: rgba(247,246,243,.98); backdrop-filter: blur(14px);
-            padding: 18px 24px 26px; gap: 18px;
-            border-bottom: 1px solid var(--line); box-shadow: 0 10px 24px rgba(0,0,0,.07);
-        }
+        .nav-links a:hover { color: var(--g); }
+        .nav-cta { display: flex; align-items: center; gap: 18px; }
+        .nav-cta .signin { font-size: 15px; font-weight: 600; color: var(--ink-2); }
+        .nav-cta .signin:hover { color: var(--g); }
+        .nav-cta .btn { padding: 11px 20px; font-size: 15px; }
+        .menu-btn { display: none; width: 44px; height: 44px; border-radius: 12px; border: 0; background: transparent; cursor: pointer; color: var(--ink); align-items: center; justify-content: center; }
+        .menu-btn svg { width: 24px; height: 24px; }
+        .mobile-menu { display: none; }
 
         /* ═══ HERO ═══ */
-        .hero { padding: 132px 0 0; text-align: center; position: relative; }
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: var(--grass); color: var(--moss); border: 1px solid #d8e6cf;
-            padding: 7px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
-            margin-bottom: 22px;
-        }
-        .hero h1 {
-            font-size: clamp(40px, 6vw, 68px);
-            max-width: 820px; margin: 0 auto 20px;
-        }
-        .hero h1 em { font-style: italic; color: var(--moss); }
-        .hero-sub { font-size: 19px; color: var(--ink-2); max-width: 620px; margin: 0 auto 32px; }
-        .hero-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-        .hero-trust { margin-top: 16px; font-size: 14px; color: var(--ink-2); }
-        .hero-trust b { color: var(--ink); font-weight: 600; }
+        .hero { position: relative; padding: calc(var(--nav-h) + 56px) 0 64px; overflow: hidden; }
+        .hero::before { content: ""; position: absolute; width: 900px; height: 900px; right: -220px; top: -160px; border-radius: 50%;
+            background: radial-gradient(closest-side, rgba(31,163,92,.18), rgba(31,163,92,0)); pointer-events: none; }
+        .hero-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); gap: 48px; align-items: center; }
+        .pill-tag { display: inline-flex; align-items: center; gap: 10px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--sh-1);
+            padding: 7px 16px 7px 8px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+        .pill-tag b { background: var(--amber); color: var(--amber-ink); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; }
+        .hero h1 { font-size: clamp(48px, 7.4vw, 92px); letter-spacing: -0.055em; line-height: .98; margin: 22px 0 22px; }
+        .hero h1 em { font-style: normal; color: var(--g); }
+        .hero-sub { font-size: clamp(17px, 1.6vw, 20px); color: var(--ink-2); max-width: 560px; }
+        .hero-sub b { color: var(--ink); font-weight: 700; }
+        .hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 32px 0 26px; }
+        .hero-trust { list-style: none; display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 14.5px; font-weight: 500; color: var(--ink-2); }
+        .hero-trust li { display: inline-flex; align-items: center; gap: 8px; }
+        .hero-trust svg { width: 18px; height: 18px; color: var(--g); flex: none; }
 
-        /* Hero visual — the farm with floating quest chips */
-        .hero-stage { position: relative; max-width: 1040px; margin: 56px auto 0; padding: 0 24px; }
-        .hero-shot {
-            border-radius: var(--r-lg); overflow: hidden;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid rgba(28,43,33,.08);
-            background: #fff;
-        }
-        .quest-chip {
-            position: absolute; display: flex; align-items: center; gap: 9px;
-            background: #fff; border-radius: 999px; padding: 9px 16px 9px 10px;
-            box-shadow: 0 10px 26px rgba(28,43,33,.18);
-            border: 1px solid rgba(28,43,33,.06);
-            font-size: 14px; font-weight: 600; white-space: nowrap;
-            animation: chip-float 5s ease-in-out infinite;
-        }
-        .quest-chip .qc-ico {
-            width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 15px; background: var(--grass);
-        }
-        .quest-chip small { display: block; font-size: 11px; font-weight: 500; color: var(--ink-2); line-height: 1.1; }
-        .qc-ready .qc-ico { background: var(--sun-soft); }
-        .qc-ready { border-color: rgba(217,142,34,.35); }
-        .qc-1 { top: 6%;  left: 4px;  animation-delay: 0s; }
-        .qc-2 { top: 30%; right: 4px; animation-delay: 1.2s; }
-        .qc-3 { bottom: 22%; left: 3%; animation-delay: 2.1s; }
-        .qc-4 { bottom: -16px; right: 8%; animation-delay: .6s; }
-        @keyframes chip-float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-9px); }
-        }
-        .hero-caption { margin-top: 16px; font-size: 13.5px; color: var(--ink-2); }
+        .reel-stage { position: relative; display: flex; justify-content: center; padding: 10px 0; }
+        .reel { position: relative; width: min(340px, 80vw); aspect-ratio: 9 / 16; border-radius: 34px; overflow: hidden; background: var(--g-dark);
+            box-shadow: 0 44px 90px rgba(8,61,34,.32), 0 12px 30px rgba(8,61,34,.18), 0 0 0 1px rgba(8,61,34,.06); transform: rotate(1.5deg); }
+        .reel video { width: 100%; height: 100%; object-fit: cover; }
+        .reel-toggle { position: absolute; right: 14px; bottom: 14px; width: 42px; height: 42px; border-radius: 50%; border: 0; cursor: pointer;
+            background: rgba(8,24,15,.55); color: #fff; display: grid; place-items: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+        .reel-toggle svg { width: 18px; height: 18px; }
+        .reel-toggle .i-play { display: none; }
+        .reel.paused .reel-toggle .i-play { display: block; }
+        .reel.paused .reel-toggle .i-pause { display: none; }
+        .job-chip { position: absolute; display: flex; align-items: center; gap: 12px; background: var(--paper); border-radius: 18px; padding: 10px 16px 10px 10px;
+            box-shadow: 0 18px 40px rgba(16,24,18,.16), 0 0 0 1px rgba(16,24,18,.05); font-size: 14px; line-height: 1.25; white-space: nowrap; animation: bob 6s ease-in-out infinite; }
+        .job-chip b { display: block; font-weight: 700; letter-spacing: -0.01em; }
+        .job-chip small { display: block; color: var(--ink-3); font-size: 12.5px; font-weight: 500; }
+        .job-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--amber); display: grid; place-items: center; font-size: 20px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.08); }
+        .jc-1 { left: -28%; top: 9%; }
+        @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-        /* ═══ DATA STRIP ═══ */
-        .strip { padding: 40px 0 8px; }
-        .strip-inner {
-            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
-            gap: 12px 34px; font-size: 15px; color: var(--ink-2);
-        }
-        .strip-inner b { color: var(--ink); font-weight: 700; font-size: 17px; }
-        .strip-note { text-align: center; margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+        /* ═══ PROOF STRIP ═══ */
+        .proof { padding: 8px 0 24px; }
+        .proof-inner { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-1);
+            display: grid; grid-template-columns: repeat(5, 1fr); }
+        .proof-item { padding: 22px 18px; text-align: center; }
+        .proof-item + .proof-item { border-left: 1px solid var(--line); }
+        .proof-item b { display: block; font-size: 30px; font-weight: 800; letter-spacing: -0.04em; color: var(--g-dark); line-height: 1.1; }
+        .proof-item span { font-size: 14px; color: var(--ink-2); font-weight: 500; }
+        .proof-note { text-align: center; margin-top: 14px; font-size: 13.5px; color: var(--ink-3); }
 
-        /* ═══ HOW IT WORKS ═══ */
-        .how { padding: 88px 0 30px; }
-        .section-head { text-align: center; max-width: 640px; margin: 0 auto 54px; }
-        .section-head h2 { font-size: clamp(30px, 4vw, 42px); margin: 12px 0 14px; }
-        .section-head p { color: var(--ink-2); font-size: 17px; }
-        .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-        .how-card {
-            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
-            padding: 30px 28px; box-shadow: var(--shadow-sm);
-        }
-        .how-num {
-            width: 34px; height: 34px; border-radius: 50%;
-            background: var(--grass); color: var(--moss);
-            font-family: var(--font-d); font-weight: 700; font-size: 17px;
-            display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
-        }
-        .how-card h3 { font-size: 21px; margin-bottom: 10px; }
-        .how-card p { font-size: 15px; color: var(--ink-2); }
+        /* ═══ SPACES (3 environments) ═══ */
+        .spaces { padding: 96px 0 40px; }
+        .env-tabs { display: flex; justify-content: center; margin: 0 auto 28px; }
+        .env-tablist { display: inline-flex; gap: 4px; padding: 5px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--sh-1); }
+        .env-tab { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; cursor: pointer; padding: 11px 20px; border-radius: 999px;
+            font-size: 15.5px; font-weight: 700; color: var(--ink-2); letter-spacing: -0.01em; transition: background .2s, color .2s, box-shadow .2s; }
+        .env-tab:hover { color: var(--ink); }
+        .env-tab[aria-selected="true"] { background: var(--g); color: #fff; box-shadow: 0 6px 16px rgba(18,129,71,.3); }
+        .env-tab .em { font-size: 18px; line-height: 1; }
+        .env-panel { position: relative; }
+        .env-panel[hidden] { display: none; }
+        .env-map { position: relative; border-radius: var(--r-xl); overflow: hidden; box-shadow: var(--sh-3); background: #7f9f5f; aspect-ratio: 16 / 10; }
+        .env-map img { width: 100%; height: 100%; object-fit: cover; }
+        .env-info { position: absolute; left: 28px; bottom: 28px; width: min(400px, calc(100% - 56px)); background: rgba(255,255,255,.94);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--r-lg); padding: 24px 26px; box-shadow: var(--sh-2); }
+        .env-info .size { display: inline-block; font-size: 12.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--g); background: var(--g-pale); padding: 4px 10px; border-radius: 999px; }
+        .env-info h3 { font-size: 26px; margin: 12px 0 8px; }
+        .env-info p { color: var(--ink-2); font-size: 15.5px; margin-bottom: 14px; }
+        .env-info .ticks li { font-size: 15px; }
+        .env-foot { text-align: center; margin-top: 18px; font-size: 13.5px; color: var(--ink-3); }
 
-        /* ═══ FEATURE DEEP DIVES ═══ */
-        .features { padding: 60px 0 20px; }
-        .feat {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
-            padding: 46px 0;
-        }
-        .feat-shot {
-            border-radius: var(--r-lg); overflow: hidden;
-            box-shadow: var(--shadow-md); border: 1px solid rgba(28,43,33,.08);
-        }
-        .feat h3 { font-size: clamp(26px, 3vw, 34px); margin: 12px 0 14px; }
-        .feat p { color: var(--ink-2); font-size: 16.5px; margin-bottom: 18px; }
-        .feat ul { list-style: none; display: grid; gap: 10px; }
-        .feat li { display: flex; gap: 10px; font-size: 15px; align-items: flex-start; }
-        .feat li .tick {
-            flex: none; width: 20px; height: 20px; border-radius: 50%; margin-top: 2px;
-            background: var(--grass); color: var(--moss); font-size: 12px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-        }
+        /* ═══ FEATURE ROWS ═══ */
+        .feature { padding: 96px 0; }
+        .feature-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: center; }
+        .feature-grid.flip .feature-copy { order: 2; }
+        .feature-copy h2 { font-size: clamp(32px, 4.2vw, 50px); margin: 14px 0 18px; }
+        .feature-copy .lede { margin-bottom: 26px; }
+        .duo { position: relative; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 0; max-width: 560px; margin: 0 auto; padding: 20px 0 40px; }
+        .duo .phone { width: 92%; }
+        .duo .phone:first-child { transform: rotate(-4deg); margin-top: 40px; z-index: 1; }
+        .duo .phone:last-child { transform: rotate(3deg) translateX(-14%); z-index: 2; }
 
-        /* ═══ FIELD BAND (phones, dark) ═══ */
-        .field { background: var(--night); color: #e9f2ea; padding: 96px 0; margin-top: 60px; }
-        .field-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 60px; align-items: center; }
-        .field .eyebrow { color: #8fd3ac; }
-        .field h2 { font-size: clamp(30px, 4vw, 42px); color: #fff; margin: 12px 0 16px; }
-        .field p { color: #b7c8ba; font-size: 16.5px; margin-bottom: 18px; }
-        .field ul { list-style: none; display: grid; gap: 12px; }
-        .field li { display: flex; gap: 10px; font-size: 15px; align-items: flex-start; color: #dcE8de; }
-        .field li .tick {
-            flex: none; width: 20px; height: 20px; border-radius: 50%; margin-top: 2px;
-            background: rgba(143,211,172,.16); color: #8fd3ac; font-size: 12px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .phones { display: flex; justify-content: center; gap: 22px; }
-        .phone {
-            width: min(46%, 232px); border-radius: 30px; padding: 9px;
-            background: #1d2a20; border: 1px solid rgba(255,255,255,.09);
-            box-shadow: 0 30px 70px rgba(0,0,0,.5);
-        }
-        .phone img { border-radius: 22px; }
-        .phone:first-child { transform: rotate(-3.5deg) translateY(10px); }
-        .phone:last-child { transform: rotate(3deg); }
+        /* ═══ SETUP STEPS ═══ */
+        .setup { padding: 96px 0; background: linear-gradient(180deg, rgba(231,243,236,0) 0%, rgba(231,243,236,.9) 16%, rgba(231,243,236,.9) 84%, rgba(231,243,236,0) 100%); }
+        .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
+        .step .phone { max-width: 250px; margin: 0 auto 22px; box-shadow: var(--sh-2), inset 0 0 0 1.5px rgba(255,255,255,.08); }
+        .step-num { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--g); color: #fff; font-weight: 800; font-size: 14px; margin-bottom: 10px; }
+        .step h3 { font-size: 19px; letter-spacing: -0.025em; margin-bottom: 6px; }
+        .step p { font-size: 15px; color: var(--ink-2); }
+        .step-copy { max-width: 250px; margin: 0 auto; }
 
-        /* ═══ FOUNDER ═══ */
-        .founder { padding: 90px 0 20px; }
-        .founder-card {
-            display: grid; grid-template-columns: 88px 1fr; gap: 26px; align-items: center;
-            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
-            padding: 40px 44px; box-shadow: var(--shadow-sm); max-width: 860px; margin: 0 auto;
-        }
-        .founder-avatar {
-            width: 88px; height: 88px; border-radius: 50%; background: var(--grass);
-            display: flex; align-items: center; justify-content: center; font-size: 42px;
-        }
-        .founder blockquote { font-family: var(--font-d); font-size: 20px; line-height: 1.45; font-style: italic; color: var(--ink); }
-        .founder .attribution { margin-top: 12px; font-size: 14px; color: var(--ink-2); font-weight: 500; }
+        /* ═══ KNOW-HOW ═══ */
+        .know { padding: 96px 0; }
+        .stat-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 0 auto 56px; max-width: 980px; }
+        .stat-tile { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px 22px 20px; box-shadow: var(--sh-1); }
+        .stat-tile b { display: block; font-size: 40px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--g-dark); margin-bottom: 8px; }
+        .stat-tile span { font-size: 15px; font-weight: 600; }
+        .stat-tile small { display: block; color: var(--ink-3); font-size: 13.5px; margin-top: 2px; }
+        .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; max-width: 980px; margin: 0 auto; }
+        .trio figure .phone { max-width: 280px; margin: 0 auto 20px; }
+        .trio figcaption { text-align: center; max-width: 280px; margin: 0 auto; }
+        .trio figcaption b { display: block; font-size: 18px; letter-spacing: -0.02em; margin-bottom: 4px; }
+        .trio figcaption span { font-size: 15px; color: var(--ink-2); }
+        .source-note { max-width: 720px; margin: 44px auto 0; text-align: center; font-size: 14px; color: var(--ink-3); }
+
+        /* ═══ PROGRESS ═══ */
+        .cascade { position: relative; width: 100%; height: 620px; max-width: 560px; margin: 0 auto; }
+        .cascade .phone { position: absolute; width: 44%; }
+        .cascade .phone:nth-child(1) { left: 0; top: 70px; transform: rotate(-5deg); }
+        .cascade .phone:nth-child(2) { left: 28%; top: 0; z-index: 2; }
+        .cascade .phone:nth-child(3) { right: 0; top: 90px; transform: rotate(5deg); z-index: 1; }
+
+        /* ═══ OFFLINE BAND ═══ */
+        .band { background: radial-gradient(120% 90% at 20% 0%, #13784a 0%, #0c5e33 40%, #083d22 100%); color: #e7f3ec; padding: 104px 0; margin: 40px 0 0; position: relative; overflow: hidden; }
+        .band .eyebrow { color: #9fe0bc; }
+        .band h2 { color: #fff; font-size: clamp(32px, 4.2vw, 50px); margin: 14px 0 18px; }
+        .band .lede { color: #bcd8c7; margin-bottom: 30px; }
+        .band-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 56px; align-items: center; }
+        .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .tile { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: var(--r-md); padding: 18px 18px 16px; }
+        .tile svg { width: 24px; height: 24px; color: var(--amber); margin-bottom: 10px; }
+        .tile b { display: block; color: #fff; font-size: 16px; letter-spacing: -0.015em; margin-bottom: 4px; }
+        .tile span { font-size: 14.5px; color: #bcd8c7; line-height: 1.5; }
+        .devices { position: relative; padding-bottom: 48px; }
+        .devices .browser { width: 100%; }
+        .devices .phone { position: absolute; width: 27%; right: -2%; bottom: 0; box-shadow: 0 30px 60px rgba(0,0,0,.45), inset 0 0 0 1.5px rgba(255,255,255,.1); }
 
         /* ═══ PRICING ═══ */
-        .pricing { padding: 90px 0 30px; }
-        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: stretch; }
-        .price-card {
-            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
-            padding: 34px 30px; text-align: left; box-shadow: var(--shadow-sm);
-            display: flex; flex-direction: column; position: relative;
-        }
-        .price-card.featured { border: 2px solid var(--moss); box-shadow: var(--shadow-md); }
-        .price-tag {
-            position: absolute; top: -13px; left: 28px;
-            font-size: 12px; font-weight: 700; letter-spacing: .03em;
-            padding: 5px 12px; border-radius: 999px;
-        }
-        .tag-green { background: var(--moss); color: #fff; }
-        .tag-amber { background: var(--sun); color: #fff; }
-        .price-card h3 { font-size: 22px; margin-bottom: 6px; }
-        .price-desc { font-size: 14px; color: var(--ink-2); margin-bottom: 18px; }
-        .price-amount { font-family: var(--font-d); font-size: 44px; font-weight: 700; }
-        .price-amount .period { font-family: var(--font-b); font-size: 15px; font-weight: 500; color: var(--ink-2); }
-        .price-features { list-style: none; margin: 20px 0 26px; display: grid; gap: 10px; flex: 1; }
-        .price-features li { display: flex; gap: 9px; font-size: 14.5px; align-items: flex-start; }
-        .price-features .tick { color: var(--moss); font-weight: 700; }
-        .price-btn {
-            width: 100%; padding: 13px; border-radius: 999px; border: none; cursor: pointer;
-            font-family: var(--font-b); font-weight: 600; font-size: 15px;
-            background: var(--grass); color: var(--moss); transition: all .2s;
-        }
-        .price-btn:hover { background: #e2ecd6; }
-        .featured .price-btn { background: var(--moss); color: #fff; box-shadow: 0 5px 16px rgba(46,107,82,.32); }
-        .featured .price-btn:hover { background: #275c46; }
-        .pricing-note { text-align: center; margin-top: 26px; font-size: 14.5px; color: var(--ink-2); }
+        .pricing { padding: 104px 0 40px; }
+        .trial { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; max-width: 980px; margin: 0 auto 44px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-1); overflow: hidden; }
+        .trial-step { padding: 22px 24px; position: relative; }
+        .trial-step + .trial-step { border-left: 1px solid var(--line); }
+        .trial-step .when { font-size: 12.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--g); }
+        .trial-step p { font-size: 15px; color: var(--ink-2); margin-top: 6px; }
+        .trial-step p b { color: var(--ink); }
+        .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1040px; margin: 0 auto; align-items: stretch; }
+        .plan { position: relative; display: flex; flex-direction: column; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 32px 28px 28px; box-shadow: var(--sh-1); }
+        .plan.featured { border: 2px solid var(--g); box-shadow: var(--sh-2); }
+        .plan-tag { position: absolute; top: -13px; left: 26px; font-size: 12px; font-weight: 800; letter-spacing: .04em; padding: 5px 12px; border-radius: 999px; }
+        .tag-g { background: var(--g); color: #fff; }
+        .tag-a { background: var(--amber); color: var(--amber-ink); }
+        .plan h3 { font-size: 22px; }
+        .plan .desc { font-size: 14.5px; color: var(--ink-2); margin: 4px 0 18px; }
+        .plan .price { font-size: 46px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; }
+        .plan .price small { font-size: 15px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
+        .plan .ticks { margin: 22px 0 26px; flex: 1; gap: 10px; }
+        .plan .ticks li { font-size: 15px; }
+        .plan .btn { width: 100%; }
+        .plan:not(.featured) .btn { background: var(--g-pale); color: var(--g-dark); box-shadow: none; }
+        .plan:not(.featured) .btn:hover { background: #d8ecdf; }
+        .pricing-note { text-align: center; margin-top: 24px; font-size: 14.5px; color: var(--ink-2); }
+
+        /* ═══ WHY ═══ */
+        .why { padding: 72px 0 24px; }
+        .why-card { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: 64px 1fr; gap: 22px; align-items: start; background: var(--paper);
+            border: 1px solid var(--line); border-radius: var(--r-lg); padding: 30px 32px; box-shadow: var(--sh-1); }
+        .why-ico { width: 64px; height: 64px; border-radius: 18px; background: var(--g-pale); display: grid; place-items: center; }
+        .why-ico svg { width: 32px; height: 32px; color: var(--g); }
+        .why-card h3 { font-size: 21px; margin-bottom: 8px; }
+        .why-card p { color: var(--ink-2); font-size: 16px; }
 
         /* ═══ FAQ ═══ */
-        .faq { padding: 80px 0 30px; }
-        .faq-list { max-width: 760px; margin: 0 auto; display: grid; gap: 12px; }
-        details {
-            background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
-            padding: 0 22px; box-shadow: var(--shadow-sm);
-        }
-        summary {
-            cursor: pointer; font-weight: 600; font-size: 16px; padding: 19px 0;
-            list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px;
-        }
-        summary::-webkit-details-marker { display: none; }
-        summary::after { content: "+"; font-size: 22px; color: var(--moss); font-weight: 500; transition: transform .2s; }
-        details[open] summary::after { transform: rotate(45deg); }
-        details p { padding: 0 0 20px; color: var(--ink-2); font-size: 15px; }
+        .faq { padding: 88px 0 40px; }
+        .faq-list { max-width: 800px; margin: 0 auto; display: grid; gap: 12px; }
+        .faq details { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0 22px; box-shadow: var(--sh-1); }
+        .faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 19px 0; font-weight: 700; font-size: 16.5px; letter-spacing: -0.01em; }
+        .faq summary::-webkit-details-marker { display: none; }
+        .faq summary::after { content: ""; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--g-pale) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23128147' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E") center / 13px no-repeat; transition: transform .25s; }
+        .faq details[open] summary::after { transform: rotate(45deg); }
+        .faq details p { padding: 0 0 20px; color: var(--ink-2); font-size: 15.5px; }
+        .faq details p a { color: var(--g); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
         /* ═══ FINAL CTA ═══ */
-        .final { padding: 90px 0 100px; }
-        .final-card {
-            background: linear-gradient(160deg, #2e6b52, #1f4e3b);
-            border-radius: 28px; padding: 72px 40px; text-align: center; color: #fff;
-            box-shadow: var(--shadow-lg); position: relative; overflow: hidden;
-        }
-        .final-card::before {
-            content: "🌱  🥕  🍅  🥚  🐐  🌻"; position: absolute; top: 26px; left: 0; right: 0;
-            font-size: 20px; letter-spacing: 26px; opacity: .35; text-align: center; white-space: nowrap;
-        }
-        .final h2 { font-size: clamp(30px, 4.4vw, 46px); margin-bottom: 14px; color: #fff; }
-        .final p { color: #cfe4d3; font-size: 17px; max-width: 520px; margin: 0 auto 30px; }
-        .final .btn-primary { background: #fff; color: var(--moss); box-shadow: 0 8px 26px rgba(0,0,0,.28); }
-        .final .btn-primary:hover { background: #f1f6ee; }
-        .final .micro { margin-top: 16px; font-size: 13.5px; color: #b9d5c0; }
+        .final { padding: 72px 0 96px; }
+        .final-card { position: relative; overflow: hidden; border-radius: 36px; padding: 80px 40px; text-align: center; color: #fff;
+            background: radial-gradient(120% 90% at 50% 0%, #1d8a52 0%, #0e6538 45%, #083d22 100%); box-shadow: var(--sh-3); }
+        .final-card h2 { font-size: clamp(38px, 6vw, 72px); letter-spacing: -0.055em; margin-bottom: 16px; }
+        .final-card h2 em { font-style: normal; color: var(--amber); }
+        .final-card p { color: #cfe6d7; font-size: 18px; max-width: 520px; margin: 0 auto 32px; }
+        .final-card .micro { margin: 18px 0 0; font-size: 14px; color: #a9cdb8; }
+        .final-mark { width: 64px; height: 64px; border-radius: 18px; background: #fff; display: grid; place-items: center; margin: 0 auto 22px; box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+        .final-mark svg { width: 36px; height: 36px; }
 
         /* ═══ FOOTER ═══ */
-        footer { padding: 34px 0 46px; text-align: center; color: var(--ink-2); font-size: 14px; }
-        footer a { color: var(--moss); font-weight: 500; }
-        footer a:hover { text-decoration: underline; }
+        footer { border-top: 1px solid var(--line); padding: 36px 0 44px; }
+        .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+        .foot p { font-size: 14px; color: var(--ink-3); margin-top: 6px; }
+        .foot-links { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; font-weight: 500; color: var(--ink-2); }
+        .foot-links a:hover { color: var(--g); }
 
         /* ═══ RESPONSIVE ═══ */
-        @media (max-width: 940px) {
-            .how-grid { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
-            .feat { grid-template-columns: 1fr; gap: 30px; padding: 36px 0; }
-            .feat-shot { order: -1; }
-            .field-grid { grid-template-columns: 1fr; gap: 48px; }
-            .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
-            .founder-card { grid-template-columns: 1fr; text-align: center; padding: 34px 26px; }
-            .founder-avatar { margin: 0 auto; }
-            .nav-links { display: none; }
-            .mobile-menu-btn { display: block; }
+        @media (max-width: 1080px) {
+            .job-chip { display: none; }
+            .steps { gap: 18px; }
+            .cascade { height: 560px; }
         }
-        @media (max-width: 620px) {
-            .hero { padding-top: 112px; }
-            .hero-sub { font-size: 17px; }
-            .hero-buttons { flex-direction: column; align-items: stretch; padding: 0 8px; }
-            .hero-stage { margin-top: 40px; padding: 0 16px; }
-            .quest-chip { padding: 7px 12px 7px 8px; font-size: 12px; }
-            .quest-chip .qc-ico { width: 24px; height: 24px; font-size: 12px; }
-            .qc-1 { left: 2px; } .qc-2 { right: 2px; }
-            .qc-3 { display: none; }
-            .phones { gap: 14px; }
-            .final-card { padding: 56px 22px; }
-            .final-card::before { letter-spacing: 14px; font-size: 16px; }
+        @media (max-width: 940px) {
+            .nav-links, .nav-cta .signin { display: none; }
+            .menu-btn { display: inline-flex; }
+            .mobile-menu { position: absolute; top: var(--nav-h); left: 0; right: 0; background: rgba(244,246,244,.98); border-bottom: 1px solid var(--line);
+                box-shadow: 0 16px 30px rgba(16,24,18,.08); padding: 10px 24px 22px; }
+            .mobile-menu.open { display: grid; gap: 4px; }
+            .mobile-menu a { padding: 12px 4px; font-weight: 600; font-size: 17px; border-bottom: 1px solid var(--line); }
+            .mobile-menu a:last-child { border-bottom: 0; }
+            .hero { padding-top: calc(var(--nav-h) + 36px); }
+            .hero-grid { grid-template-columns: 1fr; gap: 44px; text-align: center; }
+            .hero-sub { margin: 0 auto; }
+            .hero-ctas, .hero-trust { justify-content: center; }
+            .job-chip { display: none; }
+            .reel { transform: none; }
+            .proof-inner { grid-template-columns: repeat(3, 1fr); }
+            .proof-item:nth-child(4) { border-left: 0; }
+            .proof-item:nth-child(n+4) { border-top: 1px solid var(--line); }
+            .feature { padding: 72px 0; }
+            .feature-grid, .band-grid { grid-template-columns: 1fr; gap: 40px; }
+            .feature-grid.flip .feature-copy { order: 0; }
+            .feature-copy { max-width: 620px; }
+            .steps { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 18px; padding: 4px 24px 20px; margin: 0 -24px; scrollbar-width: none; }
+            .steps::-webkit-scrollbar { display: none; }
+            .step { flex: 0 0 min(260px, 72vw); scroll-snap-align: center; }
+            .stat-tiles { grid-template-columns: repeat(2, 1fr); }
+            .trio { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 24px; padding: 4px 24px 20px; margin: 0 -24px; scrollbar-width: none; }
+            .trio::-webkit-scrollbar { display: none; }
+            .trio figure { flex: 0 0 min(270px, 74vw); scroll-snap-align: center; }
+            .cascade { width: auto; height: auto; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 20px; padding: 10px 24px 24px; margin: 0 -24px; max-width: none; scrollbar-width: none; }
+            .cascade::-webkit-scrollbar { display: none; }
+            .cascade .phone { position: relative; inset: auto !important; transform: none !important; flex: 0 0 min(250px, 70vw); width: auto; scroll-snap-align: center; }
+            .plans { grid-template-columns: 1fr; max-width: 440px; }
+            .trial { grid-template-columns: 1fr; max-width: 440px; }
+            .trial-step + .trial-step { border-left: 0; border-top: 1px solid var(--line); }
+        }
+        @media (max-width: 700px) {
+            .container { padding: 0 16px; }
+            .steps, .trio, .cascade { margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+            .section-head { margin-bottom: 36px; }
+            .section-head p, .lede { font-size: 16.5px; }
+            .hero h1 { margin: 18px 0 18px; }
+            .hero-ctas { flex-direction: column; align-items: stretch; max-width: 360px; margin-left: auto; margin-right: auto; }
+            .hero-trust { font-size: 13.5px; gap: 8px 16px; }
+            .proof-inner { grid-template-columns: repeat(2, 1fr); }
+            .proof-item { padding: 18px 12px; }
+            .proof-item + .proof-item { border-left: 0; }
+            .proof-item:nth-child(even) { border-left: 1px solid var(--line); }
+            .proof-item:nth-child(n+3) { border-top: 1px solid var(--line); }
+            .proof-item:last-child { grid-column: 1 / -1; border-left: 0; }
+            .spaces { padding-top: 72px; }
+            .env-tab { padding: 10px 14px; font-size: 14.5px; }
+            .env-tab .em { display: none; }
+            .env-map { aspect-ratio: 4 / 3; border-radius: var(--r-lg); }
+            .env-info { position: static; width: auto; margin-top: -28px; margin-left: 12px; margin-right: 12px; }
+            .duo { padding-bottom: 20px; }
+            .setup, .know { padding: 72px 0; }
+            .stat-tile { padding: 18px; }
+            .stat-tile b { font-size: 34px; }
+            .band { padding: 80px 0; }
+            .tiles { grid-template-columns: 1fr; }
+            .devices .phone { width: 32%; right: -1%; }
+            .why-card { grid-template-columns: 1fr; padding: 26px 22px; }
+            .final-card { padding: 60px 22px; border-radius: 28px; }
+            .foot { flex-direction: column; align-items: flex-start; }
         }
         @media (prefers-reduced-motion: reduce) {
             html { scroll-behavior: auto; }
-            .quest-chip { animation: none; }
-            .fade-in { opacity: 1; transform: none; transition: none; }
+            .js .reveal { opacity: 1; transform: none; transition: none; }
+            .job-chip { animation: none; }
+            .btn, .btn:hover { transition: none; transform: none; }
         }
     </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <!-- NAV -->
-<nav id="nav">
-    <div class="nav-inner">
-        <a href="#" class="nav-logo" data-scroll-top><span>🌱</span> MyTerra</a>
-        <div class="nav-links" id="navLinks">
-            <a href="#how" data-nav>How it works</a>
-            <a href="#features" data-nav>Features</a>
-            <a href="#pricing" data-nav>Pricing</a>
-            <a href="#faq" data-nav>FAQ</a>
-            <a href="/app">Sign in</a>
-            <a href="/app" class="nav-cta">Start free trial</a>
+<header class="nav" id="nav">
+    <div class="container nav-inner">
+        <a href="#top" class="logo" data-scroll-top aria-label="MyTerra home">
+            <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span>
+            MyTerra
+        </a>
+        <nav class="nav-links" aria-label="Page sections">
+            <a href="#spaces">Your space</a>
+            <a href="#today">How it works</a>
+            <a href="#knowhow">Know-how</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+        </nav>
+        <div class="nav-cta">
+            <a class="signin" href="/app">Sign in</a>
+            <a class="btn btn-primary" href="/app" data-umami-event="cta-nav">Start free</a>
+            <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </button>
         </div>
-        <button class="mobile-menu-btn" id="menuBtn" aria-label="Toggle menu">☰</button>
     </div>
-</nav>
-
-<!-- HERO -->
-<header class="hero">
-    <div class="container">
-        <div class="hero-badge fade-in">🌱 A farm game simulator — running on real life</div>
-        <h1 class="fade-in">Grow real food,<br>the way you'd <em>play a game</em>.</h1>
-        <p class="hero-sub fade-in">Draw your land, and MyTerra fills your days with simple quests — plant this, water that, collect the eggs. No experience needed. The harvest is real.</p>
-        <div class="hero-buttons fade-in">
-            <a href="/app" class="btn btn-primary">Start free — 7 days</a>
-            <a href="#features" class="btn btn-ghost" data-nav>See the app</a>
-        </div>
-        <p class="hero-trust fade-in"><b>No credit card.</b> Works offline. Built for total beginners.</p>
-    </div>
-
-    <div class="hero-stage fade-in">
-        <div class="hero-shot">
-            <img src="/screens/grove-light.webp" width="1600" height="1000" fetchpriority="high"
-                 alt="MyTerra's illustrated farm map: veggie beds, greenhouse, orchard, coop and pasture with today's task markers pinned to each zone">
-        </div>
-        <div class="quest-chip qc-ready qc-1"><span class="qc-ico">🥕</span><span>Harvest carrots<small>Veggie Beds · Ready</small></span></div>
-        <div class="quest-chip qc-2"><span class="qc-ico">🥚</span><span>Collect 8 eggs<small>At the coop</small></span></div>
-        <div class="quest-chip qc-3"><span class="qc-ico">💧</span><span>Water tomatoes<small>Greenhouse</small></span></div>
-        <div class="quest-chip qc-4"><span class="qc-ico">🔥</span><span>23-day streak<small>Keep it going</small></span></div>
-        <p class="hero-caption">A real farm running in MyTerra — every pin is a job the app scheduled on its own.</p>
-    </div>
+    <nav class="mobile-menu" id="mobileMenu" aria-label="Menu">
+        <a href="#spaces">Your space</a>
+        <a href="#today">How it works</a>
+        <a href="#knowhow">Know-how</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="/app">Sign in</a>
+    </nav>
 </header>
 
-<!-- DATA STRIP -->
-<section class="strip">
-    <div class="container">
-        <div class="strip-inner fade-in">
-            <span><b>70</b> crops with full grow guides</span>
-            <span><b>14</b> livestock species</span>
-            <span><b>13</b> preservation methods</span>
-            <span><b>8</b> DIY build projects</span>
+<main id="main">
+<!-- HERO -->
+<section class="hero" id="top">
+    <div class="container hero-grid">
+        <div class="hero-copy">
+            <span class="pill-tag"><b>New</b> The farm game that runs on real life</span>
+            <h1>Everyone can be a <em>farmer.</em></h1>
+            <p class="hero-sub"><b>Grow food without the guesswork.</b> MyTerra turns your balcony, backyard or farm into a living 3D map, then tells you what to plant, what to do today and what comes next.</p>
+            <div class="hero-ctas">
+                <a href="/app" class="btn btn-primary" data-umami-event="cta-hero">
+                    Build my growing space
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </a>
+                <button type="button" class="btn btn-ghost" id="tourBtn" data-umami-event="tour-play">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>
+                    Watch the 15-second tour
+                </button>
+            </div>
+            <ul class="hero-trust" aria-label="What you get">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>No farming experience needed</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>7-day Pro trial, no card</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Works offline</li>
+            </ul>
         </div>
-        <p class="strip-note fade-in">Every guide fact-checked against RHS, FAO, USDA and university extension data — not internet folklore.</p>
-    </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section class="how" id="how">
-    <div class="container">
-        <div class="section-head fade-in">
-            <span class="eyebrow">How it works</span>
-            <h2>From lawn to lunch in three moves.</h2>
-        </div>
-        <div class="how-grid">
-            <div class="how-card fade-in">
-                <div class="how-num">1</div>
-                <h3>Draw your farm</h3>
-                <p>Lay out beds, a coop, a greenhouse — ten zone types, dragged to scale on an illustrated map. Pick from 70 crops and 14 animals, and your world is live.</p>
+        <div class="reel-stage">
+            <div class="reel" id="reel">
+                <video id="tour" poster="/landing/tour-poster.webp" width="720" height="1280"
+                       autoplay muted loop playsinline preload="metadata" aria-describedby="tourText">
+                    <source src="/landing/myterra-tour-720.mp4" type="video/mp4">
+                    <source src="/landing/myterra-tour-720.webm" type="video/webm">
+                </video>
+                <button type="button" class="reel-toggle" id="reelToggle" aria-label="Pause the tour video">
+                    <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>
+                    <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5.2a1.6 1.6 0 0 1 2.4-1.4l10 6.2a1.6 1.6 0 0 1 0 2.8l-10 6.2A1.6 1.6 0 0 1 7 17.6z"/></svg>
+                </button>
             </div>
-            <div class="how-card fade-in">
-                <div class="how-num">2</div>
-                <h3>Follow today's quests</h3>
-                <p>MyTerra schedules the work for you: what to water, feed, prune and harvest — grouped by where you'll be standing. Walk the farm, tick things off, keep your streak.</p>
-            </div>
-            <div class="how-card fade-in">
-                <div class="how-num">3</div>
-                <h3>Harvest &amp; stock up</h3>
-                <p>Harvests land in your pantry, sales and costs land in your books. You watch actual food and actual money pile up — that's the endgame.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- FEATURES -->
-<section class="features" id="features">
-    <div class="container">
-        <div class="section-head fade-in">
-            <span class="eyebrow">The actual app</span>
-            <h2>Real screenshots. Real farm.</h2>
-            <p>Ten crops in the ground, sixteen animals, and one homestead keeping itself organised.</p>
-        </div>
-
-        <div class="feat">
-            <div class="fade-in">
-                <span class="eyebrow">Tasks</span>
-                <h3>Your farm writes your to-do list.</h3>
-                <p>Every plant and animal generates its own care schedule. Urgent jobs — "harvest today or it bolts" — float to the top in red. The daily routine is grouped by location, so one walk covers everything.</p>
-                <ul>
-                    <li><span class="tick">✓</span> Harvest windows flagged before you miss them</li>
-                    <li><span class="tick">✓</span> Feeding, watering and health checks on autopilot</li>
-                    <li><span class="tick">✓</span> Day, week and month views — nothing slips</li>
-                </ul>
-            </div>
-            <div class="feat-shot fade-in">
-                <img src="/screens/tasks-dark.webp" width="1600" height="1000" loading="lazy"
-                     alt="Task calendar with urgent harvest alerts and a daily routine grouped by farm location">
-            </div>
-        </div>
-
-        <div class="feat">
-            <div class="feat-shot fade-in">
-                <img src="/screens/crops-light.webp" width="1600" height="1000" loading="lazy"
-                     alt="Crops screen listing tomato, cucumber, zucchini, carrot and more with plant counts, expected yield and days to harvest">
-            </div>
-            <div class="fade-in">
-                <span class="eyebrow">Crops</span>
-                <h3>70 crops that know your climate.</h3>
-                <p>Pick a crop and MyTerra already knows its spacing, watering rhythm, companions, pests and season — tuned for Western Europe, with overrides for warmer and colder regions.</p>
-                <ul>
-                    <li><span class="tick">✓</span> Expected yield in kilograms before you sow</li>
-                    <li><span class="tick">✓</span> Days-to-harvest countdown per bed</li>
-                    <li><span class="tick">✓</span> Step-by-step care from soil prep to season end</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="feat">
-            <div class="fade-in">
-                <span class="eyebrow">Animals</span>
-                <h3>Chickens to goats, without the guesswork.</h3>
-                <p>Add your flock and the routine appears: feeding, egg collection, hoof checks, hive inspections. One tap logs the eggs straight into your pantry.</p>
-                <ul>
-                    <li><span class="tick">✓</span> 14 species with breed-level guidance</li>
-                    <li><span class="tick">✓</span> Produce tracking — eggs, milk, honey, meat</li>
-                    <li><span class="tick">✓</span> Health and care schedules per animal</li>
-                </ul>
-            </div>
-            <div class="feat-shot fade-in">
-                <img src="/screens/animals-dark.webp" width="1600" height="1000" loading="lazy"
-                     alt="Animals screen with chickens, ducks, goats and bees, each with one-tap produce collection">
-            </div>
-        </div>
-
-        <div class="feat">
-            <div class="feat-shot fade-in">
-                <img src="/screens/fin-dark.webp" width="1600" height="1000" loading="lazy"
-                     alt="Financials screen with spend, revenue and net cards, a monthly chart and expense breakdown by category">
-            </div>
-            <div class="fade-in">
-                <span class="eyebrow">Money</span>
-                <h3>Know if the farm pays for itself.</h3>
-                <p>Seed orders, feed bags, egg sales, veg boxes — logged as you go. Monthly charts and a category breakdown show exactly which crops earn their keep.</p>
-                <ul>
-                    <li><span class="tick">✓</span> Income vs. spend, month by month</li>
-                    <li><span class="tick">✓</span> Expense breakdown by category</li>
-                    <li><span class="tick">✓</span> A running net figure — the honest scoreboard</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="feat">
-            <div class="fade-in">
-                <span class="eyebrow">Manuals</span>
-                <h3>A farming library in your pocket.</h3>
-                <p>Crop guides, animal husbandry, a seasonal calendar, preservation safety and DIY builds — searchable and fully offline. When you wonder "is this normal?", the answer is one tap away.</p>
-                <ul>
-                    <li><span class="tick">✓</span> 70 crop + 14 animal deep guides</li>
-                    <li><span class="tick">✓</span> 13 preservation methods with safety rules</li>
-                    <li><span class="tick">✓</span> 8 DIY projects — coops, beds, compost bays</li>
-                </ul>
-            </div>
-            <div class="feat-shot fade-in">
-                <img src="/screens/manuals-light.webp" width="1600" height="1000" loading="lazy"
-                     alt="Built-in manuals: a searchable grid of crop guides plus animals, preserving and DIY project sections">
-            </div>
+            <p class="sr-only" id="tourText">A 15-second tour of the MyTerra app. Never grown anything? Good, MyTerra was made for you. Your real space as a living 3D map: balcony, backyard or farm, built to your real size with every job pinned to a place. Tap the map and tick off the jobs: tapping the goat paddock shows milking, feeding and watering; milking logs 7.5 litres of goat milk to the pantry. Built-in know-how: 70 crops and 14 animals with every step explained, and a farm assistant that answers even offline. Watch real food pile up in the pantry and keep a daily streak. Everyone can be a farmer. Start free for 7 days at myterra.farm. No experience needed, no card.</p>
+            <div class="job-chip jc-1" aria-hidden="true"><span class="job-ico">🥚</span><span><b>Collect eggs — 8 Chickens</b><small>Hen house · today</small></span></div>
         </div>
     </div>
 </section>
 
-<!-- FIELD BAND -->
-<section class="field">
+<!-- PROOF STRIP -->
+<section class="proof" aria-label="What's inside">
     <div class="container">
-        <div class="field-grid">
-            <div class="fade-in">
-                <span class="eyebrow">Made for muddy hands</span>
-                <h2>Works in the field.<br>Even with no signal.</h2>
-                <p>MyTerra is offline-first: open it at the bottom of the garden, tick off your quests, and it syncs itself when you're back in range. Phone, tablet or laptop — your farm is on all of them.</p>
-                <ul>
-                    <li><span class="tick">✓</span> Full app works with zero internet</li>
-                    <li><span class="tick">✓</span> Your farm backed up to the cloud, synced across devices</li>
-                    <li><span class="tick">✓</span> Light and dark mode — readable at 6am and 11pm</li>
+        <div class="proof-inner reveal">
+            <div class="proof-item"><b>70</b><span>crops</span></div>
+            <div class="proof-item"><b>14</b><span>animals</span></div>
+            <div class="proof-item"><b>13</b><span>ways to preserve</span></div>
+            <div class="proof-item"><b>8</b><span>DIY builds</span></div>
+            <div class="proof-item"><b>5</b><span>climate regions</span></div>
+        </div>
+        <p class="proof-note">Every guide checked against RHS, FAO, USDA and university extension advice.</p>
+    </div>
+</section>
+
+<!-- SPACES: balcony / backyard / farm -->
+<section class="spaces" id="spaces">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="eyebrow">Balcony, backyard or farm</span>
+            <h2>Start with the space you actually have.</h2>
+            <p>Tell MyTerra what you've got and how big it is. It builds a 3D map at your real size, and every job gets pinned to a place on it.</p>
+        </div>
+        <div class="env-tabs reveal">
+            <div class="env-tablist" role="tablist" aria-label="Choose a type of space">
+                <button type="button" class="env-tab" role="tab" id="tab-balcony" aria-selected="false" aria-controls="env-balcony" tabindex="-1" data-env="balcony" data-umami-event="env-tab" data-umami-event-env="balcony"><span class="em" aria-hidden="true">🏙️</span>Balcony</button>
+                <button type="button" class="env-tab" role="tab" id="tab-backyard" aria-selected="true" aria-controls="env-backyard" data-env="backyard" data-umami-event="env-tab" data-umami-event-env="backyard"><span class="em" aria-hidden="true">🏡</span>Backyard</button>
+                <button type="button" class="env-tab" role="tab" id="tab-farm" aria-selected="false" aria-controls="env-farm" tabindex="-1" data-env="farm" data-umami-event="env-tab" data-umami-event-env="farm"><span class="em" aria-hidden="true">🌾</span>Farm</button>
+            </div>
+        </div>
+
+        <div class="env-panel reveal" id="env-balcony" role="tabpanel" aria-labelledby="tab-balcony" hidden>
+            <div class="env-map">
+                <img src="/landing/map-balcony-960.webp" srcset="/landing/map-balcony-960.webp 960w, /landing/map-balcony-1600.webp 1600w" sizes="(max-width: 1180px) 100vw, 1132px"
+                     width="1600" height="1000" loading="lazy" decoding="async" alt="MyTerra's 3D map of a balcony: tomato pots, a railing planter with chillies, herb pots, a strawberry tower and a salad trough, with job badges on each">
+            </div>
+            <div class="env-info">
+                <span class="size">Balcony · 15 m²</span>
+                <h3>A balcony that feeds you</h3>
+                <p>Pots, troughs and a railing planter: tomatoes, chillies, herbs, strawberries and salad.</p>
+                <ul class="ticks">
+                    <li>Picks plants that suit pots and part sun</li>
+                    <li>Watering jobs for each pot and trough</li>
+                    <li>Salad and herbs on repeat</li>
                 </ul>
             </div>
-            <div class="phones fade-in">
-                <div class="phone"><img src="/screens/phone-farm.webp" width="780" height="1688" loading="lazy" alt="MyTerra on a phone: the illustrated farm map with today's quest sheet"></div>
-                <div class="phone"><img src="/screens/phone-tasks.webp" width="780" height="1688" loading="lazy" alt="MyTerra on a phone: the task calendar with harvest alerts"></div>
+        </div>
+
+        <div class="env-panel reveal" id="env-backyard" role="tabpanel" aria-labelledby="tab-backyard">
+            <div class="env-map">
+                <img src="/landing/map-backyard-960.webp" srcset="/landing/map-backyard-960.webp 960w, /landing/map-backyard-1600.webp 1600w" sizes="(max-width: 1180px) 100vw, 1132px"
+                     width="1600" height="1000" loading="lazy" decoding="async" alt="MyTerra's 3D map of a backyard: a house, two raised beds, a veg patch, a greenhouse, a chicken coop, herbs and compost, with amber job badges">
+            </div>
+            <div class="env-info">
+                <span class="size">Backyard · 18 × 14 m</span>
+                <h3>A backyard with a plan</h3>
+                <p>Raised beds, a small greenhouse, herbs and three hens, all on one map.</p>
+                <ul class="ticks">
+                    <li>Beds planted row by row, at real spacing</li>
+                    <li>Greenhouse and coop on the same daily walk</li>
+                    <li>Eggs go straight into your pantry</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="env-panel reveal" id="env-farm" role="tabpanel" aria-labelledby="tab-farm" hidden>
+            <div class="env-map">
+                <img src="/landing/map-farm-960.webp" srcset="/landing/map-farm-960.webp 960w, /landing/map-farm-1600.webp 1600w" sizes="(max-width: 1180px) 100vw, 1132px"
+                     width="1600" height="1000" loading="lazy" decoding="async" alt="MyTerra's 3D map of a smallholding: farmhouse, greenhouse, seedling nursery, vegetable rows, a hen house, a goat paddock, an orchard, beehives and a pond">
+            </div>
+            <div class="env-info">
+                <span class="size">Smallholding · 1,300 m²</span>
+                <h3>A smallholding, organised</h3>
+                <p>Veg rows, greenhouse, seedling nursery, orchard, goats, hens and bees.</p>
+                <ul class="ticks">
+                    <li>Draw your own paths and fences</li>
+                    <li>Fruit trees that stay on the map year after year</li>
+                    <li>Milking, feeding and hive checks scheduled for you</li>
+                </ul>
+            </div>
+        </div>
+        <p class="env-foot">Real app screens. Demo gardens, not customer data.</p>
+    </div>
+</section>
+
+<!-- MAP -->
+<section class="feature" id="map">
+    <div class="container feature-grid">
+        <div class="feature-copy reveal">
+            <span class="eyebrow">The living map</span>
+            <h2>Tap the map. It shows you what's waiting.</h2>
+            <p class="lede">Amber badges mark the jobs waiting in each area. Tap one and do them right there: milk, feed, water, collect. It plays like a farm game, except the eggs are real.</p>
+            <ul class="ticks">
+                <li>Drag, pinch and tilt around your place in 3D</li>
+                <li>One tap logs eggs, milk and harvests into your pantry</li>
+                <li>Move beds, add a greenhouse, draw paths any time</li>
+            </ul>
+        </div>
+        <div class="duo reveal">
+            <div class="phone"><img src="/landing/ph-home-farm.webp" width="720" height="1558" loading="lazy" decoding="async" alt="MyTerra home screen: a 3D farm map with amber job badges, today's 14 tasks and a Start morning walk button"></div>
+            <div class="phone"><img src="/landing/ph-popup-goats.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Goat paddock pop-up with five jobs: milk 3 goats (7.5 litres expected), feed, water, clean housing and rotate paddock"></div>
+        </div>
+    </div>
+</section>
+
+<!-- SETUP -->
+<section class="setup" id="how">
+    <div class="container">
+        <div class="section-head reveal">
+            <span class="eyebrow">Set up in minutes</span>
+            <h2>Answer a few plain questions. Get a plan built for you.</h2>
+            <p>Where you grow, how big it is, how much sun it gets and how much time you have. MyTerra matches plants to your answers, draws your starter map and plans your first week.</p>
+        </div>
+        <div class="steps">
+            <div class="step reveal">
+                <div class="phone"><img src="/landing/ob-env.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Onboarding question: Where will you grow? Balcony or patio, backyard or garden, smallholding or farm"></div>
+                <div class="step-copy"><span class="step-num">1</span><h3>Pick your space</h3><p>Balcony, backyard or farm, at its real size.</p></div>
+            </div>
+            <div class="step reveal">
+                <div class="phone"><img src="/landing/ob-sun.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Onboarding question: How much sun does it get? Hours of direct sun and when the sun hits"></div>
+                <div class="step-copy"><span class="step-num">2</span><h3>Tell it about the light</h3><p>Shade or full sun, the plan adapts.</p></div>
+            </div>
+            <div class="step reveal">
+                <div class="phone"><img src="/landing/ob-plants.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Your matched plants: radish, lettuce and strawberry selected from suggestions picked for the space, light and experience"></div>
+                <div class="step-copy"><span class="step-num">3</span><h3>Get matched plants</h3><p>Picked for your space, light and experience. Change them any time.</p></div>
+            </div>
+            <div class="step reveal">
+                <div class="phone"><img src="/landing/ob-plan.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Your first week: day-by-day tasks such as sowing lettuce, radish and strawberry, watering and checking seedlings"></div>
+                <div class="step-copy"><span class="step-num">4</span><h3>Start your first week</h3><p>Day-by-day jobs, straight onto your Today screen.</p></div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- FOUNDER -->
-<section class="founder">
+<!-- TODAY -->
+<section class="feature" id="today">
+    <div class="container feature-grid flip">
+        <div class="feature-copy reveal">
+            <span class="eyebrow">Every morning</span>
+            <h2>Open the app. Know exactly what to do today.</h2>
+            <p class="lede">Your list is built from what's planted, what's ripening and which animals you keep. The morning walk takes you round, stop by stop.</p>
+            <ul class="ticks">
+                <li>Harvest windows flagged before you miss them</li>
+                <li>Jobs grouped by where you're standing</li>
+                <li>Note how things look, with notes and photos</li>
+                <li>Keep your streak going</li>
+            </ul>
+        </div>
+        <div class="duo reveal">
+            <div class="phone"><img src="/landing/ph-tasks.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Task calendar: Needs attention list with harvest tomato, carrot and pumpkin today, plus goat care jobs"></div>
+            <div class="phone"><img src="/landing/ph-walk.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Morning walk, stop 1 of 7: the salad bed on the map, a ticked Water lettuce job, and buttons for Looks good, Needs attention, Add note and Add photo"></div>
+        </div>
+    </div>
+</section>
+
+<!-- KNOW-HOW -->
+<section class="know" id="knowhow">
     <div class="container">
-        <div class="founder-card fade-in">
-            <div class="founder-avatar">🧑‍🌾</div>
-            <div>
-                <blockquote>"I built MyTerra because every farming app I found was made by tech people who've never touched soil. This one is built by someone who wakes up at 5am to check on the goats."</blockquote>
-                <p class="attribution">Dervis — farmer &amp; founder, Tirana, Albania</p>
+        <div class="section-head reveal">
+            <span class="eyebrow">Built-in know-how</span>
+            <h2>The farming knowledge is already inside.</h2>
+            <p>Every crop and animal comes with a plain-English guide: spacing, watering, companions, pests, harvest and storage.</p>
+        </div>
+        <div class="stat-tiles reveal">
+            <div class="stat-tile"><b>70</b><span>crop guides</span><small>veg, herbs, fruit and nut trees</small></div>
+            <div class="stat-tile"><b>14</b><span>animal guides</span><small>hens and ducks to goats and bees</small></div>
+            <div class="stat-tile"><b>13</b><span>preserving methods</span><small>with food-safety rules</small></div>
+            <div class="stat-tile"><b>8</b><span>DIY builds</span><small>raised beds, coops, compost</small></div>
+        </div>
+        <div class="trio">
+            <figure class="reveal">
+                <div class="phone"><img src="/landing/ph-guide-tomato.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Tomato guide: sowing and harvest calendar, companions, watering advice and a step-by-step guide"></div>
+                <figcaption><b>A guide for every crop</b><span>From soil prep to storage, step by step.</span></figcaption>
+            </figure>
+            <figure class="reveal">
+                <div class="phone"><img src="/landing/ph-calendar.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Seasonal calendar for September: 9 crops to sow this month and 52 in season to harvest"></div>
+                <figcaption><b>What to sow this month</b><span>A seasonal calendar tuned to your region.</span></figcaption>
+            </figure>
+            <figure class="reveal">
+                <div class="phone"><img src="/landing/ph-assistant.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Farm assistant answering 'When should I plant garlic?' with a complete growing guide, working offline"></div>
+                <figcaption><b>Ask the farm assistant</b><span>Instant answers, even with no signal.</span></figcaption>
+            </figure>
+        </div>
+        <p class="source-note">Guides are checked against RHS, FAO, USDA and university extension advice. Soil, weather and pests vary from place to place, so use your own judgement for high-risk decisions.</p>
+    </div>
+</section>
+
+<!-- PROGRESS -->
+<section class="feature" id="progress">
+    <div class="container feature-grid">
+        <div class="feature-copy reveal">
+            <span class="eyebrow">See it pay off</span>
+            <h2>Watch real food pile up.</h2>
+            <p class="lede">Harvests, eggs and milk land in your pantry. Sell or use them, and the money side keeps itself tidy.</p>
+            <ul class="ticks">
+                <li>Expected yield before you sow</li>
+                <li>Pantry stock in kilos, pieces and litres</li>
+                <li>Sales flow into income vs. spending, month by month</li>
+                <li>Streaks and badges for showing up</li>
+            </ul>
+        </div>
+        <div class="cascade reveal">
+            <div class="phone"><img src="/landing/ph-crops.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Your crops: 22 active crops, 512 plants, 8 fruit and nut trees and an estimated 275 kg yield"></div>
+            <div class="phone"><img src="/landing/ph-pantry.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Pantry and stock: 42 chicken eggs, 38 kg potatoes and 11 kg onions, each with Sell and Use buttons"></div>
+            <div class="phone"><img src="/landing/ph-fin.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Financials: spent, revenue and net profit cards with a monthly chart of income and expenses"></div>
+        </div>
+    </div>
+</section>
+
+<!-- OFFLINE & DATA -->
+<section class="band" id="offline">
+    <div class="container band-grid">
+        <div class="reveal">
+            <span class="eyebrow">Made for muddy hands</span>
+            <h2>Works in the garden. Even with no signal.</h2>
+            <p class="lede">MyTerra is built offline-first. Tick jobs off at the bottom of the field; it syncs when you're back in range.</p>
+            <div class="tiles">
+                <div class="tile">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></svg>
+                    <b>Offline-first</b><span>Once installed, jobs, guides and your map all work without a connection.</span>
+                </div>
+                <div class="tile">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 15-5.5 5.5L9 18"/><path d="M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327"/></svg>
+                    <b>Backed up and synced</b><span>Saved to your account and synced across phone, tablet and laptop.</span>
+                </div>
+                <div class="tile">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                    <b>Yours to keep</b><span>Export your whole farm as a file whenever you like.</span>
+                </div>
+                <div class="tile">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <b>Private by default</b><span>No ads, no selling data. Your town is only used for the weather.</span>
+                </div>
             </div>
+        </div>
+        <div class="devices reveal">
+            <div class="browser">
+                <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span>www.myterra.farm/app</span></div>
+                <img src="/landing/desk-farm-1000.webp" srcset="/landing/desk-farm-1000.webp 1000w, /landing/desk-farm-1800.webp 1800w" sizes="(max-width: 940px) 100vw, 600px"
+                     width="1800" height="1125" loading="lazy" decoding="async" alt="MyTerra on a laptop: the sidebar menu and the 3D farm map with today's jobs">
+            </div>
+            <div class="phone"><img src="/landing/ph-home-backyard.webp" width="720" height="1558" loading="lazy" decoding="async" alt="MyTerra on a phone: the backyard map with today's 12 jobs"></div>
         </div>
     </div>
 </section>
@@ -580,85 +729,115 @@
 <!-- PRICING -->
 <section class="pricing" id="pricing">
     <div class="container">
-        <div class="section-head fade-in">
+        <div class="section-head reveal">
             <span class="eyebrow">Pricing</span>
             <h2>Try everything free for 7 days.</h2>
-            <p>No credit card to start. Pick a plan only if the farm sticks.</p>
+            <p>No card to start. Pick a plan only if MyTerra earns its place in your week.</p>
         </div>
-        <div class="pricing-grid fade-in">
-            <div class="price-card">
+        <div class="trial reveal" aria-label="How the free trial works">
+            <div class="trial-step"><span class="when">Today</span><p><b>Create your account.</b> Every Pro feature unlocked, no card.</p></div>
+            <div class="trial-step"><span class="when">Days 1–7</span><p><b>Build your map</b> and follow your daily plan.</p></div>
+            <div class="trial-step"><span class="when">Day 7</span><p><b>Choose a plan to keep editing.</b> If you don't, nothing is charged and your farm stays saved, read-only.</p></div>
+        </div>
+        <div class="plans reveal">
+            <div class="plan">
                 <h3>Basic</h3>
-                <p class="price-desc">Everything you need to start</p>
-                <div class="price-amount">$4.99<span class="period"> /month</span></div>
-                <ul class="price-features">
-                    <li><span class="tick">✓</span> All 9 modules</li>
-                    <li><span class="tick">✓</span> Offline mode + cloud backup</li>
-                    <li><span class="tick">✓</span> Auto-generated tasks</li>
-                    <li><span class="tick">✓</span> Seasonal calendar</li>
-                    <li><span class="tick">✓</span> Full manual library</li>
+                <p class="desc">Everything you need to start</p>
+                <div class="price">$4.99<small> /month</small></div>
+                <ul class="ticks">
+                    <li>All 9 modules</li>
+                    <li>Offline mode + cloud backup</li>
+                    <li>Auto-generated tasks</li>
+                    <li>Seasonal calendar</li>
+                    <li>Full manual library</li>
                 </ul>
-                <button class="price-btn" data-launch-app>Start free trial</button>
+                <a href="/app" class="btn" data-umami-event="cta-pricing" data-umami-event-plan="basic">Start free trial</a>
             </div>
-            <div class="price-card featured">
-                <span class="price-tag tag-green">Most popular</span>
+            <div class="plan featured">
+                <span class="plan-tag tag-g">Most popular</span>
                 <h3>Pro</h3>
-                <p class="price-desc">For serious homesteaders</p>
-                <div class="price-amount">$9.99<span class="period"> /month</span></div>
-                <ul class="price-features">
-                    <li><span class="tick">✓</span> Everything in Basic</li>
-                    <li><span class="tick">✓</span> Smart offline farm assistant</li>
-                    <li><span class="tick">✓</span> Multi-zone management</li>
-                    <li><span class="tick">✓</span> Advanced analytics</li>
-                    <li><span class="tick">✓</span> Priority support</li>
+                <p class="desc">For serious homesteaders</p>
+                <div class="price">$9.99<small> /month</small></div>
+                <ul class="ticks">
+                    <li>Everything in Basic</li>
+                    <li>Smart offline farm assistant</li>
+                    <li>Multi-zone management</li>
+                    <li>Advanced analytics</li>
+                    <li>Priority support</li>
                 </ul>
-                <button class="price-btn" data-launch-app>Start free trial</button>
+                <a href="/app" class="btn btn-primary" data-umami-event="cta-pricing" data-umami-event-plan="pro">Start free trial</a>
             </div>
-            <div class="price-card">
-                <span class="price-tag tag-amber">Founding price — limited</span>
+            <div class="plan">
+                <span class="plan-tag tag-a">Founding price — limited</span>
                 <h3>Lifetime</h3>
-                <p class="price-desc">Pay once, farm forever</p>
-                <div class="price-amount">$190<span class="period"> one-time</span></div>
-                <ul class="price-features">
-                    <li><span class="tick">✓</span> Everything in Pro</li>
-                    <li><span class="tick">✓</span> Lifetime updates</li>
-                    <li><span class="tick">✓</span> Early-adopter price, locked in</li>
-                    <li><span class="tick">✓</span> Founding member badge</li>
-                    <li><span class="tick">✓</span> A say in the roadmap</li>
+                <p class="desc">Pay once, farm forever</p>
+                <div class="price">$190<small> one-time</small></div>
+                <ul class="ticks">
+                    <li>Everything in Pro</li>
+                    <li>Lifetime updates</li>
+                    <li>Early-adopter price, locked in</li>
+                    <li>Founding member badge</li>
+                    <li>A say in the roadmap</li>
                 </ul>
-                <button class="price-btn" data-launch-app>Start free trial</button>
+                <a href="/app" class="btn" data-umami-event="cta-pricing" data-umami-event-plan="lifetime">Start free trial</a>
             </div>
         </div>
-        <p class="pricing-note fade-in">Every plan starts with the same 7 free days. No card, cancel anytime.</p>
+        <p class="pricing-note">Every plan starts with the same 7 free days. Prices in USD. Cancel any time.</p>
+    </div>
+</section>
+
+<!-- WHY -->
+<section class="why">
+    <div class="container">
+        <div class="why-card reveal">
+            <div class="why-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/><path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/><path d="M5 21h14"/></svg></div>
+            <div>
+                <h3>Built by a grower, for beginners</h3>
+                <p>Most farming software is written for people who already farm. MyTerra is made by an independent grower in Albania who practises biointensive gardening and raises his own seedlings. It's built for the people that software leaves out: complete beginners who want the next job in plain words.</p>
+            </div>
+        </div>
     </div>
 </section>
 
 <!-- FAQ -->
 <section class="faq" id="faq">
     <div class="container">
-        <div class="section-head fade-in">
+        <div class="section-head reveal">
             <span class="eyebrow">FAQ</span>
             <h2>Fair questions.</h2>
         </div>
-        <div class="faq-list fade-in">
+        <div class="faq-list reveal">
             <details>
                 <summary>I've never grown anything. Is this for me?</summary>
-                <p>You're exactly who it's built for. MyTerra assumes zero knowledge: it tells you what to do, when, and why — in plain words, one small job at a time. If you can follow a game quest, you can follow a carrot bed.</p>
+                <p>Yes, that's exactly who it's for. MyTerra assumes zero knowledge: it tells you what to do, when and why, one small job at a time. If you can follow a game quest, you can follow a carrot bed.</p>
             </details>
             <details>
-                <summary>Does it really work offline?</summary>
-                <p>Yes. The whole app — tasks, guides, maps, logs — runs with no connection. Changes queue up and sync to your cloud backup the moment you're back online.</p>
+                <summary>Do I need a farm?</summary>
+                <p>No. A few pots on a balcony count. MyTerra has separate map styles for balconies, backyards and farms, and plans around the space you actually have.</p>
+            </details>
+            <details>
+                <summary>How does MyTerra decide what I should do?</summary>
+                <p>It combines your answers (space, sun, experience, time) with its crop and animal data, your region's planting calendar, the dates you planted things and your local forecast from Open-Meteo. It's guidance, not a guarantee: soil, weather and pests vary, so use your own judgement for big decisions.</p>
             </details>
             <details>
                 <summary>Which regions does it cover?</summary>
-                <p>The base data is tuned for Western Europe's maritime climate (UK, Ireland, Benelux, northern France). Regional overrides adapt planting windows and varieties for Northern Europe, the Mediterranean, and warm and cold zones of the US &amp; Canada.</p>
+                <p>The base data is tuned for Western Europe's maritime climate (UK, Ireland, Benelux, northern France). Regional settings adjust planting windows and varieties for Northern Europe, the Mediterranean, and the warmer and colder parts of the US and Canada. Other climates aren't covered yet.</p>
+            </details>
+            <details>
+                <summary>Does it really work offline?</summary>
+                <p>Yes. Once you've opened it online, your jobs, guides, map and logs all work with no connection. Changes sync to your account when you're back in range.</p>
             </details>
             <details>
                 <summary>Phone or laptop?</summary>
-                <p>Both. MyTerra runs in any modern browser and installs to your phone's home screen like a native app. Your farm syncs across every device you sign in on.</p>
+                <p>Both. MyTerra runs in any modern browser and installs to your phone's home screen like an app. Your farm syncs across every device you sign in on.</p>
             </details>
             <details>
                 <summary>What happens after the 7 days?</summary>
-                <p>You pick a plan to keep going — Basic, Pro, or the one-time Lifetime deal. No card is taken up front, so nothing charges automatically. Your farm data stays safe either way.</p>
+                <p>You choose Basic, Pro or Lifetime to keep going. No card is taken up front, so nothing charges automatically. If you don't pick a plan, your farm stays saved and viewable (read-only) until you do.</p>
+            </details>
+            <details>
+                <summary>Is my data private?</summary>
+                <p>Your farm is private to your account. We don't sell data or show ads, and you can export everything as a file at any time. Details are in the <a href="/privacy">privacy policy</a>.</p>
             </details>
         </div>
     </div>
@@ -667,31 +846,39 @@
 <!-- FINAL CTA -->
 <section class="final">
     <div class="container">
-        <div class="final-card fade-in">
-            <h2>Your first harvest starts today.</h2>
-            <p>Draw your farm in five minutes. Get your first quests immediately. Eat the results in a few weeks.</p>
-            <a href="/app" class="btn btn-primary">Start free — 7 days</a>
-            <p class="micro">No credit card. Works offline. Your data stays yours.</p>
+        <div class="final-card reveal">
+            <div class="final-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#128147" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></div>
+            <h2>Everyone can be a <em>farmer.</em></h2>
+            <p>Start with what you have. MyTerra shows you the rest.</p>
+            <a href="/app" class="btn btn-light" data-umami-event="cta-final">Build my growing space</a>
+            <p class="micro">7-day Pro trial · No card · Works offline</p>
         </div>
     </div>
 </section>
+</main>
 
 <!-- FOOTER -->
 <footer>
-    <div class="container">
-        <p>🌱 MyTerra — built with soil-stained hands in Albania.</p>
-        <p style="margin-top: 8px;">
-            <a href="mailto:dervis.kanina@gmail.com">Contact</a> &nbsp;·&nbsp;
-            <a href="/app">Launch the app</a> &nbsp;·&nbsp;
-            <a href="/terms">Terms</a> &nbsp;·&nbsp;
-            <a href="/privacy">Privacy</a> &nbsp;·&nbsp;
+    <div class="container foot">
+        <div>
+            <a href="#top" class="logo" data-scroll-top aria-label="MyTerra, back to top">
+                <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span>
+                MyTerra
+            </a>
+            <p>Grow food without the guesswork.</p>
+        </div>
+        <nav class="foot-links" aria-label="Footer">
+            <a href="/app">Launch the app</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
             <a href="/refunds">Refunds</a>
-        </p>
+            <a href="mailto:dervis.kanina@gmail.com">Contact</a>
+        </nav>
     </div>
 </footer>
 
-<!-- SCRIPTS -->
 <script defer src="/landing.js"></script>
-
 </body>
 </html>

@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 Disallow: /app
 Disallow: /app.html
+
+Sitemap: https://www.myterra.farm/sitemap.xml
