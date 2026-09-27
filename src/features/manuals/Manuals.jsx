@@ -7,6 +7,7 @@ import { COMP } from "../../data/companions";
 import { LDB } from "../../data/livestock";
 import { REGION_MAP } from "../../data/regions";
 import { PRESERVATION } from "../../data/preservation";
+import { RECIPES } from "../../data/recipes";
 import { PROJECT_GUIDES, BLUEPRINT_IMAGES } from "../../data/projects";
 import { Btn, Card, Inp, Overlay, Pill, Stat } from "../../components/ui";
 import FarmIcon from "../../components/FarmIcon";
@@ -85,9 +86,19 @@ function Preserving({embedded}) {
   const [sel, setSel] = useState(null);
   const [catFilter, setCatFilter] = useState("All");
 
-  const items = Object.entries(PRESERVATION);
-  const cats = ["All", ...new Set(items.map(([, r]) => r.cat))];
+  // Each method is followed by the step-by-step recipes that belong to it (RECIPES[k].parent).
+  // Recipe categories are listed first in the filter so they're easy to find.
+  const recipeEntries = Object.entries(RECIPES);
+  const items = [];
+  Object.entries(PRESERVATION).forEach(function(entry) {
+    items.push(entry);
+    recipeEntries.forEach(function(re) { if (re[1].parent === entry[0]) items.push(re); });
+  });
+  recipeEntries.forEach(function(re) { if (!PRESERVATION[re[1].parent]) items.push(re); });
+  const cats = ["All", ...new Set([...recipeEntries.map(([, r]) => r.cat), ...Object.values(PRESERVATION).map(r => r.cat)])];
   const filtered = catFilter === "All" ? items : items.filter(([, r]) => r.cat === catFilter);
+  const LIST = { margin: 0, paddingLeft: 18 };
+  const STEP_LABEL = /^([A-Z][A-Z0-9 ()&'’\-–+/.,%°#]{2,60}):\s/;
 
   const CAT_COLOR = {
     "Fermentation":             { bg: "#e8f5e9", c: "#2d6a4f", accent: "#52b788" },
@@ -101,6 +112,8 @@ function Preserving({embedded}) {
     "Curing & Smoking":         { bg: "#fbe9e7", c: "#bf360c", accent: "#ff7043" },
     "Fermentation & Distilling":{ bg: "#fce4ec", c: "#880e4f", accent: "#ec407a" },
     "Apiary":                   { bg: "#fff8e1", c: "#f57f17", accent: "#ffca28" },
+    "Cheese Recipes":           { bg: "#f3e5f5", c: "#6a1b9a", accent: "#8e24aa" },
+    "Cured Meat Recipes":       { bg: "#fbe9e7", c: "#bf360c", accent: "#e64a19" },
   };
 
   const DIFF_COLOR = { Easy: C.green, Intermediate: C.orange, Advanced: C.red, "Easy (once set up)": C.green, "Easy (with hive access)": C.green, "Intermediate–Advanced": C.orange, "Easy–Intermediate": "#27ae60" };
@@ -156,13 +169,14 @@ function Preserving({embedded}) {
                   <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap", alignItems: "center" }}>
                     <Pill sm c={cc.accent} bg={cc.accent + "22"}>{r.cat}</Pill>
                     <Pill sm bg={dc + "22"} c={dc}>{r.difficulty}</Pill>
+                    {r.time && <Pill sm bg={C.soft} c={C.t2}>⏱ {r.time}</Pill>}
                   </div>
                 </div>
               </div>
               {/* Shelf life + teaser */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontSize: 11, color: C.t2 }}>📦 {r.shelf}</span>
-                <span style={{ fontSize: 11, color: cc.accent, fontWeight: 600 }}>Read manual →</span>
+                <span style={{ fontSize: 11, color: cc.accent, fontWeight: 600 }}>{r.parent ? "Open recipe →" : "Read manual →"}</span>
               </div>
               <div style={{ fontSize: 12, color: C.t2, lineHeight: 1.5 }}>{r.overview.slice(0, 110)}…</div>
             </div>
@@ -174,8 +188,10 @@ function Preserving({embedded}) {
       {sel && (() => {
         const cc = CAT_COLOR[sel.cat] || { bg: "#f5f5f5", c: C.t2, accent: C.t3 };
         const dc = DIFF_COLOR[sel.difficulty] || C.t2;
+        const parent = sel.parent ? PRESERVATION[sel.parent] : null;
+        const kids = recipeEntries.filter(([, r]) => PRESERVATION[r.parent] === sel);
         return (
-          <Overlay title="" onClose={() => setSel(null)} wide>
+          <Overlay key={sel.name} title="" onClose={() => setSel(null)} wide>
             {/* Hero header */}
             <div style={{ background: `linear-gradient(135deg, ${cc.accent}26, ${cc.accent}0a)`, borderRadius: C.rs, padding: "20px 20px 16px", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -184,17 +200,62 @@ function Preserving({embedded}) {
                   <h2 style={{ margin: 0, fontFamily: F.head, fontSize: 22, lineHeight: 1.2 }}>{sel.name}</h2>
                   <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                     <Pill c={cc.accent} bg={cc.accent + "22"}>{sel.cat}</Pill>
-                    <Pill bg={C.card} c={dc} border={dc}>{sel.difficulty === "Easy" || sel.difficulty.startsWith("Easy") ? "✓ " : sel.difficulty.startsWith("Advanced") ? "⚠ " : "◎ "}{sel.difficulty}</Pill>
-                    <Pill bg={C.card} c={C.t2}>📦 {sel.shelf}</Pill>
+                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: C.card, color: dc, border: `1px solid ${dc}`, fontWeight: 600, fontFamily: F.body, lineHeight: 1.45 }}>{sel.difficulty === "Easy" || sel.difficulty.startsWith("Easy") ? "✓ " : sel.difficulty.startsWith("Advanced") ? "⚠ " : "◎ "}{sel.difficulty}</span>
+                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: C.card, color: C.t2, fontWeight: 600, fontFamily: F.body, lineHeight: 1.45 }}>📦 {sel.shelf}</span>
                   </div>
+                  {(sel.time || sel.yield) && (
+                    <div style={{ fontSize: 12, color: C.t2, marginTop: 8, lineHeight: 1.5 }}>
+                      {sel.time ? "⏱ " + sel.time : ""}{sel.time && sel.yield ? " · " : ""}{sel.yield ? "🍽 " + sel.yield : ""}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Recipe → back to its parent method */}
+            {parent && (
+              <button onClick={function() { setSel(parent); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.soft, border: `1px solid ${C.bdr}`, borderRadius: 20, padding: "6px 12px", marginBottom: 12, fontSize: 12, fontWeight: 600, color: C.t2, cursor: "pointer" }}>
+                ← Part of {parent.icon} {parent.name}
+              </button>
+            )}
 
             {/* Overview */}
             <InfoBlock label="📖 Overview" color={cc.accent} bg={cc.accent + "1a"}>
               {sel.overview}
             </InfoBlock>
+
+            {/* Method → its step-by-step recipes */}
+            {kids.length > 0 && (
+              <InfoBlock label={"📚 Step-by-step recipes (" + kids.length + ")"} color={cc.accent} bg={C.soft}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 2 }}>
+                  {kids.map(function(kv) {
+                    return (
+                      <button key={kv[0]} onClick={function() { setSel(kv[1]); }} style={{ background: C.card, border: `1px solid ${C.bdr}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: C.text, cursor: "pointer", boxShadow: C.sh }}>
+                        {kv[1].icon} {kv[1].name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </InfoBlock>
+            )}
+
+            {/* Safety (recipes) */}
+            {sel.safety && sel.safety.length > 0 && (
+              <InfoBlock label="⚠️ Safety first" color={C.red} bg={C.tPink}>
+                <ul style={LIST}>
+                  {sel.safety.map(function(line, i) { return <li key={i} style={{ marginBottom: 4 }}>{line}</li>; })}
+                </ul>
+              </InfoBlock>
+            )}
+
+            {/* Ingredients (recipes) */}
+            {sel.ingredients && sel.ingredients.length > 0 && (
+              <InfoBlock label="🧾 Ingredients" color={C.blue} bg={C.tBlue}>
+                <ul style={LIST}>
+                  {sel.ingredients.map(function(line, i) { return <li key={i} style={{ marginBottom: 4 }}>{line}</li>; })}
+                </ul>
+              </InfoBlock>
+            )}
 
             {/* Ratio */}
             {sel.ratio && (
@@ -215,7 +276,17 @@ function Preserving({embedded}) {
               <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".04em" }}>
                 👨‍🍳 Step-by-Step Method
               </div>
-              {sel.method.split(/(?=\d+\. |SUN DRYING:|DEHYDRATOR:|OVEN:|BLANCHING:|FRESH WHITE|RICOTTA:|EQUILIBRIUM|COLD SMOKING|REST:|WINE:|VINEGAR:|POTATOES:|CARROTS|ONIONS|CABBAGE:|SQUASH|APPLES:|SAFE ITEMS|UNSAFE)/).map((step, i) => (
+              {Array.isArray(sel.method) ? sel.method.map(function(step, i) {
+                const m = step.match(STEP_LABEL);
+                return (
+                  <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.bdr}` }}>
+                    <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 11, background: cc.accent + "22", color: cc.accent, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>{i + 1}</div>
+                    <div style={{ flex: 1, fontSize: 13, lineHeight: 1.65, color: C.text }}>
+                      {m ? <strong>{m[1]}: </strong> : null}{m ? step.slice(m[0].length) : step}
+                    </div>
+                  </div>
+                );
+              }) : sel.method.split(/(?=\d+\. |SUN DRYING:|DEHYDRATOR:|OVEN:|BLANCHING:|FRESH WHITE|RICOTTA:|EQUILIBRIUM|COLD SMOKING|REST:|WINE:|VINEGAR:|POTATOES:|CARROTS|ONIONS|CABBAGE:|SQUASH|APPLES:|SAFE ITEMS|UNSAFE)/).map((step, i) => (
                 step.trim() ? (
                   <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.bdr}` }}>
                     <div style={{ flex: 1, fontSize: 13, lineHeight: 1.65, color: C.text }}>{step.trim()}</div>
@@ -256,6 +327,11 @@ function Preserving({embedded}) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 4 }}>💡 PRO TIP</div>
                 <div style={SX.bodyText}>{sel.tip}</div>
               </div>
+            )}
+
+            {/* Sources (recipes) */}
+            {sel.sources && (
+              <div style={{ fontSize: 11, color: C.t3, lineHeight: 1.5, margin: "8px 2px 4px" }}>📚 Sources: {sel.sources}</div>
             )}
 
             {/* Video link */}
