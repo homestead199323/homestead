@@ -386,3 +386,22 @@ test('Snapping: paths land on the grid with square corners; zones snap to grid o
   const n=snapZone({xM:5.3,yM:2,wM:2,hM:1},[{xM:1,yM:2,wM:4.2,hM:1}],1,20,20);assert.equal(n.xM,5.2);
   const r=snapZone({xM:2,yM:2,wM:2.7,hM:0.2},[],1,20,20,true);assert.equal(r.wM,3);assert.equal(r.hM,1);
 });
+
+import {orderRoute} from '../src/features/quiet/walk-model.js';
+test('Walk route: beds are swept in order, never skipped and returned to, and areas are not revisited', () => {
+  // Six narrow beds side by side (each its own area), a coop to the right; entrance bottom middle.
+  const beds=Array.from({length:6},(_,i)=>({id:`b${i+1}`,type:'veg',name:String(i+1),xM:2+i*1.2,yM:2,wM:0.8,hM:8,rowCount:1}));
+  const zones=[...beds,{id:'coop',type:'barn',name:'Coop',xM:16,yM:2,wM:3,hM:2}];
+  const route=planRound([],{...fixture,farmW:20,farmH:14,zones,garden:{plots:[]},livestock:{animals:[]}},'full');
+  const ids=route.map(s=>s.zoneId);
+  const bedOrder=ids.filter(id=>id.startsWith('b'));
+  const asc=['b1','b2','b3','b4','b5','b6'];
+  assert(JSON.stringify(bedOrder)===JSON.stringify(asc)||JSON.stringify(bedOrder)===JSON.stringify([...asc].reverse()),bedOrder.join());
+  // contiguous: once you leave the beds you don't come back
+  const first=ids.findIndex(id=>id.startsWith('b')),lastI=ids.length-1-[...ids].reverse().findIndex(id=>id.startsWith('b'));
+  assert.equal(lastI-first,5);
+  // Rows inside one area are swept in order, starting from the end nearer to where you arrive.
+  const rows=[5,1,3,2,4].map(n=>({id:`p${n}`,zoneId:'bed',plotId:`p${n}`,xM:n,yM:5}));
+  assert.deepEqual(orderRoute(rows,0,5).map(s=>s.id),['p1','p2','p3','p4','p5']);
+  assert.deepEqual(orderRoute(rows,9,5).map(s=>s.id),['p5','p4','p3','p2','p1']);
+});

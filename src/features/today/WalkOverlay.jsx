@@ -28,13 +28,13 @@ import { art } from "../quiet/art";
 import { growthOf, animalZone } from "../quiet/farm-model";
 
 const PLANT_TYPES = ["veg", "herbs", "orchard", "greenhouse", "raised", "container"];
+const ROUTINE = new Set(["feed", "water", "eggs", "milk", "clean", "bedding", "paddock", "health", "hoof", "hive"]);
 function daysAgo(iso) {
   const d = Math.round((Date.now() - new Date(iso).getTime()) / 864e5);
   return d <= 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
 }
 function WalkStop({ stop, session, data, setData, onAdvance }) {
   const draft = session.draft || {},
-    checked = draft.checked || [],
     [error, setError] = useState(""),
     [photoBusy, setPhotoBusy] = useState(false);
   const zone = data.zones.find((z) => z.id === stop.zoneId),
@@ -99,6 +99,19 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
     }
   }
   const amountTypes = ["harvest", "eggs", "milk"];
+  // Routine care you do on every walk (feed, water, collect, clean…) starts ticked: finishing the
+  // stop completes it. Harvests, care steps and seedling moves change your records, so they stay a tap.
+  const doneToday = data.completions?.[todayLocalKey()] || [];
+  const defaultChecked = stop.tasks
+    .filter((t) => ROUTINE.has(t.type) && !doneToday.includes(t.key) && !taskAction(t, data).open)
+    .map((t) => t.key);
+  const checked = draft.checked ?? defaultChecked;
+  const amountOf = (t) => {
+    if (draft.amounts?.[t.key] != null) return draft.amounts[t.key];
+    const a = amountTypes.includes(t.type) && taskAction(t, data).amount;
+    return a ? String(a.value) : "";
+  };
+  const pending = checked.filter((k) => !doneToday.includes(k) && stop.tasks.some((t) => t.key === k)).length;
   function toggle(t) {
     const on = !checked.includes(t.key);
     const amount = taskAction(t, data).amount;
@@ -112,7 +125,7 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
   }
   function nudge(t, dir) {
     const step = taskAction(t, data).amount?.step || 1;
-    const n = Math.max(0, Math.round(((Number(draft.amounts?.[t.key]) || 0) + dir * step) * 10) / 10);
+    const n = Math.max(0, Math.round(((Number(amountOf(t)) || 0) + dir * step) * 10) / 10);
     update({ amounts: { ...draft.amounts, [t.key]: String(n) } });
   }
   function finish() {
@@ -120,15 +133,17 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
       (t) =>
         checked.includes(t.key) &&
         amountTypes.includes(t.type) &&
-        (!Number.isFinite(+draft.amounts?.[t.key]) ||
-          +draft.amounts?.[t.key] <= 0 ||
-          (t.type === "eggs" && !Number.isInteger(+draft.amounts?.[t.key]))),
+        (!Number.isFinite(+amountOf(t)) || +amountOf(t) <= 0 || (t.type === "eggs" && !Number.isInteger(+amountOf(t)))),
     );
     if (invalid) {
       setError("Enter how much you collected for each ticked job, or untick it if you got nothing.");
       return;
     }
-    onAdvance(true, draft.status || "healthy");
+    const amounts = {};
+    stop.tasks.forEach((t) => {
+      if (checked.includes(t.key) && amountTypes.includes(t.type)) amounts[t.key] = amountOf(t);
+    });
+    onAdvance(true, draft.status || "healthy", { checked, amounts });
   }
   const title = heroPlot ? heroPlot.name || heroPlot.crop : stop.label;
   const today = data.completions?.[todayLocalKey()] || [];
@@ -136,17 +151,18 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
     <>
       <div className="q-walk-card">
         <div className="q-walk-stop-head">
-          <div className="q-walk-stop-art">
-            {heroPlot ? (
-              <PlantArt crop={heroPlot.crop} stage={stage.index} size={60} />
-            ) : animal ? (
-              <AnimalArt species={animal.type} size={60} />
-            ) : art(stop.type) ? (
-              <img src={art(stop.type)} alt="" />
-            ) : (
-              <img src={art("prop-bush")} alt="" />
-            )}
-          </div>
+          {/* Only show art for what is really there: the crop, the animals, or the building. An empty bed gets none. */}
+          {(heroPlot || animal || (!plant && art(stop.type))) && (
+            <div className="q-walk-stop-art">
+              {heroPlot ? (
+                <PlantArt crop={heroPlot.crop} stage={stage.index} size={60} />
+              ) : animal ? (
+                <AnimalArt species={animal.type} size={60} />
+              ) : (
+                <img src={art(stop.type)} alt="" />
+              )}
+            </div>
+          )}
           <div className="q-grow">
             <h2>{title}</h2>
             {(stop.sub || (zone && zone.name !== title)) && (
@@ -214,7 +230,7 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
                           inputMode="decimal"
                           min="0"
                           step={amount.step}
-                          value={draft.amounts?.[t.key] ?? ""}
+                          value={amountOf(t)}
                           aria-label={`Amount in ${amount.unit}`}
                           onChange={(e) => update({ amounts: { ...draft.amounts, [t.key]: e.target.value } })}
                         />
@@ -343,7 +359,12 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
           Skip
         </button>
         <button className="q-button" disabled={photoBusy} onClick={finish}>
-          <Check size={17} /> {draft.status === "issue" ? "Save & next" : "Looks good · next"}
+          <Check size={17} />{" "}
+          {draft.status === "issue"
+            ? "Save & next"
+            : pending > 0
+              ? `Done ${pending} job${pending === 1 ? "" : "s"} · next`
+              : "Looks good · next"}
         </button>
       </div>
     </>
@@ -436,11 +457,11 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
       },
     });
   }
-  function advance(save, status) {
+  function advance(save, status, override) {
     if (lock.current || !stop) return;
     lock.current = true;
     let next = data;
-    const draft = { ...(session.draft || {}), status: status || session.draft?.status };
+    const draft = { ...(session.draft || {}), ...(override || {}), status: status || session.draft?.status };
     if (save) {
       const selected = stop.tasks.filter((t) => (draft.checked || []).includes(t.key));
       selected.forEach((t) => {
