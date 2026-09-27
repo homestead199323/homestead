@@ -1202,10 +1202,13 @@ export default function GroveScene({
         <span>
           {edit
             ? "Drag to move · corner to resize"
-            : showHelperText
-              ? "Tap an area to explore"
-              : "Growth stages are estimates"}
+            : three
+              ? "Drag to look around · tap an area to open it"
+              : showHelperText
+                ? "Tap an area to explore"
+                : "Growth stages are estimates"}
         </span>
+        {!three && (
         <div className="q-row">
           <button
             className="q-icon"
@@ -1227,6 +1230,7 @@ export default function GroveScene({
             <Plus size={16} />
           </button>
         </div>
+        )}
       </div>
       {zones.length === 0 && (
         <p className="q-empty">Make this space yours. Add your first bed in Edit layout.</p>

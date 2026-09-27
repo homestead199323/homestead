@@ -11,12 +11,13 @@
    flowers are all geometry. The app's crop / animal / prop illustrations
    stand in the scene as lit, shadow-casting sprites. View-only: the
    designer keeps the flat SVG map.
-   MARKER: GROVE_3D_ENGINE_V2
+   MARKER: GROVE_3D_ENGINE_V3
    ═══════════════════════════════════════════ */
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { Plus, Minus, Compass, Maximize2, Minimize2, X } from "lucide-react";
 import { art, cropArtwork } from "../quiet/art";
 import { growthOf, animalZone, bedRows, layoutPlots } from "../quiet/farm-model";
 import { plantingRows } from "../quiet/planting-plan";
@@ -35,8 +36,11 @@ const UP = new THREE.Vector3(0, 1, 0);
 const HPI = Math.PI / 2;
 
 /* ---------- textures ---------- */
-const loader = new THREE.TextureLoader();
+const manager = new THREE.LoadingManager();
+const loader = new THREE.TextureLoader(manager);
 const cache = new Map();
+const onTexturesLoaded = new Set(); // render callbacks of mounted scenes
+manager.onLoad = () => onTexturesLoaded.forEach((f) => f());
 function tex(url, { repeat, srgb = true, rot = 0 } = {}) {
   const key = url + "|" + (repeat ? repeat.join(",") : "") + "|" + rot;
   if (cache.has(key)) return cache.get(key);
@@ -102,16 +106,20 @@ const DRAW = {
 
 /* ---------- materials ---------- */
 function std(o) { return new THREE.MeshStandardMaterial({ roughness: .9, metalness: 0, ...o }); }
+function layer(m, n) { m.polygonOffset = true; m.polygonOffsetFactor = -1; m.polygonOffsetUnits = -n; return m; }
 function materials() {
+  const memo = new Map();
+  const keep = (key, make) => { let m = memo.get(key); if (!m) { m = make(); memo.set(key, m); } return m; };
+  const k = (...a) => a.map((v) => (typeof v === "number" ? v.toFixed(2) : String(v))).join("|");
   return {
-    grass: (rx, ry, color = 0xffffff) => std({ map: tex(art("aerial-grass"), { repeat: [rx, ry] }), color }),
-    lawn: (rx, ry, color = 0xffffff) => std({ map: tex(art("texture-grass"), { repeat: [rx, ry] }), color, roughness: 1 }),
-    soil: (rx, ry, color = 0xffffff) => std({ map: tex(art("texture-soil"), { repeat: [rx, ry] }), color, roughness: 1 }),
-    gravel: (rx, ry) => std({ map: tex(art("texture-gravel"), { repeat: [rx, ry] }) }),
-    stone: (rx, ry, color = 0xffffff) => std({ map: tex(art("texture-stone"), { repeat: [rx, ry] }), color }),
+    grass: (rx, ry, color = 0xffffff) => keep(k("grass", rx, ry, color), () => std({ map: tex(art("aerial-grass"), { repeat: [rx, ry] }), color })),
+    lawn: (rx, ry, color = 0xffffff) => keep(k("lawn", rx, ry, color), () => layer(std({ map: tex(art("texture-grass"), { repeat: [rx, ry] }), color, roughness: 1 }), 6)),
+    soil: (rx, ry, color = 0xffffff) => keep(k("soil", rx, ry, color), () => layer(std({ map: tex(art("texture-soil"), { repeat: [rx, ry] }), color, roughness: 1 }), 6)),
+    gravel: (rx, ry) => keep(k("gravel", rx, ry), () => layer(std({ map: tex(art("texture-gravel"), { repeat: [rx, ry] }) }), 6)),
+    stone: (rx, ry, color = 0xffffff) => keep(k("stone", rx, ry, color), () => layer(std({ map: tex(art("texture-stone"), { repeat: [rx, ry] }), color }), 6)),
     wood: std({ map: tex(art("texture-wood")), color: 0xcdb08a }),
     woodDark: std({ map: tex(art("texture-wood")), color: 0x7a5c3e }),
-    planks: (rx, ry, color = 0xd9c39c) => std({ map: proc("planks", DRAW.planks, { repeat: [rx, ry] }), color }),
+    planks: (rx, ry, color = 0xd9c39c) => keep(k("planks", rx, ry, color), () => std({ map: proc("planks", DRAW.planks, { repeat: [rx, ry] }), color })),
     stucco: std({ map: proc("stucco", DRAW.stucco, { repeat: [2, 2] }) }),
     brick: (rx, ry) => std({ map: proc("brick", DRAW.brick, { repeat: [rx, ry] }) }),
     tiles: (rx, ry, rot = 0) => std({ map: proc("tiles", DRAW.tiles, { repeat: [rx, ry], rot }), roughness: .85 }),
@@ -130,7 +138,7 @@ function materials() {
     metal: std({ color: 0x8c9196, roughness: .45, metalness: .6 }),
     zinc: std({ color: 0xb9bdb7, roughness: .5, metalness: .4 }),
     plinth: (rx) => std({ map: tex(art("texture-stone"), { repeat: [rx, .5] }), color: 0xb9b2a2 }),
-    concrete: std({ color: 0xb8b4aa, roughness: .95 }),
+    concrete: layer(std({ color: 0xb8b4aa, roughness: .95 }), 6),
     rubber: std({ color: 0x2a2a2a, roughness: .9 }),
     terracotta: std({ color: 0xc07a55, roughness: .85 }),
     bark: std({ map: proc("bark", DRAW.bark, { size: 128, repeat: [2, 3] }), roughness: 1 }),
@@ -140,11 +148,14 @@ function materials() {
     compost: [0x6b5340, 0x4f3b2b, 0x3c2e22].map((c) => std({ map: tex(art("texture-soil"), { repeat: [2, 2] }), color: c })),
     hay: std({ map: proc("hay", DRAW.hay, { size: 128, repeat: [2, 2] }) }),
     shade: new THREE.MeshStandardMaterial({ map: proc("shade", DRAW.shade, { size: 64, repeat: [6, 6] }), transparent: true, side: THREE.DoubleSide, depthWrite: false, roughness: 1 }),
-    mulch: new THREE.MeshStandardMaterial({ map: proc("soilDisc", DRAW.soilDisc, { size: 128, clamp: true }), transparent: true, depthWrite: false, roughness: 1 }),
+    mulch: layer(new THREE.MeshStandardMaterial({ map: proc("soilDisc", DRAW.soilDisc, { size: 128, clamp: true }), transparent: true, depthWrite: false, roughness: 1 }), 13),
     rock: std({ map: tex(art("texture-stone")), color: 0x9d9a90, flatShading: true }),
-    hedge: (rx, ry) => std({ map: proc("hedge", DRAW.hedge, { repeat: [rx, ry] }), roughness: 1 }),
-    pavers: (rx, ry) => std({ map: tex(art("texture-stone"), { repeat: [rx, ry] }), color: 0xd4cfc4 }),
-    contact: new THREE.MeshBasicMaterial({ map: proc("contact", DRAW.contact, { size: 128, clamp: true }), transparent: true, depthWrite: false }),
+    hedge: (rx, ry) => keep(k("hedge", rx, ry), () => std({ map: proc("hedge", DRAW.hedge, { repeat: [rx, ry] }), roughness: 1 })),
+    pavers: (rx, ry) => keep(k("pavers", rx, ry), () => layer(std({ map: tex(art("texture-stone"), { repeat: [rx, ry] }), color: 0xd4cfc4 }), 5)),
+    hit: new THREE.MeshBasicMaterial({ visible: false }),
+    select: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .32, depthWrite: false }), 14),
+    selectEdge: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .95, depthWrite: false }), 15),
+    contact: layer(new THREE.MeshBasicMaterial({ map: proc("contact", DRAW.contact, { size: 128, clamp: true }), transparent: true, depthWrite: false }), 12),
     solar: new THREE.MeshPhysicalMaterial({ map: proc("solar", DRAW.solar, { size: 64 }), roughness: .2, metalness: .5, envMapIntensity: 1.4 }),
     tuft: new THREE.MeshLambertMaterial({ map: proc("tuft", DRAW.tuft, { size: 128, clamp: true }), transparent: true, alphaTest: .35, side: THREE.DoubleSide }),
     flower: new THREE.MeshLambertMaterial({ map: proc("flower", DRAW.flower, { size: 128, clamp: true }), transparent: true, alphaTest: .35, side: THREE.DoubleSide }),
@@ -194,14 +205,23 @@ function billboard(g, url, w, x, y, z, list, { sink = .04 } = {}) {
   m.castShadow = true; m.receiveShadow = false; m.customDepthMaterial = depth;
   g.add(m); list.push(m); return m;
 }
-function sprites(g, batches) { // dense crops: two crossed planes per plant, one InstancedMesh per artwork and orientation
+function sprites(g, batches) { // dense crops: two crossed planes plus a flat top-view plane per plant, instanced per artwork
+  const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), E = new THREE.Euler();
   batches.forEach((list, url) => {
     const { mat, depth } = billMat(url), asp = aspectOf(url);
     const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, .5, 0);
     [0, HPI].forEach((ry) => {
-      const im = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), E = new THREE.Euler();
+      const im = new THREE.InstancedMesh(geo, mat, list.length);
       list.forEach((it, i) => { P.set(it.x, it.y - it.w * asp * .08, it.z); E.set(0, ry + it.r, 0); Q.setFromEuler(E); S.set(it.w, it.w * asp, 1); M4.compose(P, Q, S); im.setMatrixAt(i, M4); });
       im.instanceMatrix.needsUpdate = true; im.castShadow = true; im.receiveShadow = false; im.customDepthMaterial = depth; g.add(im);
+    });
+    // seen from above the crosses would read as thin lines, so a flat plane with the top-view artwork sits in the crown
+    const tops = new Map();
+    list.forEach((it) => { const t = it.top || url; if (!tops.has(t)) tops.set(t, []); tops.get(t).push(it); });
+    tops.forEach((items, turl) => {
+      const tm = billMat(turl), tasp = aspectOf(turl), im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), tm.mat, items.length);
+      items.forEach((it, i) => { const h = it.w * asp; P.set(it.x, it.y + h * .55, it.z); E.set(-HPI, 0, it.r, "YXZ"); Q.setFromEuler(E); S.set(it.w * .95, it.w * .95 * tasp, 1); M4.compose(P, Q, S); im.setMatrixAt(i, M4); });
+      im.instanceMatrix.needsUpdate = true; im.castShadow = false; im.receiveShadow = false; g.add(im);
     });
   });
 }
@@ -472,6 +492,8 @@ function building(g, w, d, kind, M, { clay = false, tag = (m) => m, bills = [] }
     for (let k = 0; ; k++) { const u = door / 2 + .55 + ww / 2 + k * 1.9; if (u + ww / 2 + .9 > w / 2) break; windowAt(dg, put, "S", u, wy, ww, wh, M, { shutters: true }); windowAt(dg, put, "S", -u, wy, ww, wh, M, { shutters: true }); }
     const nE = Math.max(0, Math.floor((d - 1.0) / 2.0));
     for (let i = 0; i < nE; i++) { const u = (i - (nE - 1) / 2) * 2.0; windowAt(dg, put, "W", u, wy, ww, wh, M); windowAt(dg, put, "E", u, wy, ww, wh, M); }
+    const nN = Math.max(0, Math.floor((w - 1.0) / 2.2));
+    for (let i = 0; i < nN; i++) windowAt(dg, put, "N", (i - (nN - 1) / 2) * 2.2, wy, ww, wh, M);
     // a lamp beside the door
     dg.add(put(mesh([.08, .14, .08], M.brass), "S", door / 2 + .3, doorH - .2, .06));
     solarPanels(g, cx, cz, w + 2 * ov, d + 2 * ov, H, rise, M);
@@ -591,10 +613,10 @@ function benchSlatted(g, M, bx, bz, bw, bd, y = .8) {
 }
 
 function buildZone(z, ctx) {
-  const { data, crops, bills, hits, M } = ctx;
+  const { data, crops, bills, M } = ctx;
   const g = new THREE.Group(); g.position.set(z.xM, 0, z.yM);
   const w = z.wM, d = z.hM, cx = w / 2, cz = d / 2, plant = isPlantZone(z.type), oval = z.shape === "oval";
-  const tag = (m) => { m.userData.zoneId = z.id; hits.push(m); return m; };
+  const tag = (m) => { m.userData.zoneId = z.id; return m; }; // taps use the zone hit box, not the detail meshes
   const plots = data.garden?.plots || [];
   let plants = plant ? plantsOf(z, plots, crops) : [];
   let floor = 0;
@@ -817,7 +839,7 @@ function buildZone(z, ctx) {
     const grow = p.stage === 2 ? .5 : p.stage === 3 ? .78 : 1;
     const bw = Math.max(.26, Math.min(1.2, p.size * 1.5 * grow));
     const url = cropArtwork(p.crop, p.stage, "side"); let b = batches.get(url); if (!b) { b = []; batches.set(url, b); }
-    b.push({ x: p.x + (srand(i) - .5) * .05, y: lift, z: p.y + (srand(i + 7) - .5) * .05, w: bw, r: (srand(i + 3) - .5) * .5 });
+    b.push({ x: p.x + (srand(i) - .5) * .05, y: lift, z: p.y + (srand(i + 7) - .5) * .05, w: bw, r: (srand(i + 3) - .5) * .5, top: cropArtwork(p.crop, p.stage, "top") });
   });
   sprites(g, batches);
   instances(g, new THREE.CircleGeometry(1, 8), std({ color: 0x8a7756 }), seedlingItems, { cast: false });
@@ -833,22 +855,22 @@ function buildZone(z, ctx) {
       billboard(g, src, aw, xx, 0, zz, bills, { sink: .06 });
     }
   });
-  g.traverse((m) => { if (m.isMesh && !m.userData.zoneId) { m.userData.zoneId = z.id; hits.push(m); } });
   return g;
 }
 
 function buildWorld(ctx) {
   const { data, zones, roads, fW, fH, margin, env, M } = ctx;
   const world = new THREE.Group();
-  const E = Math.max(fW, fH) * 2.2, GW = fW + E * 2, GH = fH + E * 2;
+  const E = Math.max(fW, fH) * 16, GW = fW + E * 2, GH = fH + E * 2;
   const style = data.mapStyle || {}, gm = style.groundMaterial || (env === "balcony" ? "stone" : "meadow");
   const tint = { natural: 0xb9cc9e, dry: 0xdcd3a8, deep: 0x97b57e }[style.groundColor] || 0xb9cc9e;
   const groundMat = gm === "meadow" ? M.lawn(GW / 2.6, GH / 2.6, tint) : gm === "soil" ? M.soil(GW / 1.5, GH / 1.5) : gm === "gravel" ? M.gravel(GW / 1.5, GH / 1.5) : M.stone(GW / 1.5, GH / 1.5);
+  groundMat.polygonOffset = false; // the ground is the base layer; everything on it is offset toward the camera
   const ground = plane(world, GW, GH, groundMat, fW / 2, 0, fH / 2);
   ground.receiveShadow = true;
-  const mottle = plane(world, GW, GH, new THREE.MeshBasicMaterial({ map: proc("mottle", DRAW.mottle, { size: 512, repeat: [GW / 42, GH / 42] }), transparent: true, blending: THREE.MultiplyBlending, premultipliedAlpha: true, depthWrite: false }), fW / 2, .004, fH / 2);
+  const mottle = plane(world, GW, GH, layer(new THREE.MeshBasicMaterial({ map: proc("mottle", DRAW.mottle, { size: 512, repeat: [GW / 42, GH / 42] }), transparent: true, blending: THREE.MultiplyBlending, premultipliedAlpha: true, depthWrite: false }), 2), fW / 2, .004, fH / 2);
   mottle.receiveShadow = false;
-  const vig = plane(world, GW, GH, new THREE.MeshBasicMaterial({ map: proc("vignette", (g2, sz) => { const gr = g2.createRadialGradient(sz / 2, sz / 2, sz * .18, sz / 2, sz / 2, sz * .5); gr.addColorStop(0, "rgba(20,40,16,0)"); gr.addColorStop(1, "rgba(20,40,16,.55)"); g2.fillStyle = gr; g2.fillRect(0, 0, sz, sz); }, { size: 512, clamp: true }), transparent: true, depthWrite: false }), fW / 2, .006, fH / 2);
+  const vig = plane(world, GW, GH, layer(new THREE.MeshBasicMaterial({ map: proc("vignette", (g2, sz) => { const gr = g2.createRadialGradient(sz / 2, sz / 2, sz * .18, sz / 2, sz / 2, sz * .5); gr.addColorStop(0, "rgba(20,40,16,0)"); gr.addColorStop(1, "rgba(20,40,16,.55)"); g2.fillStyle = gr; g2.fillRect(0, 0, sz, sz); }, { size: 512, clamp: true }), transparent: true, depthWrite: false }), 4), fW / 2, .006, fH / 2);
   vig.receiveShadow = false;
   // farm boundary: post-and-rail fence, stone gate pillars, a gate
   const gap = 2.4;
@@ -862,15 +884,24 @@ function buildWorld(ctx) {
   const drive = [{ xM: fW / 2, yM: fH - .2 }, { xM: fW / 2, yM: fH + Math.max(margin * 1.6, 3) }];
   // roads with a soft soil edge
   const paved = ctx.pathTexture === "stone";
-  const roadMat = std({ map: tex(art("texture-" + (ctx.pathTexture || "gravel")), { repeat: [1, 1] }), color: paved ? 0xcdc8bd : ctx.pathTexture === "soil" ? 0xd8cdb8 : 0xd6d3cb, side: THREE.DoubleSide });
-  const edgeMat = paved ? std({ color: 0xe9e5dc, roughness: .8, side: THREE.DoubleSide }) : std({ color: ctx.pathTexture === "soil" ? 0xb9a98e : 0xb8b4aa, roughness: .9, side: THREE.DoubleSide });
+  const roadMat = layer(std({ map: tex(art("texture-" + (ctx.pathTexture || "gravel")), { repeat: [1, 1] }), color: paved ? 0xcdc8bd : ctx.pathTexture === "soil" ? 0xd8cdb8 : 0xd6d3cb, side: THREE.DoubleSide }), 10);
+  const edgeMat = layer(paved ? std({ color: 0xe9e5dc, roughness: .8, side: THREE.DoubleSide }) : std({ color: ctx.pathTexture === "soil" ? 0xb9a98e : 0xb8b4aa, roughness: .9, side: THREE.DoubleSide }), 8);
   [...roads, drive].forEach((raw) => {
     if (raw.length < 2) return; const line = smooth(raw);
     const e = new THREE.Mesh(ribbonGeo(line, ctx.roadWidth + (paved ? .3 : .22)), edgeMat); e.position.y = paved ? .02 : .011; e.receiveShadow = true; world.add(e);
     const m = new THREE.Mesh(ribbonGeo(line, ctx.roadWidth), roadMat); m.position.y = paved ? .03 : .016; m.receiveShadow = true; world.add(m);
   });
-  // zones
-  zones.forEach((z) => world.add(buildZone(z, ctx)));
+  // zones — each one also gets an invisible hit box (its bounding box) for taps, so the detailed
+  // geometry can be merged for speed without losing which area was tapped
+  zones.forEach((z) => {
+    const g = buildZone(z, ctx); world.add(g); g.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(g), size = new THREE.Vector3(), c = new THREE.Vector3();
+    if (bb.isEmpty()) { bb.min.set(z.xM, 0, z.yM); bb.max.set(z.xM + z.wM, .5, z.yM + z.hM); }
+    bb.min.y = Math.min(0, bb.min.y); bb.max.y = Math.max(bb.min.y + .6, bb.max.y);
+    bb.getSize(size); bb.getCenter(c);
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), M.hit); hit.position.copy(c); hit.userData.zoneId = z.id; hit.userData.bounds = { x0: bb.min.x, x1: bb.max.x, z0: bb.min.z, z1: bb.max.z, h: bb.max.y };
+    world.add(hit); ctx.hits.push(hit);
+  });
   // user-drawn fences and gates
   (data.mapLines || []).filter((l) => l.kind !== "path" && (l.points || []).length > 1).forEach((l) => {
     if (l.kind === "gate") { const a = l.points[0], b = l.points[l.points.length - 1], len = Math.hypot(b.xM - a.xM, b.yM - a.yM); gate(world, (a.xM + b.xM) / 2, (a.yM + b.yM) / 2, Math.max(.8, Math.min(3, len - .2)), Math.atan2(-(b.yM - a.yM), b.xM - a.xM), M); return; }
@@ -906,106 +937,402 @@ function buildWorld(ctx) {
   const flowers = [], nf = Math.min(120, Math.round(fW * fH / 14));
   for (let i = 0; i < nf; i++) { const [x, y] = open(i, 900); if (x == null) continue; const s = .7 + srand(i + 41) * .6; flowers.push({ p: [x, .2 * s, y], ry: srand(i + 43) * 3, s }, { p: [x, .2 * s, y], ry: srand(i + 43) * 3 + HPI, s }); }
   instances(world, new THREE.PlaneGeometry(.5, .42), M.flower, flowers, { cast: false, receive: false });
+  bake(world, new Set([...ctx.bills, ...ctx.hits]));
   return world;
+}
+/* Merge every static mesh that shares a material into one draw call. Instanced meshes, the
+   camera-facing sprites and the hit boxes are left alone. Turns ~1,500 draw calls into ~200. */
+function bake(world, keep) {
+  world.updateMatrixWorld(true);
+  const groups = new Map(), drop = [];
+  world.traverse((m) => {
+    if (!m.isMesh || m.isInstancedMesh || keep.has(m) || !m.geometry || !m.material || Array.isArray(m.material)) return;
+    const key = m.material.uuid + "|" + (m.castShadow ? 1 : 0) + (m.receiveShadow ? 1 : 0) + "|" + (m.renderOrder || 0);
+    let g = groups.get(key);
+    if (!g) { g = { material: m.material, cast: m.castShadow, receive: m.receiveShadow, depth: m.customDepthMaterial, order: m.renderOrder || 0, geos: [] }; groups.set(key, g); }
+    const geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+    if (!geo.attributes.normal) geo.computeVertexNormals();
+    if (!geo.attributes.uv) geo.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+    Object.keys(geo.attributes).forEach((a) => { if (a !== "position" && a !== "normal" && a !== "uv") geo.deleteAttribute(a); });
+    geo.applyMatrix4(m.matrixWorld);
+    g.geos.push(geo); drop.push(m);
+  });
+  drop.forEach((m) => { m.parent.remove(m); m.geometry.dispose(); });
+  groups.forEach((g) => {
+    const merged = g.geos.length === 1 ? g.geos[0] : mergeGeometries(g.geos, false);
+    if (!merged) return;
+    if (g.geos.length > 1) g.geos.forEach((x) => x.dispose());
+    const mesh = new THREE.Mesh(merged, g.material);
+    mesh.castShadow = g.cast; mesh.receiveShadow = g.receive; mesh.renderOrder = g.order;
+    if (g.depth) mesh.customDepthMaterial = g.depth;
+    world.add(mesh);
+  });
+}
+
+/* ---------- map-game camera controls ----------
+   One finger / left mouse: drag the ground (with inertia). Two fingers: pinch to zoom, twist to
+   rotate, drag up/down to tilt — all anchored to the point between the fingers. Wheel zooms toward
+   the cursor; right-drag or shift/ctrl-drag orbits. Tap opens an area; double-tap on the ground
+   zooms in. Arrow keys pan, +/- zoom. Everything is clamped to the farm. */
+const DEG = Math.PI / 180;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = (t) => 1 - Math.pow(1 - t, 3);
+class FarmControls {
+  constructor(camera, dom, hooks) {
+    this.camera = camera; this.dom = dom; this.hooks = hooks; this.enabled = true;
+    this.cooperative = false; // inline in a scrolling page: one finger scrolls the page, two fingers move the map, plain wheel scrolls
+    this.target = new THREE.Vector3(); this.dist = 60; this.theta = CAM.az * DEG; this.phi = CAM.el * DEG;
+    this.lim = { minDist: 3, maxDist: 200, minPhi: 26 * DEG, maxPhi: 82 * DEG, x0: -10, x1: 10, z0: -10, z1: 10 };
+    this.size = { w: 1, h: 1 }; this.home = null;
+    this.pointers = new Map(); this.pan = null; this.pinch = null; this.tapStart = null; this.lastTap = null; this.samples = [];
+    this.raf = 0; this.anim = null; this.inertia = null; this.idleTimer = 0; this.interacting = false;
+    this.ray = new THREE.Raycaster(); this.ndc = new THREE.Vector2(); this.tmp = new THREE.Vector3(); this.tmp2 = new THREE.Vector3();
+    this.onDown = this.onDown.bind(this); this.onMove = this.onMove.bind(this); this.onUp = this.onUp.bind(this);
+    this.onWheel = this.onWheel.bind(this); this.onKey = this.onKey.bind(this); this.onBlock = (e) => e.preventDefault();
+    dom.addEventListener("pointerdown", this.onDown); dom.addEventListener("pointermove", this.onMove);
+    dom.addEventListener("pointerup", this.onUp); dom.addEventListener("pointercancel", this.onUp);
+    dom.addEventListener("wheel", this.onWheel, { passive: false }); dom.addEventListener("keydown", this.onKey);
+    dom.addEventListener("contextmenu", this.onBlock); dom.addEventListener("gesturestart", this.onBlock);
+    dom.tabIndex = 0; dom.style.outline = "none"; dom.style.cursor = "grab";
+  }
+  dispose() {
+    const d = this.dom; cancelAnimationFrame(this.raf); clearTimeout(this.idleTimer);
+    d.removeEventListener("pointerdown", this.onDown); d.removeEventListener("pointermove", this.onMove); d.removeEventListener("pointerup", this.onUp); d.removeEventListener("pointercancel", this.onUp);
+    d.removeEventListener("wheel", this.onWheel); d.removeEventListener("keydown", this.onKey); d.removeEventListener("contextmenu", this.onBlock); d.removeEventListener("gesturestart", this.onBlock);
+  }
+  view() { return { target: this.target.toArray(), dist: this.dist, theta: this.theta, phi: this.phi }; }
+  setCooperative(on) { this.cooperative = on; this.dom.style.touchAction = on ? "pan-y" : "none"; }
+  update() {
+    const { target, dist, theta, phi } = this;
+    this.camera.position.set(target.x + Math.sin(theta) * Math.cos(phi) * dist, target.y + Math.sin(phi) * dist, target.z + Math.cos(theta) * Math.cos(phi) * dist);
+    this.camera.lookAt(target); this.camera.updateMatrixWorld();
+  }
+  clampView() {
+    const L = this.lim; this.dist = clamp(this.dist, L.minDist, L.maxDist); this.phi = clamp(this.phi, L.minPhi, L.maxPhi);
+    this.target.x = clamp(this.target.x, L.x0, L.x1); this.target.z = clamp(this.target.z, L.z0, L.z1); this.target.y = 0;
+  }
+  local(e) { const r = this.dom.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  groundAt(x, y, out = this.tmp) {
+    this.ndc.set((x / this.size.w) * 2 - 1, -(y / this.size.h) * 2 + 1); this.ray.setFromCamera(this.ndc, this.camera);
+    const r = this.ray.ray, t = -r.origin.y / r.direction.y; if (!(t > 0) || t > 1e4) return null;
+    return out.copy(r.direction).multiplyScalar(t).add(r.origin);
+  }
+  anchor(x, y, world) { // shift the view so that the ground point `world` sits under screen (x, y)
+    this.update(); const p = this.groundAt(x, y, this.tmp2); if (!p) { this.clampView(); this.update(); return; }
+    this.target.x += world.x - p.x; this.target.z += world.z - p.z; this.clampView(); this.update();
+  }
+  changed() { this.hooks.change(); }
+  interact(on) {
+    clearTimeout(this.idleTimer);
+    if (on) { if (!this.interacting) { this.interacting = true; this.hooks.interact(true); } return; }
+    this.idleTimer = setTimeout(() => { if (this.pointers.size || this.anim || this.inertia) return; this.interacting = false; this.hooks.interact(false); }, 150);
+  }
+  onDown(e) {
+    if (!this.enabled || (e.button !== undefined && e.button > 2)) return;
+    try { this.dom.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
+    this.stopMotion(); this.hooks.first?.();
+    const p = this.local(e), now = performance.now();
+    this.pointers.set(e.pointerId, { x: p.x, y: p.y, btn: e.button, mods: !!(e.ctrlKey || e.metaKey || e.shiftKey), touch: e.pointerType === "touch", hinted: false });
+    this.interact(true);
+    if (this.pointers.size === 1) {
+      this.tapStart = { x: p.x, y: p.y, t: now, moved: 0 };
+      if (this.cooperative && e.pointerType === "touch") this.pan = null; // the page scrolls; two fingers move the map
+      else { this.beginPan(p); this.dom.style.cursor = "grabbing"; }
+    }
+    else if (this.pointers.size === 2) { this.beginPinch(); this.tapStart = null; }
+    else { this.pinch = null; this.pan = null; this.tapStart = null; }
+    e.preventDefault();
+  }
+  beginPan(p) { this.update(); const a = this.groundAt(p.x, p.y, new THREE.Vector3()); this.pan = a ? { anchor: a } : null; this.samples = []; }
+  beginPinch() {
+    const [a, b] = [...this.pointers.values()]; this.update();
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    this.pinch = { d0: Math.hypot(b.x - a.x, b.y - a.y) || 1, a0: Math.atan2(b.y - a.y, b.x - a.x), mid0: mid, dist0: this.dist, theta0: this.theta, phi0: this.phi, anchor: this.groundAt(mid.x, mid.y, new THREE.Vector3()), rotating: false, rotOff: 0, tilting: false, tiltOff: 0 };
+    this.pan = null;
+  }
+  onMove(e) {
+    const P = this.pointers.get(e.pointerId); if (!P) return;
+    const p = this.local(e), dx = p.x - P.x, dy = p.y - P.y; P.x = p.x; P.y = p.y;
+    if (this.tapStart) this.tapStart.moved = Math.max(this.tapStart.moved, Math.hypot(p.x - this.tapStart.x, p.y - this.tapStart.y));
+    if (this.pointers.size === 2 && this.pinch) this.movePinch();
+    else if (this.pointers.size === 1) {
+      if (this.cooperative && P.touch) { if (!P.hinted && this.tapStart && this.tapStart.moved > 12) { P.hinted = true; this.hooks.coop?.("touch"); } return; }
+      if (P.btn === 2 || P.mods) { this.theta -= dx * .006; this.phi = clamp(this.phi + dy * .005, this.lim.minPhi, this.lim.maxPhi); this.update(); }
+      else if (this.pan) {
+        const g = this.groundAt(p.x, p.y, this.tmp2);
+        if (g) { this.target.x += this.pan.anchor.x - g.x; this.target.z += this.pan.anchor.z - g.z; this.clampView(); this.update(); this.samples.push([performance.now(), this.target.x, this.target.z]); if (this.samples.length > 8) this.samples.shift(); }
+      }
+    }
+    this.changed(); e.preventDefault();
+  }
+  movePinch() {
+    const [a, b] = [...this.pointers.values()], S = this.pinch;
+    const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ang = Math.atan2(b.y - a.y, b.x - a.x), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    this.dist = clamp((S.dist0 * S.d0) / d, this.lim.minDist, this.lim.maxDist);
+    let da = ang - S.a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    if (!S.rotating && Math.abs(da) > 6 * DEG) { S.rotating = true; S.rotOff = da; }
+    if (S.rotating) this.theta = S.theta0 + (da - S.rotOff);
+    const dyMid = mid.y - S.mid0.y;
+    if (!S.tilting && Math.abs(dyMid) > 16 && Math.abs(d - S.d0) < 40) { S.tilting = true; S.tiltOff = dyMid; }
+    if (S.tilting) this.phi = clamp(S.phi0 + (dyMid - S.tiltOff) * .0045, this.lim.minPhi, this.lim.maxPhi);
+    if (S.anchor) this.anchor(mid.x, mid.y, S.anchor); else { this.clampView(); this.update(); }
+  }
+  onUp(e) {
+    const P = this.pointers.get(e.pointerId); if (!P) return;
+    this.pointers.delete(e.pointerId); try { this.dom.releasePointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
+    if (this.pointers.size === 1) { const [q] = [...this.pointers.values()]; this.pinch = null; this.beginPan(q); this.tapStart = null; }
+    else if (this.pointers.size === 0) {
+      this.dom.style.cursor = "grab";
+      const ts = this.tapStart; this.tapStart = null; this.pinch = null; this.pan = null;
+      if (ts && ts.moved < 8 && performance.now() - ts.t < 400 && e.type !== "pointercancel") this.tap(ts.x, ts.y, e);
+      else this.startInertia();
+      this.interact(false);
+    }
+    e.preventDefault();
+  }
+  tap(x, y, e) {
+    const hit = this.hooks.tap(x, y, e), now = performance.now(), lt = this.lastTap;
+    if (!hit && lt && now - lt.t < 320 && Math.hypot(x - lt.x, y - lt.y) < 30) { this.lastTap = null; this.zoomAt(x, y, .55, 380); }
+    else this.lastTap = hit ? null : { x, y, t: now };
+  }
+  stopMotion() { this.anim = null; this.inertia = null; }
+  startInertia() {
+    const s = this.samples; if (s.length < 2) return;
+    const now = performance.now(), last = s[s.length - 1]; let first = s[0];
+    for (const q of s) if (now - q[0] <= 90) { first = q; break; }
+    const dt = last[0] - first[0]; if (dt < 8 || now - last[0] > 100) return;
+    let vx = (last[1] - first[1]) / dt, vz = (last[2] - first[2]) / dt; const v = Math.hypot(vx, vz), vmax = this.dist * .0014;
+    if (v < .002) return; if (v > vmax) { vx *= vmax / v; vz *= vmax / v; }
+    this.inertia = { vx, vz, t: now }; this.interact(true); this.tick();
+  }
+  tick() {
+    cancelAnimationFrame(this.raf);
+    this.raf = requestAnimationFrame(() => {
+      const now = performance.now();
+      if (this.inertia) {
+        const I = this.inertia, dt = Math.min(48, now - I.t); I.t = now; const k = Math.exp(-dt / 260);
+        this.target.x += I.vx * dt; this.target.z += I.vz * dt; I.vx *= k; I.vz *= k; this.clampView(); this.update();
+        if (Math.hypot(I.vx, I.vz) < .0004) this.inertia = null;
+      }
+      if (this.anim) {
+        const A = this.anim, t = clamp((now - A.t0) / A.ms, 0, 1), k = ease(t);
+        this.target.lerpVectors(A.from.target, A.to.target, k); this.dist = A.from.dist + (A.to.dist - A.from.dist) * k;
+        this.theta = A.from.theta + (A.to.theta - A.from.theta) * k; this.phi = A.from.phi + (A.to.phi - A.from.phi) * k;
+        this.clampView(); this.update(); if (t >= 1) this.anim = null;
+      }
+      this.changed();
+      if (this.inertia || this.anim) this.tick(); else this.interact(false);
+    });
+  }
+  animateTo(to, ms = 450) {
+    if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) ms = 1;
+    let th = to.theta ?? this.theta; while (th - this.theta > Math.PI) th -= 2 * Math.PI; while (th - this.theta < -Math.PI) th += 2 * Math.PI;
+    this.inertia = null;
+    this.anim = { t0: performance.now(), ms, from: { target: this.target.clone(), dist: this.dist, theta: this.theta, phi: this.phi }, to: { target: (to.target || this.target).clone(), dist: to.dist ?? this.dist, theta: th, phi: to.phi ?? this.phi } };
+    this.interact(true); this.tick();
+  }
+  zoomAt(x, y, factor, ms = 0) { // zoom keeping the ground point under (x, y) where it is
+    this.update(); const a = this.groundAt(x, y, new THREE.Vector3()), dist = clamp(this.dist * factor, this.lim.minDist, this.lim.maxDist);
+    if (!a) { if (ms) this.animateTo({ dist }, ms); else { this.dist = dist; this.update(); this.changed(); } return; }
+    const saved = { target: this.target.clone(), dist: this.dist };
+    this.dist = dist; this.anchor(x, y, a); const to = { target: this.target.clone(), dist };
+    this.target.copy(saved.target); this.dist = saved.dist; this.update();
+    if (ms) this.animateTo(to, ms); else { this.target.copy(to.target); this.dist = to.dist; this.clampView(); this.update(); this.changed(); }
+  }
+  zoomBy(factor, ms = 300) { this.zoomAt(this.size.w / 2, this.size.h / 2, factor, ms); }
+  onWheel(e) {
+    if (!this.enabled) return;
+    if (this.cooperative && !e.ctrlKey && !e.metaKey) { this.hooks.coop?.("wheel"); return; } // plain scrolling keeps scrolling the page
+    e.preventDefault(); this.hooks.first?.();
+    const p = this.local(e), dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 200 : e.deltaY;
+    this.stopMotion(); this.zoomAt(p.x, p.y, Math.exp(clamp(dy, -120, 120) * (e.ctrlKey ? .006 : .0016)), 0);
+    this.interact(true); this.interact(false);
+  }
+  onKey(e) {
+    if (!this.enabled) return;
+    const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    if (dir) { // right = screen right, up = away from the viewer
+      const step = this.dist * .12, c = Math.cos(this.theta), s = Math.sin(this.theta);
+      this.stopMotion(); this.target.x += dir[0] * c * step + dir[1] * -s * step; this.target.z += dir[0] * -s * step + dir[1] * -c * step;
+      this.clampView(); this.update(); this.changed(); e.preventDefault(); return;
+    }
+    if (e.key === "+" || e.key === "=") { this.zoomBy(.7); e.preventDefault(); }
+    else if (e.key === "-" || e.key === "_") { this.zoomBy(1 / .7); e.preventDefault(); }
+    else if (e.key === "Home" || e.key === "r") { this.hooks.reset?.(); e.preventDefault(); }
+  }
+  fit(fW, fH, margin, animate, zoom = 1) {
+    const t = new THREE.Vector3(fW / 2, 0, fH / 2), theta = CAM.az * DEG, phi = CAM.el * DEG, mx = Math.max(margin * .6, 1.7), corners = [];
+    [[-mx, -mx], [fW + mx, -mx], [fW + mx, fH + mx], [-mx, fH + mx]].forEach(([x, z]) => corners.push(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, 2.5, z)));
+    const saved = { target: this.target.clone(), dist: this.dist, theta: this.theta, phi: this.phi };
+    this.target.copy(t); this.theta = theta; this.phi = phi; let dist = Math.max(fW, fH) * 1.6;
+    for (let k = 0; k < 6; k++) { this.dist = dist; this.update(); let m = 0; corners.forEach((c) => { const v = c.clone().project(this.camera); m = Math.max(m, Math.abs(v.x), Math.abs(v.y)); }); dist *= m / .985; }
+    const pad = Math.max(margin, 2);
+    this.lim = { minDist: Math.max(2.5, dist * .1), maxDist: dist * 1.35, minPhi: 26 * DEG, maxPhi: 82 * DEG, x0: -pad, x1: fW + pad, z0: -pad, z1: fH + pad };
+    this.home = { target: t.clone(), dist: dist * zoom, theta, phi }; this.fitDist = dist;
+    if (animate) { this.target.copy(saved.target); this.dist = saved.dist; this.theta = saved.theta; this.phi = saved.phi; this.clampView(); this.animateTo(this.home, 600); }
+    else { this.dist = dist * zoom; this.clampView(); this.update(); }
+  }
 }
 
 /* ---------- component ---------- */
-export default function Grove3D({ data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge, interactive, onUnavailable }) {
-  const host = useRef(null), labels = useRef(null), state = useRef(null);
+export default function Grove3D(props) {
+  const { data, zones, roads, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge } = props;
+  const host = useRef(null), labels = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
+  const [full, setFull] = useState(false);
+  const [hint, setHint] = useState(() => { try { return !sessionStorage.getItem("g3-hint"); } catch { return true; } });
+  const [busy, setBusy] = useState(true);
+  const [coop, setCoop] = useState(null); // "touch" | "wheel" | null — short hint when a page gesture hit the inline map
+  const sceneKey = useMemo(
+    () => JSON.stringify([zones, data.garden?.plots, data.livestock?.animals, data.ornaments, data.mapLines, data.mapStyle, data.region, roads, fW, fH, margin, env, pathTexture, roadWidth]),
+    [zones, data.garden?.plots, data.livestock?.animals, data.ornaments, data.mapLines, data.mapStyle, data.region, roads, fW, fH, margin, env, pathTexture, roadWidth],
+  );
+  const dismissHint = () => { setHint(false); try { sessionStorage.setItem("g3-hint", "1"); } catch { /* private mode */ } };
+  const showCoop = (kind) => setCoop(kind);
+  useEffect(() => { latest.current = { ...props, dismissHint, showCoop }; }); // the engine reads the newest props from here
+  useEffect(() => { if (!coop) return; const t = setTimeout(() => setCoop(null), 1800); return () => clearTimeout(t); }, [coop]);
+  // renderer, lights and controls: created once
   useEffect(() => {
     const el = host.current; if (!el) return;
     let renderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" }); }
-    catch (err) { void err; if (onUnavailable) onUnavailable(); return; }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.VSMShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.04;
-    el.appendChild(renderer.domElement);
+    catch (err) { void err; latest.current.onUnavailable?.(); return; }
+    const mobile = (typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches) || Math.min(screen.width, screen.height) < 820;
+    const DPR = Math.min(window.devicePixelRatio || 1, 2), LOW = Math.min(DPR, mobile ? 1.15 : 1.25);
+    renderer.setPixelRatio(DPR);
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.shadowMap.autoUpdate = false; // static scene: shadows render once
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.02;
+    renderer.domElement.className = "g3-canvas"; renderer.domElement.setAttribute("aria-label", "3D farm map: drag to move, pinch or scroll to zoom, two fingers to rotate");
+    el.insertBefore(renderer.domElement, el.firstChild);
+    const lost = (e) => { e.preventDefault(); latest.current.onUnavailable?.(); };
+    renderer.domElement.addEventListener("webglcontextlost", lost);
     const scene = new THREE.Scene();
     const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture; scene.environmentIntensity = .55; pmrem.dispose();
-    const camera = new THREE.PerspectiveCamera(CAM.fov, 1, .5, 2000);
-    const hemi = new THREE.HemisphereLight(0xdde8f5, 0x5c6b3a, .78); scene.add(hemi);
+    const camera = new THREE.PerspectiveCamera(CAM.fov, 1, 1, 4000);
+    scene.add(new THREE.HemisphereLight(0xdde8f5, 0x5c6b3a, .8));
     const sun = new THREE.DirectionalLight(0xfff0dc, 2.6); sun.castShadow = true;
-    sun.shadow.mapSize.set(3072, 3072); sun.shadow.radius = 1.6; sun.shadow.blurSamples = 8; sun.shadow.bias = -.0005; sun.shadow.normalBias = .025;
+    sun.shadow.mapSize.set(mobile ? 2048 : 3072, mobile ? 2048 : 3072); sun.shadow.radius = 2; sun.shadow.bias = -.0004; sun.shadow.normalBias = .03;
     scene.add(sun); scene.add(sun.target);
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = false; controls.enablePan = false; controls.rotateSpeed = .5; controls.zoomSpeed = .8;
-    const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
-    let down = null;
-    const st = { renderer, scene, camera, controls, sun, world: null, bills: [], hits: [], dims: null, size: () => {}, render: () => {}, fit: () => {} };
+    const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), S = { W: 0, H: 0 };
+    let queued = false;
+    const st = { renderer, scene, camera, sun, world: null, bills: [], hits: [], dims: null, fitted: false, anchors: {}, highlight: null, calls: 0 };
     state.current = st;
     if (import.meta.env?.DEV && typeof window !== "undefined") window.__g3 = st; // dev-only inspection hook
-    const S = { W: 0, H: 0 };
-    function project(x, y, z) { const v = new THREE.Vector3(x, y, z).project(camera); return { x: (v.x + 1) / 2 * S.W, y: (1 - v.y) / 2 * S.H, on: v.z < 1 }; }
+    const project = (x, y, z, out) => { const v = out.set(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * S.W, y: ((1 - v.y) / 2) * S.H, on: v.z < 1 }; };
+    const pv = new THREE.Vector3();
     st.render = () => {
       const cp = camera.position;
       st.bills.forEach((b) => { b.rotation.y = Math.atan2(cp.x - b.position.x - (b.parent?.position.x || 0), cp.z - b.position.z - (b.parent?.position.z || 0)); });
-      renderer.render(scene, camera);
-      // zone names: biggest areas (and the selected one) first; a name that would sit on another is hidden
-      const nodes = labels.current ? Array.from(labels.current.children) : [], placed = [];
-      nodes.map((n) => ({ n, a: st.anchors?.[n.dataset.zone] })).filter((it) => it.a).sort((u, v) => (v.a.sel - u.a.sel) || (v.a.area - u.a.area)).forEach(({ n, a }) => {
-        const p = project(a.x, a.y, a.z), w = a.w, h = 20, box = { x0: p.x - w / 2 - 4, x1: p.x + w / 2 + 4, y0: p.y, y1: p.y + h };
+      renderer.render(scene, camera); st.calls = renderer.info.render.calls;
+      // zone names sit under the front edge of their area; biggest areas (and the selected one) win overlaps
+      const nodes = labels.current ? Array.from(labels.current.children) : [], placed = [], items = [];
+      nodes.forEach((n) => {
+        const a = st.anchors[n.dataset.zone]; if (!a) return;
+        const c = project(a.cx, 0, a.cz, pv); let maxY = -1e9, minX = 1e9, maxX = -1e9, on = c.on;
+        a.corners.forEach(([x, z]) => { const q = project(x, 0, z, pv); maxY = Math.max(maxY, q.y); minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); on = on || q.on; });
+        items.push({ n, a, x: c.x, y: maxY + 3, on, px: maxX - minX });
+      });
+      items.sort((u, v) => (v.a.sel - u.a.sel) || (v.a.area - u.a.area)).forEach(({ n, a, x, y, on, px }) => {
+        const w = a.w, h = 20, box = { x0: x - w / 2 - 4, x1: x + w / 2 + 4, y0: y, y1: y + h };
+        const inside = x > -w && x < S.W + w && y > -h && y < S.H + h && (a.sel || px >= 40);
         const free = a.sel || !placed.some((q) => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0);
         if (free) placed.push(box);
-        n.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, 0)`; n.style.display = p.on && free ? "" : "none";
+        n.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, 0)`; n.style.display = on && free && inside ? "" : "none";
       });
     };
+    st.requestRender = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; if (state.current === st) st.render(); }); };
+    const controls = new FarmControls(camera, renderer.domElement, {
+      change: () => st.requestRender(),
+      interact: (on) => { renderer.setPixelRatio(on ? LOW : DPR); st.requestRender(); },
+      first: () => latest.current.dismissHint?.(),
+      coop: (kind) => latest.current.showCoop?.(kind),
+      reset: () => st.reset(true),
+      tap: (x, y, e) => {
+        const P = latest.current; if (!P.interactive || !P.onZoneOpen) return false;
+        ptr.set((x / S.W) * 2 - 1, -(y / S.H) * 2 + 1); ray.setFromCamera(ptr, camera);
+        const hit = ray.intersectObjects(st.hits, false)[0];
+        if (!hit) return false;
+        const z = P.zones.find((q) => q.id === hit.object.userData.zoneId); if (!z) return false;
+        P.onZoneOpen(e, z); return true;
+      },
+    });
+    st.controls = controls; controls.setCooperative(!fullRef.current);
     st.size = () => {
-      S.W = el.clientWidth || 600; S.H = Math.round(S.W * .64);
-      renderer.setSize(S.W, S.H); camera.aspect = S.W / S.H; camera.updateProjectionMatrix(); st.fit(); st.render();
+      const d = st.dims || { fW: 3, fH: 2, margin: 1 }, ratio = clamp((d.fH + 2 * d.margin) / (d.fW + 2 * d.margin), .62, .8);
+      S.W = el.clientWidth || 600; S.H = fullRef.current ? (el.clientHeight || Math.round(S.W * ratio)) : Math.round(S.W * ratio);
+      renderer.setSize(S.W, S.H); camera.aspect = S.W / S.H; camera.updateProjectionMatrix(); controls.size = { w: S.W, h: S.H };
+      if (!st.fitted && st.dims) { st.reset(false); st.fitted = true; } else controls.update();
+      st.requestRender();
     };
-    st.fit = () => {
-      const { fW, fH, margin } = st.dims || { fW: 10, fH: 10, margin: 1 };
-      const t = new THREE.Vector3(fW / 2, 0, fH / 2);
-      const az = (CAM.az * Math.PI) / 180, elv = (CAM.el * Math.PI) / 180;
-      const dir = new THREE.Vector3(Math.sin(az) * Math.cos(elv), Math.sin(elv), Math.cos(az) * Math.cos(elv));
-      const mx = Math.max(margin * .6, 1.7), corners = []; [[-mx, -mx], [fW + mx, -mx], [fW + mx, fH + mx], [-mx, fH + mx]].forEach(([x, z]) => { corners.push(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, 2.5, z)); });
-      let dist = Math.max(fW, fH) * 1.6;
-      for (let k = 0; k < 6; k++) {
-        camera.position.copy(t).addScaledVector(dir, dist); camera.lookAt(t); camera.updateMatrixWorld();
-        let m = 0; corners.forEach((c) => { const v = c.clone().project(camera); m = Math.max(m, Math.abs(v.x), Math.abs(v.y)); });
-        dist *= m / .985;
+    st.reset = (animate, zoom = 1) => {
+      const { fW, fH, margin } = st.dims; controls.fit(fW, fH, margin, animate, zoom);
+      const far = Math.min(controls.fitDist * 3.2, Math.max(fW, fH) * 16 * .9), near = Math.min(controls.fitDist * 1.5, far / 1.4);
+      scene.fog = new THREE.Fog(0xd5dfc8, near, far); // haze starts beyond the farthest allowed zoom-out and hides the ground's edge
+      st.requestRender();
+    };
+    st.setupSun = () => {
+      const { fW, fH, margin } = st.dims, t = new THREE.Vector3(fW / 2, 0, fH / 2), big = Math.max(fW, fH);
+      sun.position.copy(t).add(new THREE.Vector3(.38, 1.25, -.12).normalize().multiplyScalar(big * 2)); sun.target.position.copy(t);
+      const e = big * .75 + margin * 2, sc = sun.shadow.camera; sc.left = -e; sc.right = e; sc.top = e; sc.bottom = -e; sc.near = 1; sc.far = big * 6; sc.updateProjectionMatrix();
+      renderer.shadowMap.needsUpdate = true;
+    };
+    st.select = (id) => {
+      if (st.highlight) { scene.remove(st.highlight); st.highlight.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); st.highlight = null; }
+      const hit = id && st.hits.find((h) => h.userData.zoneId === id);
+      if (hit) {
+        const b = hit.userData.bounds, g = new THREE.Group(), w = b.x1 - b.x0 + .5, d = b.z1 - b.z0 + .5, cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, M = { select: st.M.select, selectEdge: st.M.selectEdge };
+        plane(g, w, d, M.select, cx, .03, cz, { receive: false });
+        [[cx, cz - d / 2, w, .1], [cx, cz + d / 2, w, .1], [cx - w / 2, cz, .1, d], [cx + w / 2, cz, .1, d]].forEach(([x, z, bw, bd]) => box(g, bw, .05, bd, M.selectEdge, x, .04, z, { cast: false, receive: false }));
+        scene.add(g); st.highlight = g;
       }
-      controls.target.copy(t); controls.minDistance = dist * .3; controls.maxDistance = dist * 1.25;
-      controls.minPolarAngle = Math.PI / 2 - elv - .22; controls.maxPolarAngle = Math.PI / 2 - elv + .3;
-      controls.minAzimuthAngle = az - .6; controls.maxAzimuthAngle = az + .6; controls.update();
-      scene.fog = new THREE.Fog(0xd5dfc8, dist * 1.6, dist * 3.2);
-      const sd = new THREE.Vector3(.38, 1.25, -.12).normalize().multiplyScalar(Math.max(fW, fH) * 2);
-      sun.position.copy(t).add(sd); sun.target.position.copy(t);
-      const e = Math.max(fW, fH) * .75 + margin * 2; const sc = sun.shadow.camera; sc.left = -e; sc.right = e; sc.top = e; sc.bottom = -e; sc.near = 1; sc.far = Math.max(fW, fH) * 6; sc.updateProjectionMatrix();
+      Object.entries(st.anchors).forEach(([zid, a]) => { a.sel = zid === id ? 1 : 0; });
+      st.requestRender();
     };
-    controls.addEventListener("change", () => st.render());
-    const onDown = (e) => { down = [e.clientX, e.clientY]; };
-    const onUp = (e) => {
-      if (!down || !interactive || !onZoneOpen) return;
-      const moved = Math.hypot(e.clientX - down[0], e.clientY - down[1]); down = null; if (moved > 6) return;
-      const r = renderer.domElement.getBoundingClientRect();
-      ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-      ray.setFromCamera(ptr, camera);
-      const hit = ray.intersectObjects(st.hits, false).find((h) => h.object.userData.zoneId);
-      if (hit) { const z = zones.find((q) => q.id === hit.object.userData.zoneId); if (z) onZoneOpen(e, z); }
-    };
-    renderer.domElement.addEventListener("pointerdown", onDown); renderer.domElement.addEventListener("pointerup", onUp);
+    const onLoaded = () => { renderer.shadowMap.needsUpdate = true; st.requestRender(); };
+    onTexturesLoaded.add(onLoaded);
     const ro = new ResizeObserver(() => st.size()); ro.observe(el);
-    THREE.DefaultLoadingManager.onLoad = () => st.render();
-    return () => { ro.disconnect(); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerup", onUp); controls.dispose(); renderer.dispose(); el.removeChild(renderer.domElement); state.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      ro.disconnect(); onTexturesLoaded.delete(onLoaded); controls.dispose(); renderer.domElement.removeEventListener("webglcontextlost", lost);
+      if (st.world) st.world.traverse((m) => { if (m.geometry) m.geometry.dispose(); });
+      renderer.dispose(); if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement); state.current = null;
+    };
   }, []);
+  // (re)build the world only when something on the map changed
   useEffect(() => {
     const st = state.current; if (!st) return;
+    const P = latest.current;
     if (st.world) { st.scene.remove(st.world); st.world.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
-    st.bills = []; st.hits = []; st.dims = { fW, fH, margin };
-    st.world = buildWorld({ data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, bills: st.bills, hits: st.hits, M: materials() });
+    st.bills = []; st.hits = []; st.M = materials();
+    const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
+    st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
+    st.world = buildWorld({ data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, bills: st.bills, hits: st.hits, M: st.M });
     st.scene.add(st.world);
-    st.anchors = Object.fromEntries(zones.map((z) => [z.id, { x: z.xM + z.wM / 2, y: 0.05, z: z.yM + z.hM + .9, area: z.wM * z.hM, sel: 0, w: Math.min(23, z.name.length) * 6 + 16 }]));
-    st.size();
-    const t = setTimeout(() => st.render(), 350); const t2 = setTimeout(() => st.render(), 1500);
-    return () => { clearTimeout(t); clearTimeout(t2); };
-  }, [data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth]);
-  useEffect(() => { const st = state.current; if (!st) return; Object.entries(st.anchors || {}).forEach(([id, a]) => { a.sel = id === selectedId ? 1 : 0; }); st.render(); }, [selectedId, tasksByZone]);
+    st.anchors = Object.fromEntries(P.zones.map((z) => [z.id, { cx: z.xM + z.wM / 2, cz: z.yM + z.hM / 2, corners: [[z.xM, z.yM], [z.xM + z.wM, z.yM], [z.xM + z.wM, z.yM + z.hM], [z.xM, z.yM + z.hM]], area: z.wM * z.hM, sel: 0, w: Math.min(23, z.name.length) * 6 + 16 }]));
+    st.setupSun();
+    if (dimsChanged) st.fitted = false;
+    st.size(); st.select(P.selectedId); setBusy(false);
+    const t = setTimeout(() => { st.renderer.shadowMap.needsUpdate = true; st.requestRender(); }, 600);
+    return () => clearTimeout(t);
+  }, [sceneKey]);
+  useEffect(() => { state.current?.select(selectedId); }, [selectedId]);
+  useEffect(() => { state.current?.requestRender(); }, [tasksByZone]);
+  // full-screen mode: the map takes the whole viewport, page scroll locked, Escape closes
+  useEffect(() => {
+    fullRef.current = full; const st = state.current;
+    st?.controls?.setCooperative(!full);
+    const prev = document.body.style.overflow; if (full) document.body.style.overflow = "hidden";
+    const key = (e) => { if (e.key === "Escape" && full) setFull(false); };
+    window.addEventListener("keydown", key);
+    if (st) { st.size(); st.reset(true, full && host.current && host.current.clientWidth < host.current.clientHeight ? .78 : 1); }
+    return () => { window.removeEventListener("keydown", key); if (full) document.body.style.overflow = prev; };
+  }, [full]);
+  useEffect(() => { if (!hint) return; const t = setTimeout(() => latest.current.dismissHint?.(), 6000); return () => clearTimeout(t); }, [hint]);
+  const ctl = (f) => { const st = state.current; if (st?.controls) f(st.controls, st); };
+  const hostStyle = full
+    ? { position: "fixed", inset: 0, zIndex: 6500, overflow: "hidden", touchAction: "none", background: "linear-gradient(180deg,#b9d0e6 0%,#d9e2d0 42%,#9fb28a 100%)" }
+    : { position: "relative", width: "100%", overflow: "hidden", touchAction: "pan-y" };
   return (
-    <div className="g3-host" ref={host} style={{ position: "relative", width: "100%", overflow: "hidden", touchAction: "none" }}>
-      <div ref={labels} style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1 }}>
+    <div className={`g3-host${full ? " full" : ""}`} ref={host} style={hostStyle}>
+      <div ref={labels} className="g3-labels" style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1 }}>
         {zones.map((z) => {
           const list = tasksByZone[z.id] || [];
           return (
@@ -1020,6 +1347,16 @@ export default function Grove3D({ data, zones, roads, crops, fW, fH, margin, env
           );
         })}
       </div>
+      <div className="g3-ctl" role="group" aria-label="Map view controls">
+        <button type="button" className="g3-btn g3-zoom" aria-label="Zoom in" onClick={() => ctl((c) => c.zoomBy(.66))}><Plus size={18} /></button>
+        <button type="button" className="g3-btn g3-zoom" aria-label="Zoom out" onClick={() => ctl((c) => c.zoomBy(1 / .66))}><Minus size={18} /></button>
+        <button type="button" className="g3-btn" aria-label="Reset view" onClick={() => ctl((c, st) => st.reset(true))}><Compass size={18} /></button>
+        <button type="button" className="g3-btn" aria-label={full ? "Exit full screen" : "Full screen map"} aria-pressed={full} onClick={() => setFull(!full)}>{full ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
+      </div>
+      {full && <button type="button" className="g3-btn g3-close" aria-label="Close full screen map" onClick={() => setFull(false)}><X size={20} /></button>}
+      {hint && !busy && <div className="g3-hint" aria-hidden="true">Drag to move · pinch or scroll to zoom · two fingers to turn</div>}
+      {coop && <div className="g3-coop" role="status">{coop === "touch" ? "Use two fingers to move the map, or open it full screen" : "Hold ⌘ / Ctrl and scroll to zoom the map"}</div>}
+      {busy && <div className="g3-busy" aria-live="polite">Building your farm…</div>}
     </div>
   );
 }
