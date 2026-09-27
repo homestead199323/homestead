@@ -14,6 +14,9 @@ import { accessPaths, plantedRows, plantPosition, buildingScale } from "./aerial
 import { srand } from "./sceneMath";
 
 const points = (ps) => ps.map((q) => `${q.xM},${q.yM}`).join(" ");
+// Short names (bed numbers) get a compact chip so neighbouring beds' labels don't merge into a bar.
+const zoneLabelWidth = (name = "") =>
+  name.length <= 2 ? 15 + name.length * 3 : Math.min(140, Math.min(name.length, 23) * 5.9 + 16);
 const buildings = new Set(["house", "barn", "storage", "beehive", "compost", "greenhouse"]);
 function ModernPlanting({ z, plot, crops, id }) {
   const stage = growthOf(plot, crops.get(plot.crop), todayLocalKey()).index;
@@ -446,6 +449,64 @@ export default function GroveScene({
     [data.zones, fW, fH],
   );
   const cropMap = useMemo(() => rCM(data.region), [data.region]);
+  // Zone names: kept inside the map and never stacked on top of each other. On a small screen a
+  // label that would collide (e.g. bed numbers packed side by side) is hidden until you zoom in;
+  // the selected area's name always shows.
+  const labelPlaces = useMemo(() => {
+    const placed = [],
+      out = new Map(),
+      pad = 1.5 * labelUnit;
+    const order = [...zones].sort(
+      (a, b) => (b.id === selectedId) - (a.id === selectedId) || b.wM * b.hM - a.wM * a.hM,
+    );
+    const free = (box) => !placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0);
+    order.forEach((z) => {
+      const w = zoneLabelWidth(z.name) * labelUnit,
+        h = 18 * labelUnit;
+      // Short names on beds narrower than a chip (bed numbers) are painted on the bed's end instead.
+      if (z.name.length <= 3 && z.wM < w * 1.15 && z.hM > h * 2) {
+        const fs = Math.max(6, Math.min(10, (z.wM / labelUnit) * 0.8));
+        out.set(z.id, { x: z.xM + z.wM / 2, y: z.yM + z.hM - (fs * 0.9 + 3) * labelUnit, inside: true, fs });
+        return;
+      }
+      // Under the area (centred, then slid to either side), on it, above it — first at full size,
+      // then slightly smaller. Buildings and other big areas always keep their name.
+      for (const k of [1, 0.82]) {
+        const ww = w * k,
+          hh = h * k;
+        const clampX = (x) => Math.max(ww / 2, Math.min(fW - ww / 2, x));
+        const clampY = (y) => Math.max(hh / 2, Math.min(fH - hh / 2, y));
+        const under = z.yM + z.hM + 0.33,
+          above = z.yM - hh / 2 - 0.2,
+          middle = z.yM + z.hM / 2;
+        const spots = [
+          [z.xM + z.wM / 2, under],
+          [z.xM + ww / 2, under],
+          [z.xM + z.wM - ww / 2, under],
+          [z.xM + z.wM / 2, middle],
+          [z.xM + z.wM / 2, above],
+        ];
+        for (const [sx, sy] of spots) {
+          const x = clampX(sx),
+            y = clampY(sy);
+          const box = { x0: x - ww / 2 - pad, x1: x + ww / 2 + pad, y0: y - hh / 2, y1: y + hh / 2 };
+          if (free(box) || z.id === selectedId) {
+            placed.push(box);
+            out.set(z.id, { x, y, k });
+            return;
+          }
+        }
+      }
+      if (z.wM * z.hM >= 8) {
+        const k = 0.82,
+          x = Math.max((w * k) / 2, Math.min(fW - (w * k) / 2, z.xM + z.wM / 2)),
+          y = z.yM + z.hM / 2;
+        placed.push({ x0: x - (w * k) / 2, x1: x + (w * k) / 2, y0: y - (h * k) / 2, y1: y + (h * k) / 2 });
+        out.set(z.id, { x, y, k });
+      }
+    });
+    return out;
+  }, [zones, labelUnit, selectedId, fW, fH]);
   const roads = useMemo(
     () => (data.roadsEnabled === false ? [] : accessPaths(zones, fW, fH, data.mapLines)),
     [zones, fW, fH, data.roadsEnabled, data.mapLines],
@@ -941,31 +1002,73 @@ export default function GroveScene({
             </g>
           )}
           {zones.map((z) => {
-            const labelWidth = Math.min(140, z.name.length * 5.7 + 20),
-              cy = Math.min(fH - 0.18, z.yM + z.hM + 0.33);
+            const place = labelPlaces.get(z.id);
+            if (!place) return null;
+            const labelWidth = zoneLabelWidth(z.name);
+            if (place.inside)
+              return (
+                <g
+                  key={z.id}
+                  transform={`translate(${place.x} ${place.y}) scale(${labelUnit})`}
+                  className="q-map-label is-painted"
+                  onClick={(e) => open(e, z)}
+                  style={{ cursor: canInteract ? "pointer" : undefined }}
+                  aria-hidden="true"
+                >
+                  {selectedId === z.id && (
+                    <circle r={place.fs * 0.95} cy={-place.fs * 0.35} fill="#2b5948" stroke="#f7c552" strokeWidth=".8" />
+                  )}
+                  <text
+                    textAnchor="middle"
+                    fontSize={place.fs}
+                    fontWeight="700"
+                    fill="#f6efd8"
+                    stroke="#1a2618"
+                    strokeOpacity=".6"
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                    paintOrder="stroke"
+                  >
+                    {z.name}
+                  </text>
+                </g>
+              );
             return (
               <g
                 key={z.id}
-                transform={`translate(${z.xM + z.wM / 2} ${cy}) scale(${labelUnit})`}
+                transform={`translate(${place.x} ${place.y}) scale(${labelUnit * (place.k || 1)})`}
                 className="q-map-label"
                 onClick={(e) => open(e, z)}
                 style={{ cursor: canInteract ? "pointer" : undefined }}
                 aria-hidden="true"
               >
+                {/* Field-sign style: a soft, see-through earth-green plate with cream lettering,
+                    so the name sits in the scenery but still reads on grass, roofs and paths. */}
                 <rect
                   x={-labelWidth / 2}
-                  y="-9"
+                  y="-8.5"
                   width={labelWidth}
-                  height="21"
-                  rx="5"
-                  fill={selectedId === z.id ? "#2b5948" : "#fffffff0"}
+                  height="18"
+                  rx="9"
+                  fill={selectedId === z.id ? "#2b5948" : "#1d2c1b"}
+                  fillOpacity={selectedId === z.id ? 0.95 : 0.46}
+                  stroke={selectedId === z.id ? "#f7c552" : "#f3ecd2"}
+                  strokeOpacity={selectedId === z.id ? 0.9 : 0.22}
+                  strokeWidth="0.8"
                 />
                 <text
+                  className="q-map-label-text"
                   textAnchor="middle"
-                  y="5"
-                  fontSize="10.5"
-                  fontWeight="600"
-                  fill={selectedId === z.id ? "white" : "#344337"}
+                  y="4"
+                  fontSize="10"
+                  fontWeight="650"
+                  letterSpacing=".25"
+                  fill="#fbf6e4"
+                  stroke="#16231a"
+                  strokeOpacity=".55"
+                  strokeWidth="2.2"
+                  strokeLinejoin="round"
+                  paintOrder="stroke"
                 >
                   {z.name.length > 23 ? z.name.slice(0, 22) + "…" : z.name}
                 </text>
@@ -976,14 +1079,22 @@ export default function GroveScene({
             zones.map((z) => {
               const list = tasksByZone[z.id] || [];
               if (!list.length) return null;
-              const labelWidth = Math.min(140, z.name.length * 5.7 + 20),
-                cy = Math.min(fH - 0.18, z.yM + z.hM + 0.33),
-                pillW = list.length > 9 ? 40 : 34;
+              const pillW = list.length > 9 ? 40 : 34;
+              // Top-right corner of the area; if the name is written on the area itself, sit at the
+              // end of the name instead so the two never cover each other.
+              const lp = labelPlaces.get(z.id),
+                onArea = lp && !lp.inside && lp.y < z.yM + z.hM;
+              const badgeAt = onArea
+                ? { x: lp.x + ((zoneLabelWidth(z.name) * (lp.k || 1)) / 2 + pillW / 2 - 4) * labelUnit, y: lp.y }
+                : {
+                    x: Math.max(z.xM + (pillW / 2) * labelUnit, z.xM + z.wM - (pillW / 2 + 3) * labelUnit),
+                    y: Math.max(12 * labelUnit, z.yM + 12 * labelUnit),
+                  };
               return (
                 <g
                   key={`badge-${z.id}`}
                   className="q-zone-badge"
-                  transform={`translate(${z.xM + z.wM / 2 + labelWidth / 2 * labelUnit} ${cy - 9 * labelUnit}) scale(${labelUnit})`}
+                  transform={`translate(${badgeAt.x} ${badgeAt.y}) scale(${labelUnit})`}
                   role="button"
                   tabIndex={0}
                   aria-label={`${list.length} job${list.length === 1 ? "" : "s"} waiting at ${z.name}`}
