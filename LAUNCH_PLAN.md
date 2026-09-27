@@ -89,6 +89,19 @@
     (649,674 B; "g3-pill", "prop-bush", "RoomEnvironment" present); zone-card click works in 3D.
     NOT yet verified on a phone (frame rate while dragging ~1,300–1,600 meshes). Revert = set
     View to "Flat overhead" per farm, or `git revert 96bff87`.
+  - [x] **4z-2 (2026-09-27, commit 99781e1): map-game controls + performance pass.** Custom
+    FarmControls: drag pans with inertia, pinch/twist/two-finger tilt anchored between the
+    fingers, wheel zooms to cursor, tap opens, double-tap zooms, keys pan/zoom; view clamped to
+    the farm. Inline map is cooperative (one finger scrolls the page + hint, two fingers move
+    the map, Ctrl/Cmd+wheel zooms); full-screen mode with zoom/reset/close buttons. Static
+    meshes merged per material (≈1,500 → ≈110 meshes; ≈360 draw calls/frame), shadows rendered
+    once, render on change only, lower resolution during gestures, world rebuilt only when map
+    data changes, taps via one hit box per area. Quality: polygon-offset ground layers (no
+    z-fighting), fog tied to fit distance, top-view crop planes, selection outline, labels
+    under an area's front edge with size-based decluttering. Verified: 30 synthetic gesture
+    checks (Playwright, inline + full screen), ESLint, 46+3 tests, build; live bundle
+    index-m0JK4sjp.js → Grove3D-C955PL0-.js ("g3-coop", "Use two fingers to move the map",
+    "Full screen map" present; CSS "g3-ctl"). Real-device frame rate still unmeasured.
 - [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
   Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
   Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.
