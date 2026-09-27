@@ -1,8 +1,8 @@
 /* PRESERVATION RECIPES — step-by-step recipes that sit under a preservation method
    in Manuals → Preserving. Each recipe links to its parent method via `parent`.
-     cheese_making  → 8 fresh cheeses from easy-to-find ingredients
-     smoking_curing → 3 prosciutto-style whole-muscle cures (beginner → advanced)
-   Fields: name, parent, cat, icon, difficulty, time (short), yield, shelf (short),
+     cheese_making  → 13 cheeses (fresh, Balkan / Turkish / Mediterranean, one aged)
+     smoking_curing → 9 cured meats + 2 cooked meats (prosciutto cotto, kavurma)
+   Fields: name, parent, cat, icon, origin, difficulty, time (short), yield, shelf (short),
    overview, safety[], ingredients[], what_you_need, method[] (string steps; an
    ALL-CAPS "LABEL:" prefix is shown bold), storage, best_for, troubleshooting,
    science, tip, sources.
@@ -21,6 +21,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🥣",
+    origin: "Italy",
     difficulty: "Easy",
     time: "1 hour",
     yield: "250–450 g from 2 L of milk (depends on draining time)",
@@ -58,6 +59,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🍛",
+    origin: "India",
     difficulty: "Easy",
     time: "1–2.5 hours",
     yield: "250–350 g from 2 L of milk",
@@ -95,6 +97,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🫒",
+    origin: "Levant / Middle East",
     difficulty: "Easy",
     time: "12–48 h (mostly waiting)",
     yield: "About 500 g from 1 kg of yogurt (spreadable)",
@@ -133,6 +136,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🍰",
+    origin: "Italy (Lombardy)",
     difficulty: "Easy",
     time: "Overnight",
     yield: "About 300–350 g from 500 ml of cream",
@@ -168,6 +172,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🐐",
+    origin: "France",
     difficulty: "Easy–Intermediate",
     time: "1–2 days (mostly waiting)",
     yield: "About 450 g from 4 L of goat milk",
@@ -208,6 +213,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🍕",
+    origin: "Italy (Campania)",
     difficulty: "Intermediate",
     time: "45 minutes",
     yield: "About 350–450 g from 4 L of milk",
@@ -251,6 +257,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🔥",
+    origin: "Cyprus",
     difficulty: "Intermediate",
     time: "3–4 hours",
     yield: "About 450 g from 4 L of milk (plus a little bonus ricotta)",
@@ -293,6 +300,7 @@ export const RECIPES = {
     parent: "cheese_making",
     cat: "Cheese Recipes",
     icon: "🥗",
+    origin: "Greece",
     difficulty: "Intermediate",
     time: "3 days + brine ageing",
     yield: "Roughly 450–600 g from 4 L of milk",
@@ -326,8 +334,214 @@ export const RECIPES = {
     best_for: "Greek salad, spinach pies (spanakopita), baked with tomatoes and peppers, crumbled over roast vegetables, watermelon and mint salad. Goat and sheep milk give the classic sharp, crumbly feta; cow's milk makes a milder, creamier one.",
     troubleshooting: "Slimy or mushy surface in brine = brine without calcium chloride and vinegar — it pulls calcium out of the cheese; use the brine recipe above. Too salty = soak before serving, or salt a little less next time. Not tangy by morning = the culture failed and the curd drained overnight without acid protection — throw it away. Next time use fresh culture and keep the drain around 20°C. Holes, bloating or a yeasty smell = contamination — discard.",
     science: "The culture makes lactic acid overnight, dropping the pH to about 4.7 — that acidity plus salt is what preserves feta. The brine keeps air and moulds out, while the calcium chloride and vinegar in it match the cheese's chemistry so the brine doesn't draw calcium out of the curd and soften it.",
-    tip: "Start in the morning: you'll finish cutting and stirring by lunchtime and the curd drains overnight. Sheep milk gives noticeably more cheese per litre than cow's milk, because it has more fat and protein.",
+    tip: "Start in the morning: you'll finish cutting and stirring by lunchtime and the curd drains overnight. Sheep milk gives noticeably more cheese per litre than cow's milk, because it has more fat and protein. For the pressed, milder Balkan and Turkish version, see Balkan White Cheese.",
     sources: "New England Cheesemaking Supply (beginner feta); Univ. of Guelph Cheesemaking Technology (feta brine); NMSU Extension E-216; NHS."
+  },
+
+
+  kajmak: {
+    name: "Kajmak (Balkan Clotted Cream)",
+    parent: "cheese_making",
+    cat: "Cheese Recipes",
+    icon: "🧈",
+    origin: "Serbia, Bosnia, Montenegro · Turkey (kaymak)",
+    difficulty: "Easy",
+    time: "1–2 days (mostly waiting)",
+    yield: "About 250–300 g from 4 L of milk",
+    shelf: "Fridge up to 1 week",
+    overview: "The Balkans' favourite spread: the thick, rich skin of cream that forms on top of slowly heated milk, skimmed off and lightly salted. No culture, no rennet — just good full-fat milk, a wide pan and patience. Eaten young and fresh with bread, ćevapi and burek; the Turkish version (kaymak) is eaten with honey at breakfast.",
+    safety: [
+      "Heating the milk to 80°C for hours goes well above pasteurisation temperature — but cool it in the fridge, not on the counter overnight as tradition does. Warm milk sitting for 10 hours is where problems start.",
+      "It's a fresh, very rich dairy product: keep it cold and eat it within a week."
+    ],
+    ingredients: [
+      "4 L (1 US gallon) full-fat milk — ideally non-homogenised farm milk, where the cream can rise. With shop milk, add 500 ml double / heavy cream for a thicker layer. Not UHT",
+      "Salt: about 1.5% of the kajmak's weight (≈4 g for 250 g), fine and non-iodised"
+    ],
+    what_you_need: "A wide, shallow roasting pan or tray (milk 3–5 cm deep — more surface = more kajmak). Oven with a low setting, or a large pot. Thermometer. A flat spatula or fish slice for skimming. A lidded container.",
+    method: [
+      "Pour the milk (and cream) into the wide pan.",
+      "HEAT: put it in the oven at 90°C and leave it 2.5–3.5 hours, until the milk itself reaches 80°C. Don't stir and don't let it boil — a skin forms on top. (Stovetop version: heat very gently and hold at 85–90°C for 3–4 hours, without stirring the surface.)",
+      "COOL: let it stand about 1 hour, until the pan is warm but not hot to hold, then move it carefully to the fridge — don't break the skin. Two shallow trays cool faster than one deep one.",
+      "REST: leave it in the fridge 12–24 hours. The cream skin thickens and firms.",
+      "SKIM: slide the spatula under the skin and lift it off in sheets into the container. Sprinkle a little salt between the layers.",
+      "OPTIONAL SECOND ROUND: heat the same milk again the next day and repeat — you get about half as much each time.",
+      "Use the skimmed milk underneath for cooking, yogurt or baking."
+    ],
+    storage: "Fridge (0–4°C), covered: best in the first 2–3 days, up to 1 week. It firms up and gets tangier with time. Freezing: not recommended — the texture breaks. Traditional 'old' kajmak (aged in wooden tubs or skins, saltier and drier) is a skilled product — don't try it until you've mastered the fresh kind.",
+    best_for: "Warm bread and lepinja, ćevapi and pljeskavica, burek, grilled meat, baked potatoes. Turkish style: kaymak with honey for breakfast, on baklava or kadayıf.",
+    troubleshooting: "Thin, barely-there skin = homogenised or low-fat milk — use farm milk or add cream. Skin tears when skimming = not chilled long enough. Grainy = milk boiled or overheated — keep it at 80–90°C. Sour or 'off' smell = left warm too long — discard.",
+    science: "Long, gentle heat drives water off the surface and makes milk proteins and fat bond into a skin; as it cools, more fat rises and joins it. Each layer is mostly milk fat — kajmak is typically around 60% fat, which is why it spreads like soft butter.",
+    tip: "Buffalo milk or Jersey cow milk gives the richest kajmak. The wider the pan, the bigger the yield — two trays beat one deep pot.",
+    sources: "Turkish Afyon kaymak study (David Publishing); Serbian kajmak review (Dairy Science & Technology, 2007); Food Perestroika (Balkan home method); FDA (raw milk)."
+  },
+
+  gjize: {
+    name: "Gjizë / Urdë / Lor (Whey Cheese) + Çökelek",
+    parent: "cheese_making",
+    cat: "Cheese Recipes",
+    icon: "🥛",
+    origin: "Albania · Balkans (urda) · Turkey (lor, çökelek)",
+    difficulty: "Easy",
+    time: "1–6 hours",
+    yield: "About 150–200 g from 4 L of whey",
+    shelf: "Fridge 3–5 days",
+    overview: "Zero-waste cheese: the soft white curd you get by reheating the whey left over from making white cheese, halloumi or kashkaval. In Albania it's gjizë, in the Balkans urda, in Turkey lor — the filling of countless byrek and pites. Turkish çökelek is its cousin, made by heating the buttermilk left after churning butter (see the variation step).",
+    safety: [
+      "Use SWEET whey from a rennet cheese within about an hour of making it — whey sours fast. Acid whey (from ricotta, paneer, labneh, chèvre) won't work.",
+      "The whey is heated to 85–90°C, so it's heat-treated — but the finished cheese is fresh and moist: fridge, and eat within a few days."
+    ],
+    ingredients: [
+      "4 L fresh sweet whey from white cheese, halloumi or kashkaval (optional: add 500 ml whole milk for a richer, bigger yield — then it's closer to ricotta)",
+      "½–¾ tsp citric acid (2–4 g) dissolved in 60 ml water — or 2–3 tbsp white vinegar",
+      "Salt: 1–2% of the finished cheese (≈2–4 g per 200 g) — traditional gjizë is often unsalted",
+      "ÇÖKELEK VARIATION: 2 L buttermilk left from churning butter (dhallë / yayık ayranı), or plain cultured buttermilk; salt to taste"
+    ],
+    what_you_need: "Large stainless pot. Thermometer. Slotted spoon or fine skimmer. Colander lined with a double layer of fine cheesecloth. Bowl.",
+    method: [
+      "Pour the whey into the pot straight after making your cheese. Heat gradually, stirring gently, to 85–90°C.",
+      "As it gets hot, fine white flakes start to rise. Stir in the citric acid (or vinegar) and stop stirring.",
+      "Hold at 85–90°C for 10–15 minutes without stirring, so the flakes gather on top.",
+      "Skim or ladle the curds gently into the lined colander.",
+      "Drain 2–3 hours for soft gjizë, up to 6 hours in a cool place for a firmer, crumblier one.",
+      "Salt to taste (or leave unsalted for sweet dishes), pack into a container and chill.",
+      "ÇÖKELEK: heat the buttermilk slowly, stirring, to 80–85°C, until white curds separate from clear yellow whey (don't let it boil hard). Drain in cloth 2–4 hours, salt lightly, chill."
+    ],
+    storage: "Fridge (0–4°C), covered: 3–5 days (fresh urda is sold with a 3–4 day life). It freezes for cooking — thawed gjizë is crumblier but fine in byrek and pies; use it within a couple of months. Traditional dried, heavily salted çökelek keeps much longer, but that's a separate, skilled product.",
+    best_for: "Byrek and lakror, pites, stuffed peppers, gözleme, pasta fillings, with honey and walnuts, crumbled over salads. Çökelek: with tomato, pepper and olive oil, or in pastries.",
+    troubleshooting: "Almost nothing forms = acid whey, or whey left standing too long — use fresh sweet whey within an hour. Very small yield = normal: whey has little protein left (about 6–8 g per litre), so expect only about 40–50 g of cheese per litre; add some milk next time. Rubbery = boiled or stirred too hard.",
+    science: "Rennet cheese leaves most of the whey proteins (albumin, globulin) in the whey. Heat unfolds them and a little acid makes them clump into fine, soft flakes. Çökelek works differently: buttermilk is already soured by bacteria, so gentle heat alone makes its casein curdle.",
+    tip: "Make gjizë every time you make white cheese or halloumi — it turns a by-product into another cheese. Whatever whey is still left is good in bread dough.",
+    sources: "Macedonian Veterinary Review (urda production, 2019); AgroWeb (gjizë); Univ. of Guelph Cheesemaking Technology (whey cheese); Wikipedia (çökelek, urdhë)."
+  },
+
+  burrata: {
+    name: "Burrata",
+    parent: "cheese_making",
+    cat: "Cheese Recipes",
+    icon: "🤍",
+    origin: "Italy (Puglia)",
+    difficulty: "Intermediate",
+    time: "1 hour",
+    yield: "2–3 burrata from 4 L of milk",
+    shelf: "Fridge 1–2 days (max 3)",
+    overview: "A pouch of fresh mozzarella filled with stracciatella — shreds of mozzarella soaked in cream. Cut it open and the creamy centre spills out. Once you can make 30-minute mozzarella, burrata is one extra step.",
+    safety: [
+      "Use pasteurised milk and cream (or pasteurise your own milk first — 63°C for 30 minutes). The filling is uncooked cream: this is the most perishable cheese in the manual.",
+      "Wear heat-proof gloves — the curd is stretched in water at 80–85°C.",
+      "NHS: pasteurised burrata is fine in pregnancy — if you're pregnant, use shop-bought pasteurised milk and cream."
+    ],
+    ingredients: [
+      "Everything for one batch of 30-Minute Mozzarella (4 L whole milk, citric acid, rennet, salt) — see that recipe",
+      "120 ml (½ cup) double / heavy cream, cold",
+      "A pinch of salt; a bowl of iced, lightly salted water"
+    ],
+    what_you_need: "Everything from the mozzarella recipe, plus a pot of water at 80–85°C for stretching, a small cup or bowl to shape the pouches in, and kitchen string or a strip of scalded leek green (optional).",
+    method: [
+      "Make the mozzarella curd exactly as in the 30-Minute Mozzarella recipe, up to the stretching step.",
+      "STRACCIATELLA: take about a third of the curd, stretch it in the hot water until smooth, then pull it into thin shreds with your fingers. Cool the shreds, mix them with the cold cream (roughly equal weights) and a pinch of salt. Chill.",
+      "Stretch the rest of the curd until smooth and shiny, then split it into 2–3 pieces. Keep them warm in the hot water.",
+      "SHAPE: flatten one warm piece into a thin disc about 12 cm across, like a tortilla, and lay it in the cup.",
+      "FILL: spoon in 2–3 tablespoons of stracciatella. Gather the edges up, twist and pinch them firmly closed. Tie with string or a strip of leek if you like.",
+      "Drop each burrata into the iced salted water for 5–10 minutes to set, then keep it in cold, lightly salted water in the fridge."
+    ],
+    storage: "Fridge (0–4°C) in lightly salted cold water: best within 24 hours, no more than 2–3 days. Don't freeze — the filling splits and the skin turns rubbery. Take it out 30 minutes before serving.",
+    best_for: "On its own with ripe tomatoes, olive oil, salt and basil; with grilled peaches or figs; torn over pizza or pasta after cooking.",
+    troubleshooting: "Pouch tears when shaping = curd too cool or stretched too thin — keep it in the hot water until you shape it. Won't seal = pinch while still hot; a dab of hot curd seals it. Filling leaks = too much stracciatella. See 30-Minute Mozzarella for curd problems.",
+    science: "The outer skin is pasta filata — stretched curd whose proteins are lined up into elastic fibres, so it can be pulled thin and sealed. The cream-soaked shreds inside stay soft because they aren't knitted together.",
+    tip: "Stracciatella on its own (without the pouch) is a treat too — spoon it over bread or pasta.",
+    sources: "New England Cheesemaking Supply (burrata); Foods 12(9) 2023 (stracciatella composition and shelf life); NHS."
+  },
+
+  kashkaval: {
+    name: "Kashkaval / Kaşar (Aged Stretched Cheese)",
+    parent: "cheese_making",
+    cat: "Cheese Recipes",
+    icon: "🟡",
+    origin: "Bulgaria, Balkans · Turkey (kaşar)",
+    difficulty: "Advanced",
+    time: "1 day + 2–6 months ageing",
+    yield: "Roughly 10–20% of the milk weight (sources vary)",
+    shelf: "Whole: months · cut: 3–4 weeks",
+    overview: "The Balkan and Turkish yellow cheese: curd is soured until it will stretch, kneaded in hot salted water like mozzarella, pressed into a wheel or loaf, then aged for months into a firm, mild, melting cheese. It's the step up from fresh cheese — you need a starter culture, a pH meter or strips, and a cool place to age it.",
+    safety: [
+      "Pasteurise your own raw milk first (63°C for 30 minutes) or use shop milk. US law lets raw-milk cheese be sold after 60 days' ageing, but FDA sampling still found pathogens in such cheeses — ageing is not a guarantee.",
+      "Wear heat-proof gloves: the stretching water is 72–78°C.",
+      "If the culture fails (no acidity after many hours), the curd has sat warm without protection — discard it rather than stretching and ageing it."
+    ],
+    ingredients: [
+      "4 L (1 US gallon) whole cow or sheep milk (or a mix) — not UHT",
+      "Starter: thermophilic yogurt-type culture (S. thermophilus + L. bulgaricus), or a mixed mesophilic/thermophilic one — dose as the label says for 4 L",
+      "¼ tsp calcium chloride (30%) in 60 ml cool water — shop milk",
+      "¼ tsp single-strength liquid rennet (follow your label) in 60 ml cool non-chlorinated water",
+      "Stretching water: 5–6% salt (50–60 g salt per litre)",
+      "Salting brine: 20% (200 g salt per litre), chilled",
+      "Cheese wax or vacuum bags for ageing"
+    ],
+    what_you_need: "Large stainless pot. Thermometer. pH meter or pH strips covering 5.0–6.0. Long knife. Cheesecloth. A mould (round or loaf tin with holes). Second pot for stretching water. Heat-proof gloves and two wooden spoons. An ageing space at 8–12°C and 80–85% humidity (a wine fridge or curing chamber). Cultures, rennet, calcium chloride and wax: cheesemaking shops or online.",
+    method: [
+      "Warm the milk to 34–37°C, sprinkle in the culture, stir and leave 45 minutes to ripen.",
+      "Stir in the calcium chloride, wait 5 minutes, then add the rennet with slow up-and-down strokes for 30 seconds. Cover and leave 30–40 minutes, until a clean break.",
+      "Cut the curd into 1 cm cubes and rest 5 minutes.",
+      "Stir gently while slowly raising the heat to 40–42°C over 20–30 minutes. Keep stirring at that temperature until the whey reads about pH 5.6–5.7 (around 2 hours).",
+      "Drain the curd into a cloth-lined colander and press it lightly into one mass. Keep it covered at 20–22°C.",
+      "RIPEN THE CURD: check every hour or two until the curd reaches pH 5.2–5.3 (usually 2–10 hours). STRETCH TEST: dip a finger-sized piece in 75°C water for a minute — it should stretch into long, shiny strands. If it tears, wait longer.",
+      "STRETCH: cut the curd into 1 cm slices. Heat the salted stretching water to 72–78°C. Work in batches: dip the slices, then knead and stretch them with the spoons (or gloved hands) for 3–5 minutes until smooth and elastic.",
+      "MOULD: press the hot, stretched cheese firmly into the mould, smoothing the top. Cool it in cold water, then leave it in the mould overnight in the fridge.",
+      "SALT: unmould and float it in the 20% brine in the fridge for 2–3 hours per 500 g, turning halfway.",
+      "DRY: pat dry and leave on a rack at 12–15°C for 2–3 days, turning daily, until the surface is dry to the touch.",
+      "WAX OR VACUUM-SEAL it, write the date on it, and age at 8–12°C and 80–85% humidity for at least 60 days, turning weekly. Full flavour comes at 2–6 months."
+    ],
+    storage: "Whole, waxed or vacuum-sealed, at 8–12°C: several months (keep ageing it). Once cut: wrap in wax/baking paper then a bag, fridge, use within 3–4 weeks. Mould on the cut face of a firm cheese: cut away at least 2.5 cm (1 inch) around and below it. Freezer: up to 6 months in small pieces — it turns crumbly but is fine for melting.",
+    best_for: "Fried breaded kashkaval (kashkaval pane), toasted sandwiches (tost), pizza, burek, grated over pasta, melted on grilled vegetables.",
+    troubleshooting: "Curd won't stretch, breaks into pieces = not acidic enough — wait longer (check pH) or the water is too cool. Stretched curd is mushy and sticky = too acidic (below about pH 5.0) — stretch sooner next time. Cracks when ageing = too dry — raise humidity or wax sooner. Mould under the wax = surface wasn't dry — dry longer before waxing. Very salty = brined too long for its size.",
+    science: "As the culture makes acid, calcium leaves the casein network. At about pH 5.2–5.3 just enough has gone for heat to turn the curd plastic, so it can be kneaded and stretched into long fibres. Ageing then lets enzymes slowly break down protein and fat, turning a rubbery young cheese into a firm, nutty one.",
+    tip: "Buy cheap pH strips for 5.0–6.0 — they turn the guesswork into a simple reading. Turkish 'taze kaşar' is the same cheese sold young (a few weeks); aged 'eski kaşar' is kept for months.",
+    sources: "Bacillus Bulgaricus (kashkaval home method); Microorganisms 9(3) 2021 (Bulgarian kashkaval); Turkish Ministry of Agriculture traditional cheese inventory (Malkara eski kaşar); FDA 21 CFR 133 and FDA raw-milk cheese sampling; Clemson HGIC & NDSU Extension (hard cheese storage)."
+  },
+
+  white_cheese: {
+    name: "Balkan White Cheese (Djathë i Bardhë / Sirene / Beyaz Peynir)",
+    parent: "cheese_making",
+    cat: "Cheese Recipes",
+    icon: "⬜",
+    origin: "Albania, Bulgaria, Serbia, Romania · Turkey",
+    difficulty: "Intermediate",
+    time: "2 days + 4+ weeks in brine",
+    yield: "Roughly 500–700 g from 4 L of milk",
+    shelf: "In brine: up to 6 months",
+    overview: "The everyday cheese of the Balkans and Turkey — djathë i bardhë in Albania, sirene in Bulgaria and Serbia, telemea in Romania, beyaz peynir in Turkey. Like feta it lives in brine, but it's made from cow, sheep or goat milk (or a mix), pressed into bigger blocks, and aged longer in a milder brine.",
+    safety: [
+      "Pasteurise your own raw milk first (63°C for 30 minutes) — the milk is never heated above 35°C and the cheese is eaten fresh-ish.",
+      "The culture's acid protects the cheese: if it doesn't turn tangy within a day, throw it away rather than brining it.",
+      "NHS: pasteurised brined white cheese (like feta) is fine in pregnancy — if you're pregnant, use shop-bought pasteurised milk."
+    ],
+    ingredients: [
+      "4 L (1 US gallon) whole cow, sheep or goat milk, or a mix — not UHT",
+      "Starter: 1/16 tsp mesophilic + 1/16 tsp thermophilic culture (or a white-cheese/feta culture, dosed by its label)",
+      "⅛–¼ tsp calcium chloride (30%) in 60 ml cool water — shop milk",
+      "¼ tsp single-strength liquid rennet (follow your label) in 60 ml cool non-chlorinated water",
+      "Salting brine: 16% (160 g salt per litre of water)",
+      "Storage brine, per 1 L: 60–80 g salt + 2½ tsp (12 ml) calcium chloride 30% + 2 tsp (9 ml) white vinegar, water to 1 L"
+    ],
+    what_you_need: "Large stainless pot. Thermometer. Long knife. Cheesecloth. A square mould or a colander, a board and a 2–2.5 kg weight. A lidded tub or big jar for brine ageing.",
+    method: [
+      "Warm the milk to 30–35°C. Add the cultures, stir, and leave 30–45 minutes.",
+      "Stir in the calcium chloride and wait 5 minutes. Add the rennet with slow up-and-down strokes for 30 seconds. Cover and leave 45–60 minutes until a clean break.",
+      "Cut the curd into 2 cm cubes, rest 5 minutes, then stir very gently for 15–20 minutes.",
+      "Ladle the curds into the cloth-lined mould. Fold the cloth over.",
+      "PRESS: put the board and a 2–2.5 kg weight on top for 4–6 hours, turning the block once halfway.",
+      "Cut into blocks about 8–10 cm square.",
+      "SALT: float the blocks in the 16% brine for 4–5 hours in a cool place.",
+      "SOUR: put the blocks in a covered box at 15–20°C for about a day, until they smell pleasantly tangy.",
+      "AGE: pack into the tub, cover completely with chilled storage brine, lid on, fridge. It's good from about 4 weeks; the classic flavour comes at 2–3 months."
+    ],
+    storage: "In storage brine in the fridge: up to 6 months — keep it fully covered and always use a clean fork. Too salty? Soak slices in water or milk for 30 minutes. Out of brine, wrapped: about 1 week. Freezer: crumbled, 2–3 months, for cooking only.",
+    best_for: "Breakfast with tomatoes, cucumbers, olives and bread; byrek and banitsa; shopska and Greek-style salads; baked peppers stuffed with cheese; menemen.",
+    troubleshooting: "Slimy, soft surface in brine = no calcium chloride/vinegar in the brine — use the recipe above. Holes, bloating or yeasty smell = contamination — discard. Rubbery, bland = culture didn't work or too much rennet. Crumbles to pieces = cut too small or stirred too hard.",
+    science: "Like feta, it's preserved by acid from the culture plus salt, with the brine keeping out air and moulds. Pressing makes a firmer, closer texture than unpressed feta, and the slightly weaker brine and longer ageing give the milder, creamier Balkan flavour.",
+    tip: "Keep the whey: reheat it straight away to make gjizë / urdë (see that recipe). A mix of cow and sheep milk gives the classic Balkan taste.",
+    sources: "New England Cheesemaking Supply (beyaz peynir); Bacillus Bulgaricus (sirene); Microorganisms 9(3) 2021 (Bulgarian white brined cheese); Univ. of Guelph (feta brine); NHS."
   },
 
   /* ─────────────── PROSCIUTTO & CURED MEATS ─────────────── */
@@ -337,6 +551,7 @@ export const RECIPES = {
     parent: "smoking_curing",
     cat: "Cured Meat Recipes",
     icon: "🦆",
+    origin: "Modern charcuterie (France / USA)",
     difficulty: "Easy–Intermediate",
     time: "3–4 weeks",
     yield: "About 70% of the raw weight (30% is lost as water)",
@@ -378,6 +593,7 @@ export const RECIPES = {
     parent: "smoking_curing",
     cat: "Cured Meat Recipes",
     icon: "🥓",
+    origin: "Italy",
     difficulty: "Intermediate",
     time: "6–10 weeks",
     yield: "About 65–70% of the raw weight",
@@ -422,6 +638,7 @@ export const RECIPES = {
     parent: "smoking_curing",
     cat: "Cured Meat Recipes",
     icon: "🍖",
+    origin: "Italy (Parma, San Daniele) · Balkans (pršut)",
     difficulty: "Advanced",
     time: "12–18 months",
     yield: "A 10 kg fresh leg gives about 6.5–7 kg of ham",
@@ -461,7 +678,258 @@ export const RECIPES = {
     best_for: "Paper-thin slices with melon or figs, on pizza after baking, with good bread and butter, wrapped round grissini. The bone and trimmings flavour soups and bean stews (cook them).",
     troubleshooting: "Sour or putrid smell near the bone ('bone sour') = the leg was too warm before the salt reached the centre, or blood was left in — discard the whole ham. Deep cracks or very hard dark outer meat = air too dry or too fast — raise humidity and apply the sugna earlier. Soft slimy surface = too humid or too little salt — wipe with vinegar, lower humidity, improve airflow; if you suspect it was under-salted, do the skewer smell test now — any off smell = discard. Fine dust or tiny moving specks = ham mites — brush off, rub with lard, and keep it in a ham bag. White mould = harmless; green or blue spots = scrub off with a vinegar-dampened cloth; black, yellow or hairy mould growing into the meat = cut well beyond it, or discard if it's widespread.",
     science: "Salt moves into the leg only about 2.5 cm (1 inch) a week, pulling water out and lowering water activity until spoilage bacteria can't grow. Until it reaches the centre, only cold protects the meat: Clostridium botulinum type B — the kind in French ham outbreaks — can grow from about 3.3°C. That's why the cold stage is long and strict. During ageing, the leg's own enzymes slowly break proteins and fats into the sweet, nutty flavour of prosciutto.",
-    tip: "Practise on duck prosciutto and lonzino first. Keep a log: date, trimmed weight, days in salt, a daily temperature check during the cold stage, and monthly weights. In Western Europe, winter garages and sheds swing between 0 and 10°C+ — don't trust them for the cold stage; use a fridge. If the fridge fails during the cold stage: if the leg was above 5°C for no more than about 4 hours and smells fine, stop the cure, soak it and cook it right away as a boiled ham. If it was warm for longer — or you don't know how long — throw it away. A fridge thermometer with min/max memory tells you.",
+    tip: "BALKAN PRŠUT (Njeguši, Dalmatia): same salt-only method, but after the full 90-day cold stage the leg is cold-smoked over beech or oak (room never above 22°C) for up to about 6 weeks, then aged until at least a year from the start of salting. Practise on duck prosciutto and lonzino first. Keep a log: date, trimmed weight, days in salt, a daily temperature check during the cold stage, and monthly weights. In Western Europe, winter garages and sheds swing between 0 and 10°C+ — don't trust them for the cold stage; use a fridge. If the fridge fails during the cold stage: if the leg was above 5°C for no more than about 4 hours and smells fine, stop the cure, soak it and cook it right away as a boiled ham. If it was warm for longer — or you don't know how long — throw it away. A fridge thermometer with min/max memory tells you.",
     sources: "Consorzio del Prosciutto di Parma — specification (17 May 2025) and 'Making Parma Ham'; Santé publique France BEH 2018 and Toxins 2020 (botulism & home-cured ham); US FDA Fish & Fishery Hazards Guide ch. 13; Univ. of Kentucky ASC-213 & Virginia Tech country-ham guides; foodsafety.gov; NHS; CDC."
+  },
+  pastirma: {
+    name: "Pastırma (Turkish Cured Beef)",
+    parent: "smoking_curing",
+    cat: "Cured Meat Recipes",
+    icon: "🌶️",
+    origin: "Turkey (Kayseri) · Armenia",
+    difficulty: "Intermediate",
+    time: "3–5 weeks",
+    yield: "About half the raw weight",
+    shelf: "Fridge (whole) up to 2–3 months",
+    overview: "Air-dried beef salted, pressed flat, dried, then coated in çemen — a thick, spicy paste of fenugreek, garlic and paprika. Sliced paper-thin it's eaten on its own, with eggs, or baked in pastries. A great beef cure because the pressed piece is thin and dries evenly.",
+    safety: [
+      "Use a whole, intact muscle from an inspected source. Don't make the traditional deep knife slits: they push surface bacteria (such as E. coli from beef) into the middle, and curing and drying don't reliably kill them.",
+      "Salt and cure only in the fridge (1–4°C). Dry at 12–15°C — never in a warm room.",
+      "Weigh the cure exactly. Cure #2 is toxic in large amounts: label it, keep it away from children, never use it as table salt.",
+      "Pregnant people, young children, people over 65 and anyone with weakened immunity: eat it cooked (it's delicious fried with eggs) until steaming hot (NHS, CDC)."
+    ],
+    ingredients: [
+      "1–2 kg beef eye of round or top round (one whole muscle, trimmed of fat and silverskin), cut lengthways into slabs about 5 cm thick",
+      "Cure #2: 2.5 g per kg of meat, weighed exactly",
+      "Coarse salt for packing: about 1 kg (most is brushed off)",
+      "ÇEMEN, per 1 kg of meat (about 150 g of paste): 35 g ground fenugreek, 20 g garlic (4–5 cloves), 6 g sweet paprika, 6 g hot paprika or chilli flakes, 3 g ground cumin, about 80 ml water"
+    ],
+    what_you_need: "Scale plus a 0.1 g scale for the cure. Tray or tub that fits in the fridge. Two boards and 10–20 kg of weights. String or hooks. A drying space at 12–15°C and 70–85% humidity with gentle airflow. Thermometer-hygrometer. Notebook.",
+    method: [
+      "WEIGH the trimmed slabs and write the weight down.",
+      "Rub the Cure #2 evenly over every surface.",
+      "SALT: bury the slabs in coarse salt in the tray and refrigerate 48 hours. Turn them, re-cover with fresh salt, and refrigerate another 24 hours.",
+      "Brush off the salt and soak the slabs in cold water in the fridge for 1 hour, then pat dry.",
+      "PRESS: lay the slabs between two boards with 10–20 kg of weight on top, in the fridge, for 12–24 hours. They flatten and give up more liquid.",
+      "DRY: hang at 12–15°C and 70–85% humidity for 5–7 days, until the surface is dry and the meat has firmed.",
+      "Press again for 30 minutes to even out the shape.",
+      "ÇEMEN: mix the paste (it should be thick like peanut butter; add water a spoon at a time). Spread it all over the meat about 3–5 mm thick. Rest 1–2 days in the fridge so it sets.",
+      "Hang again at 12–15°C until the çemen is dry and the meat is firm right through — usually 1–3 weeks. It's ready at 35% or more weight loss from step 1 (not counting the paste).",
+      "Slice paper-thin across the grain; scrape off some of the çemen if you prefer it milder."
+    ],
+    storage: "Whole, wrapped in baking paper, in the fridge (0–4°C): up to 2–3 months (commercial Kayseri pastırma is given 3–4 months — stay shorter with homemade). Sliced: wrap tightly and eat within 3 days. Freezer: possible for up to a month but the texture suffers. Turkish rules don't allow smoking pastırma — it's air-dried only.",
+    best_for: "Thin slices with bread and tomatoes, pastırmalı yumurta (fried with eggs), in börek and pide, with hummus.",
+    troubleshooting: "Hard, dark outside and soft centre (case hardening) = air too dry or too fast — raise humidity, slow the fan, rest it vacuum-sealed in the fridge for 1–2 weeks. Çemen cracks and falls off = paste too dry or meat too wet when coated — dry the meat longer first. Mould under the çemen = too humid — wipe with vinegar and re-coat; black, fuzzy or deep mould = discard. Too salty = next time soak 2 hours after salting.",
+    science: "Heavy surface salting plus pressing squeezes water out fast, and nitrite from the cure blocks Clostridium botulinum and keeps the red colour. The çemen seals the surface, slows drying so the meat doesn't case-harden, and its garlic and spices help keep moulds away.",
+    tip: "Fenugreek is 'çemen otu' in Turkish shops and 'methi' in Indian ones. Wear gloves when spreading çemen — the smell of fenugreek stays on your hands for days.",
+    sources: "Kayseri Pastırması geographical-indication specification (Türk Patent No. 36, 2002); Turkish Food Codex on meat products (2018/52); Sustainability 17(7) 2025 pastırma review; NHS; CDC."
+  },
+
+  bresaola: {
+    name: "Bresaola (Air-Dried Beef)",
+    parent: "smoking_curing",
+    cat: "Cured Meat Recipes",
+    icon: "🥩",
+    origin: "Italy (Valtellina)",
+    difficulty: "Intermediate",
+    time: "6–10 weeks",
+    yield: "About 60–65% of the raw weight",
+    shelf: "Vacuum-sealed: 1–2 months",
+    overview: "Lean beef, cured with salt, pepper and juniper, then slowly air-dried until it's deep red and silky. It's the beef version of lonzino — one clean muscle, so it's a good second whole-muscle project.",
+    safety: [
+      "Use one whole, intact muscle (eye of round) from an inspected source — never mince, stab or roll it.",
+      "Cure only in the fridge (1–4°C) and dry at 12–15°C.",
+      "Weigh salt and Cure #2 exactly; Cure #2 is toxic in large amounts — label it and keep it away from children.",
+      "Pregnant people, young children, people over 65 and anyone with weakened immunity: only eat it cooked until steaming hot (NHS, CDC)."
+    ],
+    ingredients: [
+      "1 beef eye of round (magatello), 1.5–2.5 kg, all fat and silverskin trimmed off",
+      "Salt (non-iodised): 2.5% of the trimmed weight — 25 g per kg",
+      "Cure #2: 0.25% — 2.5 g per kg",
+      "Sugar: 1% — 10 g per kg",
+      "Spices per kg: 3 g cracked black pepper, 5 crushed juniper berries, 1 sprig rosemary (chopped), 2 bay leaves (crumbled), 1 crushed garlic clove (optional)",
+      "Casing: beef bung or large collagen casing, or 2 layers of cheesecloth plus butcher's netting"
+    ],
+    what_you_need: "Scale plus 0.1 g scale. Vacuum or zip-lock bag. Fridge. Casing or cheesecloth + netting. String. Sterile needle. Drying space at 12–15°C and 75–85% humidity. Thermometer-hygrometer. Notebook.",
+    method: [
+      "WEIGH the trimmed meat and write it down. Calculate salt (× 0.025), Cure #2 (× 0.0025) and sugar (× 0.01). Mix with the spices.",
+      "Rub the cure over every surface. Bag it, press out the air, refrigerate at 1–4°C.",
+      "Cure 2–3 weeks, turning the bag every 2 days. This weighed method can't over-salt, so extra days are fine.",
+      "Rinse quickly, pat very dry. Stuff into the casing (or wrap tightly in cheesecloth) and tie firmly. Prick any air pockets.",
+      "WEIGH again — this is the hanging weight. Hang at 12–15°C. Start at about 85% humidity for the first week, then let it drift down to 75%.",
+      "Weigh weekly. It's ready at 35% loss from the hanging weight — usually 5–8 weeks. It should be firm right through with a slight give.",
+      "Peel off the casing and slice paper-thin."
+    ],
+    storage: "Whole, vacuum-sealed or wrapped, in the fridge: 1–2 months (USDA gives 2–3 months for cut commercial dry-cured meat — stay at the short end with homemade). Sliced: eat within 3 days. Freezer: not recommended — it dries out and loses its silkiness.",
+    best_for: "Carpaccio-style with rocket, lemon, olive oil and shaved parmesan; rolled around fresh cheese; antipasti.",
+    troubleshooting: "Case hardening (hard dark ring, soft centre) = too dry, too fast — raise humidity, cut the airflow, vacuum-rest in the fridge 2–3 weeks. White powdery mould = fine. Small green spots = wipe off with vinegar and watch; black, yellow, orange, pink or furry mould, or mould into the meat = discard. Sour or 'off' smell when cut = discard.",
+    science: "Very lean beef has almost no fat to slow water loss, so bresaola case-hardens easily — that's why the humidity starts high and drops slowly. The salt and nitrite do the preserving; the juniper and pepper are for flavour.",
+    tip: "The Valtellina producers age bresaola at 12–18°C for 4–8 weeks and forbid 'accelerated drying' — slow is the whole secret.",
+    sources: "Bresaola della Valtellina IGP specification; 2 Guys & A Cooler and Hank Shaw (home method); foodsafety.gov cold-storage chart; NHS; CDC."
+  },
+
+  pancetta: {
+    name: "Pancetta (Cured Pork Belly) + Guanciale",
+    parent: "smoking_curing",
+    cat: "Cured Meat Recipes",
+    icon: "🥓",
+    origin: "Italy",
+    difficulty: "Easy–Intermediate",
+    time: "4–5 weeks",
+    yield: "About 75–80% of the raw weight",
+    shelf: "Vacuum-sealed: up to 1 month",
+    overview: "Italy's cured pork belly — unsmoked, seasoned with pepper, nutmeg and fennel, rolled tight (arrotolata) or left flat (tesa). At home, treat it as a cooking ingredient: the base of carbonara, amatriciana, soups and sauces. Guanciale is the same idea made with pork cheek (jowl).",
+    safety: [
+      "Treat homemade pancetta and guanciale as COOK-BEFORE-EATING: fry, render or bake them. A rolled belly has surfaces rolled into the middle, so don't eat it raw.",
+      "Use pork from an inspected source. Home-raised pigs: have the carcass tested for Trichinella. Never use wild boar.",
+      "Cure only in the fridge (1–4°C); dry at 10–15°C. Weigh Cure #1 exactly and keep it away from children."
+    ],
+    ingredients: [
+      "1.5–2.5 kg skinless pork belly (or pork cheeks for guanciale), squared off",
+      "Salt (non-iodised): 2.8% of the meat weight — 28 g per kg",
+      "Cure #1 (Prague Powder #1 — 6.25% nitrite): 0.25% — 2.5 g per kg",
+      "Sugar: 5 g per kg",
+      "Spices per kg: 4 g white or black pepper, 1 g nutmeg, 2 g fennel seed, 1 g chilli flakes, 1.5 g garlic powder (guanciale: plenty of black pepper and a few sprigs of thyme)",
+      "For rolling: butcher's string, plus extra cracked black pepper"
+    ],
+    what_you_need: "Scale plus a 0.1 g scale. Zip-lock or vacuum bag. Fridge. Butcher's string. A drying space at 10–15°C and 70–80% humidity. Notebook.",
+    method: [
+      "WEIGH the belly and write it down. Calculate salt (× 0.028), Cure #1 (× 0.0025) and sugar; mix with the spices.",
+      "Rub the cure over every surface. Bag it, press out the air, refrigerate at 1–4°C.",
+      "Cure 7–10 days, turning every 2 days, until the belly is firm all over.",
+      "Rinse off the spices, soak 15 minutes in cold water, pat very dry. Leave uncovered on a rack in the fridge overnight to dry the surface.",
+      "ROLLED: press cracked pepper onto the meat side, roll it up very tightly with no air gaps, and tie with string every 2–3 cm. FLAT (TESA) OR GUANCIALE: just coat with pepper and hang flat.",
+      "Hang at 10–15°C and 70–80% humidity for about 3 weeks, until firm.",
+      "Slice or dice and cook — render slowly in a pan before adding other ingredients."
+    ],
+    storage: "Wrapped or vacuum-sealed in the fridge: up to 1 month. Freezer: 1–2 months (quality) — freeze it in cubes or slices so you can cook straight from frozen. Always cook before eating.",
+    best_for: "Carbonara and amatriciana (guanciale is traditional), soups, bean stews, risotto, wrapped around roast chicken or fish, lardons for salads.",
+    troubleshooting: "Soft or wet in the middle of the roll = rolled loosely with air gaps — roll tighter next time; cook it thoroughly. Too salty = soak longer after curing. Surface slime = drying too humid or warm — wipe with vinegar and lower humidity; if it smells off, discard. White mould = fine; black, furry or coloured mould = discard.",
+    science: "Pancetta is a short cure: salt and nitrite preserve the meat and fix the colour, and a few weeks of drying concentrate the flavour. Because it's eaten cooked, it doesn't need the long drying and heavy weight loss of prosciutto.",
+    tip: "Keep a hunk in the fridge and cut it as you need it — 50 g of diced pancetta flavours a whole pot of beans or soup.",
+    sources: "Marianski (pancetta); Ruhlman (homemade pancetta); US 9 CFR 424.21 (nitrite limits); foodsafety.gov cold-storage chart."
+  },
+
+  sucuk: {
+    name: "Sucuk / Suxhuk (Fermented Spiced Sausage)",
+    parent: "smoking_curing",
+    cat: "Cured Meat Recipes",
+    icon: "🌭",
+    origin: "Turkey · Balkans (suxhuk, sudzhuk)",
+    difficulty: "Advanced",
+    time: "4–5 weeks",
+    yield: "About 70% of the raw weight",
+    shelf: "Fridge up to 1 month",
+    overview: "The garlicky, cumin-spiced beef sausage of Turkey and the Balkans — sucuk in Turkish, suxhuk in Albanian, sudzhuk in Bulgarian. It's fermented for a few days, then dried for weeks, and traditionally sliced and fried — with eggs (sucuklu yumurta), on pide or in beans. It's the most technical recipe here: fermentation must be controlled.",
+    safety: [
+      "ALWAYS COOK IT before eating — fry until sizzling, at least 71°C in the middle. That's how sucuk is traditionally eaten, and it matters: fermentation and drying do not kill E. coli O157 in beef (a 1994 US outbreak came from fermented salami).",
+      "You need a starter culture, Cure #2 and a pH meter or strips. The sausage must reach pH 5.3 or lower within 72 hours of fermenting at 22–24°C (food-safety 'degree-hours' limit for Staph. aureus). If it doesn't, throw the batch away.",
+      "Keep meat, mincer and bowls ice-cold (below 4°C) while mincing and stuffing.",
+      "Weigh salt and Cure #2 exactly; Cure #2 is toxic in large amounts — label it and keep it away from children."
+    ],
+    ingredients: [
+      "1 kg meat: 700 g beef chuck + 300 g lamb or beef fat (or 800 g beef + 200 g beef suet)",
+      "Salt (non-iodised): 28 g",
+      "Cure #2: 2.5 g, weighed exactly",
+      "Dextrose (glucose): 3 g — food for the starter culture",
+      "Starter culture for fermented sausage whose label says it reaches pH 5.3 within 72 hours at 22–24°C (e.g. Bactoferm F-RM-52 / T-RM-53 — slow cultures like T-SPX often miss it), dosed by its label",
+      "Spices: 10 g ground cumin, 10 g garlic (minced), 5 g black pepper, 5 g hot paprika or chilli, 5 g sweet paprika, 2 g allspice",
+      "Beef or collagen casings, about 38 mm, soaked"
+    ],
+    what_you_need: "Mincer and sausage stuffer. Scale plus a 0.1 g scale. pH meter or pH strips covering 4.8–6.0. A fermenting space at 22–24°C and 85–90% humidity, then a drying space at 12–16°C and 75–85% humidity (a curing chamber). Thermometer-hygrometer. Sterile needle. Notebook.",
+    method: [
+      "Chill the meat, fat and mincer parts in the freezer for 30 minutes — everything should be just above freezing.",
+      "Mince the meat and fat through a 5–6 mm plate.",
+      "Dissolve the starter culture in a little cold non-chlorinated water. Add it with the salt, Cure #2, dextrose, garlic and spices, and mix with cold hands for 2–3 minutes until sticky.",
+      "Stuff tightly into the casings with no air pockets; tie into horseshoes or links. Prick any air bubbles. WEIGH and write down the weight.",
+      "FERMENT: hang at 22–24°C and 85–90% humidity for 48–72 hours.",
+      "CHECK PH: at 48 and 72 hours, test a small piece (mashed with a little distilled water). It must read 5.3 or lower by 72 hours. If it doesn't, discard the whole batch.",
+      "DRY: move to 12–16°C and 75–85% humidity. Hang for 3–4 weeks, until it has lost about 30% of its weight and is firm right through.",
+      "Slice and fry (no oil needed) until sizzling and heated through before eating."
+    ],
+    storage: "Wrapped or vacuum-sealed in the fridge: up to 1 month. Freezer: 3 months, sliced, ready to fry. Always cook before eating.",
+    best_for: "Sucuklu yumurta (fried with eggs), on pide, in bean or chickpea stews, grilled in sandwiches, on pizza.",
+    troubleshooting: "pH doesn't drop = culture dead, too cold, or no dextrose — discard; use fresh culture next time. Hard outside, soft inside = drying too fast — raise humidity. Fat smearing and greasy texture = meat and fat weren't cold enough when minced. Sour, rotten smell, slime or coloured mould = discard.",
+    science: "The starter bacteria eat the dextrose and make lactic acid; once the pH drops to 5.3 or lower, Staph. aureus and most spoilage bacteria can't grow. Nitrite blocks botulism. Drying then lowers water activity so the sausage keeps. None of these steps reliably kill E. coli in beef — cooking does.",
+    tip: "Start with a small 1 kg batch and a cheap pH meter. In the Balkans suxhuk is often dried in cold winter air — a curing chamber gives you the same control any time of year.",
+    sources: "Turkish Food Codex (2018/52) and Kayseri Sucuğu GI specification; Marianski (sucuk); CFIA & BC Centre for Disease Control (fermented sausage degree-hours, pH 5.3); USDA FSIS 2023 fermented/dried products guideline (5-log STEC reduction for beef); CDC MMWR 1995 (1994 salami outbreak)."
+  },
+
+  prosciutto_cotto: {
+    name: "Prosciutto Cotto (Italian Cooked Ham)",
+    parent: "smoking_curing",
+    cat: "Cooked Meat Recipes",
+    icon: "🍖",
+    origin: "Italy",
+    difficulty: "Intermediate",
+    time: "8–12 days",
+    yield: "About 80–85% of the raw weight",
+    shelf: "Whole 1 week · sliced 3–4 days",
+    overview: "Mild, pink, juicy cooked ham — the Italian sandwich classic. Pork leg is cured in a weighed brine, pressed into shape, then gently poached until just cooked. No drying chamber needed: just a fridge, a brine syringe and a good probe thermometer.",
+    safety: [
+      "This is a cooked product: the centre MUST reach 68°C (check with a probe thermometer), then be cooled fast — from 54°C to 27°C within 1.5 hours and down to 4°C within 5 more hours (USDA cooling rule).",
+      "Cure #1 in the brine protects against botulism during curing; weigh it exactly and keep it away from children.",
+      "Keep the raw pork and brine in the fridge (1–4°C) the whole time, and keep raw and cooked ham apart."
+    ],
+    ingredients: [
+      "2–3 kg boneless pork leg (topside or a whole boned 'fresh ham' muscle group), trimmed of sinew, fat cap left on",
+      "Water: about half the meat weight (e.g. 1 L for 2 kg)",
+      "Brine, calculated on meat + water together: salt 2.25%, Cure #1 0.25%, sugar 1% (e.g. 2 kg meat + 1 L water = 3 kg → 67 g salt, 7.5 g Cure #1, 30 g sugar)",
+      "Optional aromatics in the brine: 2 bay leaves, 5 juniper berries, 5 peppercorns, 1 clove, 1 garlic clove (simmer in some of the water, then cool completely)"
+    ],
+    what_you_need: "Scale plus a 0.1 g scale. Brine injector (meat syringe). A food-grade tub or bag that fits in the fridge. Ham press/mould, or cling film + foil + string. Large pot or sous-vide circulator. Probe thermometer (essential). A sink of iced water.",
+    method: [
+      "WEIGH the meat and the water. Calculate the brine on their combined weight and dissolve everything in the cold water.",
+      "INJECT: inject about 10% of the meat's weight of brine into the meat, in a grid every 2–3 cm, deep into the thickest parts.",
+      "CURE: submerge the meat in the rest of the brine (weigh it down), refrigerate at 1–4°C for 7 days (up to 10 for 3 kg), turning it every day. This weighed method can't over-salt, so extra days do no harm.",
+      "Rinse, pat dry, and press the meat tightly into the ham mould (or roll it very tightly in several layers of cling film and foil and tie it). Rest overnight in the fridge so it sets into shape.",
+      "COOK: heat water to 75–78°C (steaming, never boiling) and poach the ham until a probe in the very centre reads 68°C — roughly 3–5 hours for 2–3 kg. Go by the thermometer, not the clock.",
+      "COOL FAST: plunge the mould or wrapped ham into iced water. It must go from 54°C to 27°C within 1.5 hours, then into the fridge to reach 4°C within 5 more hours. Add ice as it melts.",
+      "Leave it in the fridge overnight (still in the mould) before slicing — it slices thinner and cleaner when fully chilled."
+    ],
+    storage: "Fridge (0–4°C): whole ham up to 1 week; once sliced, 3–4 days (foodsafety.gov gives 3–5 for shop ham — stay shorter with homemade). Freezer: 1–2 months, sliced and wrapped — it gets a little wetter when thawed. Reheating leftovers: until steaming hot, 74°C.",
+    best_for: "Sandwiches and toasties, pizza, pasta with peas and cream, tortellini fillings, breakfast with eggs, antipasti.",
+    troubleshooting: "Grey patches inside = brine didn't reach — inject more evenly next time. Too salty = cured on a salt-box or strong brine — use the weighed recipe. Crumbles and won't slice = not pressed tightly or not chilled overnight. Dry and stringy = overcooked — use a water bath below 80°C and take it out at 68°C. Slimy or sour smell after cooking = discard.",
+    science: "Injected brine carries salt and nitrite straight to the centre, so the curing is even and fast. Nitrite gives the pink colour and blocks botulism; salt lets the muscle proteins bind water, which keeps the ham juicy. Gentle poaching sets those proteins without squeezing the water out, and fast chilling stops spores that survive cooking from waking up.",
+    tip: "A sous-vide circulator set to 70°C makes this almost foolproof: the ham can't overcook, and you only have to watch the core probe.",
+    sources: "US 9 CFR 424.21 (nitrite in pumped products); USDA FSIS Appendix B (cooling); foodsafety.gov (safe minimum temperatures and cold-storage chart); Istituto Valorizzazione Salumi Italiani (cooked ham process)."
+  },
+
+  kavurma: {
+    name: "Kavurma (Meat Preserved in Its Own Fat)",
+    parent: "smoking_curing",
+    cat: "Cooked Meat Recipes",
+    icon: "🍲",
+    origin: "Turkey · Balkans",
+    difficulty: "Easy",
+    time: "2–3 hours",
+    yield: "About 60% of the raw weight",
+    shelf: "Fridge 3–4 days · freezer 2–3 mo",
+    overview: "Lamb or beef cut into cubes and slowly cooked in its own fat until the juices are gone and the meat fries, then packed under the fat. Traditionally it was the winter store after the autumn slaughter (Kurban). Today it's the fastest way to turn a lot of meat into ready-to-use portions — keep them in the freezer, not the pantry.",
+    safety: [
+      "Old-style storage in jars under fat at room temperature is NOT safe by modern standards: sealing cooked meat under fat shuts out air — the conditions botulism bacteria like. Keep it in the fridge for a few days, or freeze it.",
+      "Cook it right through (at least 71°C in the centre of the biggest piece) and reheat until steaming hot (74°C) before eating.",
+      "Cool it quickly: portions into shallow containers and into the fridge within 2 hours of cooking."
+    ],
+    ingredients: [
+      "1.5 kg boneless lamb or beef (shoulder or neck), cut into 2–3 cm cubes",
+      "200 g lamb tail fat or beef suet, diced (or 100 g butter / ghee if the meat is fatty)",
+      "Salt: about 20 g (1.5% of the meat)",
+      "Optional: 1 tsp black pepper, 1 tsp chilli flakes"
+    ],
+    what_you_need: "Heavy pot or deep pan with a lid (cast iron is ideal). Wooden spoon. Probe thermometer. Shallow freezer boxes or bags.",
+    method: [
+      "Melt the diced fat slowly in the pot over low heat until you have a few centimetres of liquid fat; lift out the crisp bits.",
+      "Add the meat and salt, stir, cover, and cook on low. The meat releases its juices and simmers in them.",
+      "After about 1 hour, uncover and keep cooking on low, stirring now and then, until all the liquid has evaporated and the meat starts to fry in the fat — about 1–2 hours in all. Check the biggest piece reads at least 71°C.",
+      "Season with pepper and chilli.",
+      "Portion into shallow containers, covering the meat with the fat. Cool and refrigerate within 2 hours, or freeze."
+    ],
+    storage: "Fridge (0–4°C): 3–4 days (USDA rule for cooked meat — being under fat doesn't make it last longer safely). Freezer: 2–3 months in meal-size portions. Reheat until steaming hot. Don't store jars in the pantry or cellar.",
+    best_for: "Fried with eggs, stirred into rice pilaf or bulgur, stuffed in pide or pastry, with beans, on toast. A spoonful of the fat flavours vegetables.",
+    troubleshooting: "Tough meat = cooked too fast — keep the heat low and let it simmer in its own juices first. Burnt bits = heat too high once the liquid was gone. Meat too dry = too lean a cut — add more fat.",
+    science: "Slow cooking in its own juices tenderises the meat; once the water has evaporated, frying in fat browns it and adds flavour. The fat seals out air, which slows rancidity — but it doesn't stop bacteria, which is why cold storage is still needed.",
+    tip: "Freeze it flat in bags of 200–300 g — one bag is a quick dinner for two with eggs or rice.",
+    sources: "Turkish Food Codex (kavurma definition); J. Hellenic Vet. Med. Soc. (kavurma storage study); foodsafety.gov (cooked meat storage, safe temperatures); UK Chilled Food Association (reduced-oxygen foods)."
   }
 };

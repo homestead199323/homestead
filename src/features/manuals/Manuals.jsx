@@ -98,7 +98,7 @@ function Preserving({embedded}) {
   const cats = ["All", ...new Set([...recipeEntries.map(([, r]) => r.cat), ...Object.values(PRESERVATION).map(r => r.cat)])];
   const filtered = catFilter === "All" ? items : items.filter(([, r]) => r.cat === catFilter);
   const LIST = { margin: 0, paddingLeft: 18 };
-  const STEP_LABEL = /^([A-Z][A-Z0-9 ()&'’\-–+/.,%°#]{2,60}):\s/;
+  const STEP_LABEL = /^([A-ZÇÖŞÜĞİ][A-Z0-9ÇÖŞÜĞİ ()&'’\-–+/.,%°#]{2,60}):\s/;
 
   const CAT_COLOR = {
     "Fermentation":             { bg: "#e8f5e9", c: "#2d6a4f", accent: "#52b788" },
@@ -114,6 +114,7 @@ function Preserving({embedded}) {
     "Apiary":                   { bg: "#fff8e1", c: "#f57f17", accent: "#ffca28" },
     "Cheese Recipes":           { bg: "#f3e5f5", c: "#6a1b9a", accent: "#8e24aa" },
     "Cured Meat Recipes":       { bg: "#fbe9e7", c: "#bf360c", accent: "#e64a19" },
+    "Cooked Meat Recipes":      { bg: "#efebe9", c: "#4e342e", accent: "#8d6e63" },
   };
 
   const DIFF_COLOR = { Easy: C.green, Intermediate: C.orange, Advanced: C.red, "Easy (once set up)": C.green, "Easy (with hive access)": C.green, "Intermediate–Advanced": C.orange, "Easy–Intermediate": "#27ae60" };
@@ -203,9 +204,9 @@ function Preserving({embedded}) {
                     <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: C.card, color: dc, border: `1px solid ${dc}`, fontWeight: 600, fontFamily: F.body, lineHeight: 1.45 }}>{sel.difficulty === "Easy" || sel.difficulty.startsWith("Easy") ? "✓ " : sel.difficulty.startsWith("Advanced") ? "⚠ " : "◎ "}{sel.difficulty}</span>
                     <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: C.card, color: C.t2, fontWeight: 600, fontFamily: F.body, lineHeight: 1.45 }}>📦 {sel.shelf}</span>
                   </div>
-                  {(sel.time || sel.yield) && (
+                  {(sel.time || sel.yield || sel.origin) && (
                     <div style={{ fontSize: 12, color: C.t2, marginTop: 8, lineHeight: 1.5 }}>
-                      {sel.time ? "⏱ " + sel.time : ""}{sel.time && sel.yield ? " · " : ""}{sel.yield ? "🍽 " + sel.yield : ""}
+                      {sel.time ? "⏱ " + sel.time : ""}{sel.time && sel.yield ? " · " : ""}{sel.yield ? "🍽 " + sel.yield : ""}{sel.origin ? " · 🌍 " + sel.origin : ""}
                     </div>
                   )}
                 </div>
