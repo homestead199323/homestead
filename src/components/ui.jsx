@@ -86,21 +86,18 @@ export function Overlay({title,onClose,children,wide,sheet}) {
     setStartY(e.touches[0].clientY);
   }
   function handleTouchMove(e) {
-    if (startY === null) return;
-    const dy = Math.max(0, e.touches[0].clientY - startY);
-    setDragY(dy);
+    // Centered popups don't follow the finger any more (they close with X only).
+    if (startY === null || e.touches.length < 0) return;
   }
   function handleTouchEnd() {
-    if (dragY > 180) {
-      onClose();
-    }
+    // Popups close only with the X button (or Escape), never by a stray tap or swipe.
     setDragY(0);
     setStartY(null);
   }
 
   if (!isSheet) {
     return createPortal(
-      <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(18,26,20,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
+      <div className="overlay-backdrop" style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(18,26,20,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
         <div
           onClick={function(e){e.stopPropagation();}}
           className="overlay-sheet overlay-pop" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
@@ -118,9 +115,9 @@ export function Overlay({title,onClose,children,wide,sheet}) {
 
   // Sheet variant — spring drag-to-dismiss
   return createPortal(
-    <div className="overlay-backdrop" onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
+    <div className="overlay-backdrop" style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
       {/* Backdrop fades as sheet is dragged down */}
-      <div style={{position:"absolute",inset:0,background:"rgba(18,26,20,.3)",opacity}} onClick={onClose}/>
+      <div style={{position:"absolute",inset:0,background:"rgba(18,26,20,.3)",opacity}}/>
       <div
         onClick={function(e){e.stopPropagation();}}
         style={{

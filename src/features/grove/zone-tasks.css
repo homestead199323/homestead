@@ -1,7 +1,7 @@
 /* Zone task popup — game-style "jobs waiting here" sheet opened from a map badge. */
 .q-tp-backdrop{position:fixed;inset:0;z-index:7200;background:rgba(18,26,20,.3);display:flex;align-items:center;justify-content:center;padding:16px;animation:q-tp-fade .18s ease-out}
 .q-tp{position:relative;width:min(440px,100%);max-height:min(640px,86vh);display:flex;flex-direction:column;background:var(--color-card);color:var(--color-text);border-radius:26px;box-shadow:0 24px 60px #1c2a1f55,0 2px 0 #fff8 inset;outline:none;overflow:hidden;animation:q-tp-pop .34s cubic-bezier(.2,1.4,.4,1);transition:transform .22s ease}
-.q-tp-drag{touch-action:none;cursor:grab;flex-shrink:0}
+.q-tp-drag{flex-shrink:0}
 .q-tp-head{display:flex;align-items:center;gap:14px;padding:20px 18px 14px;background:linear-gradient(180deg,var(--color-green-pale),transparent)}
 .q-tp-head h2{font-size:21px;letter-spacing:-.03em;margin:0 0 8px;font-weight:650;line-height:1.15}
 .q-tp-head .q-eyebrow{margin-bottom:3px;font-size:10px}

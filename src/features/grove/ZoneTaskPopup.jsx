@@ -104,9 +104,7 @@ function TaskTile({ task, data, index, done, onDone, onOpen }) {
 export default function ZoneTaskPopup({ zone, tasks, data, setData, onClose, onOpenTasks, onOpenZone }) {
   const [list] = useState(tasks);
   const [done, setDone] = useState({});
-  const [drag, setDrag] = useState(0);
-  const start = useRef(null),
-    sheet = useRef(null),
+  const sheet = useRef(null),
     dataRef = useRef(data);
   useEffect(() => {
     dataRef.current = data;
@@ -130,21 +128,8 @@ export default function ZoneTaskPopup({ zone, tasks, data, setData, onClose, onO
   const zt = ZT_MAP.get(zone.type);
   const animal = (data.livestock?.animals || []).find((a) => animalZone(a, data.zones || [])?.id === zone.id);
   const crop = (data.garden?.plots || []).find((p) => p.zone === zone.id && p.status !== "harvested")?.crop;
-  function down(e) {
-    start.current = e.clientY;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  }
-  function move(e) {
-    if (start.current != null) setDrag(Math.max(0, e.clientY - start.current));
-  }
-  function up() {
-    if (start.current == null) return;
-    start.current = null;
-    if (drag > 90) onClose();
-    else setDrag(0);
-  }
   return createPortal(
-    <div className="q-tp-backdrop" onClick={onClose}>
+    <div className="q-tp-backdrop">
       <section
         ref={sheet}
         tabIndex={-1}
@@ -152,10 +137,9 @@ export default function ZoneTaskPopup({ zone, tasks, data, setData, onClose, onO
         aria-modal="true"
         aria-labelledby="q-tp-title"
         className={`q-tp${clear ? " is-clear" : ""}`}
-        style={drag ? { transform: `translateY(${drag}px)`, transition: "none" } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="q-tp-drag" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+        <div className="q-tp-drag">
           <header className="q-tp-head">
             <span className="q-tp-hero" aria-hidden="true">
               {animal ? (

@@ -520,7 +520,6 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label="Morning farm walk"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="q-walk-shell" ref={shell}>
         <div className="q-walk-top">
