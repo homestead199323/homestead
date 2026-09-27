@@ -113,6 +113,25 @@
     nav visible; live bundle index-wB2IpMT0.js → Grove3D-BB0FU84v.js ("Growth preview and
     legend", "in its harvest window", "+2 wk" present; CSS g3-time/g3-tip). Still open:
     real-device frame rate; exact cause of the reported missing menu not reproduced.
+  - [x] **4z-4 (2026-09-27, commit 0051b67): rendering quality, animations, efficiency.**
+    Quality: crossed crop sprites and tree leaf discs fade by view angle (ordered dither) so
+    beds seen from above show clean top-view art and trees seen low keep a solid three-sphere
+    crown; edge-on planes dropped (no dark stem lines); animals/props lean back toward a high
+    camera; lower afternoon sun for readable shadows. Animations, all in the vertex shader from
+    one clock (loop only while the map is on screen and the tab visible; 30 fps idle desktop /
+    20 phone, full rate during gestures; reduced-motion honoured): crop/tuft/canopy sway, water
+    drift, harvest-halo pulse, bee hover, hen hop, chimney smoke, drifting cloud shadows.
+    Efficiency: home view 380 → 168 draw calls (transparent double-sided materials no longer
+    drawn twice; camera-facing sprites instanced per artwork; fences/tufts/pots/markers/crops
+    collected farm-wide; crossed quads merged; per-call materials memoised). Design (user
+    reports): labels sit on the thing they name (footprint centre at roof/bed height) so
+    numbered narrow beds read unambiguously, compact pills/badges, shrink when zoomed out;
+    bed-detail stage key shows the bed's own crops (one row per crop). Verified: ESLint,
+    46+3 tests, build, 30/30 gesture checks, all-zone-type + numbered-beds harnesses, app
+    screenshots 1440/390 with nav; live index-B-YJRLUB.js → Grove3D-B770U796.js (g3bayer,
+    proc:puff, g3size, uFadeV, forceSinglePass, IntersectionObserver present; CSS g3-far,
+    q-stage-key-crop, pill/badge min-height:0). Not verified: real-device frame rate and
+    battery; animation timing only reasoned about (headless RAF is starved).
 - [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
   Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
   Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.
