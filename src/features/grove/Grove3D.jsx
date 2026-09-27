@@ -17,9 +17,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { Plus, Minus, Compass, Maximize2, Minimize2, X } from "lucide-react";
+import { Plus, Minus, Compass, Maximize2, Minimize2, X, CalendarDays } from "lucide-react";
 import { art, cropArtwork } from "../quiet/art";
-import { growthOf, animalZone, bedRows, layoutPlots } from "../quiet/farm-model";
+import { growthOf, animalZone, bedRows, layoutPlots, STAGES } from "../quiet/farm-model";
 import { plantingRows } from "../quiet/planting-plan";
 import { plantedRows, plantPosition } from "./aerial-layout";
 import { srand } from "./sceneMath";
@@ -32,6 +32,11 @@ const aspectOf = (src) => { const m = /\/([a-z0-9-]+?)(?:-[A-Za-z0-9_-]{8})?\.we
 const ANIMAL_W = { Cow: 2.2, Horse: 2.3, Donkey: 1.8, Alpaca: 1.6, Pig: 1.3, Goat: 1.1, Sheep: 1.2, Rabbit: .55, Chicken: .55, Duck: .6, Goose: .75, Turkey: .85, Quail: .35, "Guinea Fowl": .55, Bee: .3 };
 const TREE_RE = /apple|pear|peach|plum|cherry|citrus|lemon|orange|fig|olive|walnut|almond|avocado/;
 const CAM = { az: -22, el: 56, fov: 28 };
+// growth stages (farm-model STAGES): Planned, Sown, Seedling, Growing, Maturing, Harvest window
+const STAGE_COLOR = [0xb9c0bb, 0xd7c48c, 0xa9dd8c, 0x5aa846, 0xb9cf4d, 0xf7c552];
+const STAGE_CSS = ["#b9c0bb", "#d7c48c", "#a9dd8c", "#5aa846", "#b9cf4d", "#f7c552"];
+const dayNum = (key) => { const [y, m, d] = String(key || "").split("-").map(Number); return Date.UTC(y || 1970, (m || 1) - 1, d || 1) / 864e5; };
+const addDays = (key, n) => { const t = new Date((dayNum(key) + n) * 864e5); return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`; };
 const UP = new THREE.Vector3(0, 1, 0);
 const HPI = Math.PI / 2;
 
@@ -99,6 +104,7 @@ const DRAW = {
   shade(g, s) { g.clearRect(0, 0, s, s); g.fillStyle = "rgba(40,60,40,.5)"; g.fillRect(0, 0, s, s); g.strokeStyle = "rgba(20,30,20,.5)"; g.lineWidth = 1; for (let i = 0; i < s; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, s); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(s, i); g.stroke(); } },
   hay(g, s, r) { g.fillStyle = "#d8b45a"; g.fillRect(0, 0, s, s); g.lineWidth = 1; for (let i = 0; i < 900; i++) { g.strokeStyle = r() < .5 ? "rgba(120,80,20,.35)" : "rgba(255,240,180,.5)"; const x = r() * s, y = r() * s, a = (r() - .5) * .9, l = 6 + r() * 16; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); } },
   hedge(g, s, r) { g.fillStyle = "#1f3a19"; g.fillRect(0, 0, s, s); const cols = ["#3a6328", "#467433", "#2f5522", "#527f3a", "#3e6a2c"]; for (let i = 0; i < 2200; i++) { g.fillStyle = cols[Math.floor(r() * cols.length)]; const x = r() * s, y = r() * s, q = 3 + r() * 6; g.beginPath(); g.ellipse(x, y, q, q * .6, r() * 3, 0, 6.3); g.fill(); } },
+  halo(g, s) { g.clearRect(0, 0, s, s); const grad = g.createRadialGradient(s / 2, s / 2, s * .1, s / 2, s / 2, s / 2); grad.addColorStop(0, "rgba(255,205,80,.9)"); grad.addColorStop(.55, "rgba(255,205,80,.55)"); grad.addColorStop(1, "rgba(255,205,80,0)"); g.fillStyle = grad; g.fillRect(0, 0, s, s); },
   contact(g, s) { g.clearRect(0, 0, s, s); const grad = g.createRadialGradient(s / 2, s / 2, s * .28, s / 2, s / 2, s / 2); grad.addColorStop(0, "rgba(10,20,8,.55)"); grad.addColorStop(1, "rgba(10,20,8,0)"); g.fillStyle = grad; g.fillRect(0, 0, s, s); },
   solar(g, s) { g.fillStyle = "#16233d"; g.fillRect(0, 0, s, s); g.strokeStyle = "rgba(190,205,225,.55)"; g.lineWidth = 2; const n = 6; for (let i = 0; i <= n; i++) { const t = (i * s) / n; g.beginPath(); g.moveTo(t, 0); g.lineTo(t, s); g.stroke(); g.beginPath(); g.moveTo(0, t); g.lineTo(s, t); g.stroke(); } g.fillStyle = "rgba(255,255,255,.06)"; g.fillRect(0, 0, s, s / 3); },
   bark(g, s, r) { g.fillStyle = "#5a4634"; g.fillRect(0, 0, s, s); for (let i = 0; i < 260; i++) { g.strokeStyle = r() < .5 ? "rgba(30,20,10,.45)" : "rgba(150,120,90,.35)"; g.lineWidth = 1 + r() * 2; const x = r() * s; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + (r() - .5) * 10, s); g.stroke(); } },
@@ -153,6 +159,9 @@ function materials() {
     hedge: (rx, ry) => keep(k("hedge", rx, ry), () => std({ map: proc("hedge", DRAW.hedge, { repeat: [rx, ry] }), roughness: 1 })),
     pavers: (rx, ry) => keep(k("pavers", rx, ry), () => layer(std({ map: tex(art("texture-stone"), { repeat: [rx, ry] }), color: 0xd4cfc4 }), 5)),
     hit: new THREE.MeshBasicMaterial({ visible: false }),
+    glow: layer(new THREE.MeshBasicMaterial({ map: proc("halo", DRAW.halo, { size: 128, clamp: true }), transparent: true, opacity: .75, depthWrite: false }), 11),
+    stageTag: STAGE_COLOR.map((c, i) => std({ color: c, roughness: .6, emissive: i === 5 ? 0x8a6a10 : 0x000000 })),
+    sprout: std({ color: 0x8fd47a, roughness: 1 }),
     select: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .32, depthWrite: false }), 14),
     selectEdge: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .95, depthWrite: false }), 15),
     contact: layer(new THREE.MeshBasicMaterial({ map: proc("contact", DRAW.contact, { size: 128, clamp: true }), transparent: true, depthWrite: false }), 12),
@@ -553,33 +562,45 @@ function building(g, w, d, kind, M, { clay = false, tag = (m) => m, bills = [] }
 }
 
 /* ---------- zones ---------- */
-function plantsOf(z, plots, crops) {
-  const out = [], today = todayLocalKey();
+/* Every plant of a zone (position, size, crop, stage) plus one segment per planted row carrying the
+   plot's growth state — the segments drive the stage markers, foliage lines, harvest glow and tooltips. */
+function plantingsOf(z, plots, crops, today) {
+  const out = [], rows = [], vertical = z.rowAxis === "vertical", orchard = z.type === "orchard";
   const push = (x, y, size, crop, stage) => out.push({ x, y, size, crop, stage });
+  const info = (plot) => {
+    const g = growthOf(plot, crops.get(plot.crop), today);
+    const left = plot.harvestDate ? Math.round(dayNum(plot.harvestDate) - dayNum(today)) : null;
+    return { id: plot.id, crop: plot.crop, name: plot.name, count: plot.plantCount || plot.qty || 0, stage: g.index, progress: g.progress, estimated: g.estimated, left, status: plot.status };
+  };
   layoutPlots(z, plots).filter((p) => p.layout.version === 2 && p.layout.pattern !== "scatter").forEach((plot) => {
-    const stage = growthOf(plot, crops.get(plot.crop), today).index;
+    const pi = info(plot);
     plantingRows(z, plot).forEach((row) => {
       const n = Math.min(90, row.points.length), size = Math.min(row.gapM * .95, row.pitchM * 1.15 * (row.points.length / Math.max(1, n)), .85);
-      for (let j = 0; j < n; j++) { const q = row.points[Math.floor(((j + .5) * row.points.length) / n)]; push(q.xM, q.yM, size, plot.crop, stage); }
+      for (let j = 0; j < n; j++) { const q = row.points[Math.floor(((j + .5) * row.points.length) / n)]; push(q.xM, q.yM, size, plot.crop, pi.stage); }
+      if (row.points.length) {
+        const al = row.points.map((q) => (vertical ? q.yM : q.xM)), cr = row.points.map((q) => (vertical ? q.xM : q.yM));
+        rows.push({ ...pi, vertical, c: cr.reduce((a, b) => a + b, 0) / cr.length, a0: Math.min(...al) - row.pitchM * .4, a1: Math.max(...al) + row.pitchM * .4, gap: row.gapM, size });
+      }
     });
   });
-  const rows = plantedRows(z, plots).filter((r) => r.planting?.layout.version !== 2);
-  const vertical = z.rowAxis === "vertical", orchard = z.type === "orchard";
+  const v1 = plantedRows(z, plots).filter((r) => r.planting?.layout.version !== 2);
   const cross = vertical ? z.wM : z.hM, along = vertical ? z.hM : z.wM;
   const gap = cross / bedRows(z), margin = Math.min(.14, along * .07);
-  rows.forEach((row, i) => {
+  v1.forEach((row, i) => {
     if (!row.planting) return;
-    const pos = row.atM ?? (i + .5) * gap, length = row.pitch ? row.planting.layout.lengthM : (along - margin * 2) * row.fraction;
-    const stage = growthOf(row.planting, crops.get(row.planting.crop), today).index;
+    const pos = row.atM ?? (i + .5) * gap, start = row.pitch ? 0 : margin, length = row.pitch ? row.planting.layout.lengthM : (along - margin * 2) * row.fraction;
+    const pi = info(row.planting);
     const n = Math.min(orchard ? 12 : 90, row.count || (row.planting && !row.planting.plantCount ? 4 : 0));
     const size = Math.min((row.pitch || gap) * .95, (length / Math.max(1, n)) * 1.15, orchard ? 4 : .85);
-    for (let j = 0; j < n; j++) { const at = (row.pitch ? 0 : margin) + plantPosition(row, j, n) * length; push(vertical ? pos : at, vertical ? at : pos, size, row.planting.crop, stage); }
+    for (let j = 0; j < n; j++) { const at = start + plantPosition(row, j, n) * length; push(vertical ? pos : at, vertical ? at : pos, size, row.planting.crop, pi.stage); }
+    rows.push({ ...pi, vertical, c: pos, a0: start, a1: start + length, gap: row.pitch || gap, size });
   });
   plots.filter((p) => p.zone === z.id && p.status !== "harvested" && p.layout?.pattern === "scatter").forEach((p) => {
-    const stage = growthOf(p, crops.get(p.crop), today).index;
-    (p.layout.points || []).forEach((q) => push(q.xM, q.yM, Math.min(4, (p.layout.spacingCM / 100) * .9), p.crop, stage));
+    const pi = info(p), pts = p.layout.points || [];
+    pts.forEach((q) => push(q.xM, q.yM, Math.min(4, (p.layout.spacingCM / 100) * .9), p.crop, pi.stage));
+    if (pts.length) { const cx = pts.reduce((a, q) => a + q.xM, 0) / pts.length, cy = pts.reduce((a, q) => a + q.yM, 0) / pts.length; rows.push({ ...pi, vertical: false, c: cy, a0: cx, a1: cx, gap: .5, size: .5, scatter: true }); }
   });
-  return out;
+  return { plants: out, rows };
 }
 function rowLines(z) { // centre lines of the bed rows, in zone-local metres
   const vertical = z.rowAxis === "vertical", cross = vertical ? z.wM : z.hM, along = vertical ? z.hM : z.wM, n = bedRows(z), gap = cross / n, out = [];
@@ -618,7 +639,8 @@ function buildZone(z, ctx) {
   const w = z.wM, d = z.hM, cx = w / 2, cz = d / 2, plant = isPlantZone(z.type), oval = z.shape === "oval";
   const tag = (m) => { m.userData.zoneId = z.id; return m; }; // taps use the zone hit box, not the detail meshes
   const plots = data.garden?.plots || [];
-  let plants = plant ? plantsOf(z, plots, crops) : [];
+  const grown = plant ? plantingsOf(z, plots, crops, ctx.todayKey) : { plants: [], rows: [] };
+  let plants = grown.plants; const prows = grown.rows;
   let floor = 0;
   if (z.type === "raised" || z.type === "herbs" || z.type === "veg") {
     if (z.type === "raised") {
@@ -814,14 +836,29 @@ function buildZone(z, ctx) {
     // watering can and a hose reel
     billboard(g, art("prop-wateringcan"), .5, w - .45, 0, d - .35, bills, { sink: .06 });
   }
-  // continuous foliage along well-planted rows, under the individual plant sprites
+  // growth visualisation per planted row: a foliage line once the plants have filled in, a wooden
+  // row marker with a tag in the stage colour at the row's head, a gold glow on rows in their
+  // harvest window, and an invisible box per row that feeds the hover/tap tooltip
   const lift = floor > 0 ? floor + .02 : 0;
-  if (z.type === "veg" || z.type === "raised" || z.type === "herbs") {
-    const vertical = z.rowAxis === "vertical", groups = new Map();
-    plants.forEach((p) => { if (p.stage < 3 || TREE_RE.test(p.crop.toLowerCase())) return; const k = Math.round((vertical ? p.x : p.y) * 20); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); });
-    const strips = [];
-    groups.forEach((list, k) => { if (list.length < 4) return; const c = k / 20, along = list.map((p) => (vertical ? p.y : p.x)), a = Math.min(...along), b = Math.max(...along), sz = Math.min(.3, list[0].size * .7), h = list[0].stage >= 4 ? .07 : .05; strips.push({ p: [vertical ? c : (a + b) / 2, lift + h / 2, vertical ? (a + b) / 2 : c], ry: vertical ? HPI : 0, s: [b - a + sz, h, sz] }); });
-    instances(g, new THREE.BoxGeometry(1, 1, 1), Object.assign(M.hedge(2, .5), { color: new THREE.Color(0xa9c986) }), strips);
+  if (prows.length) {
+    const strips = [], glows = [], poles = [], tags = [];
+    prows.forEach((r) => {
+      const tree = TREE_RE.test((r.crop || "").toLowerCase());
+      const len = Math.max(0, r.a1 - r.a0), mid = (r.a0 + r.a1) / 2, x = r.vertical ? r.c : mid, zz = r.vertical ? mid : r.c, ry = r.vertical ? HPI : 0;
+      if (!tree && r.stage >= 3 && len > .6 && !r.scatter) { const sz = Math.min(.3, r.size * .7), h = r.stage >= 4 ? .07 : .05; strips.push({ p: [x, lift + h / 2, zz], ry, s: [len, h, sz] }); }
+      // harvest window: a soft gold halo wider than the row, readable from far away
+      if (r.stage === 5) glows.push({ p: [x, lift + .012, zz], rx: -HPI, ry, s: [len + (tree ? 3 : 1.2), tree ? 3.2 : Math.max(.7, r.gap * 1.7), 1] });
+      // marker at the head of the row: west end of a horizontal row, south end of a vertical one
+      const hx = r.vertical ? r.c : r.a0 - .16, hz = r.vertical ? r.a1 + .16 : r.c, big = r.stage === 5 ? 1.35 : 1;
+      poles.push({ p: [hx, lift + .26, hz] });
+      tags.push({ p: [hx, lift + .5, hz], ry: r.vertical ? 0 : HPI, s: [big, big, 1], stage: r.stage });
+      const hit = new THREE.Mesh(new THREE.BoxGeometry(r.vertical ? Math.min(.6, r.gap) : len + .4, .5, r.vertical ? len + .4 : Math.min(.6, r.gap)), M.hit);
+      hit.position.set(x, lift + .25, zz); hit.userData.plot = { ...r, zone: z.name, zoneId: z.id }; g.add(hit); ctx.plotHits.push(hit);
+    });
+    if (strips.length) instances(g, new THREE.BoxGeometry(1, 1, 1), Object.assign(M.hedge(2, .5), { color: new THREE.Color(0xa9c986) }), strips);
+    if (glows.length) instances(g, new THREE.PlaneGeometry(1, 1), M.glow, glows, { cast: false, receive: false });
+    if (poles.length) instances(g, new THREE.CylinderGeometry(.018, .022, .52, 5), M.woodDark, poles, { cast: false });
+    [0, 1, 2, 3, 4, 5].forEach((st) => { const list = tags.filter((t) => t.stage === st); if (list.length) instances(g, new THREE.BoxGeometry(.2, .13, .025), M.stageTag[st], list, { cast: false }); });
   }
   // crops
   const cap = 700;
@@ -829,7 +866,8 @@ function buildZone(z, ctx) {
   const seedlingItems = [], batches = new Map();
   capped.forEach((p, i) => {
     const name = p.crop.toLowerCase();
-    if (p.stage < 2) { seedlingItems.push({ p: [p.x, lift + .006, p.y], rx: -HPI, s: Math.max(.08, p.size * .14) }); return; }
+    if (p.stage < 1) return; // planned: the row marker alone says what is coming
+    if (p.stage < 2) { seedlingItems.push({ p: [p.x, lift + .012, p.y], rx: -HPI, s: Math.max(.05, p.size * .1) }); return; }
     if (TREE_RE.test(name)) {
       billboard(g, cropArtwork(p.crop, Math.max(4, p.stage), "side"), Math.min(4.4, p.size * 1.15), p.x, 0, p.y, bills, { sink: .05 });
       const mulch = disc(g, Math.min(1.1, p.size * .32), M.mulch, p.x, .015, p.y, { seg: 14 }); mulch.castShadow = false;
@@ -842,7 +880,7 @@ function buildZone(z, ctx) {
     b.push({ x: p.x + (srand(i) - .5) * .05, y: lift, z: p.y + (srand(i + 7) - .5) * .05, w: bw, r: (srand(i + 3) - .5) * .5, top: cropArtwork(p.crop, p.stage, "top") });
   });
   sprites(g, batches);
-  instances(g, new THREE.CircleGeometry(1, 8), std({ color: 0x8a7756 }), seedlingItems, { cast: false });
+  instances(g, new THREE.CircleGeometry(1, 8), M.sprout, seedlingItems, { cast: false });
   // animals
   const animals = (data.livestock?.animals || []).filter((a) => animalZone(a, data.zones)?.id === z.id);
   animals.slice(0, 5).forEach((a, i) => {
@@ -937,7 +975,7 @@ function buildWorld(ctx) {
   const flowers = [], nf = Math.min(120, Math.round(fW * fH / 14));
   for (let i = 0; i < nf; i++) { const [x, y] = open(i, 900); if (x == null) continue; const s = .7 + srand(i + 41) * .6; flowers.push({ p: [x, .2 * s, y], ry: srand(i + 43) * 3, s }, { p: [x, .2 * s, y], ry: srand(i + 43) * 3 + HPI, s }); }
   instances(world, new THREE.PlaneGeometry(.5, .42), M.flower, flowers, { cast: false, receive: false });
-  bake(world, new Set([...ctx.bills, ...ctx.hits]));
+  bake(world, new Set([...ctx.bills, ...ctx.hits, ...ctx.plotHits]));
   return world;
 }
 /* Merge every static mesh that shares a material into one draw call. Instanced meshes, the
@@ -1176,19 +1214,40 @@ class FarmControls {
 
 /* ---------- component ---------- */
 export default function Grove3D(props) {
-  const { data, zones, roads, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge } = props;
-  const host = useRef(null), labels = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
+  const { data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge } = props;
+  const host = useRef(null), labels = useRef(null), tipRef = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
   const [full, setFull] = useState(false);
+  const [ahead, setAhead] = useState(0); // growth preview: days from today
+  const [timeOpen, setTimeOpen] = useState(false);
+  const todayKey = useMemo(() => addDays(todayLocalKey(), ahead), [ahead]);
   const [hint, setHint] = useState(() => { try { return !sessionStorage.getItem("g3-hint"); } catch { return true; } });
   const [busy, setBusy] = useState(true);
   const [coop, setCoop] = useState(null); // "touch" | "wheel" | null — short hint when a page gesture hit the inline map
   const sceneKey = useMemo(
-    () => JSON.stringify([zones, data.garden?.plots, data.livestock?.animals, data.ornaments, data.mapLines, data.mapStyle, data.region, roads, fW, fH, margin, env, pathTexture, roadWidth]),
-    [zones, data.garden?.plots, data.livestock?.animals, data.ornaments, data.mapLines, data.mapStyle, data.region, roads, fW, fH, margin, env, pathTexture, roadWidth],
+    () => JSON.stringify([zones, data.garden?.plots, data.livestock?.animals, data.ornaments, data.mapLines, data.mapStyle, data.region, roads, fW, fH, margin, env, pathTexture, roadWidth, todayKey]),
+    [zones, data.garden?.plots, data.livestock?.animals, data.ornaments, data.mapLines, data.mapStyle, data.region, roads, fW, fH, margin, env, pathTexture, roadWidth, todayKey],
   );
+  // growth stages per zone (for the dots under the names) and a farm-wide summary for the time panel
+  const stageInfo = useMemo(() => {
+    const byZone = {}, totals = [0, 0, 0, 0, 0, 0];
+    (data.garden?.plots || []).forEach((pl) => {
+      if (pl.status === "harvested" || !pl.zone) return;
+      const st = growthOf(pl, crops?.get?.(pl.crop), todayKey).index;
+      (byZone[pl.zone] = byZone[pl.zone] || []).push(st); totals[st]++;
+    });
+    return { byZone, totals };
+  }, [data.garden?.plots, crops, todayKey]);
+  const showTip = (hit, x, y) => {
+    const el = tipRef.current; if (!el) return;
+    if (!hit) { el.style.display = "none"; return; }
+    const r = hit.userData.plot, when = r.stage === 5 ? "in its harvest window" : r.left == null ? STAGES[r.stage] : r.left > 0 ? `${STAGES[r.stage]} · harvest in ${r.left} d` : `${STAGES[r.stage]} · past harvest date`;
+    el.innerHTML = `<b>${r.crop}</b> <i style="background:${STAGE_CSS[r.stage]}"></i><br>${when}${r.count ? ` · ${r.count} plants` : ""}${r.estimated ? "" : " · observed"}`;
+    el.style.display = ""; const w = el.offsetWidth, hw = host.current ? host.current.clientWidth : 600;
+    el.style.left = `${Math.max(4, Math.min(hw - w - 4, x + 14))}px`; el.style.top = `${Math.max(4, y - el.offsetHeight - 12)}px`;
+  };
   const dismissHint = () => { setHint(false); try { sessionStorage.setItem("g3-hint", "1"); } catch { /* private mode */ } };
   const showCoop = (kind) => setCoop(kind);
-  useEffect(() => { latest.current = { ...props, dismissHint, showCoop }; }); // the engine reads the newest props from here
+  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, todayKey }; }); // the engine reads the newest props from here
   useEffect(() => { if (!coop) return; const t = setTimeout(() => setCoop(null), 1800); return () => clearTimeout(t); }, [coop]);
   // renderer, lights and controls: created once
   useEffect(() => {
@@ -1214,7 +1273,7 @@ export default function Grove3D(props) {
     scene.add(sun); scene.add(sun.target);
     const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), S = { W: 0, H: 0 };
     let queued = false;
-    const st = { renderer, scene, camera, sun, world: null, bills: [], hits: [], dims: null, fitted: false, anchors: {}, highlight: null, calls: 0 };
+    const st = { renderer, scene, camera, sun, world: null, bills: [], hits: [], plotHits: [], dims: null, fitted: false, anchors: {}, highlight: null, calls: 0 };
     state.current = st;
     if (import.meta.env?.DEV && typeof window !== "undefined") window.__g3 = st; // dev-only inspection hook
     const project = (x, y, z, out) => { const v = out.set(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * S.W, y: ((1 - v.y) / 2) * S.H, on: v.z < 1 }; };
@@ -1258,7 +1317,7 @@ export default function Grove3D(props) {
     st.controls = controls; controls.setCooperative(!fullRef.current);
     st.size = () => {
       const d = st.dims || { fW: 3, fH: 2, margin: 1 }, ratio = clamp((d.fH + 2 * d.margin) / (d.fW + 2 * d.margin), .62, .8);
-      S.W = el.clientWidth || 600; S.H = fullRef.current ? (el.clientHeight || Math.round(S.W * ratio)) : Math.round(S.W * ratio);
+      S.W = el.clientWidth || 600; S.H = fullRef.current ? (el.clientHeight || Math.round(S.W * ratio)) : Math.round(Math.min(S.W * ratio, Math.max(220, (window.innerHeight || 800) * .78)));
       renderer.setSize(S.W, S.H); camera.aspect = S.W / S.H; camera.updateProjectionMatrix(); controls.size = { w: S.W, h: S.H };
       if (!st.fitted && st.dims) { st.reset(false); st.fitted = true; } else controls.update();
       st.requestRender();
@@ -1289,9 +1348,22 @@ export default function Grove3D(props) {
     };
     const onLoaded = () => { renderer.shadowMap.needsUpdate = true; st.requestRender(); };
     onTexturesLoaded.add(onLoaded);
+    // hover tooltips for planted rows (mouse / trackpad only)
+    let hoverAt = 0, hoverTimer = 0;
+    const onHover = (e) => {
+      if (e.pointerType === "touch" || controls.pointers.size) return;
+      const now = performance.now(); if (now - hoverAt < 50) return; hoverAt = now;
+      const r = renderer.domElement.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      ptr.set((x / S.W) * 2 - 1, -(y / S.H) * 2 + 1); ray.setFromCamera(ptr, camera);
+      const hit = ray.intersectObjects(st.plotHits, false)[0];
+      clearTimeout(hoverTimer); latest.current.showTip?.(hit ? hit.object : null, x, y);
+    };
+    const onLeave = () => { clearTimeout(hoverTimer); hoverTimer = setTimeout(() => latest.current.showTip?.(null), 80); };
+    renderer.domElement.addEventListener("pointermove", onHover); renderer.domElement.addEventListener("pointerleave", onLeave); renderer.domElement.addEventListener("pointerdown", onLeave);
     const ro = new ResizeObserver(() => st.size()); ro.observe(el);
     return () => {
       ro.disconnect(); onTexturesLoaded.delete(onLoaded); controls.dispose(); renderer.domElement.removeEventListener("webglcontextlost", lost);
+      renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerleave", onLeave); renderer.domElement.removeEventListener("pointerdown", onLeave); clearTimeout(hoverTimer);
       if (st.world) st.world.traverse((m) => { if (m.geometry) m.geometry.dispose(); });
       renderer.dispose(); if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement); state.current = null;
     };
@@ -1301,10 +1373,10 @@ export default function Grove3D(props) {
     const st = state.current; if (!st) return;
     const P = latest.current;
     if (st.world) { st.scene.remove(st.world); st.world.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
-    st.bills = []; st.hits = []; st.M = materials();
+    st.bills = []; st.hits = []; st.plotHits = []; st.M = materials(); latest.current.showTip?.(null);
     const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
     st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
-    st.world = buildWorld({ data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, bills: st.bills, hits: st.hits, M: st.M });
+    st.world = buildWorld({ data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, todayKey: P.todayKey || todayLocalKey(), bills: st.bills, hits: st.hits, plotHits: st.plotHits, M: st.M });
     st.scene.add(st.world);
     st.anchors = Object.fromEntries(P.zones.map((z) => [z.id, { cx: z.xM + z.wM / 2, cz: z.yM + z.hM / 2, corners: [[z.xM, z.yM], [z.xM + z.wM, z.yM], [z.xM + z.wM, z.yM + z.hM], [z.xM, z.yM + z.hM]], area: z.wM * z.hM, sel: 0, w: Math.min(23, z.name.length) * 6 + 16 }]));
     st.setupSun();
@@ -1323,7 +1395,7 @@ export default function Grove3D(props) {
     const key = (e) => { if (e.key === "Escape" && full) setFull(false); };
     window.addEventListener("keydown", key);
     if (st) { st.size(); st.reset(true, full && host.current && host.current.clientWidth < host.current.clientHeight ? .78 : 1); }
-    return () => { window.removeEventListener("keydown", key); if (full) document.body.style.overflow = prev; };
+    return () => { window.removeEventListener("keydown", key); if (full) document.body.style.overflow = prev === "hidden" ? "" : prev; };
   }, [full]);
   useEffect(() => { if (!hint) return; const t = setTimeout(() => latest.current.dismissHint?.(), 6000); return () => clearTimeout(t); }, [hint]);
   const ctl = (f) => { const st = state.current; if (st?.controls) f(st.controls, st); };
@@ -1338,7 +1410,10 @@ export default function Grove3D(props) {
           return (
             <div key={z.id} data-zone={z.id} className={`g3-label${selectedId === z.id ? " on" : ""}`} style={{ position: "absolute", left: 0, top: 0, display: "none", pointerEvents: "auto", whiteSpace: "nowrap" }}>
               <button type="button" className="g3-pill" onClick={(e) => onZoneOpen && onZoneOpen(e, z)}>{z.name.length > 23 ? z.name.slice(0, 22) + "…" : z.name}</button>
-              {list.length > 0 && onBadge && (
+              {(stageInfo.byZone[z.id] || []).length > 0 && (
+                <span className="g3-dots" aria-hidden="true">{(stageInfo.byZone[z.id] || []).slice(0, 8).map((st, i) => <i key={i} style={{ background: STAGE_CSS[st] }} />)}</span>
+              )}
+              {list.length > 0 && onBadge && !ahead && (
                 <button type="button" className="g3-badge" aria-label={`${list.length} job${list.length === 1 ? "" : "s"} waiting at ${z.name}`} onClick={(e) => { e.stopPropagation(); onBadge(z.id); }}>
                   <span>{taskGlyph(list[0])}</span><b>{list.length}</b>
                 </button>
@@ -1347,13 +1422,32 @@ export default function Grove3D(props) {
           );
         })}
       </div>
+      <div ref={tipRef} className="g3-tip" style={{ display: "none" }} role="tooltip" />
+      {ahead > 0 && <div className="g3-preview" role="status">Preview · {new Date(todayKey + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })} · in {ahead} days</div>}
       <div className="g3-ctl" role="group" aria-label="Map view controls">
+        <button type="button" className="g3-btn" aria-label="Growth preview and legend" aria-pressed={timeOpen} onClick={() => setTimeOpen(!timeOpen)}><CalendarDays size={18} /></button>
         <button type="button" className="g3-btn g3-zoom" aria-label="Zoom in" onClick={() => ctl((c) => c.zoomBy(.66))}><Plus size={18} /></button>
         <button type="button" className="g3-btn g3-zoom" aria-label="Zoom out" onClick={() => ctl((c) => c.zoomBy(1 / .66))}><Minus size={18} /></button>
         <button type="button" className="g3-btn" aria-label="Reset view" onClick={() => ctl((c, st) => st.reset(true))}><Compass size={18} /></button>
         <button type="button" className="g3-btn" aria-label={full ? "Exit full screen" : "Full screen map"} aria-pressed={full} onClick={() => setFull(!full)}>{full ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
       </div>
       {full && <button type="button" className="g3-btn g3-close" aria-label="Close full screen map" onClick={() => setFull(false)}><X size={20} /></button>}
+      {timeOpen && (
+        <div className="g3-time" role="group" aria-label="Growth preview">
+          <div className="g3-time-row">
+            <strong>{ahead ? `In ${ahead} days` : "Today"}</strong>
+            {[[0, "Today"], [14, "+2 wk"], [30, "+1 mo"], [60, "+2 mo"], [90, "+3 mo"]].map(([d, l]) => (
+              <button key={d} type="button" className={`g3-chip${ahead === d ? " on" : ""}`} onClick={() => setAhead(d)}>{l}</button>
+            ))}
+          </div>
+          <input type="range" min="0" max="120" step="1" value={ahead} aria-label="Days from today" onChange={(e) => setAhead(Number(e.target.value))} />
+          <div className="g3-legend">
+            {STAGES.map((name, i) => (
+              <span key={name}><i style={{ background: STAGE_CSS[i] }} />{name}{stageInfo.totals[i] ? ` ${stageInfo.totals[i]}` : ""}</span>
+            ))}
+          </div>
+        </div>
+      )}
       {hint && !busy && <div className="g3-hint" aria-hidden="true">Drag to move · pinch or scroll to zoom · two fingers to turn</div>}
       {coop && <div className="g3-coop" role="status">{coop === "touch" ? "Use two fingers to move the map, or open it full screen" : "Hold ⌘ / Ctrl and scroll to zoom the map"}</div>}
       {busy && <div className="g3-busy" aria-live="polite">Building your farm…</div>}
