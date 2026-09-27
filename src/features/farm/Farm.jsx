@@ -21,7 +21,7 @@ import PlotOverlay from "./PlotOverlay";
 import GroveScene from "../grove/GroveScene";
 import {ORNAMENT_TYPES,ornamentTypesFor,MAX_ORNAMENTS} from "../quiet/ornaments";
 import { resolveEnvironment } from "../../lib/environment";
-import { makeProjector } from "../grove/sceneMath";
+import { sceneFrame } from "../grove/camera";
 import FarmIcon from "../../components/FarmIcon";
 import { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
 
@@ -272,7 +272,8 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
   /* ── Letterbox fit: size the scene box to fit the stage while keeping
      the projector's exact aspect, so GroveScene's client-px → viewBox
      pointer math (drag / resize / tap-to-place) stays valid. ── */
-  const PROJ = useMemo(function() { return makeProjector(farmW, farmH); }, [farmW, farmH]);
+  const camera = data.mapStyle ? data.mapStyle.camera : undefined;
+  const PROJ = useMemo(function() { return sceneFrame(farmW, farmH, { camera: camera }); }, [farmW, farmH, camera]);
   useEffect(function() {
     const el = stageRef.current;
     if (!el) return;
@@ -704,6 +705,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
               <div style={{fontSize:11, color:C.t3, marginBottom:16}}>Areas are kept inside the space when its size changes. Recheck planting rows after shrinking an area.</div>
 
               <section className="q-inset"><h3>Ground & paths</h3><div className="q-grid2">{[
+                ['camera','View',[['3d','3D'],['flat','Flat overhead']]],
                 ['groundMaterial','Ground material',[['meadow','Grass'],['soil','Soil'],['gravel','Gravel'],['stone','Stone']]],
                 ['groundColor','Ground color',[['natural','Natural'],['dry','Warm / dry'],['deep','Deep green']]],
                 ['pathMaterial','Path material',[['gravel','Gravel'],['stone','Stone'],['earth','Earth']]],

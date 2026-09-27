@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Pencil, Plus, Minus, Maximize2 } from "lucide-react";
 import { rCM } from "../../lib/regional";
 import { todayLocalKey } from "../../lib/utils";
@@ -12,6 +12,8 @@ import { taskGlyph } from "./zone-tasks";
 import { AerialDefs, Building, CropCrown, Fence, OverheadAnimal, Ornament, Canopy } from "./AerialArtwork";
 import { accessPaths, plantedRows, plantPosition, buildingScale } from "./aerial-layout";
 import { srand } from "./sceneMath";
+import { cameraOf, projectBox } from "./camera";
+const Grove3D = lazy(() => import("./Grove3D"));
 
 const points = (ps) => ps.map((q) => `${q.xM},${q.yM}`).join(" ");
 // Short names (bed numbers) get a compact chip so neighbouring beds' labels don't merge into a bar.
@@ -378,6 +380,8 @@ export default function GroveScene({
 }) {
   const id = useId().replace(/:/g, "");
   const svg = useRef(null),
+    scroll = useRef(null),
+    world = useRef(null),
     drag = useRef(null),
     moved = useRef(false);
   const [ownTaskZone, setOwnTaskZone] = useState(null);
@@ -389,7 +393,7 @@ export default function GroveScene({
     [screenWidth, setScreenWidth] = useState(800);
   useEffect(() => {
     const observer = new ResizeObserver((entries) => setScreenWidth(entries[0].contentRect.width));
-    observer.observe(svg.current.parentElement);
+    observer.observe(scroll.current || svg.current.parentElement);
     return () => observer.disconnect();
   }, []);
   const fW = Math.max(1, data.farmW || 100),
@@ -442,7 +446,13 @@ export default function GroveScene({
       };
     }
   }
-  const labelUnit = vb.w / Math.max(240, screenWidth) / zoom,
+  // Isometric camera (camera.js): the world group carries cam.W; the UI layer projects with P()
+  const [noGL, setNoGL] = useState(false);
+  const three = (data.mapStyle?.camera || "3d") !== "flat" && !edit && !focus && !noGL;
+  const cam = cameraOf({ camera: "flat" }),
+    P = cam.project,
+    vbT = cam.on ? projectBox(cam, vb.x, vb.y, vb.x + vb.w, vb.y + vb.h, Math.max(4, margin * 1.4)) : vb;
+  const labelUnit = vbT.w / Math.max(240, screenWidth) / zoom,
     selectedId = edit?.selectedId || activeZoneId || focus?.zoneId;
   const zones = useMemo(
     () => (data.zones || []).map((z, i) => zoneGeometry(z, fW, fH, i)),
@@ -523,7 +533,7 @@ export default function GroveScene({
   const selectedZone = zones.find((z) => z.id === selected);
   const canInteract = interactive || !!edit;
   function coords(e) {
-    const matrix = svg.current.getScreenCTM();
+    const matrix = (world.current || svg.current).getScreenCTM();
     if (!matrix) return { xM: 0, yM: 0 };
     const q = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
     return { xM: q.x, yM: q.y };
@@ -620,6 +630,7 @@ export default function GroveScene({
     <section
       className={`quiet-scene q-aerial-scene ${noBorder ? "borderless" : ""}`}
       data-grove-scene="aerial"
+      data-grove-camera={three ? "3d" : "flat"}
     >
       {!edit && (
         <div className="quiet-map-top">
@@ -636,10 +647,17 @@ export default function GroveScene({
           )}
         </div>
       )}
-      <div className="quiet-map-scroll" data-zoom={zoom} style={{ overflow: zoom > 1 ? "auto" : "hidden" }}>
+      <div ref={scroll} className={`quiet-map-scroll${three ? " grove3d" : ""}`} data-zoom={zoom} style={{ overflow: zoom > 1 ? "auto" : "hidden" }}>
+        {three ? (
+          <Suspense fallback={<div style={{ width: "100%", aspectRatio: "1 / 0.64" }} />}>
+            <Grove3D data={data} zones={zones} roads={allPaths} crops={cropMap} fW={fW} fH={fH} margin={margin} env={env}
+              pathTexture={pathTexture} roadWidth={roadWidth} tasksByZone={tasksByZone} selectedId={selectedId}
+              onZoneOpen={open} onBadge={setTaskZone} interactive={canInteract} onUnavailable={() => setNoGL(true)} />
+          </Suspense>
+        ) : (
         <svg
           ref={svg}
-          viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+          viewBox={`${vbT.x} ${vbT.y} ${vbT.w} ${vbT.h}`}
           style={{
             width: `${zoom * 100}%`,
             display: "block",
@@ -648,7 +666,7 @@ export default function GroveScene({
             WebkitUserSelect: "none",
             WebkitTouchCallout: "none",
           }}
-          aria-label="Interactive overhead farm map"
+          aria-label={cam.on ? "Interactive 3D farm map" : "Interactive overhead farm map"}
           onDragStart={(e) => e.preventDefault()}
           onPointerMove={move}
           onPointerUp={end}
@@ -689,6 +707,8 @@ export default function GroveScene({
               <stop offset="1" stopColor="#183b2a" stopOpacity=".08" />
             </linearGradient>
           </defs>
+          <g ref={world} transform={cam.W || undefined}>
+          <g>
           <rect x={-margin} y={-margin} width={viewW} height={viewH} fill="#6e8640" />
           <rect
             x={-margin}
@@ -847,14 +867,10 @@ export default function GroveScene({
               </g>
             ))}
           </g>
-          <rect
-            x={-margin}
-            y={-margin}
-            width={viewW}
-            height={viewH}
-            fill={`url(#${id}-sun)`}
-            pointerEvents="none"
-          />
+          </g>
+          </g>
+          <rect x={vbT.x} y={vbT.y} width={vbT.w} height={vbT.h} fill={`url(#${id}-sun)`} pointerEvents="none" />
+          <g transform={cam.W || undefined}>
           {edit &&
             !edit.draw &&
             (data.mapLines || [])
@@ -887,8 +903,10 @@ export default function GroveScene({
                   />
                 </g>
               ))}
+          </g>
           {edit?.draw && (
             <g pointerEvents="none">
+              <g transform={cam.W || undefined}>
               {edit.draw.points.length > 0 && drawHover && (
                 <line
                   x1={edit.draw.points[edit.draw.points.length - 1].xM}
@@ -913,11 +931,12 @@ export default function GroveScene({
                   opacity=".95"
                 />
               )}
+              </g>
               {edit.draw.points.map((p, i) => (
                 <circle
                   key={i}
-                  cx={p.xM}
-                  cy={p.yM}
+                  cx={P(p.xM, p.yM)[0]}
+                  cy={P(p.xM, p.yM)[1]}
                   r={(i === edit.draw.points.length - 1 ? 7 : 5) * labelUnit}
                   fill={i === edit.draw.points.length - 1 ? "#f7c552" : "#fffdf3"}
                   stroke="#2b5948"
@@ -928,6 +947,7 @@ export default function GroveScene({
           )}
           {route.length > 1 && (
             <polyline
+              transform={cam.W || undefined}
               points={points(route.map(stopPoint))}
               fill="none"
               stroke="#f4f6df"
@@ -946,7 +966,7 @@ export default function GroveScene({
               return (
                 <g
                   key={s.id}
-                  transform={`translate(${q.xM} ${q.yM}) scale(${labelUnit})`}
+                  transform={`translate(${P(q.xM, q.yM)[0]} ${P(q.xM, q.yM)[1]}) scale(${labelUnit})`}
                   pointerEvents="none"
                 >
                   <circle r="7" fill={done ? "#2b5948" : "#fffffff0"} stroke="#2b5948" strokeWidth="1.5" />
@@ -964,10 +984,10 @@ export default function GroveScene({
             })}
           {focus?.from && focusBox && (
             <line
-              x1={stopPoint(focus.from).xM}
-              y1={stopPoint(focus.from).yM}
-              x2={(focusBox.x0 + focusBox.x1) / 2}
-              y2={(focusBox.y0 + focusBox.y1) / 2}
+              x1={P(stopPoint(focus.from).xM, stopPoint(focus.from).yM)[0]}
+              y1={P(stopPoint(focus.from).xM, stopPoint(focus.from).yM)[1]}
+              x2={P((focusBox.x0 + focusBox.x1) / 2, (focusBox.y0 + focusBox.y1) / 2)[0]}
+              y2={P((focusBox.x0 + focusBox.x1) / 2, (focusBox.y0 + focusBox.y1) / 2)[1]}
               stroke="#fff6c9"
               strokeWidth={3 * labelUnit}
               strokeDasharray={`${6 * labelUnit} ${4 * labelUnit}`}
@@ -978,6 +998,7 @@ export default function GroveScene({
           {focusBox && (
             <g pointerEvents="none" className="q-walk-focus">
               <rect
+                transform={cam.W || undefined}
                 x={focusBox.x0}
                 y={focusBox.y0}
                 width={focusBox.x1 - focusBox.x0}
@@ -988,7 +1009,7 @@ export default function GroveScene({
                 strokeWidth={3 * labelUnit}
               />
               <g
-                transform={`translate(${(focusBox.x0 + focusBox.x1) / 2} ${focusBox.y0}) scale(${labelUnit})`}
+                transform={`translate(${P((focusBox.x0 + focusBox.x1) / 2, focusBox.y0)[0]} ${P((focusBox.x0 + focusBox.x1) / 2, focusBox.y0)[1]}) scale(${labelUnit})`}
                 className="q-walk-pin"
               >
                 <path
@@ -1129,7 +1150,7 @@ export default function GroveScene({
               .map((z) => (
                 <g key={z.id}>
                   <g
-                    transform={`translate(${z.xM + z.wM} ${z.yM + z.hM}) scale(${labelUnit})`}
+                    transform={`translate(${P(z.xM + z.wM, z.yM + z.hM)[0]} ${P(z.xM + z.wM, z.yM + z.hM)[1]}) scale(${labelUnit})`}
                     onPointerDown={(e) => start(e, z, true)}
                     onClick={(e) => e.stopPropagation()}
                     style={{ cursor: "nwse-resize" }}
@@ -1139,8 +1160,8 @@ export default function GroveScene({
                     <path d="M-4 4L4-4M-1-4H4V1M-4-1V4H1" fill="none" stroke="white" strokeWidth="1.2" />
                   </g>
                   <text
-                    x={z.xM + z.wM / 2}
-                    y={z.yM - 0.25}
+                    x={P(z.xM + z.wM / 2, z.yM - 0.25)[0]}
+                    y={P(z.xM + z.wM / 2, z.yM - 0.25, cam.on ? 2.5 : 0)[1]}
                     fontSize={11 * labelUnit}
                     textAnchor="middle"
                     fill="#203f31"
@@ -1152,28 +1173,30 @@ export default function GroveScene({
                   </text>
                 </g>
               ))}
-          <g transform={`translate(${margin * 0.45} ${fH + margin * 0.53})`} pointerEvents="none">
+          <g transform={`translate(${P(margin * 0.45, fH + margin * 0.53)[0]} ${P(margin * 0.45, fH + margin * 0.53)[1]})`} pointerEvents="none">
             <path
               d={`M0 -.08V.08M0 0H${scaleMetres}M${scaleMetres} -.08V.08`}
               stroke="#f8f7e5"
               strokeWidth=".035"
             />
-            <text x={scaleMetres / 2} y={-0.14} textAnchor="middle" fontSize={8 * labelUnit} fill="#354b35">
+            <text x={scaleMetres / 2} y={-0.14} textAnchor="middle" fontSize={8 * labelUnit} fill="#354b35" style={{ letterSpacing: 0 }}>
               {scaleMetres} m
             </text>
           </g>
-          <g transform={`translate(${fW / 2} ${fH})`} pointerEvents="none">
+          <g transform={`translate(${P(fW / 2, fH)[0]} ${P(fW / 2, fH)[1]})`} pointerEvents="none">
             <path d="M-.45-.1V.12M.45-.1V.12M-.45 .03H.45" stroke="#e1d6b7" strokeWidth=".06" />
             <text
               y={Math.max(0.3, 10 * labelUnit)}
               textAnchor="middle"
               fontSize={8 * labelUnit}
               fill="#354b35"
+              style={{ letterSpacing: 0 }}
             >
               Entrance
             </text>
           </g>
         </svg>
+        )}
       </div>
       <div className="quiet-map-bottom">
         <span>
