@@ -12,6 +12,7 @@ export default function BedDetail({ zone: rawZone, data, setData, onPlot, highli
   const plots = layoutPlots(zone, data.garden?.plots || []),
     rows = bedRows(zone),
     crops = rCM(data.region);
+  const keyCrops = [...new Set(plots.filter((p) => p.status !== "harvested").map((p) => p.crop).filter(Boolean))].slice(0, 4);
   const [editId, setEditId] = useState(null),
     [draft, setDraft] = useState({});
   const editing = plots.find((p) => p.id === editId),
@@ -66,14 +67,18 @@ export default function BedDetail({ zone: rawZone, data, setData, onPlot, highli
       </div>
       <p>Explore your planting layout.{onPlot && " Tap a planting for its care guide."}</p>
       <BedPlan zone={zone} plots={data.garden?.plots || []} crops={crops} onPlot={onPlot} highlightId={highlightId} />
-      <div className="q-stage-key">
-        {STAGES.slice(1).map((label, i) => (
-          <div key={label}>
-            <PlantArt crop={zone.type === "orchard" ? "Fig" : "Tomato"} stage={i + 1} size={32} />
-            <small>{label}</small>
-          </div>
-        ))}
-      </div>
+      {/* the stage key shows the bed's own crops — one row per crop planted here */}
+      {(keyCrops.length ? keyCrops : [zone.type === "orchard" ? "Fig" : "Tomato"]).map((crop) => (
+        <div className="q-stage-key" key={crop} aria-label={`Growth stages of ${crop}`}>
+          {keyCrops.length > 1 && <b className="q-stage-key-crop">{crop}</b>}
+          {STAGES.slice(1).map((label, i) => (
+            <div key={label}>
+              <PlantArt crop={crop} stage={i + 1} size={32} />
+              <small>{label}</small>
+            </div>
+          ))}
+        </div>
+      ))}
       {plots.map((p) => {
         const stage = growthOf(p, crops.get(p.crop), todayLocalKey());
         return (
