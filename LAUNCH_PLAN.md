@@ -165,6 +165,17 @@
   Recipes", "RAW MILK FROM YOUR OWN ANIMALS", "READY WHEN BOTH ARE TRUE". Not verified: the live
   screen itself (behind sign-in). Open: `oil_preservation` says "Dried herbs in oil: 2–3 weeks";
   Oregon State Extension says dried herbs/garlic in oil must be used within 4 days.
+- [x] **Scope-freeze exception #2 (2026-09-28, owner request, commit bd9a3a5 — its commit message
+  was mistakenly a copy of 99e7683's; this entry is the correct description): Balkan, Turkish and
+  Mediterranean recipes.** Cheeses: kajmak, gjizë/urdë/lor (+ çökelek), burrata, kashkaval/kaşar
+  (aged), Balkan white cheese (djathë i bardhë / sirene / beyaz peynir). Cured meats: pastırma,
+  bresaola, pancetta + guanciale, sucuk/suxhuk (fermented; always cooked; pH ≤5.3 within 72 h at
+  22–24°C). Cooked meats (new "Cooked Meat Recipes" filter): prosciutto cotto, kavurma. Origin
+  shown on every recipe; Balkan pršut note on the whole-leg recipe; step labels with Turkish
+  capitals render bold. Independent fact-check pass applied (CFIA/BCCDC degree-hours, 9 CFR
+  424.21, FSIS cooling, foodsafety.gov, Kayseri GI, Bresaola IGP, Dalmatinski pršut PGI, NHS).
+  Verified: ESLint, build and tests (sandbox 46+3, Mac 56+3 on top of 85c9f6e), all 35 Preserving
+  pages open at 360 px with no errors/overflow. Total recipes: 22.
 - [x] **UX pass (2026-09-28, owner request "full UX/UI testing", commit 096dfa5).** Walkthrough
   as the target user (backyard + balcony beginners, skip-setup, established farm; phone 390/360,
   tablet, desktop 1440, dark mode, trial day 1 / last day / expired) → findings in
