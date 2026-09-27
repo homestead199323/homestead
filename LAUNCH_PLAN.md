@@ -165,3 +165,27 @@
   Recipes", "RAW MILK FROM YOUR OWN ANIMALS", "READY WHEN BOTH ARE TRUE". Not verified: the live
   screen itself (behind sign-in). Open: `oil_preservation` says "Dried herbs in oil: 2–3 weeks";
   Oregon State Extension says dried herbs/garlic in oil must be used within 4 days.
+- [x] **UX pass (2026-09-28, owner request "full UX/UI testing", commit 096dfa5).** Walkthrough
+  as the target user (backyard + balcony beginners, skip-setup, established farm; phone 390/360,
+  tablet, desktop 1440, dark mode, trial day 1 / last day / expired) → findings in
+  `docs/UX_AUDIT_2026-09-28.md` (24, severity-ranked, with open items). Shipped: sign-up funnel
+  (landing CTAs → `/app?signup`, Create account / Sign in tabs, forgot password + PASSWORD_RECOVERY
+  "choose a new password", landing.js forwards auth hashes to /app, sign-up no longer hangs on
+  "Please wait…" when email confirmation is on, Enter submits); real plan label instead of the
+  hard-coded "Free plan"; trial banner shows the end date. Onboarding honesty: "now" = sowing window
+  open or opening within ~2 weeks, off-season picks become "Sow from <month>" plans; picks wait as
+  "Ready to sow" and the sow job stays until done, which starts the growing clock that day
+  (`src/lib/sowing.js`); starter bed sized by time budget, 1.2 m wide, rows laid out with
+  planPlanting; starter-kit shopping list (plan step + Home checklist); live 3D preview on the map
+  step. Tasks: calm "Do today", ~minutes per job, done toast with next step + Undo, Tasks-screen
+  completions stock eggs/milk like the map popup. Also: full-screen map hides tab bar + assistant,
+  nothing renders under onboarding, crop card (human dates, "I sowed it today", delete confirm),
+  currency from device locale + Settings, space-name setting shows on Home, US-timezone
+  harvest-day fix. New optional data fields (no migration): `plot.sowPending`, `plot.sowFrom`,
+  `data.starterKit`, `data.currency`. Verified: ESLint, 56+3 tests (10 new), build (sandbox + Mac),
+  Playwright walkthroughs before/after incl. mocked-Supabase sign-up, wrong password, reset request
+  and recovery link; live index-DSA2_H-R.js (+ Grove3D-D4Br-Orz.js) contains "Start your 7-day free
+  trial", "Choose a new password", "I sowed it today", "Your starter kit", "myterra:toast",
+  "g3-full-open"; live `/` has 6 `/app?signup` links; CSP header unchanged. Not verified: real
+  email delivery (Supabase SMTP) and the auth redirect allow-list (see audit doc), real-device
+  frame rate of the onboarding 3D preview. Revert: `git revert 096dfa5`.
