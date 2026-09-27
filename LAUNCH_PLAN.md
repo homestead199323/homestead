@@ -77,6 +77,18 @@
     N/A — all env surfaces are CSS/SVG. Vercel webhook missed 29329a6; retriggered via
     05c72e6. Verified live in bundle index-Br4oa1nD.js ("Total space size", switcher
     helper text, "My Space" all present; CSP header intact).
+  - [x] **4z (2026-09-27, commit 96bff87): real 3D farm map.** `src/features/grove/Grove3D.jsx`
+    renders the map with three.js (lazy chunk Grove3D-*.js, ~170 kB gz): one camera, one sun,
+    shadows; every zone type built from geometry (buildings with roofs/windows/doors/solar,
+    framed glass greenhouse, beds with dense instanced crop rows, water reserve, compost,
+    hives, nursery, pasture shelter), perimeter hedge, curved kerbed paths, trees/rocks/flowers.
+    GroveScene uses it when `mapStyle.camera` is "3d" (default); edit mode, walk focus and
+    missing WebGL fall back to the flat SVG. Designer option "View: 3D / Flat overhead" under
+    Ground & paths. Labels match the field-sign style, colliding names hidden. Verified: ESLint,
+    46+3 tests, Vite build; live bundle index-CNRP_iZ_.js references Grove3D-DKLJOoeW.js
+    (649,674 B; "g3-pill", "prop-bush", "RoomEnvironment" present); zone-card click works in 3D.
+    NOT yet verified on a phone (frame rate while dragging ~1,300–1,600 meshes). Revert = set
+    View to "Flat overhead" per farm, or `git revert 96bff87`.
 - [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
   Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
   Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.
