@@ -150,3 +150,18 @@
   trial expiry, mobile map editing, accessibility (remove user-scalable=no etc).
 
 **Scope freeze:** per brief §19 — no new crops/animals/guides/modules until Stages 2–10 done.
+
+- [x] **Scope-freeze exception (2026-09-28, owner request, commit 99e7683): cheese + prosciutto
+  recipes in Manuals → Preserving.** `src/data/recipes.js`: 8 cheeses (ricotta, paneer, labneh,
+  mascarpone, chèvre, 30-minute mozzarella, halloumi, feta) + 3 prosciutto-style cures (duck
+  prosciutto, lonzino, whole-leg prosciutto crudo), each with safety, ingredients, numbered
+  steps, storage/shelf life, troubleshooting, sources; linked to their parent methods, own
+  filter chips. `cheese_making`: rennet dose corrected (¼ tsp per 4 L, was per 10 L) + raw-milk
+  pasteurisation line. Detail header labels wrap on phones. Facts checked by an independent
+  review pass (Parma spec 2025, Santé publique France, USDA/FSIS, FDA, NHS, CDC, Oregon State /
+  NMSU / UAF / UCCE extension, Guelph). Verified: ESLint, 46+3 tests, build (sandbox + Mac), all
+  24 Preserving pages open at 360 px with no errors or horizontal overflow; live bundle
+  index-BZAVYMD4.js on myterra-sigma.vercel.app and www.myterra.farm contains "Cured Meat
+  Recipes", "RAW MILK FROM YOUR OWN ANIMALS", "READY WHEN BOTH ARE TRUE". Not verified: the live
+  screen itself (behind sign-in). Open: `oil_preservation` says "Dried herbs in oil: 2–3 weeks";
+  Oregon State Extension says dried herbs/garlic in oil must be used within 4 days.
