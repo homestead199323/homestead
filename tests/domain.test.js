@@ -513,3 +513,15 @@ test('Backup import checks the file first and describes what it would restore',(
   assert.equal(describeSummary(res.summary),'2 areas · 1 planting · 1 animal');
   assert.equal(describeSummary(farmSummary({})),'0 areas · 0 plantings');
 });
+import {signInMethods,deleteAccountError} from '../src/lib/auth-messages.js';
+test('Account settings know how a person signs in and explain a failed deletion',()=>{
+  assert.deepEqual(signInMethods({identities:[{provider:'email'}]}),{password:true,google:false});
+  assert.deepEqual(signInMethods({identities:[{provider:'google'}],app_metadata:{provider:'google',providers:['google']}}),{password:false,google:true});
+  assert.deepEqual(signInMethods({app_metadata:{providers:['email','google']}}),{password:true,google:true});
+  assert.equal(signInMethods(null).password,true);
+  assert.match(deleteAccountError({ok:false,code:'subscription_active',status:409}).text,/nothing was deleted/);
+  assert.equal(deleteAccountError({ok:false,code:'subscription_active'}).contact,true);
+  assert.equal(deleteAccountError({ok:false,status:401}).contact,false);
+  assert.match(deleteAccountError({ok:false}).text,/couldn't delete/);
+  assert.match(friendlyAuthError('New password should be different from the old password.','reset'),/current password/);
+});

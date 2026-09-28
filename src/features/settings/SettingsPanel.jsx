@@ -9,6 +9,8 @@ import { resolveEnvironment, defaultSpaceTitle } from "../../lib/environment";
 import { Download, Upload, Moon, Sun, LogOut } from "lucide-react";
 import { CURRENCIES, currencyCode } from "../../lib/money";
 import { farmSummary, describeSummary } from "../../lib/backup";
+import { signInMethods } from "../../lib/auth-messages";
+import { ChangePassword, DeleteAccount } from "./AccountSecurity";
 
 function fileDay(ms) {
   if (!ms) return "";
@@ -21,9 +23,10 @@ function fileDay(ms) {
    (desktop) and the More drawer (mobile).
    ═══════════════════════════════════════════ */
 export default function SettingsPanel({
-  onClose, data, setData, exportData, readBackup, restoreBackup, darkMode, setDarkMode, onSignOut, plan, onUpgrade,
+  onClose, data, setData, exportData, readBackup, restoreBackup, darkMode, setDarkMode, onSignOut, plan, onUpgrade, ent, onAccountDeleted,
 }) {
   const [email, setEmail] = useState("");
+  const [methods, setMethods] = useState({ password: true, google: false });
   // Import: pick a file → show what it holds → the user confirms before anything is replaced.
   const [pendingImport, setPendingImport] = useState(null); // { data, summary, fileName, fileDate }
   const [importErr, setImportErr] = useState("");
@@ -45,7 +48,7 @@ export default function SettingsPanel({
   useEffect(() => {
     let mounted = true;
     getSession()
-      .then((s) => { if (mounted) setEmail((s && s.user && s.user.email) || ""); })
+      .then((s) => { if (mounted) { setEmail((s && s.user && s.user.email) || ""); setMethods(signInMethods(s && s.user)); } })
       .catch(() => {});
     return () => { mounted = false; };
   }, []);
@@ -98,6 +101,8 @@ export default function SettingsPanel({
           </div>
         )}
       </Card>
+
+      {onSignOut && email && <ChangePassword email={email} methods={methods} rowBtn={rowBtn} ico={ico} />}
 
       {/* My Space (Stage 4c) */}
       <div style={sectionLabel}>My Space</div>
@@ -181,6 +186,9 @@ export default function SettingsPanel({
         <button type="button" onClick={onSignOut} style={{ ...rowBtn, color: C.red }}>
           <span style={ico}><LogOut size={17} strokeWidth={1.8} /></span> Sign Out
         </button>
+      )}
+      {onSignOut && onAccountDeleted && email && (
+        <DeleteAccount email={email} data={data} ent={ent} exportData={exportData} onDeleted={onAccountDeleted} rowBtn={rowBtn} ico={ico} />
       )}
 
       {/* Footer: data scope + sync status */}

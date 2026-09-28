@@ -38,7 +38,7 @@ import Onboarding from "./features/onboarding/Onboarding";
 import { NAV, BOTTOM_TABS, MORE_ITEMS, ADMIN_NAV } from "./app/navigation";
 import { DEF, dataReducer } from "./app/state";
 import { isSupabaseConfigured, recoveryInUrl, authLinkError } from "./lib/db";
-import { getSession, onAuthChange, signOut } from "./lib/auth";
+import { getSession, onAuthChange, signOut, signOutLocal } from "./lib/auth";
 import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt, resetSync } from "./lib/sync";
 import { SyncStatus } from "./components/SyncStatus";
 import AuthScreen from "./features/auth/AuthScreen";
@@ -188,7 +188,7 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpe
   );
 });
 
-function AppInner({ cloudData, allowLocal, onSignOut }) {
+function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
   // Lazy initializer — loads data synchronously, no loading flash
   // Wrapped in try-catch: if storage is corrupt or migration throws, fall back to DEF
   // instead of crashing the reducer with undefined state.
@@ -513,7 +513,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
         : <LockedAssistantFab lift={page === "home"} onClick={() => setUpgradeOpen(true)}/>)}
       <Toaster/>
       <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} ent={ent}/>
-      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} readBackup={readBackup} restoreBackup={restoreBackup} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut} plan={planLabel(ent)} onUpgrade={()=>{setSettingsOpen(false);setUpgradeOpen(true);}}/>}
+      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} readBackup={readBackup} restoreBackup={restoreBackup} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut} plan={planLabel(ent)} ent={ent} onAccountDeleted={onAccountDeleted} onUpgrade={()=>{setSettingsOpen(false);setUpgradeOpen(true);}}/>}
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}/>}
     </>
   );
@@ -730,6 +730,20 @@ function AuthGate() {
     // onAuthChange SIGNED_OUT will flip phase to "signedout".
   }, []);
 
+  // Settings → Delete account succeeded: the cloud rows and the login are
+  // gone. Drop everything this device still holds (queued pushes included,
+  // they must not re-create a farm row), end the session locally, and say so.
+  const handleAccountDeleted = useCallback(async () => {
+    resetSync();
+    try { clearFarm(); } catch (e) { /* ignore */ }
+    resetEntitlement();
+    reconciledFor.current = null;
+    setCloudData(null);
+    setAuthNotice("Your account and your farm have been deleted. Thanks for growing with MyTerra.");
+    try { await signOutLocal(); } catch (e) { /* session already invalid */ }
+    setPhase("signedout");
+  }, []);
+
   if (phase === "checking" || phase === "reconciling") {
     return (
       <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.bg,fontFamily:F.body,flexDirection:"column",gap:14}}>
@@ -750,7 +764,7 @@ function AuthGate() {
   }
 
   // ready
-  return <AppInner key={sessionKey} cloudData={cloudData} allowLocal={allowLocal} onSignOut={isSupabaseConfigured ? handleSignOut : null}/>;
+  return <AppInner key={sessionKey} cloudData={cloudData} allowLocal={allowLocal} onSignOut={isSupabaseConfigured ? handleSignOut : null} onAccountDeleted={isSupabaseConfigured ? handleAccountDeleted : null}/>;
 }
 
 export default function App() {

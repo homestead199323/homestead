@@ -44,6 +44,37 @@ export async function updatePassword(password) {
   return supabase.auth.updateUser({ password });
 }
 
+// ── Account settings (change password / delete account) ───────────
+// Check the current password before a sensitive change. Signing in again
+// also makes the session "recent", which Supabase's secure password change
+// requires. Same user, so AuthGate's reconcile guard ignores the SIGNED_IN.
+export async function verifyPassword(email, password) {
+  return supabase.auth.signInWithPassword({ email, password });
+}
+
+// Settings → Delete account. Runs the delete-account Edge Function as the
+// signed-in user. Returns { ok: true } or { ok: false, code, status }.
+export async function deleteAccount() {
+  const { error } = await supabase.functions.invoke("delete-account", { body: { confirm: "DELETE" } });
+  if (!error) return { ok: true };
+  let code = "", status = 0;
+  try {
+    const res = error.context;
+    status = (res && res.status) || 0;
+    const body = res && typeof res.json === "function" ? await res.json() : null;
+    code = (body && body.error) || "";
+  } catch {
+    /* not a JSON error (network failure, function missing) */
+  }
+  return { ok: false, code, status };
+}
+
+// Drop the session on this device only (the account no longer exists, so a
+// global sign-out call to the server would just fail).
+export async function signOutLocal() {
+  return supabase.auth.signOut({ scope: "local" });
+}
+
 // ── Google OAuth ───────────────────────────────────────────────────
 export async function signInGoogle() {
   return supabase.auth.signInWithOAuth({
