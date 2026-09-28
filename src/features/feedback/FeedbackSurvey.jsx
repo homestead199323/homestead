@@ -10,7 +10,8 @@ export default function FeedbackSurvey({ setPage }) {
   const [answers, setAnswers] = useState({ module: "", confusion: "", missing: "", pay: "" });
   const [submitted, setSubmitted] = useState(false);
 
-  const modules = ["Today","Tasks","Farm","Seasonal","Animals","Pantry","Financials","Manuals","Farm Assistant"];
+  // Named as the menu names them since Stage 5 (Today, My Space, Plan, Learn, Progress).
+  const modules = ["Today","Map","Crops","Animals","Plan","Learn","Progress","Pantry","Money","Farm Assistant"];
 
   const update = (key, val) => setAnswers(prev => ({ ...prev, [key]: val }));
 

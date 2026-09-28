@@ -157,7 +157,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
       <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(crop.name + " growing guide complete")}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:C.red,textDecoration:"none",fontWeight:600,padding:"8px 14px",background:C.dangerBg,borderRadius:C.rs,border:`1px solid ${C.bdr}`,marginBottom:8}}>▶ Watch: Complete {crop.name} Growing Guide</a>
       {setPage && (
         <button onClick={function(){onClose();setPage("manuals");}} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.green,fontWeight:600,padding:"8px 14px",background:C.gp,borderRadius:C.rs,border:`1px solid ${C.bdr}`,marginBottom:12,cursor:"pointer",width:"100%",textAlign:"left"}}>
-          📖 Need help growing {crop.name}? See the Manuals →
+          📖 Need help growing {crop.name}? Read the full guide in Learn →
         </button>
       )}
 

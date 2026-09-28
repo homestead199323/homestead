@@ -298,7 +298,7 @@ function farmKnowledgeEngine(query, data) {
     }
     // General preservation advice
     let r = "Food Preservation Methods\n\n";
-    r += "Available in your Manuals tab:\n";
+    r += "Full guides in Learn → Preserving:\n";
     const cats = {};
     Object.entries(PRESERVATION).forEach(([name, p]) => {
       if (!cats[p.cat]) cats[p.cat] = [];
