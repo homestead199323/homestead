@@ -132,10 +132,20 @@
     proc:puff, g3size, uFadeV, forceSinglePass, IntersectionObserver present; CSS g3-far,
     q-stage-key-crop, pill/badge min-height:0). Not verified: real-device frame rate and
     battery; animation timing only reasoned about (headless RAF is starved).
-- [ ] **Stage 5 — navigation regroup.** NAV/BOTTOM_TABS/MORE_ITEMS → Today, My Space, Plan,
-  Learn, Progress. Screen mapping: Today=TodayScreen; My Space=Farm+Crops+Animals;
-  Plan=SeasonalCalendar+suggestions; Learn=Manuals; Progress=Pantry+Financials+badges.
-  No data changes, no deleted screens.
+- [~] **Stage 5 — navigation regroup (2026-09-28; built and tested, NOT deployed yet: pushes run from
+  the Mac, which was offline).** `src/app/navigation.js` now
+  defines SECTIONS: Today (home "Overview" + tasks "All tasks"), My Space (map, crops, live),
+  Plan (new `src/features/plan/PlanScreen.jsx`), Learn (manuals), Progress (new
+  `src/features/progress/ProgressScreen.jsx` + pantry + fin). Page ids unchanged; saved pages map
+  over (`normalizePage`: farm→map, season→plan). Phones: 5 bottom tabs (More removed), area pages
+  as tabs on top (SectionBar) + account button (Settings, feedback, plan, Admin for the owner);
+  tablets: icon rail + the same tabs; desktop: areas with their pages in the sidebar. Plan: waiting
+  plantings with "I sowed it", this month's picks from suggest.js with the reason, "Coming up" by
+  month, six-month season strip, the seasonal calendar (moved from Manuals). Progress: next
+  harvest, food grown from pantry intake moves (kg, harvests, eggs, milk, ~portions at 80 g),
+  harvest per month, pantry, money, badges; empty states say how numbers start appearing. Pure
+  helpers `src/lib/plan.js`, `src/lib/progress.js`. No data changes, no deleted screens. Commit hash
+  and live check get added here after the push.
 - [ ] **Stage 6 — task engine upgrade.** Task schema: reason, duration, map ref, priority,
   postpone/skip/not-relevant responses feeding future scheduling. Environment-aware
   frequency (container vs bed).
@@ -200,3 +210,22 @@
   "g3-full-open"; live `/` has 6 `/app?signup` links; CSP header unchanged. Not verified: real
   email delivery (Supabase SMTP) and the auth redirect allow-list (see audit doc), real-device
   frame rate of the onboarding 3D preview. Revert: `git revert 096dfa5`.
+- [~] **UX follow-up: the audit's open items (2026-09-28; 8 commits built and tested, NOT deployed yet;
+  only the `delete-account` Edge Function is live).** Import Backup confirms (backup vs current farm, download first,
+  Undo; rejects non-backups); "+ Plant Crop" hidden until a bed exists ("+ Add a bed/planter");
+  map buttons labelled (Growth / Reset / Expand, ≥44 px on touch); walk intro down to one choice
+  (Options collapsed); Settings → Change password (current password first) and Delete account
+  (type DELETE; new Edge Function `supabase/functions/delete-account`, deployed as v1 with
+  verify_jwt on: cancels a live Basic/Pro Paddle subscription via `PADDLE_API_KEY` or refuses with
+  409 so nobody is charged for a deleted account, then deletes farm row, profile row, auth user;
+  privacy policy updated); Stage 5 navigation (above); landing on phones 14,746 → 13,197 px
+  (plans swipe, Pro first; repeated stat tiles hidden; tighter spacing); leftover "Manuals" /
+  "Seasonal" labels renamed (crop card link, assistant, feedback survey). Details and remaining
+  items: `docs/UX_AUDIT_2026-09-28.md`. Verified: ESLint, 61+3 tests (5 new), build; Playwright at
+  390/820/1440 px incl. dark mode, mocked-Supabase password change (wrong + right current password)
+  and deletion (409 then 200: sign-in screen shows the deleted notice, local farm/session/entitlement
+  caches empty); Edge Function paths run locally under Deno against a mock (trial, lifetime, no
+  profile, canceled, live sub without key → 409, with key → cancel then delete, Paddle error → 409,
+  bad/missing JWT → 401, no confirm → 400); live function answers CORS preflight and rejects
+  unauthenticated calls. Not verified: a real deletion on production; whether `PADDLE_API_KEY` is set;
+  anything on the live site. Commit hashes and the live check get added after the push.
