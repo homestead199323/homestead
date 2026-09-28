@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { Plus, Minus, Compass, Maximize2, Minimize2, X, CalendarDays } from "lucide-react";
+import { Plus, Minus, Compass, Maximize2, Minimize2, X, Sprout } from "lucide-react";
 import { art, cropArtwork } from "../quiet/art";
 import { growthOf, animalZone, bedRows, layoutPlots, STAGES } from "../quiet/farm-model";
 import { plantingRows } from "../quiet/planting-plan";
@@ -1591,11 +1591,12 @@ export default function Grove3D(props) {
       <div ref={tipRef} className="g3-tip" style={{ display: "none" }} role="tooltip" />
       {ahead > 0 && <div className="g3-preview" role="status">Preview · {new Date(todayKey + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })} · in {ahead} days</div>}
       <div className="g3-ctl" role="group" aria-label="Map view controls">
-        <button type="button" className="g3-btn" aria-label="Growth preview and legend" aria-pressed={timeOpen} onClick={() => setTimeOpen(!timeOpen)}><CalendarDays size={18} /></button>
-        <button type="button" className="g3-btn g3-zoom" aria-label="Zoom in" onClick={() => ctl((c) => c.zoomBy(.66))}><Plus size={18} /></button>
-        <button type="button" className="g3-btn g3-zoom" aria-label="Zoom out" onClick={() => ctl((c) => c.zoomBy(1 / .66))}><Minus size={18} /></button>
-        <button type="button" className="g3-btn" aria-label="Reset view" onClick={() => ctl((c, st) => st.reset(true))}><Compass size={18} /></button>
-        <button type="button" className="g3-btn" aria-label={full ? "Exit full screen" : "Full screen map"} aria-pressed={full} onClick={() => setFull(!full)}>{full ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
+        {/* Visible words under the icons (UX audit 2026-09-28: a calendar icon didn't say "growth preview"). */}
+        <button type="button" className="g3-btn g3-lbl" aria-label="Growth preview and legend" title="See how your plants grow over the coming weeks" aria-pressed={timeOpen} onClick={() => setTimeOpen(!timeOpen)}><Sprout size={17} /><span aria-hidden="true">Growth</span></button>
+        <button type="button" className="g3-btn g3-zoom" aria-label="Zoom in" title="Zoom in" onClick={() => ctl((c) => c.zoomBy(.66))}><Plus size={18} /></button>
+        <button type="button" className="g3-btn g3-zoom" aria-label="Zoom out" title="Zoom out" onClick={() => ctl((c) => c.zoomBy(1 / .66))}><Minus size={18} /></button>
+        <button type="button" className="g3-btn g3-lbl" aria-label="Reset view" title="Show the whole map again" onClick={() => ctl((c, st) => st.reset(true))}><Compass size={17} /><span aria-hidden="true">Reset</span></button>
+        <button type="button" className="g3-btn g3-lbl" aria-label={full ? "Exit full screen" : "Full screen map"} title={full ? "Exit full screen" : "Open the map full screen"} aria-pressed={full} onClick={() => setFull(!full)}>{full ? <Minimize2 size={17} /> : <Maximize2 size={17} />}<span aria-hidden="true">{full ? "Exit" : "Expand"}</span></button>
       </div>
       {full && <button type="button" className="g3-btn g3-close" aria-label="Close full screen map" onClick={() => setFull(false)}><X size={20} /></button>}
       {timeOpen && (

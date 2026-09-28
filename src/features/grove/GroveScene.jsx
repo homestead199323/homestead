@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Pencil, Plus, Minus, Maximize2 } from "lucide-react";
+import { Pencil, Plus, Minus } from "lucide-react";
 import { rCM } from "../../lib/regional";
 import { todayLocalKey } from "../../lib/utils";
 import { resolveEnvironment } from "../../lib/environment";
@@ -1219,8 +1219,9 @@ export default function GroveScene({
           >
             <Minus size={16} />
           </button>
-          <button className="q-icon" aria-label="Reset map zoom" onClick={() => setZoom(1)}>
-            <Maximize2 size={16} />
+          <button className="q-icon" aria-label="Reset map zoom" title="Show the whole map again" onClick={() => setZoom(1)} disabled={zoom === 1}
+            style={{ width: "auto", padding: "0 12px", borderRadius: 22, fontSize: 12.5, fontWeight: 650 }}>
+            Reset
           </button>
           <button
             className="q-icon"
