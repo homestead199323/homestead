@@ -286,6 +286,7 @@
         .plan:not(.featured) .btn { background: var(--g-pale); color: var(--g-dark); box-shadow: none; }
         .plan:not(.featured) .btn:hover { background: #d8ecdf; }
         .pricing-note { text-align: center; margin-top: 24px; font-size: 14.5px; color: var(--ink-2); }
+        .plans-hint { display: none; text-align: center; margin: 18px 0 -6px; font-size: 13.5px; font-weight: 600; color: var(--g); }
 
         /* ═══ WHY ═══ */
         .why { padding: 72px 0 24px; }
@@ -395,6 +396,21 @@
             .why-card { grid-template-columns: 1fr; padding: 26px 22px; }
             .final-card { padding: 60px 22px; border-radius: 28px; }
             .foot { flex-direction: column; align-items: flex-start; }
+            /* Phones (UX audit 2026-09-28): the page was ~14,700 px tall.
+               Plans swipe sideways with Pro first instead of stacking to
+               2,200 px; the know-how stat tiles repeat the numbers already
+               shown under the hero; sections sit a little closer. */
+            .plans { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; max-width: none; margin: 0 -16px; padding: 18px 16px 14px; scrollbar-width: none; }
+            .plans::-webkit-scrollbar { display: none; }
+            .plan { flex: 0 0 min(300px, 84vw); scroll-snap-align: center; }
+            .plan.featured { order: -1; }
+            .plans-hint { display: block; }
+            .stat-tiles { display: none; }
+            .feature { padding: 56px 0; }
+            .setup, .know { padding: 56px 0; }
+            .band { padding: 64px 0; }
+            .pricing { padding: 72px 0 24px; }
+            .faq { padding: 64px 0 32px; }
         }
         @media (prefers-reduced-motion: reduce) {
             html { scroll-behavior: auto; }
@@ -739,6 +755,7 @@
             <div class="trial-step"><span class="when">Days 1–7</span><p><b>Build your map</b> and follow your daily plan.</p></div>
             <div class="trial-step"><span class="when">Day 7</span><p><b>Choose a plan to keep editing.</b> If you don't, nothing is charged and your farm stays saved, read-only.</p></div>
         </div>
+        <p class="plans-hint" aria-hidden="true">Swipe to compare Pro, Basic and Lifetime →</p>
         <div class="plans reveal">
             <div class="plan">
                 <h3>Basic</h3>
