@@ -1,0 +1,46 @@
+/* Plan + Progress screens (Launch Stage 5, 2026-09-28) */
+.mt-seg{display:inline-flex;gap:4px;padding:4px;margin:0 0 18px;background:var(--surface-soft);border-radius:12px}
+.mt-seg button{border:0;background:transparent;color:var(--color-text-2);font:600 13.5px/1 Inter,-apple-system,sans-serif;min-height:38px;padding:0 16px;border-radius:9px;cursor:pointer}
+.mt-seg button[aria-selected=true]{background:var(--color-card);color:var(--color-text);box-shadow:0 1px 3px #0000001f}
+.mt-seg button:focus-visible{outline:2px solid #356b53;outline-offset:1px}
+.mt-plan-sec{margin:0 0 22px}
+.mt-plan-sec>h3{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0 0 8px;color:var(--color-text)}
+.mt-plan-note{font-size:12.5px;line-height:1.5;color:var(--color-text-2);margin:-2px 0 10px}
+.mt-plan-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border)}
+.mt-plan-row:first-child{border-top:0}
+.mt-plan-grow{flex:1;min-width:0}
+.mt-plan-grow strong{display:block;font-size:14.5px;font-weight:600;color:var(--color-text)}
+.mt-plan-grow small{display:block;font-size:12px;color:var(--color-text-2);margin-top:2px;line-height:1.4}
+.mt-plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.mt-plan-card-head{display:flex;align-items:center;gap:10px}
+.mt-plan-why{font-size:12.5px;line-height:1.45;color:var(--color-text);background:var(--surface-soft);border-radius:10px;padding:7px 10px;margin:10px 0}
+.mt-plan-month{align-items:flex-start}
+.mt-plan-mlabel{flex:0 0 74px;font-size:12.5px;font-weight:700;color:var(--color-green);padding-top:5px}
+.mt-plan-chips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.mt-plan-chip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--color-text);background:var(--surface-soft);border-radius:20px;padding:4px 10px 4px 6px}
+.mt-tl{display:flex;flex-direction:column}
+.mt-tl-row{display:flex;align-items:center;gap:10px;min-height:40px;border-top:1px solid var(--color-border)}
+.mt-tl-row.mt-tl-head{border-top:0;min-height:24px}
+.mt-tl-name{flex:0 0 32%;max-width:180px;min-width:0}
+.mt-tl-name strong{display:block;font-size:13px;font-weight:600;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mt-tl-name small{display:block;font-size:11px;color:var(--color-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mt-tl-head .mt-tl-name{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-3)}
+.mt-tl-track{position:relative;flex:1;min-width:0;height:26px}
+.mt-tl-head .mt-tl-track span{position:absolute;top:4px;font-size:11px;font-weight:600;color:var(--color-text-2)}
+.mt-tl-today{position:absolute;top:-6px;bottom:-6px;width:2px;background:#d9a441;border-radius:2px;opacity:.8}
+.mt-tl-bar{position:absolute;top:5px;height:16px;border-radius:8px;background:linear-gradient(90deg,#9bc8a4,#43a36a);min-width:6px}
+.mt-tl-bar span{position:absolute;right:4px;top:0;line-height:16px;font-size:10.5px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 1px #0003}
+.mt-tl-bar.out span{right:auto;left:calc(100% + 6px);color:var(--color-text-2);text-shadow:none}
+.mt-tl-wait{position:absolute;left:0;top:4px;font-style:normal;font-size:11.5px;font-weight:600;color:var(--color-text-2);background:var(--surface-soft);border:1px dashed var(--color-border);border-radius:8px;padding:1px 8px}
+@media(max-width:520px){.mt-tl-name{flex-basis:36%}.mt-plan-grid{grid-template-columns:1fr}.mt-seg{display:flex}.mt-seg button{flex:1}}
+.mt-bars{display:flex;align-items:flex-end;gap:8px;height:96px}
+.mt-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.mt-bar-col b{display:block;width:100%;max-width:34px;min-height:2px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#43a36a,#2f7a50)}
+.mt-bar-col small{font-size:11px;color:var(--color-text-2)}
+.mt-badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.mt-badge{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:14px 10px;border-radius:16px;border:1px dashed var(--color-border);background:var(--color-card);color:var(--color-text-2)}
+.mt-badge.on{border:1px solid #c9dfcf;background:var(--color-green-pale);color:var(--color-text)}
+.mt-badge-ico{font-size:28px;line-height:1;filter:grayscale(1);opacity:.45}
+.mt-badge.on .mt-badge-ico{filter:none;opacity:1}
+.mt-badge strong{font-size:13px;font-weight:650}
+.mt-badge small{font-size:11.5px;line-height:1.4}

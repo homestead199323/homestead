@@ -20,7 +20,7 @@ function fileDay(ms) {
 /* ═══════════════════════════════════════════
    SETTINGS — single panel bundling account, appearance,
    data backup, and sign-out. Opened from the sidebar footer
-   (desktop) and the More drawer (mobile).
+   (desktop) and the account menu (mobile).
    ═══════════════════════════════════════════ */
 export default function SettingsPanel({
   onClose, data, setData, exportData, readBackup, restoreBackup, darkMode, setDarkMode, onSignOut, plan, onUpgrade, ent, onAccountDeleted,

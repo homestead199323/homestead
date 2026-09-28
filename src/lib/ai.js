@@ -272,7 +272,7 @@ function farmKnowledgeEngine(query, data) {
   if (q.match(/what.*do|today|task|todo|should i|next step|what now|action/)) {
     const tasks = buildTaskQueue(data);
     if (tasks.length === 0) {
-      return "No tasks right now! Here's what you can do:\n\n1. Plant a new crop (go to Farm)\n2. Add animals (go to Animals)\n3. Check the Seasonal page for what's in season\n4. Set up your farm layout (Farm → Layout)";
+      return "No tasks right now! Here's what you can do:\n\n1. See what to sow now (Plan)\n2. Plant a new crop (My Space → Crops)\n3. Add animals (My Space → Animals)\n4. Change your layout (My Space → Map → Edit)";
     }
     let r = "Today's Priority Tasks\n\n";
     tasks.slice(0, 8).forEach((t, i) => {
@@ -342,10 +342,10 @@ function farmKnowledgeEngine(query, data) {
     r += "Start with these easy crops:\n";
     easyCrops.forEach(c => { r += `${c.emoji} ${c.name} — ${c.days} days, ${c.spacing}cm spacing\n`; });
     r += "\nFirst steps:\n";
-    r += "1. Set up your Farm Layout (map your zones)\n";
+    r += "1. Set up your layout (My Space → Map)\n";
     r += "2. Plant 2-3 easy crops to build confidence\n";
     r += "3. Follow the step-by-step guides in each crop card\n";
-    r += "4. Check your Tasks page daily\n";
+    r += "4. Check Today each morning\n";
     r += "5. Harvest and enjoy!\n\n";
     r += "For animals, start with chickens — they're the easiest and give you eggs daily.";
     return r;

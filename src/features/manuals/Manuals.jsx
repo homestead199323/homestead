@@ -15,16 +15,17 @@ import FarmIcon from "../../components/FarmIcon";
 /* ═══════════════════════════════════════════
    ENCYCLOPEDIA
    ═══════════════════════════════════════════ */
-function Manuals({data, setPage}) {
+function Manuals({data}) {
   const [s,setS]=useState("");const [sel,setSel]=useState(null);const [tab,setTab]=useState("crops");
   const rgCrops = rCR(data && data.region);
   const curRegion = REGION_MAP.get((data && data.region) || "western_europe");
   const fil=rgCrops.filter(c=>!s||c.name.toLowerCase().includes(s.toLowerCase()));
   const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const TABS=[{id:"crops",l:"🌱 Crops"},{id:"calendar",l:"🗓 Calendar"},{id:"animals",l:"🐄 Animals"},{id:"preserving",l:"🫙 Preserving"},{id:"projects",l:"🔨 Projects"}];
+  // The seasonal calendar moved to Plan (Launch Stage 5); SeasonalCalendar is still exported from here.
+  const TABS=[{id:"crops",l:"🌱 Crops"},{id:"animals",l:"🐄 Animals"},{id:"preserving",l:"🫙 Preserving"},{id:"projects",l:"🔨 Projects"}];
   return (
     <div className="page-enter" style={{maxWidth:960}}>
-      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📖 MyTerra Manuals</h2>
+      <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📖 Learn</h2>
       <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>Everything you need to know — crops, animals, preservation, and DIY builds</p>
       <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{TABS.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setSel(null);setS("");}} style={{padding:"8px 20px",borderRadius:20,border:"none",background:tab===t.id?C.green:C.card,color:tab===t.id?"#fff":C.t2,fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:tab===t.id?"none":C.sh}}>{t.l}</button>)}</div>
 
@@ -71,7 +72,6 @@ function Manuals({data, setPage}) {
         </Overlay>}
       </>}
 
-      {tab==="calendar"&&<SeasonalCalendar data={data} setPage={setPage} embedded/>}
       {tab==="preserving"&&<Preserving embedded/>}
       {tab==="projects"&&<Projects embedded/>}
     </div>

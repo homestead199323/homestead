@@ -525,3 +525,36 @@ test('Account settings know how a person signs in and explain a failed deletion'
   assert.match(deleteAccountError({ok:false}).text,/couldn't delete/);
   assert.match(friendlyAuthError('New password should be different from the old password.','reset'),/current password/);
 });
+import {waitingPlantings,sowNowSuggestions,comingUp,seasonTimeline} from '../src/lib/plan.js';
+import {produceTotals,moneyTotals,badgeList,nextHarvest,plantingCounts} from '../src/lib/progress.js';
+import {sectionOf,normalizePage,SECTIONS} from '../src/app/navigation.js';
+test('Five areas hold every page; old saved pages still open',()=>{
+  assert.deepEqual(SECTIONS.map(s=>s.l),['Today','My Space','Plan','Learn','Progress']);
+  assert.equal(sectionOf('tasks').id,'today');assert.equal(sectionOf('live').id,'space');assert.equal(sectionOf('fin').id,'progress');
+  assert.equal(sectionOf('feedback'),null);assert.equal(sectionOf('nonsense').id,'today');
+  assert.equal(normalizePage('farm'),'map');assert.equal(normalizePage('season'),'plan');assert.equal(normalizePage('setup'),'home');assert.equal(normalizePage('bogus'),'home');assert.equal(normalizePage('pantry'),'pantry');
+});
+test('Plan lists waiting plantings, fresh suggestions and a season strip',()=>{
+  const data={region:'western_europe',profile:{environment:'backyard',experience:'beginner'},zones:[{id:'b',name:'Bed',type:'raised'}],garden:{plots:[
+    {id:'w1',crop:'Radish',zone:'b',status:'planted',sowPending:true,plantDate:'2026-09-28',harvestDate:'2026-10-26',steps:[{d:0,l:'Sow',done:false}]},
+    {id:'w2',crop:'Garlic',zone:'b',status:'planned',sowFrom:'2026-11',steps:[{d:0,l:'Plant cloves',done:false}]},
+    {id:'g1',crop:'Lettuce',zone:'b',status:'planted',plantDate:'2026-08-01',harvestDate:'2026-10-10',steps:[]},
+  ]}};
+  const w=waitingPlantings(data,'2026-09-28');assert.deepEqual(w.map(x=>[x.plot.id,x.open]),[['w1',true],['w2',false]]);assert.equal(w[1].label,'Plant from Nov');
+  const now=sowNowSuggestions(data,new Date(2026,8,28),6);assert(now.length>0);assert(!now.some(s=>['Radish','Garlic','Lettuce'].includes(s.crop.name)));assert(now.every(s=>s.info.now&&s.info.reason));
+  const later=comingUp(data,new Date(2026,8,28),3);later.forEach(m=>m.crops.forEach(c=>assert(!now.some(s=>s.crop.name===c.name))));
+  const tl=seasonTimeline(data,'2026-09-28',6);assert.equal(tl.months[0].label,'Sep');assert.equal(tl.rows.length,3);
+  const lettuce=tl.rows.find(r=>r.crop==='Lettuce');assert.equal(lettuce.from,0);assert(lettuce.to>0.1&&lettuce.to<0.25);assert(tl.today>0.1&&tl.today<0.2);
+  assert.equal(tl.rows.filter(r=>r.waiting).length,2);
+});
+test('Progress counts real harvests, money and badges without inventing numbers',()=>{
+  const data={pantry:{items:[],moves:[{date:'2026-08-10',name:'Courgette',unit:'kg',qty:4,kind:'in',source:'farm'},{date:'2026-09-05',name:'Tomato',unit:'kg',qty:2,kind:'in',source:'farm'},{date:'2026-09-06',name:'Tomato',unit:'kg',qty:1,kind:'use'},{date:'2026-09-20',name:'Chicken Eggs',unit:'pcs',qty:12,kind:'in',source:'livestock'},{date:'2026-09-21',name:'Seeds',unit:'pcs',qty:5,kind:'in',source:'bought'}]},
+    costs:{items:[{type:'expense',amount:30},{type:'income',amount:12.5}]},gamify:{badges:[{id:'first_harvest',unlockedAt:'2026-08-10'}]},
+    garden:{plots:[{id:'a',crop:'Basil',status:'planted',plantDate:'2026-09-01',harvestDate:'2026-10-20'},{id:'b',crop:'Kale',status:'planted',plantDate:'2026-07-01',harvestDate:'2026-09-20'},{id:'c',crop:'Radish',status:'planted',sowPending:true,steps:[{d:0,l:'Sow',done:false}]}]}};
+  const f=produceTotals(data,'2026-09-28',6);assert.equal(f.kg,6);assert.equal(f.harvests,2);assert.equal(f.eggs,12);assert.equal(f.portions,75);assert.equal(f.byMonth.length,6);assert.equal(f.byMonth[5].kg,2);assert.equal(f.byMonth[4].kg,4);
+  assert.deepEqual(moneyTotals(data),{spent:30,earned:12.5,net:-17.5,entries:2});
+  const b=badgeList(data);assert.equal(b[0].id,'first_harvest');assert.equal(b[0].earned,true);assert(b.slice(1).every(x=>!x.earned));
+  assert.equal(nextHarvest(data,'2026-09-28').crop,'Kale');
+  assert.deepEqual(plantingCounts(data,'2026-09-28'),{growing:2,waiting:1,ready:1});
+  assert.equal(produceTotals({},'2026-09-28').kg,0);
+});

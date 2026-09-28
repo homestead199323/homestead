@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
-  Leaf, User, MessageSquare, Settings
+  Leaf, User, UserRound, MessageSquare, Settings, ChevronRight
 } from "lucide-react";
 
 import {
@@ -35,7 +35,9 @@ import FeedbackSurvey, { FeedbackPrompt } from "./features/feedback/FeedbackSurv
 import { BadgeCelebration } from "./components/BadgeCelebration";
 import Toaster from "./components/Toaster";
 import Onboarding from "./features/onboarding/Onboarding";
-import { NAV, BOTTOM_TABS, MORE_ITEMS, ADMIN_NAV } from "./app/navigation";
+import { SECTIONS, ADMIN_NAV, sectionOf, normalizePage } from "./app/navigation";
+import PlanScreen from "./features/plan/PlanScreen";
+import ProgressScreen from "./features/progress/ProgressScreen";
 import { DEF, dataReducer } from "./app/state";
 import { isSupabaseConfigured, recoveryInUrl, authLinkError } from "./lib/db";
 import { getSession, onAuthChange, signOut, signOutLocal } from "./lib/auth";
@@ -95,8 +97,12 @@ class ErrorBoundary extends React.Component {
 
 /* ═══════════════════════════════════════════
    BOTTOM NAVIGATION — mobile (< 768px)
+   Stage 5: the five areas (Today, My Space, Plan, Learn, Progress).
+   An area opens its first page; the pages inside an area are the tabs
+   at the top of the screen (SectionBar).
    ═══════════════════════════════════════════ */
-const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreOpen, setMoreOpen}) {
+const BottomNav = React.memo(function BottomNav({page, setPage, taskCount}) {
+  const current = sectionOf(page);
   return (
     <nav aria-label="Main navigation" style={{
       position:"fixed", bottom:0, left:0, right:0,
@@ -106,11 +112,11 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
       paddingBottom:"env(safe-area-inset-bottom)",
       zIndex:400, boxShadow:"0 -1px 12px rgba(0,0,0,.06)",
     }}>
-      {BOTTOM_TABS.map(function(tab) {
-        const isActive = tab.id==="more" ? moreOpen : (page===tab.id && !moreOpen);
+      {SECTIONS.map(function(sec) {
+        const isActive = !!current && current.id === sec.id;
         return (
-          <button key={tab.id} aria-label={tab.l} aria-current={tab.id!=="more"&&isActive?"page":undefined}
-            onClick={function(){ if(tab.id==="more"){setMoreOpen(!moreOpen);}else{setMoreOpen(false);setPage(tab.id);} }}
+          <button key={sec.id} aria-label={sec.l} aria-current={isActive?"page":undefined}
+            onClick={function(){ setPage(sec.pages[0].id); }}
             style={{
               flex:1, display:"flex", flexDirection:"column", alignItems:"center",
               justifyContent:"flex-start", gap:2, border:"none", background:"transparent",
@@ -118,10 +124,10 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
               color: isActive ? C.green : C.t2, position:"relative",
             }}
           >
-            <span style={{display:"flex",alignItems:"center",justifyContent:"center",opacity:isActive?1:0.45,transition:"opacity .15s"}}><tab.E size={22} strokeWidth={isActive?2.2:1.7}/></span>
-            <span style={{fontSize:9,fontWeight:isActive?700:400,fontFamily:F.body,letterSpacing:"0.01em",whiteSpace:"nowrap"}}>{tab.l}</span>
-            {tab.id==="tasks"&&taskCount>0&&(
-              <span style={{position:"absolute",top:0,right:"calc(50% - 18px)",background:"#ef4444",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,minWidth:16,textAlign:"center"}}>{taskCount>9?"9+":taskCount}</span>
+            <span style={{display:"flex",alignItems:"center",justifyContent:"center",opacity:isActive?1:0.5,transition:"opacity .15s"}}><sec.E size={22} strokeWidth={isActive?2.2:1.7}/></span>
+            <span style={{fontSize:10,fontWeight:isActive?700:500,fontFamily:F.body,letterSpacing:"0.01em",whiteSpace:"nowrap"}}>{sec.l}</span>
+            {sec.id==="today"&&taskCount>0&&(
+              <span style={{position:"absolute",top:0,right:"calc(50% - 20px)",background:"#ef4444",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:8,minWidth:16,textAlign:"center"}}>{taskCount>9?"9+":taskCount}</span>
             )}
           </button>
         );
@@ -130,12 +136,36 @@ const BottomNav = React.memo(function BottomNav({page, setPage, taskCount, moreO
   );
 });
 
-const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpenSettings, isAdmin, title, plan, onUpgrade}) {
-  const moreItems = isAdmin ? [...MORE_ITEMS, ADMIN_NAV] : MORE_ITEMS;
+/* Pages inside the current area, as tabs above the page (phones + tablets),
+   plus the account button on phones (Settings, feedback, plan). */
+const SectionBar = React.memo(function SectionBar({page, setPage, onAccount}) {
+  const sec = sectionOf(page);
+  const pages = sec ? sec.pages : [];
+  return (
+    <div className="mt-secbar">
+      {pages.length > 1
+        ? <div className="mt-secbar-tabs" role="tablist" aria-label={sec.l}>
+            {pages.map(function(p) {
+              return <button key={p.id} type="button" role="tab" aria-selected={page===p.id} onClick={function(){ setPage(p.id); }}>{p.l}</button>;
+            })}
+          </div>
+        : <span className="mt-secbar-brand"><Leaf size={16} strokeWidth={2.2}/> MyTerra</span>}
+      {onAccount && (
+        <button type="button" className="mt-secbar-me" aria-label="Account, settings and feedback" onClick={onAccount}>
+          <UserRound size={19} strokeWidth={1.9}/>
+        </button>
+      )}
+    </div>
+  );
+});
+
+const AccountSheet = React.memo(function AccountSheet({page, setPage, onClose, onOpenSettings, isAdmin, title, plan, onUpgrade}) {
+  const rowStyle = {display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px 20px",border:"none",background:"transparent",color:C.text,cursor:"pointer",fontSize:15,fontFamily:F.body,textAlign:"left"};
+  const ico = {width:28,display:"flex",alignItems:"center",justifyContent:"center",color:C.t2};
   return createPortal(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(18,26,20,.3)",zIndex:2100}}/>
-      <div className="overlay-pop" role="dialog" aria-modal="true" aria-label="More" style={{
+      <div className="overlay-pop" role="dialog" aria-modal="true" aria-label="Account" style={{
         position:"fixed", top:"50%", left:"50%", zIndex:2101,
         translate:"-50% -50%",
         width:"min(400px, calc(100vw - 24px))",
@@ -159,28 +189,17 @@ const MoreDrawer = React.memo(function MoreDrawer({page, setPage, onClose, onOpe
           )}
         </div>
         <div style={{padding:"4px 0"}}>
-          {moreItems.map(function(item) {
-            return (
-              <button key={item.id} onClick={function(){setPage(item.id);onClose();}} aria-current={page===item.id?"page":undefined}
-                style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px 20px",
-                  border:"none",background:page===item.id?C.gp:"transparent",
-                  color:page===item.id?C.green:C.text,cursor:"pointer",
-                  fontSize:15,fontFamily:F.body,fontWeight:page===item.id?600:400,
-                  textAlign:"left",transition:"background .15s",
-                }}
-              >
-                <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center",color:page===item.id?C.green:C.t2}}><item.E size={19} strokeWidth={1.8}/></span>{item.l}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{margin:"4px 20px",borderTop:`1px solid ${C.bdr}`,paddingTop:4}}>
-          <button onClick={function(){setPage("feedback");onClose();}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
-            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><MessageSquare size={17} strokeWidth={1.8}/></span> Give Feedback
+          <button type="button" onClick={function(){ onOpenSettings(); }} style={rowStyle}>
+            <span style={ico}><Settings size={19} strokeWidth={1.8}/></span><span style={{flex:1}}>Settings</span><ChevronRight size={17} color="currentColor" style={{opacity:.4}}/>
           </button>
-          <button onClick={function(){onOpenSettings();}} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"12px 0",border:"none",background:"transparent",color:C.t2,cursor:"pointer",fontSize:14,fontFamily:F.body,textAlign:"left"}}>
-            <span style={{width:28,display:"flex",alignItems:"center",justifyContent:"center"}}><Settings size={17} strokeWidth={1.8}/></span> Settings
+          <button type="button" onClick={function(){ setPage("feedback"); onClose(); }} aria-current={page==="feedback"?"page":undefined} style={rowStyle}>
+            <span style={ico}><MessageSquare size={19} strokeWidth={1.8}/></span><span style={{flex:1}}>Give feedback</span><ChevronRight size={17} color="currentColor" style={{opacity:.4}}/>
           </button>
+          {isAdmin && (
+            <button type="button" onClick={function(){ setPage(ADMIN_NAV.id); onClose(); }} aria-current={page===ADMIN_NAV.id?"page":undefined} style={rowStyle}>
+              <span style={ico}><ADMIN_NAV.E size={19} strokeWidth={1.8}/></span><span style={{flex:1}}>{ADMIN_NAV.l}</span><ChevronRight size={17} color="currentColor" style={{opacity:.4}}/>
+            </button>
+          )}
         </div>
       </div>
     </>,
@@ -218,12 +237,12 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
   };
 
   const [page,setPageRaw]=useState(() => {
-    try { const p = loadPage(); if (p === "farm") return "map"; if (p === "season") return "manuals"; return (p && p !== "setup") ? p : "home"; } catch(e) { return "home"; }
+    try { return normalizePage(loadPage()); } catch(e) { return "home"; }
   });
   const [pageData,setPageData]=useState(null);
   const [data,dispatchData]=useReducer(dataReducer, null, initData);
   const [viewW,setViewW]=useState(typeof window !== "undefined" ? window.innerWidth : 1200);
-  const [moreOpen,setMoreOpen]=useState(false);
+  const [accountOpen,setAccountOpen]=useState(false);
   const [settingsOpen,setSettingsOpen]=useState(false);
   // Owner flag — controls Admin nav visibility only. The admin RPC
   // re-verifies identity server-side, so this is purely cosmetic.
@@ -446,7 +465,7 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
     return <div style={{padding:40,textAlign:"center",color:C.t2,fontFamily:F.body}}>Loading…</div>;
   }
 
-  const sideNav = isAdmin ? [...NAV, ADMIN_NAV] : NAV;
+  const currentSection = sectionOf(page);
 
   const pg = () => {
     switch(page) {
@@ -456,7 +475,9 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
       case "fin": return <Financials data={data} setData={setData}/>;
-      case "manuals": return <Manuals data={data} setPage={setPage}/>;
+      case "manuals": return <Manuals data={data}/>;
+      case "plan": return <PlanScreen data={data} setData={setData} setPage={setPage}/>;
+      case "progress": return <ProgressScreen data={data} setPage={setPage}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       case "admin": return <AdminDashboard/>;
       default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
@@ -474,19 +495,32 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
             {!isTablet&&<div style={{fontSize:11,color:"rgba(255,255,255,.7)",marginTop:3,fontWeight:500}}>Farm Manager</div>}
           </div>
           <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:2}}>
-          {sideNav.map((n,idx)=>{
-            const showHeader = idx===0 || sideNav[idx-1].group!==n.group;
+          {SECTIONS.map(function(sec, idx) {
+            const inSec = !!currentSection && currentSection.id === sec.id;
+            const single = sec.pages.length === 1;
             return (
-            <React.Fragment key={n.id}>
-            {showHeader && !isTablet && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:C.t3,padding:"10px 14px 3px",marginTop:idx===0?0:6}}>{n.group}</div>}
-            {showHeader && isTablet && idx!==0 && <div style={{height:1,background:C.bdr,margin:"6px 12px"}}/>}
-            <button onClick={()=>{setPage(n.id);}} className="nav-item" aria-current={page===n.id?"page":undefined} style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",justifyContent:isTablet?"center":"flex-start",border:"none",background:page===n.id?C.gp:"transparent",color:page===n.id?C.green:C.t2,cursor:"pointer",fontSize:13.5,fontFamily:F.body,fontWeight:page===n.id?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":page===n.id?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?n.l:undefined}>
-              <span style={{width:isTablet?undefined:24,display:"flex",alignItems:"center",justifyContent:"center",opacity:page===n.id?1:0.55,transition:"opacity .2s"}}><n.E size={isTablet?20:17} strokeWidth={page===n.id?2.2:1.8}/></span>{!isTablet&&n.l}
-              {n.id==="tasks"&&taskCount>0&&<span style={{position:"absolute",right:10,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
+            <React.Fragment key={sec.id}>
+            {isTablet && idx !== 0 && <div style={{height:1,background:C.bdr,margin:"4px 12px"}}/>}
+            <button onClick={function(){ setPage(sec.pages[0].id); }} className="nav-item" aria-current={inSec&&(single||isTablet)?"page":undefined} style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",marginTop:!isTablet&&idx!==0?6:0,justifyContent:isTablet?"center":"flex-start",border:"none",background:inSec&&(single||isTablet)?C.gp:"transparent",color:inSec?C.green:C.text,cursor:"pointer",fontSize:14,fontFamily:F.body,fontWeight:inSec?700:600,textAlign:"left",width:"100%",borderRadius:10,borderLeft:isTablet?"none":inSec&&single?`3px solid ${C.green}`:"3px solid transparent",position:"relative",letterSpacing:"0.01em"}} title={isTablet?sec.l:undefined}>
+              <span style={{width:isTablet?undefined:24,display:"flex",alignItems:"center",justifyContent:"center",opacity:inSec?1:0.6,transition:"opacity .2s"}}><sec.E size={isTablet?20:17} strokeWidth={inSec?2.2:1.8}/></span>{!isTablet&&sec.l}
+              {sec.id==="today"&&taskCount>0&&<span style={{position:"absolute",right:isTablet?4:10,top:isTablet?4:undefined,background:"linear-gradient(135deg, #f59e0b, #d97706)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,boxShadow:"0 2px 6px rgba(245,158,11,.3)"}}>{taskCount}</span>}
             </button>
+            {!isTablet && !single && sec.pages.map(function(pg2) {
+              const on = page === pg2.id;
+              return (
+                <button key={pg2.id} onClick={function(){ setPage(pg2.id); }} className="nav-item" aria-current={on?"page":undefined} style={{display:"flex",alignItems:"center",padding:"7px 14px 7px 49px",border:"none",background:on?C.gp:"transparent",color:on?C.green:C.t2,cursor:"pointer",fontSize:13,fontFamily:F.body,fontWeight:on?600:500,textAlign:"left",width:"100%",borderRadius:10,borderLeft:on?`3px solid ${C.green}`:"3px solid transparent"}}>
+                  {pg2.l}
+                </button>
+              );
+            })}
             </React.Fragment>
             );
           })}
+          {isAdmin && (
+            <button onClick={function(){ setPage(ADMIN_NAV.id); }} className="nav-item" aria-current={page===ADMIN_NAV.id?"page":undefined} style={{display:"flex",alignItems:"center",gap:isTablet?0:11,padding:isTablet?"10px 0":"10px 14px",marginTop:10,justifyContent:isTablet?"center":"flex-start",border:"none",background:page===ADMIN_NAV.id?C.gp:"transparent",color:page===ADMIN_NAV.id?C.green:C.t2,cursor:"pointer",fontSize:13,fontFamily:F.body,fontWeight:600,textAlign:"left",width:"100%",borderRadius:10}} title={isTablet?ADMIN_NAV.l:undefined}>
+              <span style={{width:isTablet?undefined:24,display:"flex",alignItems:"center",justifyContent:"center"}}><ADMIN_NAV.E size={isTablet?20:16} strokeWidth={1.8}/></span>{!isTablet&&ADMIN_NAV.l}
+            </button>
+          )}
           </div>
           <div style={SX.flex1}/>
           <div style={{borderTop:`1px solid ${C.bdr}`,margin:isTablet?"0 8px":"0 10px"}}/>
@@ -500,12 +534,13 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
         <main style={{flex:1,overflow:"auto",padding:isMobile?"16px 16px calc(72px + env(safe-area-inset-bottom))":isTablet?"24px":"32px 36px",background:C.bg}}>
           {/* Nothing renders under the first-run setup: the 3D map would otherwise
               animate behind it and drain a phone's battery for no one. */}
+          {!showOnboarding && viewW < 1024 && <SectionBar page={page} setPage={setPage} onAccount={isMobile ? () => setAccountOpen(true) : null}/>}
           {!showOnboarding && <TrialBanner ent={ent} onUpgrade={() => setUpgradeOpen(true)}/>}
           {!showOnboarding && pg()}
         </main>
       </div>
-      {isMobile&&<BottomNav page={page} setPage={setPage} taskCount={taskCount} moreOpen={moreOpen} setMoreOpen={setMoreOpen}/>}
-      {isMobile&&moreOpen&&<MoreDrawer page={page} setPage={setPage} isAdmin={isAdmin} title={spaceTitle(data)} plan={planLabel(ent)} onUpgrade={()=>setUpgradeOpen(true)} onClose={()=>setMoreOpen(false)} onOpenSettings={()=>{setMoreOpen(false);setSettingsOpen(true);}}/>}
+      {isMobile&&!showOnboarding&&<BottomNav page={page} setPage={setPage} taskCount={taskCount}/>}
+      {isMobile&&accountOpen&&<AccountSheet page={page} setPage={setPage} isAdmin={isAdmin} title={spaceTitle(data)} plan={planLabel(ent)} onUpgrade={()=>setUpgradeOpen(true)} onClose={()=>setAccountOpen(false)} onOpenSettings={()=>{setAccountOpen(false);setSettingsOpen(true);}}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       {!showOnboarding && (aiAllowed
