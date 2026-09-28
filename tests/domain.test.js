@@ -500,3 +500,16 @@ test('Money uses the chosen currency; auth copy opens sign-up from Start free',(
   assert.match(friendlyAuthError('User already registered','signup'),/Sign in instead/);
   assert.equal(spaceTitle({profile:{environment:'balcony'}}),'My balcony');assert.equal(spaceTitle({farmName:' Plot 9 ',profile:{environment:'farm'}}),'Plot 9');
 });
+import {parseBackup,farmSummary,describeSummary} from '../src/lib/backup.js';
+test('Backup import checks the file first and describes what it would restore',()=>{
+  assert.throws(()=>parseBackup('not json'),/isn't a MyTerra backup/);
+  assert.throws(()=>parseBackup('[1,2]'),/isn't a MyTerra backup/);
+  assert.throws(()=>parseBackup('{"name":"x"}'),/isn't a MyTerra backup/);
+  assert.throws(()=>parseBackup('{"__proto__":{"a":1},"zones":[]}'),/reserved keys/);
+  const text=JSON.stringify({zones:[{id:'a'},{id:'b'}],garden:{plots:[{id:'p',status:'planted'},{id:'q',status:'harvested'}]},livestock:{animals:[{id:'h'}]}});
+  const res=parseBackup(text,d=>({...d,migrated:true}));
+  assert.equal(res.data.migrated,true);
+  assert.deepEqual(res.summary,{areas:2,plantings:1,animals:1,pantry:0});
+  assert.equal(describeSummary(res.summary),'2 areas · 1 planting · 1 animal');
+  assert.equal(describeSummary(farmSummary({})),'0 areas · 0 plantings');
+});

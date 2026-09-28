@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { C, F } from "../../lib/theme";
-import { Overlay, Card, Inp } from "../../components/ui";
+import { Overlay, Card, Inp, Btn } from "../../components/ui";
 import { SyncStatus } from "../../components/SyncStatus";
 import { getSession } from "../../lib/auth";
 import { rCR } from "../../lib/regional";
@@ -8,6 +8,12 @@ import { LDB } from "../../data/livestock";
 import { resolveEnvironment, defaultSpaceTitle } from "../../lib/environment";
 import { Download, Upload, Moon, Sun, LogOut } from "lucide-react";
 import { CURRENCIES, currencyCode } from "../../lib/money";
+import { farmSummary, describeSummary } from "../../lib/backup";
+
+function fileDay(ms) {
+  if (!ms) return "";
+  try { return new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }); } catch { return ""; }
+}
 
 /* ═══════════════════════════════════════════
    SETTINGS — single panel bundling account, appearance,
@@ -15,9 +21,27 @@ import { CURRENCIES, currencyCode } from "../../lib/money";
    (desktop) and the More drawer (mobile).
    ═══════════════════════════════════════════ */
 export default function SettingsPanel({
-  onClose, data, setData, exportData, importData, darkMode, setDarkMode, onSignOut, plan, onUpgrade,
+  onClose, data, setData, exportData, readBackup, restoreBackup, darkMode, setDarkMode, onSignOut, plan, onUpgrade,
 }) {
   const [email, setEmail] = useState("");
+  // Import: pick a file → show what it holds → the user confirms before anything is replaced.
+  const [pendingImport, setPendingImport] = useState(null); // { data, summary, fileName, fileDate }
+  const [importErr, setImportErr] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  function pickBackup(file) {
+    if (!file || !readBackup) return;
+    setImportErr("");
+    setPendingImport(null);
+    setImportBusy(true);
+    readBackup(file)
+      .then(function (res) { setPendingImport({ data: res.data, summary: res.summary, fileName: file.name, fileDate: fileDay(file.lastModified) }); })
+      .catch(function (err) { setImportErr((err && err.message) || "Couldn't read that file."); })
+      .then(function () { setImportBusy(false); });
+  }
+  function confirmImport() {
+    if (!pendingImport || !restoreBackup) return;
+    if (restoreBackup(pendingImport.data)) setPendingImport(null);
+  }
   useEffect(() => {
     let mounted = true;
     getSession()
@@ -122,10 +146,35 @@ export default function SettingsPanel({
       <button type="button" onClick={exportData} style={rowBtn}>
         <span style={ico}><Download size={17} strokeWidth={1.8} /></span> Export Backup
       </button>
-      <label style={rowBtn}>
-        <span style={ico}><Upload size={17} strokeWidth={1.8} /></span> Import Backup
-        <input type="file" accept=".json" onChange={(e) => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ""; }} style={{ display: "none" }} />
-      </label>
+      {!pendingImport && (
+        <label style={{ ...rowBtn, opacity: importBusy ? 0.6 : 1 }}>
+          <span style={ico}><Upload size={17} strokeWidth={1.8} /></span> {importBusy ? "Reading backup…" : "Import Backup"}
+          <input type="file" accept=".json,application/json" disabled={importBusy} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) pickBackup(f); }} style={{ display: "none" }} />
+        </label>
+      )}
+      {importErr && (
+        <div role="alert" style={{ margin: "-2px 0 10px", padding: "10px 12px", borderRadius: 10, background: C.dangerBg, border: `1px solid ${C.red}`, color: C.red, fontSize: 12.5, lineHeight: 1.45 }}>
+          {importErr}
+        </div>
+      )}
+      {pendingImport && (
+        <Card style={{ marginBottom: 12, padding: "14px 16px", border: `1.5px solid ${C.orange}` }}>
+          <div role="alert" style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 8 }}>Replace your farm with this backup?</div>
+          <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>
+            <div><span style={{ color: C.t2 }}>In the backup:</span> {describeSummary(pendingImport.summary)}</div>
+            <div><span style={{ color: C.t2 }}>In your farm now:</span> {describeSummary(farmSummary(data))}</div>
+            <div style={{ color: C.t3, fontSize: 12, marginTop: 2, wordBreak: "break-all" }}>{pendingImport.fileName}{pendingImport.fileDate ? ` · saved ${pendingImport.fileDate}` : ""}</div>
+          </div>
+          <p style={{ fontSize: 12.5, color: C.t2, lineHeight: 1.5, margin: "10px 0 12px" }}>
+            Everything in your farm now is replaced by the backup. You can undo it straight after; to be safe, download a copy of your farm first.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Btn v="danger" sm onClick={confirmImport}>Replace my farm</Btn>
+            <Btn v="secondary" sm onClick={exportData}><Download size={15} strokeWidth={1.8} /> Download my farm first</Btn>
+            <Btn v="ghost" sm onClick={function () { setPendingImport(null); }}>Cancel</Btn>
+          </div>
+        </Card>
+      )}
 
       {/* Sign out */}
       {onSignOut && (

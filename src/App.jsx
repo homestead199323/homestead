@@ -21,6 +21,8 @@ import { migratePerennials } from "./lib/perennial";
 import { migratePantry } from "./lib/inventory";
 import { CROP_MAP } from "./data/crops";
 const migrateProfile = (d) => migratePantry(migratePerennials(migrateProfileBase(d), CROP_MAP, todayLocalKey()));
+// Same chain as the local/cloud load paths, for a backup file's raw object.
+const migrateBackup = (d) => migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}})))));
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
 import Manuals from "./features/manuals/Manuals";
@@ -45,6 +47,8 @@ import AdminDashboard from "./features/admin/AdminDashboard";
 import { checkIsAdmin } from "./lib/admin";
 import { fetchEntitlement, getCachedEntitlement, resetEntitlement, hasFeature, planLabel } from "./services/payments/entitlements";
 import { spaceTitle } from "./lib/environment";
+import { parseBackup, farmSummary, describeSummary } from "./lib/backup";
+import { toast } from "./lib/toast";
 import { TrialBanner, UpgradeSheet, LockedAssistantFab } from "./features/payments/Paywall";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
@@ -401,26 +405,27 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
     } catch(e) { console.warn("Export failed:", e); }
   }, [data]);
 
-  // Import farm data from JSON backup
-  const importData = useCallback((file) => {
+  // Import, step 1: read + check a backup file WITHOUT touching the farm, so
+  // Settings can show what it holds and ask before replacing anything.
+  const readBackup = useCallback((file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      try {
-        const d = JSON.parse(e.target.result);
-        // Defensive: reject backup files with prototype-pollution payloads
-        if (d && typeof d === "object" && (
-          Object.prototype.hasOwnProperty.call(d, "__proto__") ||
-          Object.prototype.hasOwnProperty.call(d, "constructor") ||
-          Object.prototype.hasOwnProperty.call(d, "prototype")
-        )) {
-          throw new Error("Backup file contains reserved keys and cannot be imported safely.");
-        }
-        const merged = migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}})))));
-        setData(merged);
-      } catch(err) { alert("Invalid backup file: " + err.message); }
+      try { resolve(parseBackup(String(e.target.result || ""), migrateBackup)); }
+      catch (err) { reject(err); }
     };
+    reader.onerror = () => reject(new Error("Couldn't read that file. Try again."));
     reader.readAsText(file);
-  }, [setData]);
+  }), []);
+
+  // Import, step 2 (after the user confirms): replace the farm, with Undo.
+  const restoreBackup = useCallback((next) => {
+    if (lockedRef.current) { setUpgradeOpen(true); return false; }
+    const previous = data;
+    setData(next);
+    setSettingsOpen(false);
+    toast("Backup restored", { detail: describeSummary(farmSummary(next)), actionLabel: "Undo", onAction: () => setData(previous) });
+    return true;
+  }, [data, setData]);
 
   // Show onboarding on first visit AND after data reset
   // Condition: no zones and setupDone not set — same as old setup redirect but uses overlay now
@@ -508,7 +513,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
         : <LockedAssistantFab lift={page === "home"} onClick={() => setUpgradeOpen(true)}/>)}
       <Toaster/>
       <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} ent={ent}/>
-      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} importData={importData} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut} plan={planLabel(ent)} onUpgrade={()=>{setSettingsOpen(false);setUpgradeOpen(true);}}/>}
+      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} readBackup={readBackup} restoreBackup={restoreBackup} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut} plan={planLabel(ent)} onUpgrade={()=>{setSettingsOpen(false);setUpgradeOpen(true);}}/>}
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}/>}
     </>
   );

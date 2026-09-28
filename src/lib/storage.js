@@ -99,7 +99,7 @@ export const exportFarm = () => kvGet(KEYS.FARM);
 // Accepts a JSON string. Validates by parsing, then writes raw.
 // Returns true on success, false on parse/write error.
 // Note: this does NOT run migrations or merge with DEF — that is the
-// responsibility of the caller (see App.jsx `importData`).
+// responsibility of the caller (see App.jsx `readBackup` / src/lib/backup.js).
 export const importFarm = (jsonString) => {
   try {
     JSON.parse(jsonString); // validate only
