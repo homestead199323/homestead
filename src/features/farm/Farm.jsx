@@ -24,6 +24,7 @@ import { resolveEnvironment } from "../../lib/environment";
 import { sceneFrame } from "../grove/camera";
 import FarmIcon from "../../components/FarmIcon";
 import { PALETTE_DRAG_TYPE } from "./living/ZonePalette";
+import { isPlantZone } from "./living/visuals";
 
 /* ═══════════════════════════════════════════
    FARM DESIGNER v3 — game-style full-screen builder
@@ -821,7 +822,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
    FARMING MODULE
    ═══════════════════════════════════════════ */
 
-function Farming({data, setData, pageData, clearPageData}) {
+function Farming({data, setData, pageData, clearPageData, setPage}) {
   const [showAdd,setShowAdd]=useState(false);
   const [selP,setSelP]=useState(null);
   const [openSec,setOpenSec]=useState({});
@@ -834,6 +835,9 @@ function Farming({data, setData, pageData, clearPageData}) {
   const _totalArea=_active.reduce(function(s,p){return s+(p.measureType==="area"?+(p.qty||0):0);},0);
   const _totalYield=_active.reduce(function(s,p){return s+(p.expectedYieldKg||0);},0);
   const _ready=_active.filter(function(p){return !p.sowPending&&p.status!=="planned"&&p.harvestDate&&localDateFromKey(p.harvestDate)<=localDateFromKey(todayLocalKey());}).length;
+  // Planting needs somewhere to plant: without a bed/planter the header button led to an empty form.
+  const _canPlant=data.zones.some(function(z){return isPlantZone(z.type);});
+  const _bedWord=resolveEnvironment(data)==="balcony"?"planter":"bed";
   // Trees (orchard crops or any fruit/nut tree) get their own section, separate from vegetable beds.
   // Sections: vegetable beds, herbs, and trees (orchard areas or any fruit/nut tree, wherever planted).
   const _cropMap=rCM(data.region);
@@ -888,7 +892,7 @@ function Farming({data, setData, pageData, clearPageData}) {
     <div className="page-enter" style={SX.mw800}>
       <div style={SX.pageHead}>
         <div><h2 style={SX.headerH2}>Your crops</h2><p style={SX.pageSubHead}>Track your crops from seed to harvest</p></div>
-        <Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>
+        {_canPlant&&<Btn onClick={()=>setShowAdd(true)}>+ Plant Crop</Btn>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10,marginBottom:20}}>
         <Stat label="Active Crops" value={_active.length}/>
@@ -911,7 +915,7 @@ function Farming({data, setData, pageData, clearPageData}) {
           {(openSec.seedlings??true)&&<NurseryList data={data} setData={setData}/>}
         </section>)}
       {_active.length===0?
-        <Card style={{textAlign:"center",padding:"48px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:280,margin:"6px auto 14px",lineHeight:1.5}}>{data.zones.length?"Pick a crop and a bed: MyTerra lays out the rows at the right spacing and plans every step.":"Add a bed to your map first, then plant into it."}</div>{data.zones.length>0&&<Btn onClick={()=>setShowAdd(true)}>+ Plant a crop</Btn>}</Card>:
+        <Card style={{textAlign:"center",padding:"48px 24px",background:C.grdLight}}><div style={SX.emptyIcon}>🌱</div><div style={SX.s15Bold}>Ready to grow?</div><div style={{color:C.t2,marginTop:6,fontSize:12.5,maxWidth:280,margin:"6px auto 14px",lineHeight:1.5}}>{_canPlant?`Pick a crop and a ${_bedWord}: MyTerra lays out the rows at the right spacing and plans every step.`:`First add a ${_bedWord} to your map. Then pick what to grow in it.`}</div>{_canPlant?<Btn onClick={()=>setShowAdd(true)}>+ Plant a crop</Btn>:setPage&&<Btn onClick={()=>setPage("map",{edit:true})}>+ Add a {_bedWord}</Btn>}</Card>:
       <>{_sections.map(function(sec){
         if(!sec.plots.length)return null;
         const open=openSec[sec.key]??true, all=showAll[sec.key]||sec.plots.length<=_PREVIEW+1;

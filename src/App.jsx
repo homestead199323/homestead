@@ -452,7 +452,7 @@ function AppInner({ cloudData, allowLocal, onSignOut }) {
     switch(page) {
       case "tasks": return <TaskQueue data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
       case "map": return <MapScreen data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData} setPage={setPage}/>;
-      case "crops": return <CropsScreen data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData}/>;
+      case "crops": return <CropsScreen data={data} setData={setData} pageData={pageData} clearPageData={clearFarmPageData} setPage={setPage}/>;
       case "live": return <Livestock data={data} setData={setData}/>;
       case "pantry": return <Pantry data={data} setData={setData}/>;
       case "fin": return <Financials data={data} setData={setData}/>;
