@@ -371,7 +371,8 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
   );
 }
 export default function WalkOverlay({ tasks, data, setData, onClose }) {
-  const [mode, setMode] = useState("quick"),
+  // A quick round when something is due; otherwise the full round, so Begin is never a dead end.
+  const [mode, setMode] = useState(() => (planRound(tasks, data, "quick", "").length ? "quick" : "full")),
     [place, setPlace] = useState("outside"),
     [startId, setStartId] = useState(""),
     [online, setOnline] = useState(navigator.onLine);
@@ -640,30 +641,34 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
               ))}
             </div>
             <div className="q-inset">
-              <div className="q-grid2">
-                <label>
-                  Where are you?
-                  <select value={place} onChange={(e) => setPlace(e.target.value)}>
-                    <option value="outside">Walking outside</option>
-                    <option value="desk">Checking from home</option>
-                  </select>
-                </label>
-                <label>
-                  Start from
-                  <select value={startId} onChange={(e) => setStartId(e.target.value)}>
-                    <option value="">Entrance</option>
-                    {data.zones.map((z) => (
-                      <option value={z.id} key={z.id}>
-                        {z.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <p>
-                <MapPin size={14} /> {stops.length} stops · about {roundMinutes(stops, data)} min. Move
-                between stops at your own pace.
+              <p style={{ marginTop: 0 }}>
+                <MapPin size={14} /> {stops.length} {stops.length === 1 ? "stop" : "stops"} · about {roundMinutes(stops, data)} min, starting at
+                the {startId ? (data.zones.find((z) => z.id === startId) || {}).name || "entrance" : "entrance"}. Go at your own pace.
               </p>
+              {/* Defaults are fine for a first walk (UX audit 2026-09-28); the choices wait here. */}
+              <details className="q-walk-more">
+                <summary>Options</summary>
+                <div className="q-grid2">
+                  <label>
+                    Start from
+                    <select value={startId} onChange={(e) => setStartId(e.target.value)}>
+                      <option value="">Entrance</option>
+                      {data.zones.map((z) => (
+                        <option value={z.id} key={z.id}>
+                          {z.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Where are you?
+                    <select value={place} onChange={(e) => setPlace(e.target.value)}>
+                      <option value="outside">Walking outside</option>
+                      <option value="desk">Checking from indoors</option>
+                    </select>
+                  </label>
+                </div>
+              </details>
             </div>
             {!stops.length && (
               <p className="q-warning">
