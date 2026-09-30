@@ -83,7 +83,7 @@ export function roofBays(length,spacing=.32){return Math.max(2,Math.min(80,Math.
 
 // Open-front depth, doors and windows stay at architectural sizes when a footprint changes.
 export function buildingScale(w,h,type){
- const barn=type==='barn',small=barn&&Math.min(w,h)<4;
+ const barn=type==='barn'||type==='coop',small=barn&&Math.min(w,h)<4;
  const front=Math.min(h*.3,barn?(small?.6:2.2):.45);
  return {front,roofDepth:h-front,door:Math.min(w*.55,barn?(small?.65:2.4):.95),window:Math.min(.9,w*.2),small};
 }

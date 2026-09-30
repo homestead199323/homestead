@@ -211,7 +211,7 @@ function animalGeometry(type, variant) { // one geometry per species and colour 
 }
 
 /* ---------- shader: pose + motion from the shared clock ---------- */
-const GLSL_HEAD = `uniform float uTime; attribute vec4 g3a; attribute vec4 g3b; attribute vec4 g3p; attribute vec4 g3q;
+const GLSL_HEAD = `uniform float uTime; attribute vec4 g3a; attribute vec4 g3b; attribute vec4 g3p; attribute vec4 g3q; attribute float g3y;
 mat3 g3rx(float a){ float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
 mat3 g3ry(float a){ float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
 void g3pose(out mat3 Rp, out mat3 Rh, out vec3 off) {
@@ -237,7 +237,7 @@ void g3pose(out mat3 Rp, out mat3 Rh, out vec3 off) {
   float a = part == 1. ? headA : (part >= 3. && part <= 6.) ? (kind == 2. ? 0. : swing) : 0.;
   Rp = part == 7. ? g3ry(tailA) : g3rx(a);
   Rh = g3ry(heading);
-  off = vec3(g3a.x + pos.x * walking, bob, g3a.y + pos.y * walking);
+  off = vec3(g3a.x + pos.x * walking, bob + g3y, g3a.y + pos.y * walking);
 }`;
 export function animalShader(sh, depth) {
   Object.assign(sh.uniforms, { uTime: sh.uniforms.uTime || { value: 0 } });
@@ -259,7 +259,7 @@ export function animalMaterials(TIME) {
 }
 
 /* ---------- the herd: one mesh for every animal on the farm ----------
-   items: [{ type, x, z, heading, arena: { x0, x1, z0, z1 } | null, seed }] in world metres.
+   items: [{ type, x, z, y?, heading, arena: { x0, x1, z0, z1 } | null, seed }] in world metres (y: a raised floor).
    Each animal gets a colour variant, a walking loop that fits inside its arena (or stands
    still when there is no room), a gait speed from its size and a random phase. */
 export function buildHerd(items, TIME) {
@@ -280,6 +280,7 @@ export function buildHerd(items, TIME) {
     const a = new Float32Array(n * 4), b = new Float32Array(n * 4), q = new Float32Array(n * 4), ph = r();
     for (let i = 0; i < n; i++) { a.set([it.x, it.z, it.heading, S.kind], i * 4); b.set([rx, rz, speed, ph], i * 4); q.set([gait, stride, graze, bobH], i * 4); }
     g.setAttribute("g3a", new THREE.BufferAttribute(a, 4)); g.setAttribute("g3b", new THREE.BufferAttribute(b, 4)); g.setAttribute("g3q", new THREE.BufferAttribute(q, 4));
+    g.setAttribute("g3y", new THREE.BufferAttribute(new Float32Array(n).fill(it.y || 0), 1));
     geos.push(g);
   });
   const merged = mergeGeometries(geos, false); geos.forEach((g) => g.dispose());

@@ -75,7 +75,7 @@ export function Roof({x=0,y=0,w,h,id,clay=false,hip=false}) {
 }
 
 export function Building({type,w,h,id,clay,children}) {
- const glass=type==='greenhouse', barn=type==='barn';
+ const glass=type==='greenhouse', barn=type==='barn'||type==='coop';
  if(glass)return <g>
    <rect width={w} height={h} fill={`url(#${id}-soil)`}/>
    <rect x={w*.45} width={w*.1} height={h} fill="#c8c7ab"/>

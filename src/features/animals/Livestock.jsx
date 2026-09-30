@@ -56,7 +56,7 @@ function Livestock({data, setData}) {
             <AnimalArt species={a.type} size={72}/><div><strong style={{fontSize:15}}>{a.name||a.type}</strong>{a.breed?<span style={SX.t2_12}> ({a.breed})</span>:null}<div style={SX.t2_12}>×{a.count} · Guide & details</div></div>
           </button>
           <div className="q-animal-actions">
-            <select aria-label={`Area for ${a.name||a.type}`} value={a.zone||""} onChange={e=>setData({...data,livestock:{...data.livestock,animals:data.livestock.animals.map(x=>x.id===a.id?{...x,zone:e.target.value}:x)}})}><option value="">Automatic area</option>{data.zones.filter(z=>['pasture','barn','beehive'].includes(z.type)).map(z=><option key={z.id} value={z.id}>{z.name}</option>)}</select>
+            <select aria-label={`Area for ${a.name||a.type}`} value={a.zone||""} onChange={e=>setData({...data,livestock:{...data.livestock,animals:data.livestock.animals.map(x=>x.id===a.id?{...x,zone:e.target.value}:x)}})}><option value="">Automatic area</option>{data.zones.filter(z=>['pasture','barn','coop','beehive'].includes(z.type)).map(z=><option key={z.id} value={z.id}>{z.name}</option>)}</select>
             {db?.prod.includes("Eggs")&&<Btn sm v="secondary" onClick={()=>{setShowCollect({animal:a,produce:"Eggs"});setCollectQty(String(Math.round(a.count*0.7)))}}>🥚 Collect Eggs</Btn>}
             {db?.prod.includes("Milk")&&<Btn sm v="secondary" onClick={()=>{setShowCollect({animal:a,produce:"Milk"});setCollectQty(String(Math.round(a.count*2.5*10)/10))}}>🥛 Milk</Btn>}
             {db?.prod.includes("Honey")&&<Btn sm v="secondary" onClick={()=>{setShowCollect({animal:a,produce:"Honey"});setCollectQty(String(Math.round(a.count*0.5*10)/10))}}>🍯 Honey</Btn>}
@@ -97,7 +97,7 @@ function Livestock({data, setData}) {
           <Sel label="Breed" value={form.breed} onChange={e=>setForm({...form,breed:e.target.value})} options={[{value:"",label:"— Select breed —"},...breedOptions.map(b=>({value:b.name,label:b.name}))]}/>
         )}
         {selectedBreed && <Card style={{marginBottom:12,background:C.tGreen,padding:12}}><div style={SX.lblGreen}>🧬 {selectedBreed.name}</div><div style={{fontSize:12,marginTop:4}}>{selectedBreed.note}</div></Card>}
-        <Sel label="Area" value={form.zone||""} onChange={e=>setForm({...form,zone:e.target.value})} options={[{value:"",label:"Automatic area"},...data.zones.filter(z=>["barn","pasture","beehive"].includes(z.type)).map(z=>({value:z.id,label:z.name}))]}/>
+        <Sel label="Area" value={form.zone||""} onChange={e=>setForm({...form,zone:e.target.value})} options={[{value:"",label:"Automatic area"},...data.zones.filter(z=>["barn","coop","pasture","beehive"].includes(z.type)).map(z=>({value:z.id,label:z.name}))]}/>
         <Inp label="Name / Label" placeholder="e.g. Layer Flock A" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
         <div style={SX.grid2}>
           <Inp label="Count" type="number" min="1" value={form.count} onChange={e=>setForm({...form,count:e.target.value})}/>

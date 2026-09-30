@@ -19,7 +19,7 @@ const points = (ps) => ps.map((q) => `${q.xM},${q.yM}`).join(" ");
 // Short names (bed numbers) get a compact chip so neighbouring beds' labels don't merge into a bar.
 const zoneLabelWidth = (name = "") =>
   name.length <= 2 ? 15 + name.length * 3 : Math.min(140, Math.min(name.length, 23) * 5.9 + 16);
-const buildings = new Set(["house", "barn", "storage", "beehive", "compost", "greenhouse"]);
+const buildings = new Set(["house", "barn", "coop", "storage", "beehive", "compost", "greenhouse"]);
 function ModernPlanting({ z, plot, crops, id }) {
   const stage = growthOf(plot, crops.get(plot.crop), todayLocalKey()).index;
   return plantingRows(z, plot).map((row, i) => {
@@ -309,11 +309,11 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
           const size = Math.min(
             1,
             (w * 0.7) / (bird ? 1 : 3),
-            (z.type === "barn" ? front : h * 0.7) / (bird ? 0.7 : 2.1),
+            (z.type === "barn" || z.type === "coop" ? front : h * 0.7) / (bird ? 0.7 : 2.1),
           );
           const xx = w * (0.16 + srand(i * 31 + j + 10) * 0.68),
             yy =
-              z.type === "barn"
+              z.type === "barn" || z.type === "coop"
                 ? h - front * 0.5 + (srand(i * 29 + j + 5) - 0.5) * front * 0.2
                 : h * (0.18 + srand(i * 29 + j + 5) * 0.62);
           return (

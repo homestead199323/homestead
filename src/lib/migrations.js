@@ -27,6 +27,8 @@ export function migrateZones(data) {
     let nz = z;
     // Stage 4: onboarding briefly wrote type "contain"; canonical id is "container"
     if (nz.type === "contain") { changed = true; nz = { ...nz, type: "container" }; }
+    // 2026-09-30: the coop became its own zone type; older "barn" zones named for poultry or rabbits move over
+    if (nz.type === "barn" && /coop|chicken|chook|hen\b|hens|poultry|duck|goose|geese|quail|turkey|guinea|rabbit|hutch/i.test(nz.name || "")) { changed = true; nz = { ...nz, type: "coop" }; }
     if (nz.xM !== undefined) return nz;
     changed = true;
     return { ...nz, xM: nz.x/100*farmW, yM: nz.y/100*farmH, wM: nz.w/100*farmW, hM: nz.h/100*farmH };

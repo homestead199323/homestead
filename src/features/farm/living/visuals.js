@@ -1,4 +1,5 @@
 import { POULTRY_SPECIES, GRAZER_SPECIES } from "../../../data/livestock";
+import { animalZone } from "../../quiet/farm-model";
 
 export const PLANT_ZONE_TYPES = new Set(["veg", "orchard", "herbs", "greenhouse", "raised", "container"]);
 
@@ -67,6 +68,14 @@ export function zoneSurfaceStyle(type) {
       background:
         "linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(135deg, #9b7958, #806247)",
       backgroundSize: "22px 100%, 100% 100%",
+    };
+  }
+  if (type === "coop") {
+    return {
+      ...base,
+      background:
+        "linear-gradient(90deg, rgba(90,60,30,.12) 1px, transparent 1px), linear-gradient(0deg, rgba(90,60,30,.12) 1px, transparent 1px), linear-gradient(135deg, #d9bb8a, #b8956a)",
+      backgroundSize: "9px 9px, 9px 9px, 100% 100%",
     };
   }
   if (type === "storage") {
@@ -186,14 +195,16 @@ export function zoneFillColor(pct) {
   return "#3f8f5f";
 }
 
-/* Which species live in a barn/pasture zone. Animals aren't zone-linked
-   in data (v1), so this mirrors the housing rule used on the dashboard:
-   poultry + rabbits → barn/coop, grazers + pigs → pasture. */
+/* Which species live in a coop/barn/pasture zone. With the zone list the real housing rule
+   (animalZone: an explicit area, else poultry + rabbits → coop, grazers + pigs → pasture, the barn
+   as the fallback) decides; without it the old species split is used. */
 const BARN_EXTRA = new Set(["Rabbit"]);
-export function zoneAnimalGroups(zone, animals) {
-  if (!zone || (zone.type !== "barn" && zone.type !== "pasture")) return [];
+export function zoneAnimalGroups(zone, animals, zones) {
+  if (!zone || (zone.type !== "barn" && zone.type !== "coop" && zone.type !== "pasture")) return [];
   const list = Array.isArray(animals) ? animals : [];
-  const match = list.filter(a => a && (zone.type === "barn"
+  const match = Array.isArray(zones)
+    ? list.filter(a => a && a.type !== "Bee" && animalZone(a, zones)?.id === zone.id)
+    : list.filter(a => a && (zone.type !== "pasture"
     ? (POULTRY_SPECIES.has(a.type) || BARN_EXTRA.has(a.type))
     : (GRAZER_SPECIES.has(a.type) || a.type === "Pig")));
   const byType = {};

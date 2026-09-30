@@ -17,6 +17,7 @@ import WalkOverlay from "./WalkOverlay";
 import LivingFarmMap from "../farm/living/LivingFarmMap";
 import FarmIcon from "../../components/FarmIcon";
 import { STAGE_STYLE } from "../farm/living/visuals";
+import { animalZone } from "../quiet/farm-model";
 
 /* ═══════════════════════════════════════════
    TODAY TASK ROW — compact row used in the home-screen Task Pipeline.
@@ -185,11 +186,8 @@ export default function TodayScreen({data, setData, setPage, tasks}) {
       const zTasks = enrichedTasks.filter(t => t.zoneId === z.id);
       const sp = zoneSpace[z.id];
       const zt = ZT_MAP.get(z.type);
-      const isAnimal = ["barn","pasture"].includes(z.type);
-      const zAnimals = isAnimal ? data.livestock.animals.filter(a => {
-        const zone = data.zones.find(zn => zn.id === z.id);
-        return zone && zone.type === (a.type === "Chicken" || a.type === "Duck" || a.type === "Turkey" || a.type === "Quail" || a.type === "Goose" ? "barn" : "pasture");
-      }) : [];
+      const isAnimal = ["barn","coop","pasture"].includes(z.type);
+      const zAnimals = isAnimal ? data.livestock.animals.filter(a => animalZone(a, data.zones)?.id === z.id) : [];
       const totalAnimals = zAnimals.reduce((s,a) => s + a.count, 0);
       const yieldEst = zPlots.reduce((s,p) => s + (p.expectedYieldKg || 0), 0);
       const cropProgress = zPlots.map(p => {

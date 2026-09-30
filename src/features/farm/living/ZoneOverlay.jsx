@@ -23,7 +23,7 @@ import { zoneAnimalGroups } from "./visuals";
 import { buildZoneSpaceMap } from "../../../lib/farm-calc";
 
 const PLANT_TYPES = ["veg", "orchard", "herbs", "greenhouse", "raised", "container"];
-const ANIMAL_TYPES = ["barn", "pasture"];
+const ANIMAL_TYPES = ["barn", "coop", "pasture"];
 
 export default function ZoneOverlay({ zone, data, onClose, onEditLayout, onPlantInZone }) {
   const zt = ZT_MAP.get(zone.type);
@@ -50,7 +50,7 @@ export default function ZoneOverlay({ zone, data, onClose, onEditLayout, onPlant
     ? data.garden.plots.filter(p => p.zone === zone.id && p.status !== "harvested")
     : [];
 
-  const zAnimalGroups = isAnimal ? zoneAnimalGroups(zone, data.livestock && data.livestock.animals) : [];
+  const zAnimalGroups = isAnimal ? zoneAnimalGroups(zone, data.livestock && data.livestock.animals, data.zones) : [];
   const zAnimalTotal = zAnimalGroups.reduce((s, g) => s + g.count, 0);
 
   const fillPct = Math.round((sp.pct || 0) * 100);

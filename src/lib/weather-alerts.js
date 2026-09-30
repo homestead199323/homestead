@@ -35,7 +35,7 @@ export const GALE_KMH = 65;
 export const HEAVY_MM = 20;
 export const RAIN_MM = 4;
 
-const COVERED_ZONES = new Set(["greenhouse", "nursery", "house", "storage", "barn"]);
+const COVERED_ZONES = new Set(["greenhouse", "nursery", "house", "storage", "barn", "coop"]);
 const OPEN_GROWING = new Set(["veg", "raised", "herbs", "orchard", "container"]);
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

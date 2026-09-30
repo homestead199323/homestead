@@ -191,7 +191,8 @@ export function animalZone(animal, zones) {
     animal.type === "Bee"
       ? "beehive"
       : POULTRY_SPECIES.has(animal.type) || animal.type === "Rabbit"
-        ? "barn"
+        ? "coop"
         : "pasture";
-  return zones.find((z) => z.type === type);
+  // poultry and rabbits live in the coop; without one they share the barn, as do grazers without a pasture
+  return zones.find((z) => z.type === type) || zones.find((z) => z.type === "barn");
 }

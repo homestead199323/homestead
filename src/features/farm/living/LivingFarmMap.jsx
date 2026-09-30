@@ -294,7 +294,7 @@ export default function LivingFarmMap({
           const plantZone = isPlantZone(z.type);
           const sp = plantZone ? zoneSpace[z.id] : null;
           const fillPct = sp && sp.totalM2 > 0 ? Math.round((sp.pct || 0) * 100) : null;
-          const animalGroups = zoneAnimalGroups(z, data.livestock && data.livestock.animals);
+          const animalGroups = zoneAnimalGroups(z, data.livestock && data.livestock.animals, data.zones);
           const shownGroups = animalGroups.slice(0, 3);
           const extraGroups = animalGroups.length - shownGroups.length;
           const animalTotal = animalGroups.reduce(function(s, g) { return s + g.count; }, 0);

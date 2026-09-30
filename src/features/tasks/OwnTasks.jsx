@@ -11,7 +11,7 @@ import { REPEATS, repeatText, saveOwnTask, deleteOwnTask, ownTaskIdeas, weeklyMi
    ═══════════════════════════════════════════ */
 
 const EMOJIS = ["📝", "🌿", "♻️", "💧", "🧰", "🪵", "🛒", "🧽", "🐔", "🍎"];
-const GROWING_OR_PLACE = new Set(["veg", "raised", "herbs", "orchard", "greenhouse", "container", "nursery", "barn", "pasture", "beehive", "compost", "water", "storage", "house"]);
+const GROWING_OR_PLACE = new Set(["veg", "raised", "herbs", "orchard", "greenhouse", "container", "nursery", "barn", "coop", "pasture", "beehive", "compost", "water", "storage", "house"]);
 
 export function OwnTaskForm({ data, setData, initial, onClose }) {
   const editing = !!(initial && initial.id);

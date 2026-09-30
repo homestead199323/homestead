@@ -183,7 +183,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
   // O(1) zone lookups — used inside memoized calendarEvents/byTime + render path
   const zoneById = useMemo(() => new Map((data.zones || []).map(z => [z.id, z])), [data.zones]);
   const zoneByName = useMemo(() => new Map((data.zones || []).map(z => [z.name, z])), [data.zones]);
-  const animalZone = useMemo(() => (data.zones || []).find(z => ["barn","pasture"].includes(z.type)) || null, [data.zones]);
+  const animalZone = useMemo(() => (data.zones || []).find(z => ["barn","coop","pasture"].includes(z.type)) || null, [data.zones]);
   const animalLocName = animalZone ? animalZone.name : "Farm";
   const speciesLocName = useCallback((type) => {
     const a = (data.livestock?.animals || []).find((x) => x.type === type);
@@ -882,7 +882,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
                         ? ((ownT.zoneId && zoneById.get(ownT.zoneId)?.name) || "Around your space")
                         : evt.plotId
                         ? (data.zones.find(z => z.id === (data.garden.plots.find(p => p.id === evt.plotId)?.zone))?.name || "Farm")
-                        : (data.zones.find(z => ["barn","pasture"].includes(z.type))?.name || "Farm");
+                        : (data.zones.find(z => ["barn","coop","pasture"].includes(z.type))?.name || "Farm");
                       const pri = evt.type === "harvest" ? 0 : evt.type === "step" ? 1 : evt.type === "feed" || evt.type === "water" || evt.type === "eggs" ? 1 : 2;
                       const daysOut = Math.max(0, Math.ceil((selDateObj - today) / 864e5));
                       const tAsTask = {

@@ -101,7 +101,7 @@ export function buildTaskPlan(data, opts = {}) {
   // Per-animal:      health, hoof, hive inspection (one task per individual)
   const dayNum = Math.floor(now.getTime() / 864e5);
   const curMonth = now.getMonth() + 1; // 1-12
-  const animalZone = data.zones.find(z => ["barn","pasture"].includes(z.type));
+  const animalZone = data.zones.find(z => ["barn","coop","pasture"].includes(z.type));
   const animalLoc = animalZone ? animalZone.name : "Farm";
   // Where each species / animal actually lives (goats in the goat shed, not the first barn found).
   const speciesLoc = (type) => {

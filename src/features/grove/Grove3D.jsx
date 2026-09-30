@@ -109,6 +109,7 @@ const DRAW = {
   solar(g, s) { g.fillStyle = "#16233d"; g.fillRect(0, 0, s, s); g.strokeStyle = "rgba(190,205,225,.55)"; g.lineWidth = 2; const n = 6; for (let i = 0; i <= n; i++) { const t = (i * s) / n; g.beginPath(); g.moveTo(t, 0); g.lineTo(t, s); g.stroke(); g.beginPath(); g.moveTo(0, t); g.lineTo(s, t); g.stroke(); } g.fillStyle = "rgba(255,255,255,.06)"; g.fillRect(0, 0, s, s / 3); },
   bark(g, s, r) { g.fillStyle = "#5a4634"; g.fillRect(0, 0, s, s); for (let i = 0; i < 260; i++) { g.strokeStyle = r() < .5 ? "rgba(30,20,10,.45)" : "rgba(150,120,90,.35)"; g.lineWidth = 1 + r() * 2; const x = r() * s; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + (r() - .5) * 10, s); g.stroke(); } },
   puff(g, s, r) { g.clearRect(0, 0, s, s); for (let i = 0; i < 7; i++) { const x = s * (.35 + r() * .3), y = s * (.35 + r() * .3), rad = s * (.16 + r() * .14), grad = g.createRadialGradient(x, y, 0, x, y, rad); grad.addColorStop(0, "rgba(232,228,220,.9)"); grad.addColorStop(.5, "rgba(232,228,220,.5)"); grad.addColorStop(1, "rgba(232,228,220,0)"); g.fillStyle = grad; g.fillRect(0, 0, s, s); } },
+  wire(g, s) { g.clearRect(0, 0, s, s); g.strokeStyle = "rgba(150,150,140,.95)"; g.lineWidth = 2.2; for (let i = 0; i <= 4; i++) { const t = (i * s) / 4; g.beginPath(); g.moveTo(t, 0); g.lineTo(t, s); g.stroke(); g.beginPath(); g.moveTo(0, t); g.lineTo(s, t); g.stroke(); } },
   cloud(g, s, r) { g.fillStyle = "#ffffff"; g.fillRect(0, 0, s, s); for (let i = 0; i < 18; i++) { const x = r() * s, y = r() * s, rad = s * (.1 + r() * .24), grad = g.createRadialGradient(x, y, 0, x, y, rad); grad.addColorStop(0, "rgba(40,60,30,.14)"); grad.addColorStop(.6, "rgba(40,60,30,.07)"); grad.addColorStop(1, "rgba(40,60,30,0)"); g.fillStyle = grad; [[0, 0], [-s, 0], [s, 0], [0, -s], [0, s]].forEach(([ox, oy]) => { g.save(); g.translate(ox, oy); g.fillRect(x - rad, y - rad, rad * 2, rad * 2); g.restore(); }); } },
 };
 
@@ -231,6 +232,7 @@ function materials() {
     hive: [0xf1e9d2, 0xdbe7ea, 0xf3e5b1, 0xe4efd6].map((c) => std({ color: c, roughness: .8 })),
     compost: [0x6b5340, 0x4f3b2b, 0x3c2e22].map((c) => std({ map: tex(art("texture-soil"), { repeat: [2, 2] }), color: c })),
     hay: std({ map: proc("hay", DRAW.hay, { size: 128, repeat: [2, 2] }) }),
+    wire: (rx, ry) => keep(k("wire", rx, ry), () => new THREE.MeshStandardMaterial({ map: proc("wire", DRAW.wire, { size: 64, repeat: [rx, ry] }), transparent: true, alphaTest: .3, side: THREE.DoubleSide, roughness: .5, metalness: .4, forceSinglePass: true })),
     shade: new THREE.MeshStandardMaterial({ map: proc("shade", DRAW.shade, { size: 64, repeat: [6, 6] }), transparent: true, side: THREE.DoubleSide, depthWrite: false, roughness: 1, forceSinglePass: true }),
     mulch: layer(new THREE.MeshStandardMaterial({ map: proc("soilDisc", DRAW.soilDisc, { size: 128, clamp: true }), transparent: true, depthWrite: false, roughness: 1 }), 13),
     rock: std({ map: tex(art("texture-stone")), color: 0x9d9a90, flatShading: true }),
@@ -711,6 +713,203 @@ function building(g, w, d, kind, M, { clay = false, tag = (m) => m, ctx = null, 
   return { H, rise };
 }
 
+/* ---------- animal housing: chicken coop and barn ----------
+   Both are a building at the back of the zone with a fenced outdoor area in front (toward the
+   camera), inside the zone's own footprint, so the flock or herd can be seen indoors and out.
+   Walls are hollow slabs with real openings, so the inside (bedding, roosts, stalls, loft) shows
+   through the open doors. MARKER: GROVE_3D_HOUSING_V1 */
+function slabWall(len, H, openings, at) { // solid pieces between openings, a header above each; at(u, y0, uw, uh)
+  let u = 0; const ops = [...openings].sort((a, b) => a.x0 - b.x0);
+  ops.forEach((o) => { const x0 = Math.max(u, o.x0), x1 = Math.min(len, o.x1); if (x1 <= x0) return; if (x0 > u + .01) at(u, 0, x0 - u, H); if (o.h < H - .02) at(x0, o.h, x1 - x0, H - o.h); u = x1; });
+  if (u < len - .01) at(u, 0, len - u, H);
+}
+function meshFence(g, ctx, segs, M, { h = 1.7, off = [0, 0] } = {}) { // poultry netting: posts, a top rail, wire mesh between
+  const posts = [];
+  segs.forEach(([a, b]) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]); if (len < .05) return;
+    const ry = Math.atan2(-(b[1] - a[1]), b[0] - a[0]), n = Math.max(2, Math.ceil(len / 1.4) + 1), mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+    for (let j = 0; j < n; j++) { const t = j / (n - 1); posts.push({ p: [a[0] + (b[0] - a[0]) * t, h / 2, a[1] + (b[1] - a[1]) * t] }); }
+    box(g, len, .06, .06, M.railWood, mx, h - .03, mz, { ry, cast: false });
+    box(g, len, .04, .04, M.railWood, mx, .12, mz, { ry, cast: false });
+    plane(g, len, h - .16, M.wire(len / .45, (h - .16) / .45), mx, (h - .16) / 2 + .13, mz, { rx: 0, ry, cast: false, receive: false });
+  });
+  instances(g, new THREE.CylinderGeometry(.045, .055, h, 6), M.postWood, posts);
+  ctx.tufts && tuftsIn(ctx, Math.min(16, posts.length), 5, (i) => { const p = posts[i]; return p ? [p.p[0] + .12, p.p[2] + .1] : [null]; }, { off });
+}
+function coopZone(g, z, ctx, tag) {
+  const { M } = ctx, w = z.wM, d = z.hM, cx = w / 2, off = [z.xM, z.yM];
+  const bill = (url, bw, x, y, zz, o) => billboard(ctx, url, bw, z.xM + x, y, z.yM + zz, o);
+  // the run: worn grass, bare earth where the birds scratch by the house
+  tag(plane(g, w, d, M.lawn(w / 2.6, d / 2.6, 0xb6c294), cx, .01, d / 2));
+  // the house sits at the back of the run, raised on legs, its doors toward the camera
+  const hw = clamp(w * .55, 1.6, Math.min(5.5, w - .7)), hd = clamp(d * .4, 1.4, 3.0), hx = cx - hw / 2, hz = .35, floorY = .45, H = 1.5, t = .05;
+  const hcx = cx, hcz = hz + hd / 2, wallMat = M.planks(hw / 1.2, H / 1.2, 0xd7b98a), trim = M.woodDark;
+  contact(g, M, hcx, hcz, hw, hd);
+  plane(g, hw + 1.2, hd + 1.6, M.soil(2, 2, 0xd6c8a8), hcx, .012, hcz + .3);
+  // legs and floor
+  [[hx + .08, hz + .08], [hx + hw - .08, hz + .08], [hx + .08, hz + hd - .08], [hx + hw - .08, hz + hd - .08], [hcx, hz + .08], [hcx, hz + hd - .08]].forEach(([x, zz]) => tag(box(g, .1, floorY, .1, trim, x, floorY / 2, zz)));
+  tag(box(g, hw + .08, .06, hd + .08, M.planks(hw / .6, hd / .6, 0xb99b70), hcx, floorY - .03, hcz));
+  plane(g, hw - .1, hd - .1, M.hay, hcx, floorY + .004, hcz); // deep-litter bedding
+  // walls: hollow, with a pop door and a keeper's door on the front, vent strips under both eaves
+  const popU = hw * .2, popW = .38, popH = .42, doorU = hw * .7, doorW = Math.min(.72, hw * .4), doorH = Math.min(1.36, H - .12), vent = .12;
+  const wallS = (u, y0, uw, uh) => tag(box(g, uw, uh, t, wallMat, hx + u + uw / 2, floorY + y0 + uh / 2, hz + hd - t / 2));
+  slabWall(hw, H - vent, [{ x0: popU - popW / 2, x1: popU + popW / 2, h: popH }, { x0: doorU - doorW / 2, x1: doorU + doorW / 2, h: doorH }], wallS);
+  tag(box(g, hw, H - vent, t, wallMat, hcx, floorY + (H - vent) / 2, hz + t / 2));
+  [hz + t / 2, hz + hd - t / 2].forEach((zz) => plane(g, hw - .2, vent - .02, M.wire(hw / .3, .5), hcx, floorY + H - vent / 2, zz, { rx: 0, cast: false, receive: false }));
+  tag(box(g, t, H, hd, wallMat, hx + t / 2, floorY + H / 2, hcz)); tag(box(g, t, H, hd, wallMat, hx + hw - t / 2, floorY + H / 2, hcz));
+  [[hx, hz], [hx + hw, hz], [hx, hz + hd], [hx + hw, hz + hd]].forEach(([x, zz]) => box(g, .07, H + .02, .07, trim, x, floorY + H / 2, zz, { cast: false }));
+  // roof: gable along the house, metal, wide eaves; the gables close the ends
+  const rise = Math.max(.42, hd * .32);
+  gableRoof(g, hcx, hcz, hw, hd, floorY + H, rise, .32, M.metalRoof(hw / 2.4, Math.hypot(hd / 2 + .32, rise) / 2.4, 0), wallMat, true, M.zinc, M, { thick: .06, gutters: false });
+  // pop door: a dark opening, the sliding hatch pushed up above it, and a cleated ramp down to the run
+  const px = hx + popU, fz = hz + hd;
+  plane(g, popW - .02, popH - .02, M.slot, px, floorY + popH / 2, fz + .002, { rx: 0, cast: false });
+  box(g, popW + .1, popH * .55, .03, M.planks(1, .5, 0x8a6a48), px, floorY + popH + popH * .3, fz + .03, { cast: false });
+  [-1, 1].forEach((s) => box(g, .03, popH * 1.4, .04, M.metal, px + s * (popW / 2 + .07), floorY + popH * .75, fz + .03, { cast: false }));
+  const rl = Math.hypot(1.3, floorY), ra = Math.atan2(floorY, 1.3);
+  tag(box(g, .4, .035, rl, M.planks(1, 3, 0xc9ab7c), px, floorY / 2 + .01, fz + .65, { rx: ra }));
+  const cleats = []; for (let k = -3; k <= 3; k++) { const tt = k * .17; cleats.push({ p: [px, floorY / 2 + .035 - tt * Math.sin(ra), fz + .65 + tt * Math.cos(ra)], rx: ra }); }
+  instances(g, new THREE.BoxGeometry(.36, .03, .03), trim, cleats, { cast: false });
+  // keeper's door, swung open against the wall; the inside shows through it
+  const dx = hx + doorU;
+  plane(g, doorW - .02, doorH - .02, M.slot, dx, floorY + doorH / 2, fz + .002, { rx: 0, cast: false });
+  box(g, doorW + .12, .07, .04, trim, dx, floorY + doorH + .035, fz + .02, { cast: false });
+  { const leaf = new THREE.Group(); leaf.position.set(dx + doorW / 2, floorY, fz + .03); leaf.rotation.y = -1.9; g.add(leaf); box(leaf, doorW, doorH, .035, M.planks(1, 2, 0xc4a377), doorW / 2, doorH / 2, 0); box(leaf, doorW - .1, .06, .012, trim, doorW / 2, doorH - .12, .025, { cast: false }); box(leaf, doorW - .1, .06, .012, trim, doorW / 2, .12, .025, { cast: false }); bar(leaf, [.06, .15, .028], [doorW - .06, doorH - .15, .028], .022, trim); }
+  // inside: two roost bars on A-frame supports at the back, a feed hopper by the door
+  const rz0 = hz + hd * .32, rz1 = hz + hd * .55, rh0 = floorY + .5, rh1 = floorY + .72;
+  [hx + .25, hx + hw - .25].forEach((x) => { bar(g, [x, floorY, rz0 - .15], [x, rh1 + .04, rz1 - .1], .02, trim, { seg: 5 }); bar(g, [x, floorY, rz1 + .25], [x, rh1 + .04, rz1 - .1], .02, trim, { seg: 5 }); });
+  bar(g, [hx + .2, rh0, rz0], [hx + hw - .2, rh0, rz0], .025, M.wood, { seg: 6 }); bar(g, [hx + .2, rh1, rz1], [hx + hw - .2, rh1, rz1], .025, M.wood, { seg: 6 });
+  cyl(g, .1, .1, .3, M.zinc, hx + hw - .35, floorY + .15, fz - .35, { seg: 10 });
+  // nest boxes hang off the side wall: a box with a sloping hinged lid, one nest per 3-4 hens
+  { const nn = Math.max(2, Math.min(4, Math.round(hd / .4))), nl = nn * .36, nx = hx - .24, nz = hz + hd / 2, ny = floorY + .12;
+    tag(box(g, .48, .38, nl, wallMat, nx, ny + .19, nz)); box(g, .5, .04, nl + .04, trim, nx, ny + .02, nz, { cast: false });
+    for (let i = 1; i < nn; i++) box(g, .5, .34, .02, trim, nx, ny + .19, nz - nl / 2 + i * .36, { cast: false });
+    box(g, .58, .03, nl + .1, M.metalRoof(1, 1), nx - .04, ny + .46, nz, { rz: .38 }); bar(g, [hx - .01, ny + .5, nz - nl / 2], [hx - .01, ny + .5, nz + nl / 2], .015, M.metal, { seg: 5 }); }
+  // window with mesh and a top-hung shutter propped open; a ventilation vent up in the gable
+  { const wx = hx + hw, wy = floorY + H * .6, wz = hz + hd * .4, ww = .5, wh = .45;
+    box(g, .04, wh + .1, ww + .1, trim, wx + .02, wy, wz, { cast: false }); plane(g, ww - .02, wh - .02, M.slot, wx + .045, wy, wz, { rx: 0, ry: HPI, cast: false });
+    plane(g, ww, wh, M.wire(ww / .3, wh / .3), wx + .05, wy, wz, { rx: 0, ry: HPI, cast: false, receive: false });
+    const sh = new THREE.Group(); sh.position.set(wx + .06, wy + wh / 2 + .05, wz); sh.rotation.z = -.9; g.add(sh); box(sh, .03, wh + .08, ww + .08, M.planks(1, 1, 0xc4a377), 0, -(wh + .08) / 2, 0);
+    bar(g, [wx + .06, wy - wh / 2, wz + ww / 2 + .02], [wx + .5, wy + .05, wz + ww / 2 + .02], .015, M.metal, { seg: 4 }); }
+  // the run: netting round the whole zone, a gate on the front, a hanging feeder, a bell drinker,
+  // a dust bath, an outdoor perch and a lidded feed bin by the house
+  const gw = Math.min(1.0, w * .3), gx = Math.min(w - gw / 2 - .3, hx + hw + Math.max(.6, (w - hx - hw) / 2));
+  meshFence(g, ctx, [[[0, 0], [w, 0]], [[0, 0], [0, d]], [[w, 0], [w, d]], [[0, d], [gx - gw / 2 - .05, d]], [[gx + gw / 2 + .05, d], [w, d]]], M, { off });
+  gate(g, gx, d, gw, 0, M, { pickets: true });
+  const runZ0 = fz + .5, runZ1 = d - .35, runW = w - .7;
+  if (runZ1 - runZ0 > 1.0) {
+    const fx = clamp(hx + hw * .35, .6, w - .6), fzz = runZ0 + (runZ1 - runZ0) * .35;
+    cyl(g, .035, .04, 1.3, trim, fx, .65, fzz, { seg: 6 }); bar(g, [fx, 1.28, fzz], [fx + .3, 1.28, fzz], .02, trim, { seg: 5 }); bar(g, [fx + .3, 1.28, fzz], [fx + .3, .62, fzz], .008, M.metal, { seg: 4 });
+    cyl(g, .13, .13, .3, M.zinc, fx + .3, .47, fzz, { seg: 12 }); cyl(g, .2, .17, .06, M.red, fx + .3, .3, fzz, { seg: 12 });
+    const bx = clamp(hx + hw * .9, .6, w - .6), bzz = runZ0 + (runZ1 - runZ0) * .6;
+    cyl(g, .06, .15, .26, M.frame, bx, .17, bzz, { seg: 10 }); cyl(g, .17, .17, .04, M.red, bx, .03, bzz, { seg: 12 }); cyl(g, .02, .02, .1, M.red, bx, .35, bzz, { seg: 5 });
+    if (runW > 2.4) { const dbx = clamp(w * .25, .7, w - .7), dbz = runZ1 - .5; disc(g, .45, M.soil(1, 1, 0xeadcb9), dbx, .014, dbz, { seg: 16 }); [[-.3, .1], [.25, -.2]].forEach(([a, b]) => { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(.08, 0), M.rock); r.position.set(dbx + a, .05, dbz + b); r.castShadow = true; g.add(r); }); }
+    if (runW > 3) { const pzz = runZ0 + (runZ1 - runZ0) * .8, p0 = clamp(w * .6, 1, w - 1.8), p1 = p0 + 1.2; [p0, p1].forEach((x) => cyl(g, .035, .045, .55, trim, x, .275, pzz, { seg: 6 })); bar(g, [p0 - .1, .56, pzz], [p1 + .1, .56, pzz], .03, M.bark, { seg: 7 }); }
+    tuftsIn(ctx, Math.min(24, Math.round(w * d / 5)), z.id.length * 7 + 3, (i) => [.4 + srand(i * 5 + 2) * (w - .8), runZ0 + srand(i * 3 + 1) * (runZ1 - runZ0)], { off });
+    bill(art("prop-flowers"), .6, .45, 0, d - .5, { sink: .06 });
+  }
+  cyl(g, .2, .2, .55, M.zinc, hx + hw + .35, .275, hz + .4, { seg: 12 }); cyl(g, .22, .22, .04, M.zinc, hx + hw + .35, .57, hz + .4, { seg: 12, cast: false });
+  return { arena: { x0: .35, x1: w - .35, z0: Math.min(runZ0, d - 1.2), z1: runZ1 }, inside: [{ x: hx + hw * .4, y: floorY, z: hz + hd * .45 }, { x: hx + hw * .75, y: floorY, z: hz + hd * .7 }] };
+}
+function barnZone(g, z, ctx, tag) {
+  const { M } = ctx, w = z.wM, d = z.hM, cx = w / 2, off = [z.xM, z.yM];
+  const bill = (url, bw, x, y, zz, o) => billboard(ctx, url, bw, z.xM + x, y, z.yM + zz, o);
+  // the barn takes the back of the zone; the rest is the yard. Small zones are all barn.
+  let bd = clamp(d * .5, 3, 9); const yard = d - bd >= 2.4; if (!yard) bd = d;
+  const bw = w, bcz = bd / 2, small = Math.min(bw, bd) < 4, H = small ? 2.6 : 4.0, t = .12, alongX = bw >= bd, base = .32;
+  const wallMat = M.planks(bw / 1.4, H / 2.6, 0xb0553a), trim = M.woodDark, floorY = base + .005;
+  contact(g, M, cx, bcz, bw, bd);
+  tag(box(g, bw + .12, base, bd + .12, M.plinth(bw / 1.5), cx, base / 2, bcz));
+  plane(g, bw - .1, bd - .1, M.soil(bw / 1.6, bd / 1.6, 0x8f8571), cx, floorY, bcz); // packed earth floor, dark under the roof
+  // hollow walls; the front one has the big doorway
+  const dw = Math.min(3.2, bw * .42), dh = Math.min(H * .74, 3.0), wh = H - base;
+  tag(box(g, bw, wh, t, wallMat, cx, base + wh / 2, t / 2));
+  tag(box(g, t, wh, bd, wallMat, t / 2, base + wh / 2, bcz)); tag(box(g, t, wh, bd, wallMat, bw - t / 2, base + wh / 2, bcz));
+  slabWall(bw, wh, [{ x0: cx - dw / 2, x1: cx + dw / 2, h: dh - base }], (u, y0, uw, uh) => tag(box(g, uw, uh, t, wallMat, u + uw / 2, base + y0 + uh / 2, bd - t / 2)));
+  [[0, 0], [bw, 0], [0, bd], [bw, bd]].forEach(([x, zz]) => box(g, .14, H, .14, trim, x, H / 2, zz, { cast: false }));
+  const rise = Math.min(bw, bd) / 2 * .7, rot = alongX ? 0 : HPI, L = alongX ? bw : bd, slope = Math.hypot((alongX ? bd : bw) / 2 + .35, rise);
+  gableRoof(g, cx, bcz, bw, bd, H, rise, .35, z.color === "clay" ? M.tiles(L / 1.5, slope / 1.5, rot) : M.metalRoof(L / 2.4, slope / 2.4, rot), wallMat, alongX, z.color === "clay" ? M.ridgeClay : M.zinc, M);
+  // sliding door on an overhead track, rolled open to one side
+  const fz = bd, tz = fz + .16, ty = dh + .28;
+  box(g, dw * 2.05, .07, .07, M.metal, cx + dw * .45, ty, tz, { cast: false });
+  [[cx - dw / 2 - .1], [cx + dw / 2 + .1], [cx + dw * 1.35]].forEach(([x]) => box(g, .08, .16, .08, M.metal, x, ty - .04, tz - .08, { cast: false }));
+  { const lx = cx + dw * .98, ly = base + (dh - base) / 2 + .02, lz = fz + .09, pm = M.planks(1, 2, 0x8f4a30), bm = M.batten, pw = dw - .08, ph = dh - base + .06;
+    tag(box(g, pw, ph, .06, pm, lx, ly, lz));
+    [lx - pw / 4, lx + pw / 4].forEach((x) => { const bl = Math.hypot(pw / 2 - .05, ph - .2) - .1, ba = Math.atan2(pw / 2 - .05, ph - .2); box(g, pw / 2 - .05, .09, .02, bm, x, ly + ph / 2 - .1, lz + .04, { cast: false }); box(g, pw / 2 - .05, .09, .02, bm, x, ly - ph / 2 + .1, lz + .04, { cast: false }); box(g, .09, bl, .02, bm, x, ly, lz + .04, { rz: ba, cast: false }); box(g, .09, bl, .02, bm, x, ly, lz + .04, { rz: -ba, cast: false }); });
+    [-1, 1].forEach((s) => { box(g, .06, .12, .06, M.metal, lx + s * pw * .35, ty - .08, tz - .04, { cast: false }); bar(g, [lx + s * pw * .35, ty - .12, tz - .06], [lx + s * pw * .35, ly + ph / 2 - .02, lz], .018, M.metal, { seg: 5 }); }); }
+  // inside: stalls with plank partitions and straw bedding down one side, a feed passage with a
+  // trough along the back wall, water buckets, a hay loft with a ladder over the back half
+  const stallD = Math.min(2.4, bw * .38), nStall = Math.max(1, Math.floor((bd - .6) / 2.0)), stallL = (bd - .6) / nStall, sx0 = t, hasLoft = !small && bd > 4.5;
+  const inside = [];
+  for (let i = 0; i < nStall; i++) {
+    const z0 = .3 + i * stallL, zc = z0 + stallL / 2;
+    plane(g, stallD - .1, stallL - .1, M.hay, sx0 + stallD / 2, floorY + .004, zc);
+    if (i) tag(box(g, stallD, 1.25, .06, M.planks(stallD / 1.2, 1, 0xc9a97a), sx0 + stallD / 2, base + .62, z0));
+    box(g, .06, 1.25, stallL - .3, M.planks(1, 1, 0xc9a97a), sx0 + stallD, base + .62, zc); // stall front, half-height, leaves a gap for the gate
+    box(g, .08, 1.3, .08, trim, sx0 + stallD, base + .65, z0 + .05, { cast: false });
+    cyl(g, .13, .11, .3, M.zinc, sx0 + stallD - .25, base + .15, z0 + .3, { seg: 9 });
+    if (inside.length < 2 && !yard) inside.push({ x: sx0 + stallD * .5, y: base, z: zc });
+    else if (inside.length < 2 && stallL > 1.6) inside.push({ x: sx0 + stallD * .5, y: base, z: zc });
+  }
+  tag(box(g, stallD, 1.25, .06, M.planks(stallD / 1.2, 1, 0xc9a97a), sx0 + stallD / 2, base + .62, .3)); // back partition of the first stall
+  box(g, bw - stallD - .8, .4, .42, trim, sx0 + stallD + (bw - stallD - .8) / 2 + .2, base + .2, t + .25); box(g, bw - stallD - .9, .12, .34, M.hay, sx0 + stallD + (bw - stallD - .8) / 2 + .2, base + .42, t + .25, { cast: false });
+  [0, 1].forEach((k) => box(g, .9, .5, .5, M.hay, bw - .75, base + .25 + k * .5, bd - 1.2 - k * .1, { ry: k * .15 }));
+  if (hasLoft) {
+    const ly = H * .55, ld = bd * .48;
+    tag(box(g, bw - 2 * t, .1, ld, M.planks(bw / .6, ld / .6, 0xb99b70), cx, ly, t + ld / 2));
+    box(g, bw - 2 * t, .08, .08, trim, cx, ly - .09, t + ld, { cast: false });
+    for (let k = 0; k < Math.min(6, Math.floor(bw / 1.1)); k++) box(g, .9, .5, .5, M.hay, t + .6 + k * 1.05, ly + .3, t + .5 + (k % 2) * .55, { ry: (k % 3) * .1 });
+    const lxx = bw - .6; [-.2, .2].forEach((s) => bar(g, [lxx + s, base, t + ld + .9], [lxx + s, ly + .3, t + ld - .1], .025, trim, { seg: 5 }));
+    for (let k = 1; k < 8; k++) { const f = k / 8; bar(g, [lxx - .2, base + (ly + .3 - base) * f, t + ld + .9 - f], [lxx + .2, base + (ly + .3 - base) * f, t + ld + .9 - f], .018, trim, { seg: 4 }); }
+  }
+  // loft door and hoist beam on the gable end, windows beside the door, a cupola with a weather vane
+  const dg = new THREE.Group(); dg.position.set(cx, 0, bcz); g.add(dg); const put = fixtures(bw, bd);
+  if (bw > dw + 2.6) [-1, 1].forEach((s) => windowAt(dg, put, "S", s * (dw / 2 + 1.0), H * .6, .7, .7, M, { sill: false }));
+  if (!small) {
+    const gf = alongX ? "W" : "S", gy = H + rise * .32;
+    dg.add(put(mesh([1.0, 1.15, .06], trim), gf, 0, gy, .03)); dg.add(put(mesh([.86, 1.0, .04], M.planks(1, 1, 0x7d4a33)), gf, 0, gy, .06));
+    const bx = alongX ? -bw / 2 : 0, bz = alongX ? 0 : bd / 2;
+    bar(dg, [bx, H + rise * .8, bz], [bx - (alongX ? .7 : 0), H + rise * .8, bz + (alongX ? 0 : .7)], .05, trim);
+    const cy = H + rise + .35;
+    box(g, .7, .6, .7, M.planks(1, 1, 0xf0e8d6), cx, cy, bcz);
+    [-1, 1].forEach((s) => { for (let i = 0; i < 3; i++) box(g, .5, .04, .03, M.metal, cx, cy - .18 + i * .16, bcz + s * .36, { cast: false }); });
+    const cap = new THREE.Mesh(hipRoofGeo(.7, .7, .3, .1, true).geo, M.zinc); cap.position.set(cx, cy + .3, bcz); cap.castShadow = true; g.add(cap);
+    cyl(g, .015, .015, .5, M.metal, cx, cy + .85, bcz, { seg: 5, cast: false });
+    box(g, .32, .04, .015, M.metal, cx, cy + 1.02, bcz, { cast: false, ry: .6 }); box(g, .1, .1, .015, M.metal, cx + .16, cy + 1.02, bcz, { cast: false, ry: .6 });
+  }
+  dg.traverse((m) => { if (m.isMesh) tag(m); });
+  // the yard: trampled earth, a concrete apron at the door, post-and-rail fence with a gate,
+  // water trough, hay rack, a lean-to shelter beside the door, a muck heap in the far corner
+  let arena;
+  if (yard) {
+    const y0 = bd, yd = d - bd, ycz = bd + yd / 2;
+    tag(plane(g, w, yd, M.soil(w / 1.6, yd / 1.6, 0xcbbc9c), cx, .011, ycz));
+    plane(g, dw + 1.6, 2.4, M.concrete, cx, .014, y0 + 1.2);
+    plane(g, 2.2, 1.6, M.soil(1, 1, 0x9a8a72), w - 1.6, .013, y0 + 1.6); // mud round the trough
+    const gw = Math.min(2.4, w * .3);
+    fence(ctx, [[[0, y0], [0, d]], [[w, y0], [w, d]], [[0, d], [cx - gw / 2 - .1, d]], [[cx + gw / 2 + .1, d], [w, d]]], { off });
+    gate(g, cx, d, gw, 0, M);
+    tag(box(g, 1.4, .48, .6, M.zinc, w - 1.3, .24, y0 + 1.0)); plane(g, 1.32, .52, M.water, w - 1.3, .46, y0 + 1.0);
+    bar(g, [w - .02, .05, y0 + .4], [w - .02, .75, y0 + .4], .025, M.zinc, { seg: 6 }); bar(g, [w - .02, .75, y0 + .4], [w - 1.0, .75, y0 + .4], .025, M.zinc, { seg: 6 }); bar(g, [w - 1.0, .75, y0 + .4], [w - 1.0, .55, y0 + .8], .025, M.zinc, { seg: 6 });
+    if (w > 5) { const hx = 1.1, hzz = y0 + 1.0; box(g, 1.3, .95, .8, M.planks(1, 1, 0x9b7a55), hx, .48, hzz); box(g, 1.24, .5, .7, M.hay, hx, .35, hzz); [-1, 1].forEach((s) => box(g, 1.34, .05, .05, trim, hx, .95, hzz + s * .4, { cast: false })); for (let k = 0; k < 6; k++) bar(g, [hx - .55 + k * .22, .5, hzz + .4], [hx - .45 + k * .22, .95, hzz + .4], .012, M.metal, { seg: 4 }); }
+    const lw = (w - dw) / 2 - .9;
+    if (lw >= 1.8 && yd > 3.2) { const sx = lw / 2 + .3, sg = new THREE.Group(); sg.position.set(sx, 0, y0 + 1.1); g.add(sg); const hi = 2.3, lo = 1.9, sd = 2.0; [[-lw / 2, -sd / 2, hi], [lw / 2, -sd / 2, hi], [-lw / 2, sd / 2, lo], [lw / 2, sd / 2, lo]].forEach(([px, pz, ph]) => box(sg, .12, ph, .12, trim, px, ph / 2, pz)); const ang = Math.atan2(hi - lo, sd); box(sg, lw + .4, .07, Math.hypot(sd + .4, hi - lo), M.metalRoof((lw + .4) / 2.4, 1), 0, (hi + lo) / 2 + .04, 0, { rx: ang }); plane(g, lw - .2, sd - .2, M.hay, sx, .013, y0 + 1.1); }
+    if (yd > 3 && w > 4) { const mx = w - 1.0, mz = d - 1.0, m = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), M.compost[1]); m.position.set(mx, .04, mz); m.scale.set(.9, .42, .75); m.castShadow = true; m.receiveShadow = true; g.add(m); bar(g, [mx - .9, .02, mz + .2], [mx - 1.05, 1.5, mz + .45], .02, M.wood); }
+    if (yd > 2.8) { const sx = clamp(cx - dw / 2 - .8, .6, w - .6), szz = d - .8; cyl(g, .05, .06, .75, trim, sx, .375, szz, { seg: 6 }); box(g, .22, .18, .22, M.frame, sx, .84, szz); }
+    bill(art("prop-haybale"), 1.1, w - .9, 0, y0 + 2.6, { sink: .06 });
+    tuftsIn(ctx, Math.min(30, Math.round(w * yd / 4)), z.id.length * 11 + 5, (i) => [.4 + srand(i * 5 + 2) * (w - .8), y0 + .6 + srand(i * 3 + 1) * (yd - 1.0)], { off });
+    arena = { x0: .4, x1: w - .4, z0: y0 + 1.3, z1: d - .45 };
+    if (arena.z1 - arena.z0 < 1.2) arena.z0 = y0 + .5;
+  } else {
+    plane(g, w + 1.0, 2.2, M.concrete, cx, .008, d + 1.0);
+    const tx = Math.min(w / 2 - .5, dw / 2 + 1.2);
+    tag(box(g, 1.2, .45, .5, M.zinc, cx + tx, .225, d + .35)); plane(g, 1.12, .42, M.water, cx + tx, .43, d + .35);
+    if (w > 4) { box(g, .9, .5, .5, M.hay, cx - tx, .25, d + .35); box(g, .9, .5, .5, M.hay, cx - tx + .08, .75, d + .3); }
+    arena = { x0: .3, x1: w - .3, z0: d + .5, z1: d + 2.6 };
+  }
+  return { arena, inside };
+}
+
 /* ---------- zones ---------- */
 /* Every plant of a zone (position, size, crop, stage) plus one segment per planted row carrying the
    plot's growth state — the segments drive the stage markers, foliage lines, harvest glow and tooltips. */
@@ -794,7 +993,7 @@ function buildZone(z, ctx) {
   const plots = data.garden?.plots || [];
   const grown = plant ? plantingsOf(z, plots, crops, ctx.todayKey) : { plants: [], rows: [] };
   let plants = grown.plants; const prows = grown.rows;
-  let floor = 0;
+  let floor = 0, housing = null;
   if (z.type === "raised" || z.type === "herbs" || z.type === "veg") {
     if (z.type === "raised") {
       const H = .38, t = .05, bm = M.planks(w / 1.2, 1, 0xd0b487);
@@ -939,7 +1138,11 @@ function buildZone(z, ctx) {
     });
     cyl(g, .3, .3, .8, M.barrel, alongX ? w - .5 : .5, .4, alongX ? .55 : d - .55, { seg: 12 });
     floor = 0;
-  } else if (z.type === "house" || z.type === "barn" || z.type === "storage") {
+  } else if (z.type === "coop") {
+    housing = coopZone(g, z, ctx, tag);
+  } else if (z.type === "barn") {
+    housing = barnZone(g, z, ctx, tag);
+  } else if (z.type === "house" || z.type === "storage") {
     building(g, w, d, z.type, M, { clay: z.color === "clay", tag, ctx, off });
   } else if (z.type === "compost") {
     const H = 1.05, bays = Math.max(1, Math.min(3, Math.floor(w / 1.1))), bw = w / bays;
@@ -1023,17 +1226,19 @@ function buildZone(z, ctx) {
   const animals = (data.livestock?.animals || []).filter((a) => animalZone(a, data.zones)?.id === z.id);
   if (animals.length) {
     let A;
-    if (z.type === "barn") A = { x0: .3, x1: w - .3, z0: d + .5, z1: d + 2.6 };
+    if (housing) A = housing.arena; // coop run / barn yard, from the housing builder
     else if (z.type === "pasture") {
       const top = w >= 7 && d >= 5 ? 3.4 : w > 3 && d > 3 ? 1.3 : .35;
       A = oval ? { x0: cx - w * .3, x1: cx + w * .3, z0: Math.max(cz - d * .3, top), z1: cz + d * .3 } : { x0: .35, x1: w - .35, z0: top, z1: d - .35 };
       if (A.z1 - A.z0 < 1.5) A.z0 = oval ? cz - d * .3 : .35;
     } else A = { x0: .4, x1: w - .4, z0: .4, z1: d - .4 };
     const arena = { x0: z.xM + A.x0, x1: z.xM + A.x1, z0: z.yM + A.z0, z1: z.yM + A.z1 };
+    const inside = housing?.inside || []; let used = 0; // a few animals stand indoors, on the house floor or in a stall
     animals.slice(0, 5).forEach((a, i) => {
       if (a.type === "Bee") return;
       const bird = /chicken|duck|goose|turkey|quail|guinea/i.test(a.type), n = Math.min(bird ? 12 : 9, a.count || 1);
       for (let j = 0; j < n; j++) {
+        if (j === 0 && n >= 3 && used < inside.length) { const p = inside[used++]; ctx.herd.push({ type: a.type, x: z.xM + p.x, y: p.y, z: z.yM + p.z, heading: srand(i * 17 + 5) * 6.283, arena: null, seed: z.id.length * 97 + i * 13 + 50, variant: i % 4 }); continue; }
         const x = arena.x0 + (arena.x1 - arena.x0) * (.08 + srand(i * 31 + j + 10) * .84);
         const zz = arena.z0 + (arena.z1 - arena.z0) * (.1 + srand(i * 29 + j + 5) * .8);
         ctx.herd.push({ type: a.type, x, z: zz, heading: srand(i * 17 + j * 3 + 1) * 6.283, arena, seed: z.id.length * 97 + i * 13 + j, variant: (i + j) % 4 });
