@@ -11,6 +11,7 @@ import PlantArt from '../quiet/PlantArt';
 import AnimalArt from '../quiet/AnimalArt';
 import FarmIcon from '../../components/FarmIcon';
 import {tasksByZone,taskGlyph} from './zone-tasks';
+import {RemindersPrompt} from '../settings/Reminders';
 
 // What the row says under a job: where, how long, and — only when it matters — why now.
 function rowNote(t) {
@@ -87,6 +88,7 @@ export default function GroveHome({data,setData,setPage,tasks,forecast,alerts}) 
       </section>}
     </section>
     {!empty&&<WeatherWeek forecast={forecast} alerts={alerts} onOpenTasks={()=>setPage('tasks')}/>}
+    {!empty&&<RemindersPrompt/>}
     <StarterKit data={data} setData={setData}/>
     {!empty&&<section className="q-home-section"><div className="q-row q-between"><h2>Around your {defaultSpaceTitle(data).replace(/^My /,'')}</h2><span className="q-eyebrow">Today’s care</span></div>
       {issues>0&&<p className="q-warning">{issues} area{issues===1?'':'s'} flagged on your last checks. Revisit them on a full round.</p>}

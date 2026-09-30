@@ -11,6 +11,7 @@ import { CURRENCIES, currencyCode } from "../../lib/money";
 import { farmSummary, describeSummary } from "../../lib/backup";
 import { signInMethods } from "../../lib/auth-messages";
 import { ChangePassword, DeleteAccount } from "./AccountSecurity";
+import Reminders from "./Reminders";
 
 function fileDay(ms) {
   if (!ms) return "";
@@ -145,6 +146,8 @@ export default function SettingsPanel({
         <span style={ico}>{darkMode ? <Sun size={17} strokeWidth={1.8} /> : <Moon size={17} strokeWidth={1.8} />}</span>
         {darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
       </button>
+
+      {onSignOut && <Reminders rowBtn={rowBtn} ico={ico} sectionLabel={sectionLabel} />}
 
       {/* Data */}
       <div style={sectionLabel}>Data</div>

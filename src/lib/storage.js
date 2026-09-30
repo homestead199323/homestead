@@ -43,6 +43,7 @@ const KEYS = {
   WEATHER_CACHE: "hfm_weather_cache_v1",
   GEO_CACHE: "hfm_geo_cache_v1",
   FORECAST_CACHE: "hfm_forecast_cache_v1",
+  PUSH_PREFS: "hfm_push_v1", // this device: { on, hour, dismissed }
 };
 
 // ─── Farm data — debounced ──────────────────────────────────
@@ -146,6 +147,8 @@ export const saveWeatherCache = (obj) => saveJsonCache(KEYS.WEATHER_CACHE, obj);
 export const loadForecastCache = () => loadJsonCache(KEYS.FORECAST_CACHE);
 export const saveForecastCache = (obj) => saveJsonCache(KEYS.FORECAST_CACHE, obj);
 export const loadGeoCache = () => loadJsonCache(KEYS.GEO_CACHE);
+export const loadPushPrefs = () => loadJsonCache(KEYS.PUSH_PREFS);
+export const savePushPrefs = (obj) => saveJsonCache(KEYS.PUSH_PREFS, obj);
 export const saveGeoCache = (obj) => saveJsonCache(KEYS.GEO_CACHE, obj);
 
 // ─── Utility ────────────────────────────────────────────────

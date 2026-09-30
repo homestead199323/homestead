@@ -18,6 +18,7 @@ export function milkingHead(data, type) {
 }
 
 /**
+ * opts.now — plan for another day (Date or date string); default today.
  * opts.forecast — the 7-day forecast from lib/weather.js fetchForecast. With it,
  * weather jobs are added and jobs move (lib/weather-alerts.js). Without it
  * (offline, no city) the queue is exactly what it was before.
@@ -28,7 +29,8 @@ export function buildTaskQueue(data, opts = {}) {
 
 /** Tasks plus the weather alerts that shaped them: { tasks, alerts }. */
 export function buildTaskPlan(data, opts = {}) {
-  const now = new Date(); now.setHours(0,0,0,0);
+  // opts.now: plan another day (the push digest precomputes the next 7 mornings).
+  const now = opts.now ? new Date(opts.now) : new Date(); now.setHours(0,0,0,0);
   const todayKey = toLocalDateKey(now);
   const doneToday = new Set((data.completions && data.completions[todayKey]) || []);
   const tasks = [];

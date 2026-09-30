@@ -642,3 +642,17 @@ test('Forecast parsing counts humid hours per local day',()=>{
   assert.deepEqual(f.days.map(d=>d.humidHours),[7,3]);assert.equal(f.days[1].rainMm,0);assert.equal(f.days[1].gustKmh,70);
   assert.equal(parseForecast({}),null);
 });
+import {digestFor,buildDigests} from '../src/lib/digest.js';
+test('Push digest: frost leads the morning message; days without jobs send nothing',()=>{
+  const d=buildDigests(fixture,wx({1:{tMin:-1}}),wxToday,7);
+  assert.equal(Object.keys(d).length,7); // hens need feeding every day
+  assert.match(d[wxToday].title,/^❄️ Frost tonight/);assert.match(d[wxToday].body,/jobs today · ~\d+ min/);assert.match(d[wxToday].body,/daily care/);
+  assert.equal(digestFor([]),null);
+  assert.equal(digestFor([{type:'forecast',daysOut:0,title:'x'},{type:'upcoming',daysOut:0,title:'y'}]),null);
+  const h=digestFor([{type:'harvest',daysOut:0,title:'Harvest Lettuce',pri:0},{type:'feed',daysOut:0,title:'Feed hens',routine:true,pri:1}]);
+  assert.equal(h.title,'🧺 Lettuce is ready to pick');assert.equal(h.count,2);assert.match(h.body,/^2 jobs today/);
+  const bare={...fixture,livestock:{animals:[]},garden:{plots:[]}};
+  assert.deepEqual(buildDigests(bare,null,wxToday,3),{});
+  // A future morning is planned for that day, not today: the lettuce harvest is due every day until picked.
+  assert.equal(buildDigests(fixture,null,wxToday,2)[addD(wxToday,1)].count>0,true);
+});

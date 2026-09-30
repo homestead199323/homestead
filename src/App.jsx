@@ -17,6 +17,8 @@ import { C, F, SX } from "./lib/theme";
 import { todayLocalKey } from "./lib/utils";
 import { buildTaskPlan } from "./lib/task-queue";
 import { fetchForecast } from "./lib/weather";
+import { syncDigests, disablePush, pushPrefs } from "./lib/push";
+import { usePushPrefs } from "./lib/use-push-prefs";
 import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, migrateProfile as migrateProfileBase, updateGamify } from "./lib/migrations";
 import { migratePerennials } from "./lib/perennial";
 import { migratePantry } from "./lib/inventory";
@@ -471,6 +473,13 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
   }, [city]);
   const plan = useMemo(() => data ? buildTaskPlan(data, { forecast }) : { tasks: [], alerts: [] }, [data, forecast]);
   const tasks = plan.tasks;
+  // Reminders on for this device → keep the next 7 mornings' digests current (lib/push.js).
+  const pushOn = usePushPrefs().on;
+  useEffect(() => {
+    if (!pushOn || !data) return undefined;
+    const id = setTimeout(() => { syncDigests(data, forecast).catch(() => {}); }, 4000);
+    return () => clearTimeout(id);
+  }, [data, forecast, pushOn]);
   const taskCount = useMemo(() => tasks.filter(t => t.pri <= 2).length, [tasks]);
   const clearFarmPageData = useCallback(() => setPageData(null), []);
 
@@ -764,6 +773,8 @@ function AuthGate() {
     try {
       flushFarm();
       await flushPush(); // push any pending change before dropping the session
+      // This device stops getting this account's reminders once it signs out.
+      if (pushPrefs().on) await disablePush().catch(() => {});
       await signOut();
       // Wipe the local farm cache + owner stamp so the next account that
       // signs in on this browser starts clean instead of inheriting this
