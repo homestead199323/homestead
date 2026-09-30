@@ -132,8 +132,8 @@
     proc:puff, g3size, uFadeV, forceSinglePass, IntersectionObserver present; CSS g3-far,
     q-stage-key-crop, pill/badge min-height:0). Not verified: real-device frame rate and
     battery; animation timing only reasoned about (headless RAF is starved).
-- [~] **Stage 5 — navigation regroup (2026-09-28; built and tested, NOT deployed yet: pushes run from
-  the Mac, which was offline).** `src/app/navigation.js` now
+- [x] **Stage 5 — navigation regroup (built 2026-09-28, live 2026-09-30; commit b128c72, label
+  follow-up 475fc64).** `src/app/navigation.js` now
   defines SECTIONS: Today (home "Overview" + tasks "All tasks"), My Space (map, crops, live),
   Plan (new `src/features/plan/PlanScreen.jsx`), Learn (manuals), Progress (new
   `src/features/progress/ProgressScreen.jsx` + pantry + fin). Page ids unchanged; saved pages map
@@ -144,8 +144,8 @@
   month, six-month season strip, the seasonal calendar (moved from Manuals). Progress: next
   harvest, food grown from pantry intake moves (kg, harvests, eggs, milk, ~portions at 80 g),
   harvest per month, pantry, money, badges; empty states say how numbers start appearing. Pure
-  helpers `src/lib/plan.js`, `src/lib/progress.js`. No data changes, no deleted screens. Commit hash
-  and live check get added here after the push.
+  helpers `src/lib/plan.js`, `src/lib/progress.js`. No data changes, no deleted screens. Live check:
+  see the UX follow-up entry below.
 - [ ] **Stage 6 — task engine upgrade.** Task schema: reason, duration, map ref, priority,
   postpone/skip/not-relevant responses feeding future scheduling. Environment-aware
   frequency (container vs bed).
@@ -210,8 +210,8 @@
   "g3-full-open"; live `/` has 6 `/app?signup` links; CSP header unchanged. Not verified: real
   email delivery (Supabase SMTP) and the auth redirect allow-list (see audit doc), real-device
   frame rate of the onboarding 3D preview. Revert: `git revert 096dfa5`.
-- [~] **UX follow-up: the audit's open items (2026-09-28; 8 commits built and tested, NOT deployed yet;
-  only the `delete-account` Edge Function is live).** Import Backup confirms (backup vs current farm, download first,
+- [x] **UX follow-up: the audit's open items (built 2026-09-28, live 2026-09-30; commits 130338a,
+  290737a, d8d256c, 5857e80, 3384d85, b128c72, fd1e149, 475fc64).** Import Backup confirms (backup vs current farm, download first,
   Undo; rejects non-backups); "+ Plant Crop" hidden until a bed exists ("+ Add a bed/planter");
   map buttons labelled (Growth / Reset / Expand, ≥44 px on touch); walk intro down to one choice
   (Options collapsed); Settings → Change password (current password first) and Delete account
@@ -227,5 +227,14 @@
   caches empty); Edge Function paths run locally under Deno against a mock (trial, lifetime, no
   profile, canceled, live sub without key → 409, with key → cancel then delete, Paddle error → 409,
   bad/missing JWT → 401, no confirm → 400); live function answers CORS preflight and rejects
-  unauthenticated calls. Not verified: a real deletion on production; whether `PADDLE_API_KEY` is set;
-  anything on the live site. Commit hashes and the live check get added after the push.
+  unauthenticated calls. Pushed from the Mac after its build, 61+3 tests and ESLint passed there. Live
+  2026-09-30: production deployment READY for 1432937; myterra-sigma.vercel.app and www.myterra.farm
+  serve index-EkoHv9p5.js (+ Grove3D-COHP0spy.js) containing "Replace your farm with this backup?",
+  "Delete my account", "Save new password", "Waiting to go in", "Food from your space", "Read the
+  full guide in Learn", "Checking from indoors", "Show the whole map again" (Grove3D: "See how your
+  plants grow over the coming weeks"); live `/` has "Swipe to compare Pro, Basic and Lifetime"; live
+  `/privacy` has the in-app deletion wording; CSP header unchanged (Supabase host allowed for the
+  function call). Live smoke test at 390 px with a simulated sign-in (every Supabase call answered
+  by a mock, analytics blocked, no real account touched): five tabs Today / My Space / Plan / Learn /
+  Progress, Plan and Progress render, Settings shows Change password and Delete account. Not
+  verified: a real deletion on production; whether `PADDLE_API_KEY` is set.
