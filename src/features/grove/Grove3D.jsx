@@ -1207,7 +1207,8 @@ function buildZone(z, ctx) {
     const hx = r.vertical ? r.c : r.a0 - .16, hz = r.vertical ? r.a1 + .16 : r.c, big = r.stage === 5 ? 1.35 : 1;
     G.poles.push({ p: [ox + hx, lift + .26, oz + hz] });
     G.tags[r.stage].push({ p: [ox + hx, lift + .5, oz + hz], ry: r.vertical ? 0 : HPI, s: [big, big, 1] });
-    const hit = new THREE.Mesh(new THREE.BoxGeometry(r.vertical ? Math.min(.6, r.gap) : len + .4, .5, r.vertical ? len + .4 : Math.min(.6, r.gap)), M.hit);
+    const hw = Math.max(.35, Math.min(.6, r.gap)); // never thinner than a finger: dense rows (7 cm apart) overlap, the nearest wins
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(r.vertical ? hw : len + .4, .5, r.vertical ? len + .4 : hw), M.hit);
     hit.position.set(x, lift + .25, zz); hit.userData.plot = { ...r, zone: z.name, zoneId: z.id }; g.add(hit); ctx.plotHits.push(hit);
   });
   // crops
@@ -1811,10 +1812,18 @@ export default function Grove3D(props) {
         if (rows.length) {
           const g = new THREE.Group(), col = new THREE.Color(sel.color || "#ffffff"), white = new THREE.Color(0xffffff), v = new THREE.Vector3();
           const fill = st.M.pick.clone(), edge = st.M.pickEdge.clone(); fill.color.copy(col).lerp(white, .3); edge.color.copy(col).lerp(white, .15); st.pickMats = [fill, edge];
+          // one outline per planting: the union of its rows (dense beds have a dozen overlapping row boxes)
+          const byPlot = new Map();
           rows.forEach((h) => {
-            const p = h.getWorldPosition(v), q = h.geometry.parameters, w = q.width + .3, d = q.depth + .3, y = p.y - q.height / 2, t = h.userData.plot.id === sel.id ? .14 : .07;
-            plane(g, w, d, fill, p.x, y + .015, p.z, { receive: false });
-            [[p.x, p.z - d / 2, w, t], [p.x, p.z + d / 2, w, t], [p.x - w / 2, p.z, t, d], [p.x + w / 2, p.z, t, d]].forEach(([x, z, bw, bd]) => box(g, bw, .04, bd, edge, x, y + .03, z, { cast: false, receive: false }));
+            const p = h.getWorldPosition(v), q = h.geometry.parameters, id = h.userData.plot.id;
+            const b = byPlot.get(id) || { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity, y: p.y - q.height / 2 };
+            b.x0 = Math.min(b.x0, p.x - q.width / 2); b.x1 = Math.max(b.x1, p.x + q.width / 2); b.z0 = Math.min(b.z0, p.z - q.depth / 2); b.z1 = Math.max(b.z1, p.z + q.depth / 2);
+            byPlot.set(id, b);
+          });
+          byPlot.forEach((b, id) => {
+            const w = b.x1 - b.x0 + .3, d = b.z1 - b.z0 + .3, cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, t = id === sel.id ? .14 : .07;
+            plane(g, w, d, fill, cx, b.y + .015, cz, { receive: false });
+            [[cx, cz - d / 2, w, t], [cx, cz + d / 2, w, t], [cx - w / 2, cz, t, d], [cx + w / 2, cz, t, d]].forEach(([x, z, bw, bd]) => box(g, bw, .04, bd, edge, x, b.y + .03, z, { cast: false, receive: false }));
           });
           scene.add(g); st.pickGroup = g;
         }
