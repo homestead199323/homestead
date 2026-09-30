@@ -682,20 +682,32 @@ test('Insights: yields vs estimate per crop and bed, per-bird lay rate, cost per
   let d={...fixture,memory:undefined,costs:{items:[]},pantry:{items:[],moves:[{date:'2025-07-01',name:'Tomato',unit:'kg',qty:4,kind:'in',source:'farm'}]}};
   d=recordHarvest(d,{id:'t1',crop:'Tomato',zone:'bed1',plantDate:'2026-05-01'},9,'2026-08-10',12);
   d=recordHarvest(d,{id:'t2',crop:'Tomato',zone:'bed1',plantDate:'2026-05-01'},3,'2026-08-20',null);
-  d=recordHarvest(d,{id:'l1',crop:'Lettuce',zone:'bed2',plantDate:'2026-04-01'},2,'2026-06-01',2);
+  d=recordHarvest(d,{id:'l1',crop:'Lettuce',zone:'bed2',plantDate:'2026-04-01'},2.2,'2026-06-01',2);
   const c=cropYields(d,2026);
-  assert.deepEqual(c.map(x=>[x.crop,x.kg,x.pct]),[['Tomato',12,75],['Lettuce',2,100]]);
+  assert.deepEqual(c.map(x=>[x.crop,x.kg,x.pct]),[['Tomato',12,75],['Lettuce',2.2,110]]);
   assert.equal(cropYields(d,2025)[0].kg,4,'older pantry harvest still counts for its year');
   assert.equal(harvestRecords(d).filter(h=>h.legacy).length,1);
-  const b=bedYields(d,2026);assert.equal(b[0].name,'Kitchen bed');assert.equal(b[0].kgPerM2,1.25); // 12 kg / (4 × 2.4 m²)
-  for(let i=0;i<3;i++)d=recordProduce(d,'Chicken','eggs',60,`2026-0${6+i}-15`);
-  const a=animalYields(d,2026).find(x=>x.species==='Chicken');
-  assert.equal(a.eggs,180);assert.equal(a.eggsPerHeadDay,0.67);assert.equal(a.byMonth[6].eggs,60);
+  const b=bedYields(d,2026);assert.equal(b[0].name,'Kitchen bed');assert.equal(b[0].kgPerM2,1.25);
+  // Saved at the estimate (nothing typed): counted in kg, left out of the comparison.
+  const e=recordHarvest(d,{id:'t3',crop:'Tomato',zone:'bed1',plantDate:'2026-05-01'},12,'2026-09-01',12,true,true);
+  const ce=cropYields(e,2026).find(x=>x.crop==='Tomato');assert.equal(ce.kg,24);assert.equal(ce.estimated,1);assert.equal(ce.pct,75); // 12 kg / (4 × 2.4 m²)
+  // 3 hens, 60 counted eggs a month from the 1st of Jun, Jul, Aug: 180 eggs over 92 days.
+  for(let i=0;i<3;i++)d=recordProduce(d,'Chicken','eggs',60,`2026-0${6+i}-01`);
+  const a=animalYields(d,2026,'2026-09-30').find(x=>x.species==='Chicken');
+  assert.equal(a.eggs,180);assert.equal(a.eggsPerHeadDay,0.65);assert.equal(a.byMonth[6].eggs,60);
+  assert.equal(animalYields(d,2025,'2026-09-30').length,0);
+  assert.equal(animalYields(d,2026,'2027-01-05')[0].eggsPerHeadDay,null,'past year: birds kept now may not be the same');
+  // Mostly default counts → no lay rate.
+  const est=recordProduce(recordProduce({...fixture,memory:{since:'x'}},'Chicken','eggs',30,'2026-09-01',true),'Chicken','eggs',5,'2026-09-02');
+  assert.equal(animalYields(est,2026,'2026-09-30')[0].eggsPerHeadDay,null);
+  // Days covered start at the first logged day; the current month counts up to today.
+  const part=recordProduce({...fixture,memory:{since:'x'}},'Chicken','eggs',18,'2026-09-21');
+  assert.equal(animalYields(part,2026,'2026-09-30')[0].eggsPerHeadDay,0.6);
   assert.equal(unitCosts(d,2026).species.length,0,'no costs → no cost per egg');
-  d={...d,livestock:{animals:[{id:'h',type:'Chicken',count:3}]},costs:{items:[{type:'expense',amount:36,cat:'Feed',date:'2026-07-01'},{type:'expense',amount:12,cat:'Seeds',date:'2026-03-01'},{type:'expense',amount:500,cat:'Infrastructure',date:'2026-03-01'}]}};
-  const u=unitCosts(d,2026);
-  assert.equal(u.species[0].perEgg,0.2);assert.equal(u.species[0].perDozen,2.4);assert.match(u.notes[0],/only animal/);
-  assert.equal(u.garden.perKg,0.86); // 12 / 14 kg; the greenhouse build is not a running cost
+  d={...d,livestock:{animals:[{id:'h',type:'Chicken',count:3},{id:'b',type:'Bee',count:1}]},costs:{items:[{type:'expense',amount:36,cat:'Feed',date:'2026-07-01'},{type:'expense',amount:12,cat:'Seeds',date:'2026-03-01'},{type:'expense',amount:500,cat:'Infrastructure',date:'2026-03-01',for:'species:Chicken'},{type:'expense',amount:150,cat:'Animals',date:'2026-03-01',for:'species:Chicken',capital:true},{type:'expense',amount:90,cat:'Animals',date:'2026-03-02'}]}};
+  const u=unitCosts(d,2026,'2026-09-30');
+  assert.equal(u.species[0].perEgg,0.2,'only the feed: the coop, buying the hens and an untagged hive purchase are not running costs');assert.equal(u.species[0].perDozen,2.4);assert.match(u.notes[0],/only animals you keep/);
+  assert.equal(u.garden.perKg,0.85); // 12 / 14.2 kg; the greenhouse build is not a running cost
   const tagged={...d,livestock:{animals:[{id:'h',type:'Chicken',count:3},{id:'g',type:'Goat',count:1}]}};
   assert.equal(unitCosts(tagged,2026).species.length,0,'two kinds of animal: untagged feed is not guessed');
   const t2={...tagged,costs:{items:[{type:'expense',amount:18,cat:'Feed',date:'2026-07-01',for:'species:Chicken'}]}};
@@ -720,7 +732,7 @@ test('Rotation: same family in the same bed within 3 years warns; other beds, ot
 test('Exports: CSV escapes text and never lets a cell start a formula',()=>{
   assert.equal(toCsv([['a,b','=SUM(A1)','say "hi"',-3]]),'"a,b",\'=SUM(A1),"say ""hi""",-3\r\n');
   const d=recordHarvest({...fixture,memory:undefined},{id:'t1',crop:'Tomato',zone:'bed1',plantDate:'2026-05-01'},9,'2026-08-10',12);
-  assert.match(harvestsCsv(d),/^Date,Crop,Variety,Bed,Harvested kg,Expected kg,Planted\r\n2026-08-10,Tomato,,Kitchen bed,9,12,2026-05-01\r\n$/);
+  assert.match(harvestsCsv(d),/^Date,Crop,Variety,Bed,Harvested kg,Expected kg,Planted,Amount\r\n2026-08-10,Tomato,,Kitchen bed,9,12,2026-05-01,weighed\r\n$/);
   assert.match(moneyCsv({...fixture,costs:{items:[{type:'expense',amount:5,cat:'Feed',label:'Layers pellets',date:'2026-01-02',for:'species:Chicken'}]}}),/2026-01-02,expense,Feed,Layers pellets,Chicken,-5/);
 });
 import {isDueOn,ownTasks,repeatText,weeklyMinutes,lessOften,markOwnDone} from '../src/lib/own-tasks.js';
@@ -771,4 +783,57 @@ test('Time budget: a week of real jobs vs the onboarding answer, trims only wher
   assert(hens.tips.some(t=>/drinker/.test(t)));assert.equal(hens.trims.length,0);
   assert.equal(weekLoad({...bare,customTasks:[{id:'e',title:'Water pots',repeat:'every',every:2,start:wxToday,minutes:10}]},null,wxToday).total,40,'every 2 days = 4 visits in 7 days');
   assert.equal(hm(45),'45 min');assert.equal(hm(80),'1 h 20 min');assert.equal(hm(120),'2 h');
+});
+import {migrateMemory} from '../src/lib/memory.js';
+import {undoTaskCompletion} from '../src/features/quiet/complete-task.js';
+test('Memory backfill: older pantry logs copied once, nothing counted twice on the cut-over day',()=>{
+  const T=wxToday;
+  // 29 days of eggs in the pantry log, then one tick after the update (it writes memory AND a move).
+  const moves=[];for(let i=1;i<=29;i++)moves.push({id:'m'+i,date:addD(T,-i),name:'Chicken Eggs',unit:'pcs',qty:6,kind:'in',source:'livestock'});
+  moves.push({id:'h1',date:addD(T,-40),name:'Tomato',unit:'kg',qty:4,kind:'in',source:'farm'},{id:'u1',date:addD(T,-3),name:'Chicken Eggs',unit:'pcs',qty:2,kind:'use'});
+  let d={...fixture,memory:undefined,pantry:{items:[],moves}};
+  d=applyTaskCompletion(d,{key:'species-Chicken-eggs',type:'eggs',speciesType:'Chicken'},6);
+  d=applyTaskCompletion(d,{key:'plot-lettuce-harvest',type:'harvest',plotId:'lettuce'},2.4);
+  const m=migrateMemory(d,T);
+  assert.equal(m.memory.since,T);
+  const eggs=Object.values(m.memory.produce).reduce((n,b)=>n+(b.Chicken?.eggs||0),0);
+  assert.equal(eggs,30*6,'29 logged days + today, today not doubled');
+  assert.equal(m.memory.harvests.length,2);assert(m.memory.harvests[0].legacy);assert.equal(m.memory.harvests[1].crop,'Lettuce');
+  assert.equal(migrateMemory(m,addD(T,1)),m,'runs once');
+  // Pantry moves falling off the 500 cap later no longer change Insights.
+  const trimmed={...m,pantry:{...m.pantry,moves:[]}};
+  assert.deepEqual(cropYields(trimmed,Number(T.slice(0,4))).map(x=>x.crop).sort(),cropYields(m,Number(T.slice(0,4))).map(x=>x.crop).sort());
+});
+test('Estimates are flagged; Done-today Undo takes back exactly what the tick added',()=>{
+  const T=wxToday, mo=T.slice(0,7);
+  // Tasks screen passes the default amount → estimate. A typed amount is not.
+  const def=applyTaskCompletion(fixture,{key:'species-Chicken-eggs',type:'eggs',speciesType:'Chicken',headCount:3},2);
+  assert.equal(def.memory.produce[mo].Chicken.eggsEst,2);
+  const typed=applyTaskCompletion(fixture,{key:'species-Chicken-eggs',type:'eggs',speciesType:'Chicken',headCount:3},5);
+  assert.equal(typed.memory.produce[mo].Chicken.eggsEst,undefined);
+  const est=applyTaskCompletion(fixture,{key:'plot-lettuce-harvest',type:'harvest',plotId:'lettuce'},3);
+  assert.equal(est.memory.harvests[0].est,true,'3 kg = the planting estimate');
+  // Undo eggs: pantry, move, memory and the tick all go; the task comes back once.
+  const undone=undoTaskCompletion(typed,'species-Chicken-eggs');
+  assert.equal(undone.pantry.items.length,0);assert.equal(undone.pantry.moves.length,0);
+  assert.equal(undone.memory.produce[mo].Chicken.eggs,0);
+  assert(buildTaskQueue(undone).some(t=>t.key==='species-Chicken-eggs'));
+  const again=applyTaskCompletion(undone,{key:'species-Chicken-eggs',type:'eggs',speciesType:'Chicken'},5);
+  assert.equal(again.memory.produce[mo].Chicken.eggs,5,'no double count after undo + re-tick');
+  // Undo a harvest: the planting is back as it was and the memory record is gone.
+  const h=applyTaskCompletion(fixture,{key:'plot-lettuce-harvest',type:'harvest',plotId:'lettuce'},2.4);
+  const hu=undoTaskCompletion(h,'plot-lettuce-harvest');
+  assert.equal(hu.garden.plots.find(p=>p.id==='lettuce').status,'planted');
+  assert.equal(hu.memory.harvests.length,0);assert.equal(hu.memory.beds[0].to,null);assert.equal(hu.pantry.items.length,0);
+  // Stock already used stays used: only what's left of the lot is removed.
+  const used={...typed,pantry:{...typed.pantry,items:typed.pantry.items.map(i=>({...i,qty:2}))}};
+  assert.equal(undoTaskCompletion(used,'species-Chicken-eggs').pantry.items.length,0);
+});
+test('Removed plantings: pre-memory harvested ones keep their history, same-week mistakes do not count',()=>{
+  const old={id:'c',crop:'Cabbage',zone:'bed1',status:'harvested',plantDate:'2026-03-01',harvestDate:'2026-06-01'};
+  const r=recordRemoval({...fixture,memory:undefined},old,'2026-09-30');
+  assert.equal(r.memory.beds[0].to,'2026-06-01');
+  assert(rotationCheck(r,'bed1','Kale','2027-04-01'),'rotation still warns next year');
+  const oops={id:'o',crop:'Potato',zone:'bed1',status:'planted',plantDate:'2026-09-28'};
+  assert.equal(recordRemoval(fixture,oops,'2026-09-30'),fixture);
 });

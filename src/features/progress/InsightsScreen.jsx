@@ -63,8 +63,10 @@ export default function InsightsScreen({ data, setPage, locked, onUpgrade }) {
   const y = years.includes(year) ? year : years[0];
   const crops = useMemo(function () { return cropYields(data, y); }, [data, y]);
   const beds = useMemo(function () { return bedYields(data, y); }, [data, y]);
-  const animals = useMemo(function () { return animalYields(data, y); }, [data, y]);
-  const costs = useMemo(function () { return unitCosts(data, y); }, [data, y]);
+  const animals = useMemo(function () { return animalYields(data, y, today); }, [data, y, today]);
+  const costs = useMemo(function () { return unitCosts(data, y, today); }, [data, y, today]);
+  const estHarvests = crops.reduce(function (n, c) { return n + c.estimated; }, 0);
+  const allHarvests = crops.reduce(function (n, c) { return n + c.harvests; }, 0);
   const history = useMemo(function () { return bedHistory(data); }, [data]);
   const maxKg = Math.max(0.001, ...crops.map(function (c) { return c.kg; }));
 
@@ -102,7 +104,8 @@ export default function InsightsScreen({ data, setPage, locked, onUpgrade }) {
                           <span className="mt-ins-bar" aria-hidden="true"><b style={{ width: `${Math.round((c.kg / maxKg) * 100)}%` }} /></span>
                           <small>
                             {c.harvests} harvest{c.harvests === 1 ? "" : "s"}
-                            {pct != null ? ` · ${pct}% of the estimate (${fmt(c.actualWithExp)} of ${fmt(c.expKg)} kg)` : ""}
+                            {c.estimated > 0 ? ` (${c.estimated === c.harvests ? "all" : c.estimated} at the estimate)` : ""}
+                            {pct != null ? ` · weighed: ${pct}% of the estimate (${fmt(c.actualWithExp)} of ${fmt(c.expKg)} kg)` : ""}
                           </small>
                         </span>
                         {pct != null && <span className={`mt-ins-pct ${pct >= 90 ? "good" : pct >= 60 ? "mid" : "low"}`}>{pct}%</span>}
@@ -110,6 +113,9 @@ export default function InsightsScreen({ data, setPage, locked, onUpgrade }) {
                     );
                   })}
                 </Card>}
+            {estHarvests > 0 && (
+              <p className="mt-plan-note" style={{ marginTop: 8 }}>{estHarvests} of {allHarvests} harvests were saved at MyTerra's estimate, not weighed. They count in the kilos but not in the “% of the estimate” comparison — type what you picked next time to see how you really did.</p>
+            )}
             {crops.some(function (c) { return c.pct != null && c.pct < 60; }) && (
               <p className="mt-plan-note" style={{ marginTop: 8 }}>Well under the estimate? Estimates are deliberately cautious, so a big gap usually means watering, feeding, spacing or a pest — the crop's guide in Learn lists what to check.</p>
             )}
@@ -151,10 +157,11 @@ export default function InsightsScreen({ data, setPage, locked, onUpgrade }) {
                           <strong>{a.species}{a.head ? ` · ${a.head} now` : ""}</strong>
                           <small>
                             {[a.eggs ? `${a.eggs} eggs` : "", a.milkL ? `${fmt(a.milkL)} L milk` : "", a.meatKg ? `${fmt(a.meatKg)} kg meat` : ""].filter(Boolean).join(" · ")}
-                            {a.eggsPerHeadDay != null ? ` · about ${fmt(a.eggsPerHeadDay)} egg${a.eggsPerHeadDay === 1 ? "" : "s"} per bird a day` : ""}
+                            {a.eggsPerHeadDay != null ? ` · about ${fmt(a.eggsPerHeadDay)} egg${a.eggsPerHeadDay === 1 ? "" : "s"} a day per bird you keep now` : ""}
                           </small>
                         </span>
                       </div>
+                      {a.estShare > 0.5 && <p className="mt-plan-note" style={{ margin: "0 0 8px" }}>Most of these were logged at MyTerra's default amount, not counted, so no lay rate is shown. Type the real count when you collect.</p>}
                       {(a.eggs > 0 || a.milkL > 0) && (
                         <div className="mt-bars" style={{ height: 70 }} role="img" aria-label={a.byMonth.map(function (m) { return `${MN_ABR[m.m]} ${fmt(m.eggs || m.milkL)}`; }).join(", ")}>
                           {a.byMonth.map(function (m) {
@@ -178,7 +185,7 @@ export default function InsightsScreen({ data, setPage, locked, onUpgrade }) {
                       <Card key={s.species} style={{ padding: "12px 14px" }}>
                         <div style={{ fontSize: 11, fontWeight: 600, color: C.t2, textTransform: "uppercase", letterSpacing: ".03em" }}>{s.species}</div>
                         <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: C.text }}>{v || formatMoney(s.spent, data, 0)}</div>
-                        <div style={{ fontSize: 12, color: C.t2, marginTop: 3 }}>{v ? `${formatMoney(s.spent, data, 0)} spent` : "spent — nothing collected yet"}</div>
+                        <div style={{ fontSize: 12, color: C.t2, marginTop: 3 }}>{v ? `${formatMoney(s.spent, data, 0)} spent${s.estimated ? " · mostly default counts" : ""}` : "spent — nothing collected yet"}</div>
                       </Card>
                     );
                   })}
@@ -191,7 +198,7 @@ export default function InsightsScreen({ data, setPage, locked, onUpgrade }) {
                   )}
                 </div>}
             {costs.notes.map(function (n) { return <p key={n} className="mt-plan-note" style={{ marginTop: 8 }}>{n}</p>; })}
-            {(costs.species.length > 0 || costs.garden.spent > 0) && <p className="mt-plan-note" style={{ marginTop: 8 }}>Tools and building costs are left out: they last for years.</p>}
+            {(costs.species.length > 0 || costs.garden.spent > 0) && <p className="mt-plan-note" style={{ marginTop: 8 }}>Running costs only: tools, buildings and buying the animals themselves are left out — they last for years.</p>}
           </section>
 
           <section className="mt-plan-sec" aria-labelledby="ins-history">

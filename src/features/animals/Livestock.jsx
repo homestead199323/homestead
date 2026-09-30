@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { C, SX } from "../../lib/theme";
 import { uid } from "../../lib/storage";
-import { appendLog, todayLocalKey } from "../../lib/utils";
+import { appendLog, todayLocalKey, markTaskDone } from "../../lib/utils";
 import { addStock } from "../../lib/inventory";
 import { recordProduce } from "../../lib/memory";
 import { LDB } from "../../data/livestock";
@@ -26,7 +26,7 @@ function Livestock({data, setData}) {
   const add=()=>{
     if(!Number.isInteger(+form.count)||+form.count<1)return;
     const nd={...data,livestock:{...data.livestock,animals:[...data.livestock.animals,{...form,id:uid(),count:+form.count||1}]},log:appendLog(data.log,{text:`🐄 Added ${form.count} ${form.type}${form.breed?` (${form.breed})`:""}`})};
-    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:todayLocalKey(),cat:"Animals"}]};
+    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:todayLocalKey(),cat:"Animals",for:`species:${form.type}`,capital:true}]};
     setData(nd);setForm({name:"",type:"Chicken",breed:"",count:"1",cost:"",zone:""});setShowAdd(false);
   };
   // del moved into AnimalOverlay component — no longer needed here
@@ -36,15 +36,19 @@ function Livestock({data, setData}) {
     const p=db.out[produce];if(!p)return;
     const finalQty = qty > 0 ? qty : Math.round(p.p*animal.count*10)/10;
     const kind=produce==="Eggs"?"eggs":produce==="Milk"?"milkL":produce==="Meat"?"meatKg":null;
-    const remembered=kind?recordProduce(data,animal.type,kind,finalQty,todayLocalKey()):data;
-    setData({...remembered,
+    // Blank amount = MyTerra's default → flagged as an estimate in the garden memory.
+    const remembered=kind?recordProduce(data,animal.type,kind,finalQty,todayLocalKey(),!(qty>0)):data;
+    // Collected here → today's eggs/milk job is done too, so it can't be logged twice.
+    const taskKey=produce==="Eggs"?`species-${animal.type}-eggs`:produce==="Milk"?`species-${animal.type}-milk`:null;
+    const ticked=taskKey?markTaskDone(remembered,taskKey):remembered;
+    setData({...ticked,
       pantry:addStock(data,{name:`${animal.type} ${produce}`,category:produce==="Eggs"?"Eggs":produce==="Meat"?"Meat":produce==="Milk"?"Dairy":"Other",qty:finalQty,unit:produce==="Eggs"?"pcs":produce==="Milk"?"L":"kg",source:"livestock",storageNote:p.s},todayLocalKey()).pantry,
       log:appendLog(data.log,{text:`Collected ${finalQty} ${produce==="Eggs"?"eggs":produce.toLowerCase()} from ${animal.name||animal.type}`})
     });
     setShowCollect(null);setCollectQty("");
   };
 
-  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(!Number.isInteger(q)||q<1||q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...recordProduce(data,a.type,"meatKg",mq,todayLocalKey()),livestock:{...data.livestock,animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:addStock(data,{name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",storageNote:mp.s},todayLocalKey()).pantry,log:appendLog(data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`})});setShowK(null);};
+  const kill=a=>{const db=LDB[a.type];if(!db)return;const q=+kQ||1;if(!Number.isInteger(q)||q<1||q>a.count)return;const mp=db.out.Meat;if(!mp)return;const mq=Math.round(mp.p*q*10)/10;setData({...recordProduce(data,a.type,"meatKg",mq,todayLocalKey(),true),livestock:{...data.livestock,animals:data.livestock.animals.map(x=>x.id===a.id?(x.count-q<=0?null:{...x,count:x.count-q}):x).filter(Boolean)},pantry:addStock(data,{name:`${a.type} Meat`,category:"Meat",qty:mq,unit:"kg",source:"livestock",storageNote:mp.s},todayLocalKey()).pantry,log:appendLog(data.log,{text:`🔪 ${q} ${a.type} → ${mq}kg`})});setShowK(null);};
   const sa=sel?data.livestock.animals.find(a=>a.id===sel):null;
 
   return (

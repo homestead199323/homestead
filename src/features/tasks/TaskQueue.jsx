@@ -9,7 +9,7 @@ import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } fr
 import { ZT_MAP } from "../../data/zones";
 import { rCM } from "../../lib/regional";
 import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, todayLocalKey } from "../../lib/utils";
-import { applyTaskCompletion } from "../quiet/complete-task";
+import { applyTaskCompletion, undoTaskCompletion } from "../quiet/complete-task";
 import { taskAction } from "../grove/zone-tasks";
 import { toggleStep, isAwaitingSowing, firstStepIdx, nextStepAfter } from "../../lib/sowing";
 import { minutesLabel } from "../../lib/task-time";
@@ -513,14 +513,9 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
   const undoDone = (key) => {
     const existing = (data.completions && data.completions[todayStr]) || [];
     if (!existing.includes(key)) return;
+    // Takes back what the tick added (pantry, garden memory, harvested planting) — see complete-task.js.
     const base = key.startsWith("own-") ? unmarkOwnDone(data, key.slice(4), todayStr) : data;
-    setData({
-      ...base,
-      completions: {
-        ...(data.completions || {}),
-        [todayStr]: existing.filter(k => k !== key),
-      },
-    });
+    setData(undoTaskCompletion(base, key));
   };
 
   const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];

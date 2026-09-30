@@ -45,6 +45,8 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   const showComp = plot.zone && compObj && compZonePlots.length > 0 && (compGood.length > 0 || compBad.length > 0);
 
   const [confirmDel, setConfirmDel] = useState(false);
+  const [harvKg, setHarvKg] = useState(null); // null = not asked yet
+  const [harvEdited, setHarvEdited] = useState(false);
   const growth = growthOf(plot, crop, todayLocalKey());
   const waiting = isAwaitingSowing(plot);
   const notStarted = waiting || plot.status === "planned" || !plot.plantDate;
@@ -74,10 +76,16 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
     onClose();
   };
   // Same path as harvesting from tasks: stock in the pantry, and trees/perennials stay planted.
-  const harv = (p) => {
+  // Ask what was actually picked (prefilled with the estimate); an untouched amount is saved as an estimate.
+  const harvDefault = (p) => {
     const c = rCM(data.region).get(p.crop);
-    const qty = p.expectedYieldKg || (p.plantCount && c ? p.plantCount * (c.yld || 3) : c?.cat === "Herb" ? 0.5 : c?.cat === "Grain" ? 5 : c?.yld || 3);
-    setData(applyTaskCompletion(data, { key: `plot-${p.id}-harvest`, type: "harvest", plotId: p.id }, qty));
+    return Math.round((p.expectedYieldKg || (p.plantCount && c ? p.plantCount * (c.yld || 3) : c?.cat === "Herb" ? 0.5 : c?.cat === "Grain" ? 5 : c?.yld || 3)) * 10) / 10;
+  };
+  const harv = (p) => {
+    const def = harvDefault(p);
+    const typed = Number(harvKg);
+    const qty = typed > 0 ? typed : def;
+    setData(applyTaskCompletion(data, { key: `plot-${p.id}-harvest`, type: "harvest", plotId: p.id }, qty, { estimated: !(typed > 0) || !harvEdited }));
     onClose();
   };
 
@@ -167,8 +175,20 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
         {confirmDel && <span style={{fontSize:12,color:C.t2,alignSelf:"center"}}>Remove this planting and its notes?</span>}
         {confirmDel && <Btn v="secondary" sm onClick={()=>setConfirmDel(false)}>Keep</Btn>}
         <Btn v="danger" sm onClick={()=>del(plot.id)}>{confirmDel ? "Yes, remove" : "Delete"}</Btn>
-        {plot.status !== "harvested" && plot.harvestDate && localDateFromKey(plot.harvestDate) <= localDateFromKey(todayLocalKey()) && <Btn v="success" onClick={()=>harv(plot)}>🧺 Harvest</Btn>}
+        {plot.status !== "harvested" && plot.harvestDate && localDateFromKey(plot.harvestDate) <= localDateFromKey(todayLocalKey()) && harvKg == null && <Btn v="success" onClick={()=>setHarvKg(String(harvDefault(plot)))}>🧺 Harvest</Btn>}
       </div>
+      {harvKg != null && (
+        <div style={{marginTop:10,padding:"12px 14px",border:`1.5px solid ${C.green}`,borderRadius:12,background:C.gp}}>
+          <label htmlFor="harv-kg" style={{display:"block",fontSize:13,fontWeight:700,color:C.text,marginBottom:6}}>How much did you pick? (kg)</label>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            <input id="harv-kg" type="number" inputMode="decimal" min="0" step="0.1" value={harvKg} onChange={e=>{setHarvKg(e.target.value);setHarvEdited(true);}}
+              style={{width:110,padding:"9px 12px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:16,background:C.card,color:C.text}}/>
+            <Btn v="success" onClick={()=>harv(plot)}>Save harvest</Btn>
+            <Btn v="ghost" sm onClick={()=>{setHarvKg(null);setHarvEdited(false);}}>Cancel</Btn>
+          </div>
+          <div style={{fontSize:11.5,color:C.t2,marginTop:6}}>Prefilled with MyTerra's estimate. Weigh it if you can — Insights compare real harvests with the estimate.</div>
+        </div>
+      )}
     <Journal data={data} setData={setData} plotId={plot.id}/></Overlay>
   );
 }

@@ -3,11 +3,30 @@ import {addStock} from "../../lib/inventory";
 import {rCM} from "../../lib/regional";
 import {isRecurringCrop, afterRecurringHarvest} from "../../lib/perennial";
 import {toggleStep, isAwaitingSowing, firstStepIdx, sowVerb} from "../../lib/sowing";
-import {recordHarvest, recordProduce} from "../../lib/memory";
+import {recordHarvest, recordProduce, rememberTick, takeTick, removeHarvest, subtractProduce} from "../../lib/memory";
 import {markOwnDone} from "../../lib/own-tasks";
-export function applyTaskCompletion(data, task, logValue) {
+import {taskAction} from "../grove/zone-tasks";
+
+/* An amount counts as an estimate (not weighed/counted) when nothing was typed
+   or it is exactly MyTerra's suggested default. Callers that know better pass
+   meta.estimated. Insights keep estimates out of "vs estimate" and lay rates. */
+function isEstimate(data, task, logValue, meta) {
+  if (meta && typeof meta.estimated === "boolean") return meta.estimated;
+  if (!(Number(logValue) > 0)) return true;
+  const def = taskAction(task, data).amount;
+  return !!def && Math.abs(Number(logValue) - Number(def.value)) < 1e-6;
+}
+
+// Ids of what addStock just appended, so an Undo today can take exactly that out again.
+function lastIds(d) {
+  const items = (d.pantry && d.pantry.items) || [], moves = (d.pantry && d.pantry.moves) || [];
+  return { item: items.length ? items[items.length - 1].id : null, move: moves.length ? moves[moves.length - 1].id : null };
+}
+
+export function applyTaskCompletion(data, task, logValue, meta) {
   if (!task) return data;
-  if ((data.completions?.[todayLocalKey()] || []).includes(task.key)) return data;
+  const today = todayLocalKey();
+  if ((data.completions?.[today] || []).includes(task.key)) return data;
   if(task.type === "harvest" && data.garden?.plots.find(p=>p.id===task.plotId)?.status === "harvested") return data;
 
   // Harvest — move plot to harvested, push yield to pantry, log.
@@ -17,38 +36,37 @@ export function applyTaskCompletion(data, task, logValue) {
     if (plot) {
       const crop = rCM(data.region).get(plot.crop);
       const kg = Number(logValue) > 0 ? Number(logValue) : (plot.expectedYieldKg || (crop && crop.yld) || 3);
+      const est = isEstimate(data, task, logValue, meta);
       // Trees, soft fruit and perennial herbs stay planted and are due again next season.
       const recurring = isRecurringCrop(crop);
       const expected = plot.expectedYieldKg || null; // only a real per-planting estimate is compared
-      const remembered = recordHarvest(data, plot, kg, todayLocalKey(), expected, !recurring);
-      const stocked = addStock(remembered, { name: plot.crop, category: "Fresh Produce", qty: kg, unit: "kg", source: "farm", storageNote: (crop && crop.storage) || "" }, todayLocalKey());
+      const remembered = recordHarvest(data, plot, kg, today, expected, !recurring, est);
+      const stocked = addStock(remembered, { name: plot.crop, category: "Fresh Produce", qty: kg, unit: "kg", source: "farm", storageNote: (crop && crop.storage) || "" }, today);
       const next = {
         ...stocked,
-        garden: { ...stocked.garden, plots: plots.map(function(x) { return x.id === plot.id ? (recurring ? afterRecurringHarvest(x, crop, todayLocalKey()) : { ...x, status: "harvested" }) : x; }) },
+        garden: { ...stocked.garden, plots: plots.map(function(x) { return x.id === plot.id ? (recurring ? afterRecurringHarvest(x, crop, today) : { ...x, status: "harvested" }) : x; }) },
         log: appendLog(data.log, { text: "🧺 Harvested " + kg + "kg " + plot.crop }),
       };
-      return markTaskDone(next, task.key);
+      return markTaskDone(rememberTick(next, task.key, { d: today, kind: "harvest", q: kg, est, prevPlot: plot, ...lastIds(stocked) }), task.key);
     }
   }
 
   // Eggs — add to pantry, log.
   if (task.type === "eggs") {
     const count = Number(logValue) > 0 ? Math.round(Number(logValue)) : 1;
-    const next = {
-      ...addStock(recordProduce(data, task.speciesType, "eggs", count, todayLocalKey()), { name: (task.speciesType ? task.speciesType + " " : "") + "Eggs", category: "Eggs", qty: count, unit: "pcs", source: "livestock", storageNote: "Refrigerate within 2 hours of collection." }, todayLocalKey()),
-      log: appendLog(data.log, { text: "🥚 Collected " + count + " eggs" }),
-    };
-    return markTaskDone(next, task.key);
+    const est = isEstimate(data, task, logValue, meta);
+    const stocked = addStock(recordProduce(data, task.speciesType, "eggs", count, today, est), { name: (task.speciesType ? task.speciesType + " " : "") + "Eggs", category: "Eggs", qty: count, unit: "pcs", source: "livestock", storageNote: "Refrigerate within 2 hours of collection." }, today);
+    const next = { ...stocked, log: appendLog(data.log, { text: "🥚 Collected " + count + " eggs" }) };
+    return markTaskDone(rememberTick(next, task.key, { d: today, kind: "eggs", sp: task.speciesType, q: count, est, ...lastIds(stocked) }), task.key);
   }
 
   // Milk — add litres to the pantry, log.
   if (task.type === "milk") {
     const litres = Number(logValue) > 0 ? Math.round(Number(logValue) * 10) / 10 : (task.expected || 1);
-    const next = {
-      ...addStock(recordProduce(data, task.speciesType, "milkL", litres, todayLocalKey()), { name: (task.speciesType ? task.speciesType + " " : "") + "Milk", category: "Dairy", qty: litres, unit: "L", source: "livestock", storageNote: "Strain and chill below 4°C within 2 hours. Use within 3–5 days, or make cheese." }, todayLocalKey()),
-      log: appendLog(data.log, { text: "🥛 Milked " + litres + "L" + (task.speciesType ? " from the " + task.speciesType.toLowerCase() + "s" : "") }),
-    };
-    return markTaskDone(next, task.key);
+    const est = isEstimate(data, task, logValue, meta);
+    const stocked = addStock(recordProduce(data, task.speciesType, "milkL", litres, today, est), { name: (task.speciesType ? task.speciesType + " " : "") + "Milk", category: "Dairy", qty: litres, unit: "L", source: "livestock", storageNote: "Strain and chill below 4°C within 2 hours. Use within 3–5 days, or make cheese." }, today);
+    const next = { ...stocked, log: appendLog(data.log, { text: "🥛 Milked " + litres + "L" + (task.speciesType ? " from the " + task.speciesType.toLowerCase() + "s" : "") }) };
+    return markTaskDone(rememberTick(next, task.key, { d: today, kind: "milkL", sp: task.speciesType, q: litres, est, ...lastIds(stocked) }), task.key);
   }
 
   // Water — log the amount only.
@@ -90,5 +108,37 @@ export function applyTaskCompletion(data, task, logValue) {
 
   // Everything else — pure check-off.
   return markTaskDone(data, task.key);
+}
+
+/**
+ * "Done today → Undo": un-tick a job and take back exactly what that tick
+ * added — the pantry lot and move, the garden-memory record, and for a harvest
+ * the planting as it was. Stock already used or sold stays used (only what is
+ * left of that lot is removed).
+ */
+export function undoTaskCompletion(data, key) {
+  const today = todayLocalKey();
+  const existing = (data.completions && data.completions[today]) || [];
+  if (!existing.includes(key)) return data;
+  const taken = takeTick(data, key, today);
+  let next = taken.data;
+  const t = taken.tick;
+  if (t) {
+    const pantry = next.pantry || { items: [] };
+    const items = (pantry.items || []).map(function(it) {
+      if (it.id !== t.item) return it;
+      const left = Math.round(((Number(it.qty) || 0) - (Number(t.q) || 0)) * 1000) / 1000;
+      return left > 0 ? { ...it, qty: left } : null;
+    }).filter(Boolean);
+    const moves = (pantry.moves || []).filter(function(m) { return m.id !== t.move; });
+    next = { ...next, pantry: { ...pantry, items: items, moves: moves } };
+    if (t.kind === "harvest" && t.prevPlot) {
+      next = removeHarvest(next, t.prevPlot.id, today);
+      next = { ...next, garden: { ...next.garden, plots: (next.garden.plots || []).map(function(p) { return p.id === t.prevPlot.id ? t.prevPlot : p; }) } };
+    } else if (t.sp) {
+      next = subtractProduce(next, t.sp, t.kind, t.q, today, t.est);
+    }
+  }
+  return { ...next, completions: { ...(next.completions || {}), [today]: existing.filter(function(k) { return k !== key; }) } };
 }
 
