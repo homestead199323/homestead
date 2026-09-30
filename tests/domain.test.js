@@ -558,3 +558,87 @@ test('Progress counts real harvests, money and badges without inventing numbers'
   assert.deepEqual(plantingCounts(data,'2026-09-28'),{growing:2,waiting:1,ready:1});
   assert.equal(produceTotals({},'2026-09-28').kg,0);
 });
+import {buildTaskPlan} from '../src/lib/task-queue.js';
+import {parseForecast} from '../src/lib/weather.js';
+import {addDaysToLocalKey as addD} from '../src/lib/utils.js';
+const wxToday=todayLocalKey();
+// 7 calm days; override any day by offset.
+const wx=(over={})=>({days:Array.from({length:7},(_,i)=>({date:addD(wxToday,i),tMin:9,tMax:16,rainMm:0,rainProb:10,gustKmh:20,code:3,humidHours:0,...(over[i]||{})}))});
+const wxAgo=n=>addD(wxToday,-n);
+test('Weather: no forecast leaves the queue exactly as before; calm week adds nothing',()=>{
+  const base=buildTaskQueue(fixture);
+  assert.deepEqual(buildTaskQueue(fixture,{}),base);
+  const calm=buildTaskPlan(fixture,{forecast:wx()});
+  assert.deepEqual(calm.tasks,base);assert.equal(calm.alerts.length,0);
+});
+test('Weather: frost names only the tender crops actually growing in the open',()=>{
+  const {tasks,alerts}=buildTaskPlan(fixture,{forecast:wx({1:{tMin:-1}})});
+  const f=tasks.find(t=>t.type==='weather'&&t.weather==='frost');
+  assert(f,'frost job');assert.equal(f.pri,0);assert.match(f.title,/tonight/);
+  assert.deepEqual([...f.plotIds].sort(),['basil','tom']); // lettuce is half-hardy: fine at −1°C
+  assert.match(f.desc,/Tomatoes/);assert(!/water will freeze/.test(f.desc));
+  assert.equal(alerts[0].kind,'frost');
+  // Hard frost: lettuce too, and the hens' water.
+  const hard=buildTaskPlan(fixture,{forecast:wx({2:{tMin:-5}})}).tasks.find(t=>t.weather==='frost');
+  assert(hard.plotIds.includes('lettuce'));assert.match(hard.desc,/water will freeze/);assert.match(hard.title,/early /);assert.match(hard.desc,/tomorrow evening/);
+  // Only a tender crop under glass at −1°C: no job at all.
+  const glass={...fixture,livestock:{animals:[]},garden:{plots:[{...fixture.garden.plots[0],zone:'glass'}]}};
+  assert(!buildTaskPlan(glass,{forecast:wx({1:{tMin:-1}})}).tasks.some(t=>t.type==='weather'));
+  // Far-off frost: an alert, but not yet a job.
+  const far=buildTaskPlan(fixture,{forecast:wx({5:{tMin:0}})});
+  assert.equal(far.alerts.length,1);assert(!far.tasks.some(t=>t.type==='weather'));
+});
+test('Weather: a frost pulls tender harvests forward and holds tender planting',()=>{
+  const tom={...fixture.garden.plots[0],harvestDate:addD(wxToday,5)};
+  const zuc={id:'zuc',crop:'Zucchini',zone:'bed2',status:'planted',sowPending:true,plantDate:wxToday,harvestDate:addD(wxToday,55),steps:[{d:0,l:'Sow on mound',done:false},{d:14,l:'Thin + mulch',done:false}]};
+  const data={...fixture,garden:{plots:[tom,zuc]}};
+  const before=buildTaskQueue(data);
+  assert(before.some(t=>t.plotId==='tom'&&t.type==='forecast'));assert(before.some(t=>t.plotId==='zuc'&&t.type==='step'&&t.daysOut===0));
+  const after=buildTaskPlan(data,{forecast:wx({2:{tMin:0}})}).tasks;
+  const pick=after.find(t=>t.plotId==='tom'&&t.type==='harvest');
+  assert(pick,'forecast became a harvest job');assert.equal(pick.key,'plot-tom-harvest');assert.match(pick.title,/before the frost/);assert.match(pick.desc,/Green tomatoes/);
+  assert(!after.some(t=>t.plotId==='tom'&&t.type==='forecast'));
+  const held=after.find(t=>t.plotId==='zuc');
+  assert.equal(held.type,'upcoming');assert.equal(held.daysOut,3);assert(held.held);assert.match(held.desc,/^Wait: frost early /);
+  // Hardy crops are never held.
+  const kale={...zuc,id:'kale',crop:'Kale',steps:[{d:0,l:'Sow/transplant',done:false}]};
+  const k=buildTaskPlan({...data,garden:{plots:[kale]}},{forecast:wx({1:{tMin:-1}})}).tasks.find(t=>t.plotId==='kale');
+  assert.equal(k.type,'step');
+});
+test('Weather: rain today replaces outdoor watering with one note',()=>{
+  const tom={...fixture.garden.plots[0],plantDate:wxAgo(10)}; // tomato: water every 2 days → due today
+  const inGlass={...tom,id:'gt',zone:'glass'};
+  const data={...fixture,garden:{plots:[tom,inGlass]}};
+  assert(buildTaskQueue(data).some(t=>t.key==='plot-tom-water'));
+  const {tasks}=buildTaskPlan(data,{forecast:wx({0:{rainMm:8,rainProb:90}})});
+  assert(!tasks.some(t=>t.key==='plot-tom-water'));
+  assert(tasks.some(t=>t.key==='plot-gt-water'),'greenhouse still needs watering');
+  const note=tasks.find(t=>t.weather==='rain');assert.match(note.desc,/Tomatoes/);assert.equal(note.routine,true);
+  // Unlikely rain (30 %) changes nothing.
+  assert(buildTaskPlan(data,{forecast:wx({0:{rainMm:8,rainProb:30}})}).tasks.some(t=>t.key==='plot-tom-water'));
+});
+test('Weather: blight (Hutton period) only for outdoor tomatoes and potatoes; ticked alerts stay gone',()=>{
+  const humid={tMin:12,humidHours:8};
+  const {tasks}=buildTaskPlan(fixture,{forecast:wx({1:humid,2:humid})});
+  const b=tasks.find(t=>t.weather==='blight');assert(b);assert.deepEqual(b.plotIds,['tom']);
+  assert(!buildTaskPlan(fixture,{forecast:wx({1:humid,3:humid})}).tasks.some(t=>t.weather==='blight'),'needs consecutive days');
+  const glass={...fixture,garden:{plots:[{...fixture.garden.plots[0],zone:'glass'}]}};
+  assert(!buildTaskPlan(glass,{forecast:wx({1:humid,2:humid})}).tasks.some(t=>t.weather==='blight'));
+  const done={...fixture,completions:{[wxAgo(1)]:[b.key]}};
+  assert(!buildTaskPlan(done,{forecast:wx({1:humid,2:humid})}).tasks.some(t=>t.weather==='blight'));
+});
+test('Weather: heat, gales and heavy rain name what is there',()=>{
+  const {tasks}=buildTaskPlan(fixture,{forecast:wx({0:{tMax:32},1:{gustKmh:80,rainMm:25}})});
+  assert.match(tasks.find(t=>t.weather==='heat').desc,/greenhouse vents.*hens/s);
+  const w=tasks.find(t=>t.weather==='wind');assert.match(w.desc,/Tomatoes/);assert.match(w.desc,/hive/);
+  assert.match(tasks.find(t=>t.weather==='downpour').desc,/Pick Lettuce first/);
+  const empty={...fixture,zones:[],garden:{plots:[]},livestock:{animals:[]}};
+  assert.equal(buildTaskPlan(empty,{forecast:wx({0:{tMax:32},1:{gustKmh:80,rainMm:25,tMin:-6}})}).alerts.length,0);
+});
+test('Forecast parsing counts humid hours per local day',()=>{
+  const hours=Array.from({length:48},(_,i)=>`2026-10-0${1+Math.floor(i/24)}T${String(i%24).padStart(2,'0')}:00`);
+  const rh=hours.map((_,i)=>i<7?95:i>=24&&i<27?92:60);
+  const f=parseForecast({daily:{time:['2026-10-01','2026-10-02'],temperature_2m_min:[3.2,-1],temperature_2m_max:[12,9],precipitation_sum:[1.2,null],precipitation_probability_max:[40,10],wind_gusts_10m_max:[30,70],weather_code:[3,0]},hourly:{time:hours,relative_humidity_2m:rh}});
+  assert.deepEqual(f.days.map(d=>d.humidHours),[7,3]);assert.equal(f.days[1].rainMm,0);assert.equal(f.days[1].gustKmh,70);
+  assert.equal(parseForecast({}),null);
+});

@@ -3,6 +3,7 @@ import { rCM } from "./regional";
 import { isAwaitingSowing, sowWindowOpen, firstStepIdx, prepStepIdxs } from "./sowing.js";
 import { nurseryTasks } from "../features/nursery/nursery-model.js";
 import { animalZone as zoneOfAnimal } from "../features/quiet/farm-model.js";
+import { applyWeather, isWeatherDone } from "./weather-alerts.js";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../data/livestock";
 
 /** Dairy species milked by default; sheep only when the keeper says so. A group can be switched off (dry, bucks, meat herd). */
@@ -16,7 +17,17 @@ export function milkingHead(data, type) {
     .reduce((n, a) => n + (a.count || 1), 0);
 }
 
-export function buildTaskQueue(data) {
+/**
+ * opts.forecast — the 7-day forecast from lib/weather.js fetchForecast. With it,
+ * weather jobs are added and jobs move (lib/weather-alerts.js). Without it
+ * (offline, no city) the queue is exactly what it was before.
+ */
+export function buildTaskQueue(data, opts = {}) {
+  return buildTaskPlan(data, opts).tasks;
+}
+
+/** Tasks plus the weather alerts that shaped them: { tasks, alerts }. */
+export function buildTaskPlan(data, opts = {}) {
   const now = new Date(); now.setHours(0,0,0,0);
   const todayKey = toLocalDateKey(now);
   const doneToday = new Set((data.completions && data.completions[todayKey]) || []);
@@ -176,12 +187,14 @@ export function buildTaskQueue(data) {
   // Filter out tasks that have been marked done today via the completions map.
   // Step tasks are filtered by p.steps[i].done above (persistent), not here.
   // Forecast tasks are info-only, no Done button exposed.
-  const filtered = tasks.filter(t => {
+  const weather = opts.forecast ? applyWeather(data, opts.forecast, todayKey, tasks) : { alerts: [], tasks };
+  const filtered = weather.tasks.filter(t => {
     if (t.type === "step" || t.type === "upcoming" || t.type === "forecast") return true;
+    if (t.type === "weather") return !isWeatherDone(data, t.key);
     return !doneToday.has(t.key);
   });
 
   filtered.sort((a, b) => a.pri - b.pri || a.daysOut - b.daysOut);
-  return filtered;
+  return { tasks: filtered, alerts: weather.alerts };
 }
 

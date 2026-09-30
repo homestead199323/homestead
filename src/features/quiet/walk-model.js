@@ -64,7 +64,7 @@ export function planRound(tasks, data, mode = "quick", startId = "") {
       else if (z.type !== "house") zoneStop(z);
     });
   tasks
-    .filter((t) => t.daysOut === 0 && !["forecast", "upcoming"].includes(t.type))
+    .filter((t) => t.daysOut === 0 && !["forecast", "upcoming"].includes(t.type) && !(t.type === "weather" && !t.zoneId))
     .forEach((task) => {
       const plot = plots.find((p) => p.id === task.plotId),
         animal = data.livestock?.animals.find((a) => a.id === task.animalId);

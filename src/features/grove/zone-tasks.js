@@ -45,7 +45,7 @@ const GLYPHS = {
   upcoming: "📅",
 };
 export function taskGlyph(task) {
-  if (task.type === "seedling") return task.emoji || "🌱";
+  if (task.type === "seedling" || task.type === "weather") return task.emoji || "🌱";
   return GLYPHS[task.type] || "✅";
 }
 
@@ -73,6 +73,7 @@ const CHEERS = {
   health: "Healthy!",
   hoof: "Trimmed!",
   hive: "Buzzing!",
+  weather: "Ready for it!",
 };
 
 /**

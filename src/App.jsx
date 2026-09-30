@@ -15,7 +15,8 @@ import {
 } from "./lib/storage";
 import { C, F, SX } from "./lib/theme";
 import { todayLocalKey } from "./lib/utils";
-import { buildTaskQueue } from "./lib/task-queue";
+import { buildTaskPlan } from "./lib/task-queue";
+import { fetchForecast } from "./lib/weather";
 import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, migrateProfile as migrateProfileBase, updateGamify } from "./lib/migrations";
 import { migratePerennials } from "./lib/perennial";
 import { migratePantry } from "./lib/inventory";
@@ -456,7 +457,20 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
 
   // Compute tasks ONCE — passed down to Dashboard + TaskQueue
   // Null guard: if data hasn't initialized yet, return empty tasks rather than crashing buildTaskQueue.
-  const tasks = useMemo(() => data ? buildTaskQueue(data) : [], [data]);
+  // 7-day forecast for the farm's city: weather jobs + jobs that move with the
+  // weather (lib/weather-alerts.js). Refetched hourly while open; cached 3 h.
+  const city = data?.city || "";
+  const [forecast, setForecast] = useState(null);
+  useEffect(() => {
+    let active = true;
+    if (!city) { setForecast(null); return undefined; }
+    const load = () => fetchForecast(city).then((f) => { if (active) setForecast(f && f.ok ? f : null); });
+    load();
+    const id = setInterval(load, 60 * 60 * 1000);
+    return () => { active = false; clearInterval(id); };
+  }, [city]);
+  const plan = useMemo(() => data ? buildTaskPlan(data, { forecast }) : { tasks: [], alerts: [] }, [data, forecast]);
+  const tasks = plan.tasks;
   const taskCount = useMemo(() => tasks.filter(t => t.pri <= 2).length, [tasks]);
   const clearFarmPageData = useCallback(() => setPageData(null), []);
 
@@ -480,7 +494,7 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
       case "progress": return <ProgressScreen data={data} setPage={setPage}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       case "admin": return <AdminDashboard/>;
-      default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks}/>;
+      default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks} forecast={forecast} alerts={plan.alerts}/>;
     }
   };
 

@@ -14,7 +14,7 @@
    ("good for transplanting", "watch for frost", etc).
    ═══════════════════════════════════════════ */
 
-import { loadWeatherCache, saveWeatherCache, loadGeoCache, saveGeoCache } from "./storage";
+import { loadWeatherCache, saveWeatherCache, loadGeoCache, saveGeoCache, loadForecastCache, saveForecastCache } from "./storage";
 
 const GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -156,6 +156,66 @@ export async function fetchWeather(cityName) {
     writeCache(cityName, result);
     return result;
   } catch (e) {
+    return { ok: false, error: "exception", message: String(e && e.message || e) };
+  }
+}
+
+/* ─── 7-day forecast (weather alerts that know the plan) ───
+   One call: daily min/max, rain, rain chance, gusts, weather code, plus
+   hourly humidity + temperature for the blight check (Hutton criteria).
+   Cached 3 h per city. Pure parsing lives in parseForecast (tested). */
+const FORECAST_TTL_MS = 3 * 60 * 60 * 1000;
+const DAILY_VARS = "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max";
+
+const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+/** Open-Meteo JSON → { days: [{ date, tMin, tMax, rainMm, rainProb, gustKmh, code, humidHours }] } */
+export function parseForecast(json) {
+  const d = json && json.daily;
+  if (!d || !Array.isArray(d.time) || d.time.length === 0) return null;
+  // Hours per local day with relative humidity ≥ 90 % (hourly times are local: timezone=auto).
+  const humid = {};
+  const h = json.hourly || {};
+  if (Array.isArray(h.time) && Array.isArray(h.relative_humidity_2m)) {
+    h.time.forEach((t, i) => {
+      const day = String(t).slice(0, 10);
+      if (num(h.relative_humidity_2m[i]) != null && h.relative_humidity_2m[i] >= 90) humid[day] = (humid[day] || 0) + 1;
+    });
+  }
+  const days = d.time.map((date, i) => ({
+    date,
+    tMin: num(d.temperature_2m_min?.[i]),
+    tMax: num(d.temperature_2m_max?.[i]),
+    rainMm: num(d.precipitation_sum?.[i]) ?? 0,
+    rainProb: num(d.precipitation_probability_max?.[i]),
+    gustKmh: num(d.wind_gusts_10m_max?.[i]),
+    code: num(d.weather_code?.[i]),
+    humidHours: humid[date] || 0,
+  }));
+  return { days };
+}
+
+export async function fetchForecast(cityName) {
+  if (!cityName || !cityName.trim()) return { ok: false, error: "no_city" };
+  const key = cityName.trim().toLowerCase();
+  const cache = loadForecastCache();
+  const hit = cache[key];
+  if (hit && hit.ok && Date.now() - (hit.fetchedAt || 0) < FORECAST_TTL_MS) return hit;
+  try {
+    const geo = await geocode(cityName);
+    if (!geo) return { ok: false, error: "geocode_failed" };
+    const url = `${FORECAST_URL}?latitude=${geo.lat}&longitude=${geo.lng}`
+      + `&daily=${DAILY_VARS}&hourly=relative_humidity_2m&forecast_days=7&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) return hit && hit.ok ? hit : { ok: false, error: "api_error" };
+    const parsed = parseForecast(await res.json());
+    if (!parsed) return hit && hit.ok ? hit : { ok: false, error: "api_error" };
+    const result = { ok: true, ...parsed, location: geo.name, fetchedAt: Date.now() };
+    saveForecastCache({ [key]: result }); // one city at a time — keeps storage small
+    return result;
+  } catch (e) {
+    // Offline: an older forecast is still better than nothing.
+    if (hit && hit.ok) return hit;
     return { ok: false, error: "exception", message: String(e && e.message || e) };
   }
 }

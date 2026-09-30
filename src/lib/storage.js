@@ -42,6 +42,7 @@ const KEYS = {
   FIRST_USE: "hfm_first_use",
   WEATHER_CACHE: "hfm_weather_cache_v1",
   GEO_CACHE: "hfm_geo_cache_v1",
+  FORECAST_CACHE: "hfm_forecast_cache_v1",
 };
 
 // ─── Farm data — debounced ──────────────────────────────────
@@ -142,6 +143,8 @@ const saveJsonCache = (key, obj) => kvSet(key, JSON.stringify(obj));
 export const loadWeatherCache = () => loadJsonCache(KEYS.WEATHER_CACHE);
 export const saveWeatherCache = (obj) => saveJsonCache(KEYS.WEATHER_CACHE, obj);
 
+export const loadForecastCache = () => loadJsonCache(KEYS.FORECAST_CACHE);
+export const saveForecastCache = (obj) => saveJsonCache(KEYS.FORECAST_CACHE, obj);
 export const loadGeoCache = () => loadJsonCache(KEYS.GEO_CACHE);
 export const saveGeoCache = (obj) => saveJsonCache(KEYS.GEO_CACHE, obj);
 

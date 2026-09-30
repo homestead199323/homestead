@@ -83,6 +83,9 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
         <span style={{flexShrink:0,lineHeight:1,textDecoration:strikethrough,display:"flex"}}><FarmIcon name={t.cropName || t.speciesType} emoji={t.emoji} size={22}/></span>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:4,textDecoration:strikethrough}}>{t.title}</div>
+          {(t.type === "weather" || t.held || t.frostPick) && t.desc && (
+            <div style={{fontSize:12.5,color:C.text,lineHeight:1.5,margin:"0 0 6px",textDecoration:strikethrough}}>{t.desc}</div>
+          )}
           <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11.5,color:C.t2,fontWeight:500}}>
             <span>📍 {t.loc}</span>
             {dateLabel && <span style={{color:t.daysOut === 0 ? C.text : C.t2,fontWeight:t.daysOut === 0 ? 700 : 500}}>🕑 {dateLabel}</span>}
@@ -473,6 +476,11 @@ function TaskQueue({data, setData, setPage, tasks}) {
       else if (typeSuffix === "hoof") { title = `Hoof check — ${label}`; emoji = "🦶"; }
       else if (typeSuffix === "hive") { title = `Hive inspection — ${label}`; emoji = "🐝"; }
       doneTodayList.push({ key: k, emoji, title, loc, speciesType: a.type });
+    } else if (kind === "weather") {
+      // Weather prep jobs: "weather-<kind>-<YYYYMMDD>" (lib/weather-alerts.js)
+      const W = { frost: ["❄️", "Frost protection"], heat: ["🌡️", "Heat prep"], wind: ["💨", "Gale prep"], downpour: ["🌧️", "Heavy-rain prep"], blight: ["🍂", "Blight check"], rain: ["🌦️", "Rain day — no watering"] };
+      const [emoji, title] = W[id] || ["🌦️", "Weather job"];
+      doneTodayList.push({ key: k, emoji, title, loc: "Around your space" });
     }
   });
 

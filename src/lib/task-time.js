@@ -5,7 +5,7 @@
    ═══════════════════════════════════════════ */
 const BY_TYPE = {
   harvest: 10, water: 3, feed: 5, eggs: 3, milk: 15, clean: 20, bedding: 40,
-  paddock: 20, health: 5, hoof: 10, hive: 20, seedling: 5,
+  paddock: 20, health: 5, hoof: 10, hive: 20, seedling: 5, weather: 10,
 };
 
 export function taskMinutes(task) {
