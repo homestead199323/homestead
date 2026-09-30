@@ -79,12 +79,16 @@
     frame.classList.toggle("paused", tour.paused);
     toggle.setAttribute("aria-label", tour.paused ? "Play the tour video" : "Pause the tour video");
   }
-  var posterH = tour ? tour.getAttribute("poster") : null;
+  // The poster is set here, not in the HTML, so a phone downloads only the vertical one.
+  function setPoster(v) {
+    var src = tour.getAttribute(v === "v" ? "data-poster-v" : "data-poster-h");
+    if (src && tour.getAttribute("poster") !== src) tour.setAttribute("poster", src);
+  }
   function load() {
     var v = portrait.matches ? "v" : "h";
     if (loadedFor === v) return;
     loadedFor = v;
-    tour.setAttribute("poster", v === "v" ? tour.getAttribute("data-poster-v") : posterH);
+    setPoster(v);
     setSources(tour, v);
   }
   function play() { load(); var p = tour.play(); if (p && p.catch) p.catch(function () { sync(); }); }
@@ -93,12 +97,12 @@
     tour.addEventListener("play", sync);
     tour.addEventListener("pause", sync);
     // show the right poster before anything loads
-    if (portrait.matches && tour.getAttribute("data-poster-v")) tour.setAttribute("poster", tour.getAttribute("data-poster-v"));
+    setPoster(portrait.matches ? "v" : "h");
     sync();
     if (toggle) toggle.addEventListener("click", function () {
       if (tour.paused) { userPaused = false; play(); } else { userPaused = true; tour.pause(); }
     });
-    if (portrait.addEventListener) portrait.addEventListener("change", function () { var was = !tour.paused; loadedFor = null; if (was) play(); });
+    if (portrait.addEventListener) portrait.addEventListener("change", function () { var was = !tour.paused; loadedFor = null; setPoster(portrait.matches ? "v" : "h"); if (was) play(); });
     if (hasIO) {
       new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) { if (entry.isIntersecting) load(); });

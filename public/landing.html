@@ -45,6 +45,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="preload" as="image" href="/landing/hero-h.webp" media="(min-aspect-ratio: 4/5)" fetchpriority="high">
     <link rel="preload" as="image" href="/landing/hero-v.webp" media="(max-aspect-ratio: 4/5)" fetchpriority="high">
+    <noscript><style>.tour-frame{background:#0a2a1c url(/landing/tour-h-poster.webp) center/cover no-repeat}.tour-toggle{display:none}@media (max-aspect-ratio:4/5){.tour-frame{background-image:url(/landing/tour-v-poster.webp)}}</style></noscript>
 
     <style>
         /* ═══ TOKENS — matched to the app (Inter, MyTerra green, the amber of the in-app job buttons) ═══ */
@@ -151,8 +152,8 @@
         .chip.g .ico { background: #e3f3df; box-shadow: 0 3px 0 #c6e2bf; }
         .chip b { display: block; font-weight: 800; }
         .chip small { color: var(--ink-3); font-size: 12.5px; }
-        .chip-1 { left: -92px; top: 17%; animation: bob 5s ease-in-out infinite; }
-        .chip-2 { right: -54px; bottom: 16%; animation: bob 5s 1.6s ease-in-out infinite; }
+        .chip-1 { left: -92px; top: 5%; animation: bob 5s ease-in-out infinite; }
+        .chip-2 { right: -54px; bottom: 8%; animation: bob 5s 1.6s ease-in-out infinite; }
         @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
         .hero-note { position: absolute; right: var(--gut); bottom: 18px; font-size: 12px; color: rgba(255,255,255,.62); letter-spacing: .01em; }
 
@@ -292,7 +293,7 @@
         .final-card h2 { font-size: clamp(38px, 5.6vw, 72px); font-weight: 900; letter-spacing: -0.045em; }
         .final-card h2 em { font-style: normal; color: var(--amber); }
         .final-card p { margin: 16px auto 32px; font-size: 19px; color: rgba(255,255,255,.84); max-width: 30em; }
-        .final-card .micro { margin: 18px 0 0; font-size: 14px; color: rgba(255,255,255,.66); }
+        .final-card .micro { margin: 18px auto 0; font-size: 14px; color: rgba(255,255,255,.66); }
 
         /* ═══ FOOTER ═══ */
         footer { background: var(--paper); border-top: 1px solid var(--line); padding: 36px 0 44px; }
@@ -473,7 +474,7 @@
             </ul>
         </div>
         <div class="hero-stage" aria-hidden="true">
-            <div class="phone"><img src="/landing/p-coop.webp" width="720" height="1558" decoding="async" alt=""></div>
+            <div class="phone"><img src="/landing/p2-coop.webp" width="720" height="1558" decoding="async" alt=""></div>
             <div class="chip chip-1"><span class="ico">🥚</span><span><b>+2 eggs to the pantry</b><small>Chicken coop · just now</small></span></div>
             <div class="chip chip-2 g"><span class="ico">🥬</span><span><b>Lettuce · sow now</b><small>Quick win · food in ~6 weeks</small></span></div>
         </div>
@@ -547,9 +548,9 @@
             <p>Recorded straight from the app: answer a few questions, tap the map, tick off today's jobs and watch your beds fill in.</p>
         </div>
         <div class="tour-frame paused reveal" id="tourFrame">
-            <video id="tourVideo" muted loop playsinline preload="none" poster="/landing/tour-h-poster.webp"
+            <video id="tourVideo" muted loop playsinline preload="none"
                    data-h="/landing/tour-h.mp4" data-hw="/landing/tour-h.webm" data-v="/landing/tour-v.mp4" data-vw="/landing/tour-v.webm"
-                   data-poster-v="/landing/tour-v-poster.webp" aria-describedby="tourText"></video>
+                   data-poster-h="/landing/tour-h-poster.webp" data-poster-v="/landing/tour-v-poster.webp" aria-describedby="tourText"></video>
             <button type="button" class="tour-toggle" id="tourToggle" aria-label="Play the tour video">
                 <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>
                 <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5.2a1.6 1.6 0 0 1 2.4-1.4l10 6.2a1.6 1.6 0 0 1 0 2.8l-10 6.2A1.6 1.6 0 0 1 7 17.6z"/></svg>
@@ -591,13 +592,13 @@
                 <span class="step-num">3</span>
                 <h3>Tap the map. Tick off the jobs.</h3>
                 <p>Badges show what's waiting. One tap logs eggs, milk and harvests straight into your pantry.</p>
-                <div class="shot"><div class="phone sm"><img src="/landing/p-coop.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Chicken coop pop-up with three jobs: collect eggs, feed and water the chickens, the first ticked off with plus two eggs"></div></div>
+                <div class="shot"><div class="phone sm"><img src="/landing/p2-coop.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Chicken coop pop-up with four jobs: collect eggs, feed, water and clean the housing, the first ticked off with plus two eggs"></div></div>
             </article>
             <article class="step reveal">
                 <span class="step-num">4</span>
                 <h3>See it grow before you plant</h3>
                 <p>Slide the growth preview weeks ahead and watch every bed sprout, fill in and ripen.</p>
-                <div class="shot"><div class="phone sm"><img src="/landing/p-growth.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Growth preview 70 days ahead: the garden map with beds filled in and a legend of growth stages"></div></div>
+                <div class="shot"><div class="phone sm"><img src="/landing/p2-growth.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Growth preview 70 days ahead: the garden map with beds filled in and a legend of growth stages"></div></div>
             </article>
         </div>
         <p class="note">Real app screens. Demo gardens, not customer data.</p>
@@ -626,15 +627,15 @@
                 <figcaption><b>Plants matched to you</b><span>Picked for your space, light and experience. Change them any time.</span></figcaption>
             </figure>
             <figure class="reveal">
-                <div class="phone"><img src="/landing/p-calendar.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Seasonal calendar: what to sow and harvest this month in your region"></div>
-                <figcaption><b>What to sow this month</b><span>A seasonal calendar tuned to your region.</span></figcaption>
+                <div class="phone"><img src="/landing/p2-plan.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Plan screen: plantings waiting to go in, with an I sowed it button, and crops that are good to sow this month"></div>
+                <figcaption><b>What to sow this month</b><span>Picked for your space, with a full seasonal calendar for your region.</span></figcaption>
             </figure>
             <figure class="reveal">
-                <div class="phone"><img src="/landing/p-guide.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Garlic guide: planting calendar, companions, watering and step-by-step instructions"></div>
+                <div class="phone"><img src="/landing/p2-guide.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Garlic guide: planting calendar, companions, watering and step-by-step instructions"></div>
                 <figcaption><b>A guide for every crop</b><span>From soil prep to storage, step by step.</span></figcaption>
             </figure>
             <figure class="reveal">
-                <div class="phone"><img src="/landing/p-assistant.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Farm assistant answering When should I plant garlic? with a growing guide, working offline"></div>
+                <div class="phone"><img src="/landing/p2-assistant.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Farm assistant answering When should I plant garlic? with a growing guide, working offline"></div>
                 <figcaption><b>Ask the farm assistant</b><span>Instant answers, even with no signal.</span></figcaption>
             </figure>
         </div>
@@ -656,7 +657,7 @@
                     <h3>Watch real food pile up</h3>
                     <p>Harvests, eggs and milk land in your pantry in kilos, pieces and litres. Sell some and the income is logged in your money view, month by month.</p>
                 </div>
-                <div class="crop"><div class="phone sm"><img src="/landing/p-pantry.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Pantry and stock: chicken eggs, potatoes and onions with Sell and Use buttons"></div></div>
+                <div class="crop"><div class="phone sm"><img src="/landing/p2-pantry.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Pantry and stock: chicken eggs and potatoes with Sell and Use buttons, and the value of what is in stock"></div></div>
             </article>
             <article class="card reveal">
                 <div class="ci" aria-hidden="true">🚶</div>
@@ -708,7 +709,7 @@
                 <p class="desc">Everything you need to start</p>
                 <div class="price">$4.99<small> /month</small></div>
                 <ul class="ticks">
-                    <li>All 9 modules</li>
+                    <li>Your 3D map, crops, animals and pantry</li>
                     <li>Offline mode + cloud backup</li>
                     <li>Auto-generated tasks</li>
                     <li>Seasonal calendar</li>
@@ -834,6 +835,6 @@
         </nav>
     </div>
 </footer>
-<script defer src="/landing.js?v=20260928"></script>
+<script defer src="/landing.js?v=20260930"></script>
 </body>
 </html>
