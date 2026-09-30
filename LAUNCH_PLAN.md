@@ -255,3 +255,23 @@
   (owner decision, see audit doc). Deploy note: `/usr/bin/git` on the Mac now stops at the Xcode
   licence prompt; this push used `DEVELOPER_DIR=/Library/Developer/CommandLineTools` (no system
   change). Fix once on the Mac: `sudo xcodebuild -license accept` (also needed for the iOS build).
+
+- [x] **Homepage v2 (2026-09-30, owner request: "redo the website with real screenshots and a 15-second
+  video"; commits de98e16, 79e7c20).** New landing page: a live 3D-map hero loop (real app footage,
+  vertical on phones), Balcony / Backyard / Farm tabs with map shots, a 15-second tour video recorded
+  from the app (9:16 on phones, 16:9 elsewhere; MP4 + WebM; plays only while in view; pause button),
+  how-it-works steps, know-how stats with four phone screens, features, pricing with a trial timeline
+  (phones swipe the plans, Pro first), FAQ and a final call to action. 79e7c20 re-shot the tour video,
+  the three space maps and the starter-map step for the five-tab menu and labelled map buttons (closes
+  the audit's tour-video item), swapped the know-how Plan shot for the demo balcony, and moved "Watch
+  real food pile up" to the Progress screen. New file names (`d2-*`, `p2-ob-map`, `p3-plan`,
+  `og-image-v4.jpg`) so the service worker and link previews can't serve old images. Verified for
+  79e7c20: ESLint and build (sandbox + Mac); production deployment READY; www.myterra.farm and
+  myterra-sigma.vercel.app serve the new references (myterra.farm → 308 to www); the 14 new or changed
+  files return 200 with the right type and byte size, the five replaced ones 404; CSP header identical
+  to `vercel.json`; Playwright on the live site at 390 and 1440 px: no console errors, no broken
+  images, both videos play, 6 sign-up links, no horizontal overflow, phones request only the vertical
+  poster and videos. Not verified: playback in real iPhone Safari (the Chromium here has no H.264, so
+  only the WebM path ran). Stage 9 stays open: the Pro list claims and the contact address (see the
+  audit doc), plus the season-blind "food in ~N months" line, which still shows in the matched-plants
+  shot and the tour video's set-up segment.
