@@ -240,6 +240,7 @@ function materials() {
     glow: layer(new THREE.MeshBasicMaterial({ map: proc("halo", DRAW.halo, { size: 128, clamp: true }), transparent: true, opacity: .75, depthWrite: false }), 11),
     stageTag: STAGE_COLOR.map((c, i) => std({ color: c, roughness: .6, emissive: i === 5 ? 0x8a6a10 : 0x000000 })),
     sprout: std({ color: 0x8fd47a, roughness: 1 }),
+    fruit: (color) => keep(k("fruit", color), () => std({ color, roughness: .45, emissive: color, emissiveIntensity: .12 })),
     select: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .22, depthWrite: false }), 14),
     selectEdge: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .95, depthWrite: false }), 15),
     contact: layer(new THREE.MeshBasicMaterial({ map: proc("contact", DRAW.contact, { size: 128, clamp: true }), transparent: true, depthWrite: false }), 12),
@@ -247,7 +248,7 @@ function materials() {
     tuft: foliage(new THREE.MeshLambertMaterial({ map: proc("tuft", DRAW.tuft, { size: 128, clamp: true }), transparent: true, alphaTest: .35, side: THREE.DoubleSide }), { sway: .05, fade: [86, 70, 0, 1] }),
     flower: foliage(new THREE.MeshLambertMaterial({ map: proc("flower", DRAW.flower, { size: 128, clamp: true }), transparent: true, alphaTest: .35, side: THREE.DoubleSide }), { sway: .05, fade: [86, 70, 0, 1] }),
     // tree canopies: leaf discs and crossed planes fade by view angle, the solid core never does
-    leaf: [0x82ab5e, 0x729d50, 0x8fb86b, 0x669247].map((c) => {
+    leaf: [0x82ab5e, 0x729d50, 0x8fb86b, 0x669247, 0x9aa886, 0x5f8f4a].map((c) => { // 4 random greens, 4 = silvery olive, 5 = deep glossy citrus/fig
       const map = tex(art("aerial-canopy")), make = () => new THREE.MeshLambertMaterial({ map, color: c, transparent: true, alphaTest: .12, side: THREE.DoubleSide, emissive: 0x16240f, emissiveMap: map, emissiveIntensity: .18 });
       return { mat: foliage(make(), { sway: .06, by: "height", freq: .25, fade: [80, 58, 30, 50] }), core: foliage(make(), { sway: .06, by: "height", freq: .25 }), depth: new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: .3 }) };
     }),
@@ -396,9 +397,9 @@ function ribbonGeo(pts, width) {
 }
 
 /* ---------- reusable structures ---------- */
-function tree(g, x, z, r, seed, M, y = 0) {
+function tree(g, x, z, r, seed, M, y = 0, leafIdx = null) {
   if (y) { const tg = new THREE.Group(); tg.position.y = y; g.add(tg); g = tg; }
-  const th = r * .55 + .3, leaf = M.leaf[Math.floor(srand(seed + 3) * M.leaf.length)];
+  const th = r * .55 + .3, leaf = M.leaf[leafIdx ?? Math.floor(srand(seed + 3) * 4)];
   const trunk = cyl(g, r * .1, r * .17, th + r * .7, M.bark, x, (th + r * .7) / 2, z, { seg: 7 });
   trunk.rotation.z = (srand(seed + 7) - .5) * .08;
   [-1, 1].forEach((s) => bar(g, [x, th * .75, z], [x + s * r * .45, th + r * .55, z + (srand(seed + 11) - .5) * r * .5], r * .045, M.bark));
@@ -415,6 +416,27 @@ function tree(g, x, z, r, seed, M, y = 0) {
   canopy(s * .9, s * .9, top - r * .3, -HPI, spin + 1.3, 0);
   canopy(s * .8, s * .8, top - r * .55, -HPI, spin + .7, 0);
   [0, 1.05, 2.1].forEach((a, i) => canopy(s * (.8 + (i % 2) * .08), s * .8, top - r * .1, 0, a + srand(seed + i) * .3, 0));
+}
+/* Fruit trees are the decoration tree scaled by growth stage, plus fruit on the crown: small and green
+   while maturing, full colour in the harvest window. Fruit is collected farm-wide, one instanced mesh per colour. */
+const FRUIT = { apple: [0xd33a2e, .075], pear: [0xc9c95a, .07], peach: [0xe9905a, .07], plum: [0x5a3a7a, .055], cherry: [0xb3182a, .035], lemon: [0xf2d13a, .07], orange: [0xf08a2a, .08], citrus: [0xf08a2a, .075], fig: [0x5a3a5a, .06], olive: [0x3f5a33, .028], walnut: [0x6f8a48, .045], almond: [0x8fa85a, .04], avocado: [0x2f4a2a, .09] };
+function fruitTree(g, ctx, x, z, size, stage, name, seed, M, off) {
+  const grow = [0, 0, .3, .55, .82, 1][stage] || 0, r = Math.max(.32, Math.min(1.7, size * .42)) * grow;
+  const key = Object.keys(FRUIT).find((k) => name.includes(k)) || "apple", [color, fr] = FRUIT[key];
+  const leafIdx = key === "olive" ? 4 : /lemon|orange|citrus|fig|avocado/.test(key) ? 5 : null;
+  tree(g, x, z, r, seed, M, 0, leafIdx);
+  const mulch = disc(g, Math.min(1.1, r * .8 + .2), M.mulch, x, .015, z, { seg: 14 }); mulch.castShadow = false;
+  if (stage < 4) bar(g, [x + .22, 0, z + .1], [x + .2, Math.min(1.5, r * 1.4 + .6), z + .08], .02, M.woodDark, { seg: 5 }); // stake for young trees
+  if (stage < 4) return;
+  const top = r * .55 + .3 + r * .95 - r * .12, n = Math.round((stage === 5 ? 26 : 12) * Math.min(1, r / 1.2)), ripe = stage === 5;
+  const fc = ripe ? color : 0x86a84e, list = ctx.fruit.get(fc) || []; ctx.fruit.set(fc, list);
+  for (let i = 0; i < n; i++) {
+    const a = srand(seed * 7 + i * 3) * 6.283, b = (srand(seed * 11 + i * 5) - .5) * 2.4, rr = r * .8 * (.5 + srand(seed * 13 + i * 7) * .38);
+    list.push({ p: [off[0] + x + Math.cos(a) * Math.cos(b) * rr, top + Math.sin(b) * rr * .82, off[1] + z + Math.sin(a) * Math.cos(b) * rr], s: (ripe ? fr : fr * .7) * Math.min(1, .55 + r * .4) });
+  }
+}
+function buildFruit(g, ctx, M) {
+  ctx.fruit.forEach((list, color) => instances(g, new THREE.SphereGeometry(1, 8, 6), M.fruit(color), list, { cast: false }));
 }
 /* Fences are collected in world coordinates and drawn as a handful of instanced meshes for the whole
    farm (posts, rails, pickets, caps) instead of a set per zone. */
@@ -987,12 +1009,7 @@ function buildZone(z, ctx) {
     const name = p.crop.toLowerCase();
     if (p.stage < 1) return; // planned: the row marker alone says what is coming
     if (p.stage < 2) { G.sprouts.push({ p: [ox + p.x, lift + .012, oz + p.y], rx: -HPI, s: Math.max(.05, p.size * .1) }); return; }
-    if (TREE_RE.test(name)) {
-      bill(cropArtwork(p.crop, Math.max(4, p.stage), "side"), Math.min(4.4, p.size * 1.15), p.x, 0, p.y, { sink: .05 });
-      const mulch = disc(g, Math.min(1.1, p.size * .32), M.mulch, p.x, .015, p.y, { seg: 14 }); mulch.castShadow = false;
-      if (p.stage < 5) bar(g, [p.x + .22, 0, p.y + .1], [p.x + .2, 1.5, p.y + .08], .02, M.woodDark, { seg: 5 });
-      return;
-    }
+    if (TREE_RE.test(name)) { fruitTree(g, ctx, p.x, p.y, p.size, p.stage, name, z.id.length * 31 + i * 7 + 1, M, off); return; }
     const grow = p.stage === 2 ? .5 : p.stage === 3 ? .78 : 1;
     const bw = Math.max(.26, Math.min(1.2, p.size * 1.5 * grow));
     spriteAdd(ctx, cropArtwork(p.crop, p.stage, "side"), { x: ox + p.x + (srand(i) - .5) * .05, y: lift, z: oz + p.y + (srand(i + 7) - .5) * .05, w: bw, r: (srand(i + 3) - .5) * .5, top: cropArtwork(p.crop, p.stage, "top") });
@@ -1154,7 +1171,7 @@ function buildWorld(ctx) {
   for (let i = 0; i < nf; i++) { const [x, y] = open(i, 900); if (x == null) continue; const s = .7 + srand(i + 41) * .6; flowers.push({ p: [x, -.01 * s, y], ry: srand(i + 43) * 3, s }); }
   instances(world, crossGeo(.5, .42), M.flower, flowers, { cast: false, receive: false });
   // everything collected across the zones is drawn once for the whole farm
-  buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M);
+  buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M);
   sprites(world, ctx.sprites); faces(world, ctx.faces);
   bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground])); // the terrain keeps its vertex colours
   const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd); // every animal, one draw call, moving in the vertex shader
@@ -1589,7 +1606,7 @@ export default function Grove3D(props) {
     const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
     st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
     const ctx = { data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, todayKey: P.todayKey || todayLocalKey(), hits: st.hits, plotHits: st.plotHits, M: st.M,
-      faces: new Map(), sprites: new Map(), tufts: [], pots: [], herd: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] } }, growth: { strips: [], glows: [], poles: [], tags: [[], [], [], [], [], []], sprouts: [] } };
+      faces: new Map(), sprites: new Map(), tufts: [], pots: [], herd: [], fruit: new Map(), fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] } }, growth: { strips: [], glows: [], poles: [], tags: [[], [], [], [], [], []], sprouts: [] } };
     st.world = buildWorld(ctx); st.cloud = ctx.cloud; st.herd = ctx.herd;
     const faders = new Set(); st.world.traverse((m) => { const mat = m.material; if (mat && !Array.isArray(mat) && mat.userData.fade) faders.add(mat); }); st.faders = [...faders];
     st.scene.add(st.world);
