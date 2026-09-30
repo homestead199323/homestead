@@ -296,3 +296,31 @@
   only the WebM path ran). Stage 9 stays open: the Pro list claims and the contact address (see the
   audit doc), plus the season-blind "food in ~N months" line, which still shows in the matched-plants
   shot and the tour video's set-up segment.
+
+- [x] **Top-10 #1, #2, #4 from the competitor analysis (2026-09-30, owner request; commits b1d0e6f,
+  0b7d423, b087a37).** #1 Weather alerts that know the plan: 7-day Open-Meteo forecast (daily + hourly
+  humidity, 3 h cache, offline fallback); frost / heat / gale / heavy-rain / blight (Hutton criteria)
+  jobs only for what is actually growing or kept; frost holds sowing and planting out of tender crops
+  and turns "harvest in N days" into "Pick X before the frost"; rain today replaces outdoor watering with
+  one note; Home "Next 7 days" strip (`lib/weather-alerts.js`, `data/frost.js`). #2 Reminders: web-push
+  morning digest built from the real task engine for the next 7 mornings (`lib/digest.js`,
+  `buildTaskPlan(data,{now})`), Settings → Reminders (hour, test, off) + one-time Home card (iPhone:
+  Add to Home Screen first); Edge Function `push` (verify_jwt off, own auth: public-key / user-JWT test /
+  cron secret), VAPID keys generated server-side into Vault, tables `push_subscriptions` +
+  `push_digests` (RLS, cascade on account delete), pg_cron hourly `push-digest-hourly`
+  (`supabase/migrations/2026093012*`). Email digest deferred (needs an email provider account).
+  #4 Garden memory + Pro Insights: `data.memory` (harvests per planting/bed, bed history, eggs/milk/meat
+  per species per month; optional field, no migration); Progress → Insights (Pro via
+  `hasFeature('analytics')`, locked card otherwise; recording on every plan): crop and bed yields vs
+  the per-planting estimate, kg/m², lay rate, cost per dozen / litre / kg from expenses tagged with the
+  new Money "For" field, what grew where by year, CSV export (formula-safe); rotation warning in the
+  planting form (RHS families, 3 years, `data/families.js`). Verified: ESLint, 73+3 tests (12 new),
+  build (sandbox + Mac); Playwright at 390/1440 (weather strip + frost/gale/rain jobs with a mocked
+  forecast; reminders enable/test/hour/off against a mocked Supabase; Insights, CSV download, Money
+  "For"); push function live: public-key stable, unauthorised send/test → 401, cron → function 200,
+  pipeline run with dummy endpoints on the owner's account (201 sent once and not re-sent, 410
+  removed; rows deleted afterwards); web-push payload decrypted by an independent RFC 8291
+  implementation. Live: both domains serve index-Bv4YQo2A.js with "Next 7 days",
+  "save_push_subscription", "Insights are part of Pro", "For (optional)"; `/sw.js` has the push
+  handlers. Not verified: a notification on a real phone; signed-in production screens. Stage 9 note:
+  "Advanced analytics" on the Pro list is now real (Insights); "Multi-zone management" still isn't.
