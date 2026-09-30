@@ -207,7 +207,7 @@ function materials() {
     strip: std({ map: proc("hedge", DRAW.hedge, { repeat: [2, .5] }), color: 0xa9c986, roughness: 1 }),
     terracottaOpen: std({ color: 0xc07a55, roughness: .85, side: THREE.DoubleSide }),
     barrel: std({ color: 0x3f5a3f, roughness: .7 }),
-    cloud: layer(new THREE.MeshBasicMaterial({ map: proc("cloud", DRAW.cloud, { size: 512 }), transparent: true, blending: THREE.MultiplyBlending, premultipliedAlpha: true, depthWrite: false }), 3),
+    cloud: layer(new THREE.MeshBasicMaterial({ map: proc("cloud", DRAW.cloud, { size: 512 }), transparent: true, blending: THREE.MultiplyBlending, premultipliedAlpha: true, depthWrite: false, toneMapped: false }), 3), // multiply overlays must not be tone-mapped: white has to stay exactly 1 or the whole ground darkens
     water: new THREE.MeshPhysicalMaterial({ map: tex(art("texture-water"), { repeat: [2, 2] }), color: 0x8fbfc4, roughness: .08, metalness: .05, envMapIntensity: 1.3, transparent: true, opacity: .93 }),
     door: std({ color: 0x3e4a3c, roughness: .6 }),
     doorWood: std({ map: tex(art("texture-wood")), color: 0x8a6a48 }),
@@ -1043,7 +1043,7 @@ function terrainHeightFn(fW, fH, margin) {
     return m * amp * Math.pow(clamp01(n * .5 + .5), 1.35);
   };
 }
-function terrainGeo(fW, fH, E, height, N = 100) {
+function terrainGeo(fW, fH, E, height, N = 84) {
   const GW = fW + E * 2, GH = fH + E * 2, cx = fW / 2, cz = fH / 2, warp = (t) => .08 * t + .92 * t * t * t;
   const pos = [], uv = [], colr = [], idx = [];
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
@@ -1068,13 +1068,15 @@ function buildWorld(ctx) {
   groundMat.polygonOffset = false; groundMat.vertexColors = true; // the ground is the base layer; everything on it is offset toward the camera
   const ground = new THREE.Mesh(terrainGeo(fW, fH, E, heightAt), groundMat); // uv already in texture repeats
   ground.receiveShadow = true; world.add(ground); ctx.ground = ground;
-  const mottle = plane(world, GW, GH, layer(new THREE.MeshBasicMaterial({ map: proc("mottle", DRAW.mottle, { size: 512, repeat: [GW / 42, GH / 42] }), transparent: true, blending: THREE.MultiplyBlending, premultipliedAlpha: true, depthWrite: false }), 2), fW / 2, .004, fH / 2);
-  mottle.receiveShadow = false;
+  // tonal overlays share the terrain mesh (uv = metres / 2.6) so they cover hills and apron alike — a flat
+  // overlay that stopped where the land rose used to leave a darker halo around the farm
+  const mottle = new THREE.Mesh(ground.geometry, layer(new THREE.MeshBasicMaterial({ map: proc("mottle", DRAW.mottle, { size: 512, repeat: [2.6 / 42, 2.6 / 42] }), transparent: true, blending: THREE.MultiplyBlending, premultipliedAlpha: true, depthWrite: false, toneMapped: false }), 2));
+  mottle.position.y = .004; mottle.receiveShadow = false; world.add(mottle);
   const vig = plane(world, GW, GH, layer(new THREE.MeshBasicMaterial({ map: proc("vignette", (g2, sz) => { const gr = g2.createRadialGradient(sz / 2, sz / 2, sz * .18, sz / 2, sz / 2, sz * .5); gr.addColorStop(0, "rgba(20,40,16,0)"); gr.addColorStop(1, "rgba(20,40,16,.55)"); g2.fillStyle = gr; g2.fillRect(0, 0, sz, sz); }, { size: 512, clamp: true }), transparent: true, depthWrite: false }), 4), fW / 2, .006, fH / 2);
   vig.receiveShadow = false;
   // drifting cloud shadows over the ground (the texture offset moves on the shared clock)
-  M.cloud.map = proc("cloud", DRAW.cloud, { size: 512, repeat: [GW / 64, GH / 64] });
-  const cloud = plane(world, GW, GH, M.cloud, fW / 2, .005, fH / 2); cloud.receiveShadow = false; ctx.cloud = M.cloud.map;
+  M.cloud.map = proc("cloud", DRAW.cloud, { size: 512, repeat: [2.6 / 64, 2.6 / 64] });
+  const cloud = new THREE.Mesh(ground.geometry, M.cloud); cloud.position.y = .005; cloud.receiveShadow = false; world.add(cloud); ctx.cloud = M.cloud.map;
   // farm boundary: post-and-rail fence, stone gate pillars, a gate
   const gap = 2.4;
   fence(ctx, [[[0, 0], [fW, 0]], [[0, 0], [0, fH]], [[fW, 0], [fW, fH]], [[0, fH], [fW / 2 - gap / 2 - .25, fH]], [[fW / 2 + gap / 2 + .25, fH], [fW, fH]]], { post: 1.0 });
@@ -1467,7 +1469,7 @@ export default function Grove3D(props) {
       UPV.value.set(0, 1, 0).transformDirection(camera.matrixWorldInverse);
       const elev = controls.phi / DEG; LEAN.value = clamp((elev - 40) * .5, 0, 28) * DEG;
       st.faders.forEach((m) => { const [v0, v1, h0, h1] = m.userData.fade, u = m.userData.u; u.uFadeV.value = smoothstep(v0, v1, elev); u.uFadeH.value = smoothstep(h0, h1, elev); });
-      if (st.M) { const t = TIME.value; st.M.water.map.offset.set(t * .006, t * .004); st.M.glow.opacity = .62 + .2 * Math.sin(t * 2.2); if (st.cloud) st.cloud.offset.set(t * .0045, t * .0025); }
+      if (st.M) { const t = TIME.value; st.M.water.map.offset.set(t * .006, t * .004); st.M.glow.opacity = .62 + .2 * Math.sin(t * 2.2); if (st.cloud) st.cloud.offset.set(t * .008, t * .0045); }
       renderer.render(scene, camera); st.calls = renderer.info.render.calls;
       // zone names sit on the thing they name — the centre of its footprint at the height of its roof or
       // bed edge — so a row of narrow beds reads unambiguously; they shrink as the camera pulls back and
