@@ -350,3 +350,20 @@
   errors). Live: /app serves index-GnKsVh3a.js + Grove3D-D9vbAnZ_.js with "Chicken Coop", the
   migration regex and the g3y shader attribute. Not verified: signed-in production screens, flat
   designer map with a coop zone.
+
+- [x] **Fixes after owner check (2026-09-30; commits 1bed2da, 1890453).** Weather: towns saved as
+  "City, Country" (Farm city search) returned nothing from Open-Meteo's place search, so weather and
+  warnings were silently missing (owner's farm had no town at all). Now the name is searched and the
+  result in the named country picked (never another country); counties/provinces map to a town; all
+  221 `data/cities.js` entries resolve (checked against the live API). Home shows a "Frost and storm
+  warnings" town field when no town is set, and loading / not-found / offline states. Insights
+  soundness (independent review, 11 findings): default amounts flagged `est` and kept out of
+  "% of the estimate" and lay rate; crop-card Harvest asks the amount; `migrateMemory` backfills older
+  pantry logs once (both load paths + backup) with move pairing — dry run on the owner's cloud data:
+  48 September eggs (not 14 or 62), Cherry 62 kg + Cabbage 112.5 kg as pantry-log harvests; Done-today
+  Undo reverses pantry + memory + planting; Animals-page collect ticks the day's job; lay rate over
+  days covered, current year, birds kept now; unit costs running costs only (`capital` on animal
+  purchases). Verified: ESLint, 79+3 tests, build (sandbox + Mac); Playwright: town picker → real
+  Bristol forecast with a real blight alert, "Couldn't find" state. Live: both domains serve
+  index-D7xnE6TC.js with "Frost and storm warnings", "How much did you pick?", "Running costs only".
+  Not fixed (architecture): whole-document last-write-wins can drop one device's offline ticks.
