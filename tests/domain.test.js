@@ -754,3 +754,20 @@ test('Own jobs: repeat rules, one-offs stay due until ticked, month ends clamp',
   assert(!buildTaskQueue({...doneB,completions:{}}).some(t=>t.key==='own-b'),'one-off stays done after the completions window');
   assert.equal(markOwnDone(data,'a',T),data,'repeating jobs are not closed for good');
 });
+import {weekLoad,budgetCheck,hm,BUDGET_MIN} from '../src/lib/time-budget.js';
+test('Time budget: a week of real jobs vs the onboarding answer, trims only where they are real',()=>{
+  const bare={...fixture,livestock:{animals:[]},garden:{plots:[]},customTasks:[{id:'w',title:'Weed',repeat:'daily',start:wxToday,minutes:10}]};
+  const l=weekLoad(bare,null,wxToday);assert.equal(l.total,70);assert.equal(l.days.length,7);assert.equal(l.groups[0].label,'Weed');
+  // Lettuce is ready to pick: counted once, not every day it waits.
+  const lettuceOnly={...fixture,livestock:{animals:[]},garden:{plots:[fixture.garden.plots[2]]}};
+  assert.equal(weekLoad(lettuceOnly,null,wxToday).groups.find(g=>g.kind==='crops').minutes,10);
+  assert.equal(budgetCheck({...bare,profile:{...fixture.profile,timeBudget:'unlimited'}},null,wxToday).status,'none');
+  const over=budgetCheck({...bare,profile:{...fixture.profile,timeBudget:'min5'}},null,wxToday);
+  assert.equal(over.budget,BUDGET_MIN.min5);assert.equal(over.status,'over');assert.equal(over.over,35);
+  assert.deepEqual(over.trims[0],{id:'w',title:'Weed',change:{repeat:'every',every:2},saves:35});
+  assert.equal(budgetCheck({...bare,profile:{...fixture.profile,timeBudget:'min15'}},null,wxToday).status,'ok');
+  const hens=budgetCheck({...fixture,profile:{...fixture.profile,timeBudget:'min5'}},null,wxToday);
+  assert(hens.tips.some(t=>/drinker/.test(t)));assert.equal(hens.trims.length,0);
+  assert.equal(weekLoad({...bare,customTasks:[{id:'e',title:'Water pots',repeat:'every',every:2,start:wxToday,minutes:10}]},null,wxToday).total,40,'every 2 days = 4 visits in 7 days');
+  assert.equal(hm(45),'45 min');assert.equal(hm(80),'1 h 20 min');assert.equal(hm(120),'2 h');
+});

@@ -19,6 +19,7 @@ import { animalZone as zoneOfAnimal } from "../quiet/farm-model";
 import { useFlip } from "../../lib/use-flip";
 import { isDueOn, unmarkOwnDone } from "../../lib/own-tasks";
 import { OwnTaskForm, OwnTaskList } from "./OwnTasks";
+import TimeBudgetCard from "./TimeBudget";
 
 /* ═══════════════════════════════════════════
    TASK ROW — extracted outside TaskQueue to prevent remount on every render
@@ -107,7 +108,7 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
 /* ═══════════════════════════════════════════
    TASK QUEUE — Calendar + Urgency + Timeline
    ═══════════════════════════════════════════ */
-function TaskQueue({data, setData, setPage, tasks}) {
+function TaskQueue({data, setData, setPage, tasks, forecast}) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD" or null
@@ -557,6 +558,8 @@ function TaskQueue({data, setData, setPage, tasks}) {
         <p style={{color:C.t2,fontSize:13,margin:0,fontWeight:500}}>Today's work first, then the week, then the month</p>
         <button type="button" onClick={()=>setOwnForm({})} style={{border:`1px solid ${C.bdr}`,background:C.card,color:C.green,borderRadius:10,padding:"8px 12px",fontSize:13,fontWeight:700,cursor:"pointer",minHeight:40}}>+ Add your own job</button>
       </div>
+
+      <TimeBudgetCard data={data} setData={setData} forecast={forecast}/>
 
       {/* ── Section 1: TODAY — attention banner + location-grouped routine + done-today ── */}
       {/* ── Section 1: NEEDS ATTENTION — harvests, steps, periodic animal care ── */}

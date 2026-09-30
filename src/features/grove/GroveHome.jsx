@@ -1,4 +1,4 @@
-import {useState,useEffect} from 'react';
+import {useState,useEffect,useMemo} from 'react';
 import {createPortal} from 'react-dom';
 import {ArrowRight,Leaf,Sun,Pencil,ChevronRight} from 'lucide-react';
 import {fetchWeather,describeWeatherCode} from '../../lib/weather';
@@ -12,6 +12,7 @@ import AnimalArt from '../quiet/AnimalArt';
 import FarmIcon from '../../components/FarmIcon';
 import {tasksByZone,taskGlyph} from './zone-tasks';
 import {RemindersPrompt} from '../settings/Reminders';
+import {budgetCheck,hm} from '../../lib/time-budget';
 
 // What the row says under a job: where, how long, and — only when it matters — why now.
 function rowNote(t) {
@@ -73,6 +74,7 @@ export default function GroveHome({data,setData,setPage,tasks,forecast,alerts}) 
   const zoneOf=t=>Object.keys(markers).find(id=>markers[id].some(x=>x.key===t.key));
   const issues=(data.observations||[]).filter(e=>e.status==='issue').filter(e=>!(data.observations||[]).some(n=>n.zoneId===e.zoneId&&n.at>e.at)).length;
   const title=spaceTitle(data);
+  const week=useMemo(()=>budgetCheck(data,forecast,todayLocalKey()),[data,forecast]);
   const empty=!(data.zones||[]).length;
   return <div className="q-home page-enter">
     <section className="q-garden-hero">
@@ -83,7 +85,7 @@ export default function GroveHome({data,setData,setPage,tasks,forecast,alerts}) 
       <GroveScene data={data} setData={setData} tasksByZone={markers} onOpenTasks={()=>setPage('tasks')} taskZoneId={taskZone} onTaskZone={setTaskZone} showEditButton={false} showHelperText={false} noBorder onPlantInZone={zone=>setPage('crops',{zone})} onShowCrops={()=>setPage('crops')}
         onEditLayout={()=>setPage('map',{edit:true})} onStartGuide={()=>setData({...data,setupDone:false})}/>
       {!empty&&<section className="q-today-dock">
-        <button className="q-today-link" onClick={()=>setPage('tasks')}><span><strong>Today</strong><small>{due.length===0?'Nothing due':due.length===1?'1 job':`${due.length} jobs`}{issues?` · ${issues} areas to revisit`:due.length?' · a little care goes a long way':''}</small></span><ChevronRight size={18}/></button>
+        <button className="q-today-link" onClick={()=>setPage('tasks')}><span><strong>Today</strong><small>{due.length===0?'Nothing due':due.length===1?'1 job':`${due.length} jobs`}{issues?` · ${issues} areas to revisit`:due.length?' · a little care goes a long way':''}</small>{week.status==='over'&&<small className="mt-over">This week is ~{hm(week.over)} over your time. Tap to see how to trim.</small>}</span><ChevronRight size={18}/></button>
         {due.length>0&&<button className="q-button" onClick={()=>setWalk(true)}><Leaf size={17}/>{data.walkSession?.status==='active'?'Resume morning walk':'Start morning walk'}<ArrowRight size={16}/></button>}
       </section>}
     </section>
