@@ -1034,11 +1034,11 @@ function buildGrowth(g, ctx, M) { // stage markers, foliage lines, harvest halos
    The farm sits on a flat apron; beyond it the land rolls away in low hills (only rising, so the flat
    overlay planes stay hidden under them). The grid is denser near the farm, coarse far away. */
 function terrainHeightFn(fW, fH, margin) {
-  const flat = Math.max(margin * 1.7, 4) + 2.5, ramp = 16;
+  const flat = Math.max(margin * 1.7, 4) + 30, ramp = 70; // wide flat apron, then a slow rise: no shaded ring around the fence
   return (x, z) => {
     const d = Math.max(0, -x - flat, x - fW - flat, -z - flat, z - fH - flat);
     if (d <= 0) return 0;
-    const m = smoothstep(0, ramp, d), amp = 2.0 + Math.min(6, d * .06);
+    const m = smoothstep(0, ramp, d), amp = 2.5 + Math.min(7, d * .05);
     const n = .5 * Math.sin(x * .041 + 1.7) * Math.cos(z * .036 + .4) + .3 * Math.sin(x * .097 - z * .071 + 2.1) + .2 * Math.sin((x + z) * .16 + .9) + .12 * Math.sin(x * .31) * Math.sin(z * .27 + 1.1);
     return m * amp * Math.pow(clamp01(n * .5 + .5), 1.35);
   };
