@@ -324,3 +324,19 @@
   "save_push_subscription", "Insights are part of Pro", "For (optional)"; `/sw.js` has the push
   handlers. Not verified: a notification on a real phone; signed-in production screens. Stage 9 note:
   "Advanced analytics" on the Pro list is now real (Insights); "Multi-zone management" still isn't.
+
+- [x] **Top-10 #6 and #7 (2026-09-30, owner request "continue with implementation"; commits 016cb0e,
+  0705408).** #6 Your own jobs: `data.customTasks` (`lib/own-tasks.js`) — once / daily / weekly /
+  every 2 weeks / monthly / every N days, optional map area, minutes, note, pause; due jobs join the
+  queue as type `own` (map markers and walk when they have an area; push digest includes them);
+  one-offs stay due with "N days late" until ticked, then `doneOn` keeps them closed; Tasks screen:
+  "+ Add your own job" (ideas from the map), "Your own jobs" list, calendar/this-week, Done + Undo.
+  #7 Time budget (`lib/time-budget.js`): the task engine run for the next 7 days × per-job minutes
+  (harvests/late steps once, daily care and repeating own jobs each time) vs the onboarding answer
+  (5 min/day = 35 min/wk, 15 = 105, weekends ≈ 3 h, 30–60 min/day ≈ 5¼ h); Tasks card (by day, where
+  the time goes, one-tap "less often" trims for own jobs, tips, "Time you have" picker), Home line
+  when over. Generated animal care and harvests are never dropped to fit. Verified: ESLint, 75+3
+  tests (2 new), build (sandbox + Mac); Playwright at 390 px (add from an idea, trim applied and
+  saved, over-budget line on Home, no console errors). Live: both domains serve index-BnJKVkTp.js
+  with "Add your own job", "Where the time goes", "over your time". Not verified: signed-in
+  production screens.
