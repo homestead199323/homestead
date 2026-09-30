@@ -132,7 +132,7 @@
     proc:puff, g3size, uFadeV, forceSinglePass, IntersectionObserver present; CSS g3-far,
     q-stage-key-crop, pill/badge min-height:0). Not verified: real-device frame rate and
     battery; animation timing only reasoned about (headless RAF is starved).
-  - [x] **4z-5 (2026-09-30, commit PENDING_SHA): animals in real 3D, rolling terrain.**
+  - [x] **4z-5 (2026-09-30, commit 3c54f92): animals in real 3D, rolling terrain.**
     `src/features/grove/animals3d.js` (MARKER `GROVE_ANIMALS_3D`) replaces the camera-facing
     animal sprites with procedural geometry for all 14 species (cow, horse, donkey, alpaca, pig,
     goat, sheep, rabbit, chicken, duck, goose, turkey, quail, guinea fowl): body, neck, head,
@@ -150,7 +150,9 @@
     Verified in sandbox: ESLint, 61+3 tests, Vite build, Playwright harnesses (`tests/g3-all`,
     new `tests/g3-zoo` with every species) at 1280 and 390 px, zero console errors, walking
     loop + turning + leg swing seen across frames, draw calls unchanged at the home view (178).
-    NOT verified: real-device frame rate. Revert: `git revert <sha>` (flat SVG map untouched).
+    Live: index-Bv4YQo2A.js → Grove3D-CnrdgTkt.js (684,773 B; `g3animalDepth`, `g3pose`,
+    `atan(tng.x, tng.y)` present; CSP header intact). NOT verified: real-device frame rate.
+    Revert: `git revert 3c54f92` (flat SVG map untouched).
 - [x] **Stage 5 — navigation regroup (built 2026-09-28, live 2026-09-30; commit b128c72, label
   follow-up 475fc64).** `src/app/navigation.js` now
   defines SECTIONS: Today (home "Overview" + tasks "All tasks"), My Space (map, crops, live),
