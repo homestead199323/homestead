@@ -927,8 +927,9 @@ function plantingsOf(z, plots, crops, today) {
       const n = Math.min(90, row.points.length), size = Math.min(row.gapM * .95, row.pitchM * 1.15 * (row.points.length / Math.max(1, n)), .85);
       for (let j = 0; j < n; j++) { const q = row.points[Math.floor(((j + .5) * row.points.length) / n)]; push(q.xM, q.yM, size, plot.crop, pi.stage); }
       if (row.points.length) {
-        const al = row.points.map((q) => (vertical ? q.yM : q.xM)), cr = row.points.map((q) => (vertical ? q.xM : q.yM));
-        rows.push({ ...pi, vertical, c: cr.reduce((a, b) => a + b, 0) / cr.length, a0: Math.min(...al) - row.pitchM * .4, a1: Math.max(...al) + row.pitchM * .4, gap: row.gapM, size });
+        // a modern layout carries its own row direction (axisOf) — the zone's rowAxis is only for v1 beds
+        const rv = !!row.vertical, al = row.points.map((q) => (rv ? q.yM : q.xM)), cr = row.points.map((q) => (rv ? q.xM : q.yM));
+        rows.push({ ...pi, vertical: rv, c: cr.reduce((a, b) => a + b, 0) / cr.length, a0: Math.min(...al) - row.pitchM * .4, a1: Math.max(...al) + row.pitchM * .4, gap: row.gapM, size });
       }
     });
   });
