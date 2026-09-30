@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#06231a">
+<title>Page not found — MyTerra</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+:root{--forest:#06231a;--g:#128147;--g-dark:#0c5e33;--amber-hi:#f7c552;--amber-lo:#eea92b;--amber-edge:#c9851a;--amber-ink:#3f2805}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff;background:var(--forest) radial-gradient(ellipse at 50% 30%,#0f4a31 0%,var(--forest) 70%) no-repeat;display:flex;align-items:center;justify-content:center;padding:32px 16px;text-align:center;-webkit-font-smoothing:antialiased}
+main{max-width:30rem}
+.logo{display:inline-flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-weight:800;font-size:20px;letter-spacing:-.03em;margin-bottom:44px}
+.logo-mark{width:34px;height:34px;border-radius:10px;background:var(--g);display:grid;place-items:center;box-shadow:0 2px 0 var(--g-dark)}
+.logo-mark svg{width:19px;height:19px}
+.code{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+h1{margin:10px 0 12px;font-size:clamp(34px,8vw,52px);font-weight:900;letter-spacing:-.045em;line-height:1.05}
+p{font-size:17px;line-height:1.55;color:rgba(255,255,255,.8)}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:32px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 24px;border-radius:15px;font-weight:750;font-size:16px;text-decoration:none;white-space:nowrap}
+.btn-amber{background:linear-gradient(180deg,var(--amber-hi),var(--amber-lo));color:var(--amber-ink);box-shadow:0 5px 0 var(--amber-edge),0 10px 22px rgba(201,133,26,.32)}
+.btn-amber:active{transform:translateY(4px);box-shadow:0 1px 0 var(--amber-edge)}
+.btn-glass{color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4)}
+.btn-glass:hover{background:rgba(255,255,255,.08)}
+.btn:focus-visible,.logo:focus-visible{outline:3px solid var(--amber-hi);outline-offset:3px}
+@media (max-width:420px){.btn{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<main>
+  <a href="/" class="logo" aria-label="MyTerra home">
+    <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span>
+    MyTerra
+  </a>
+  <div class="code">Error 404</div>
+  <h1>Nothing is growing here.</h1>
+  <p>This page doesn't exist or has moved. Check the address, or pick up where you left off.</p>
+  <div class="ctas">
+    <a href="/app" class="btn btn-amber">Open the app</a>
+    <a href="/" class="btn btn-glass">Go to the home page</a>
+  </div>
+</main>
+</body>
+</html>
