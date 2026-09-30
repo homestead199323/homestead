@@ -238,3 +238,20 @@
   by a mock, analytics blocked, no real account touched): five tabs Today / My Space / Plan / Learn /
   Progress, Plan and Progress render, Settings shows Change password and Delete account. Not
   verified: a real deletion on production; whether `PADDLE_API_KEY` is set.
+
+- [x] **Website audit of landing v2 (2026-09-30, owner request; commits 1e05fd7, 4e768fc, 06701df,
+  c6acfea).** Checked at 390/360/820/1440 px (links, assets, SEO/OG/structured data, robots/sitemap,
+  keyboard, tour video, counts vs `src/data/`). Fixed: six app screenshots re-captured from the current
+  app as `p2-*.webp` (five-tab menu, labelled map buttons; know-how card shows Plan "For you"); hero
+  chips off the coop pop-up; final CTA small print centred; Basic "All 9 modules" → "Your 3D map, crops,
+  animals and pantry"; tour poster picked in landing.js (phones: one poster, −127 KB); privacy policy
+  no longer says "once paid plans launch"; branded `404.html`. App: coop pop-up rows fit 320–400 px,
+  growth-preview pill on one line. Verified: ESLint, 61+3 tests, build (sandbox + Mac); deployment
+  READY for c6acfea; www.myterra.farm and myterra-sigma.vercel.app serve landing.js?v=20260930, the
+  six p2 images (200; old ones 404), `/some/missing-page` → 404 with the branded page, updated
+  `/privacy`, app CSS index-C24mi1bD.css with the pop-up fixes; Playwright on the live site at the four
+  widths: one poster request, small print centred, no horizontal overflow, tour plays. Stage 9 stays
+  open: the Pro list still claims "Multi-zone management" and "Advanced analytics", which don't exist
+  (owner decision, see audit doc). Deploy note: `/usr/bin/git` on the Mac now stops at the Xcode
+  licence prompt; this push used `DEVELOPER_DIR=/Library/Developer/CommandLineTools` (no system
+  change). Fix once on the Mac: `sudo xcodebuild -license accept` (also needed for the iOS build).
