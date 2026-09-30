@@ -427,9 +427,11 @@ function fruitTree(g, ctx, x, z, size, stage, name, seed, M, off) {
   tree(g, x, z, r, seed, M, 0, leafIdx);
   const mulch = disc(g, Math.min(1.1, r * .8 + .2), M.mulch, x, .015, z, { seg: 14 }); mulch.castShadow = false;
   if (stage < 4) bar(g, [x + .22, 0, z + .1], [x + .2, Math.min(1.5, r * 1.4 + .6), z + .08], .02, M.woodDark, { seg: 5 }); // stake for young trees
-  if (stage < 4) return;
-  const top = r * .55 + .3 + r * .95 - r * .12, n = Math.round((stage === 5 ? 26 : 12) * Math.min(1, r / 1.2)), ripe = stage === 5;
-  const fc = ripe ? color : 0x86a84e, list = ctx.fruit.get(fc) || []; ctx.fruit.set(fc, list);
+  // like the crop rows, a tree shows its harvest: fruit and a gold halo appear only in the harvest window
+  if (stage < 5) return;
+  ctx.growth.glows.push({ p: [off[0] + x, .012, off[1] + z], rx: -HPI, s: [r * 2.2 + 1.2, r * 2.2 + 1.2, 1] });
+  const top = r * .55 + .3 + r * .95 - r * .12, n = Math.round(26 * Math.min(1, r / 1.2)), ripe = true;
+  const fc = color, list = ctx.fruit.get(fc) || []; ctx.fruit.set(fc, list);
   for (let i = 0; i < n; i++) {
     const a = srand(seed * 7 + i * 3) * 6.283, b = (srand(seed * 11 + i * 5) - .5) * 2.4, rr = r * .8 * (.5 + srand(seed * 13 + i * 7) * .38);
     list.push({ p: [off[0] + x + Math.cos(a) * Math.cos(b) * rr, top + Math.sin(b) * rr * .82, off[1] + z + Math.sin(a) * Math.cos(b) * rr], s: (ripe ? fr : fr * .7) * Math.min(1, .55 + r * .4) });
@@ -994,7 +996,7 @@ function buildZone(z, ctx) {
     const len = Math.max(0, r.a1 - r.a0), mid = (r.a0 + r.a1) / 2, x = r.vertical ? r.c : mid, zz = r.vertical ? mid : r.c, ry = r.vertical ? HPI : 0;
     if (!tree && r.stage >= 3 && len > .6 && !r.scatter) { const sz = Math.min(.3, r.size * .7), h = r.stage >= 4 ? .07 : .05; G.strips.push({ p: [ox + x, lift + h / 2, oz + zz], ry, s: [len, h, sz] }); }
     // harvest window: a soft gold halo wider than the row, readable from far away
-    if (r.stage === 5) G.glows.push({ p: [ox + x, lift + .012, oz + zz], rx: -HPI, ry, s: [len + (tree ? 3 : 1.0), tree ? 3.2 : clamp(r.gap * 1.3, .6, 1.6), 1] });
+    if (r.stage === 5 && !tree) G.glows.push({ p: [ox + x, lift + .012, oz + zz], rx: -HPI, ry, s: [len + 1.0, clamp(r.gap * 1.3, .6, 1.6), 1] }); // trees get their own halo each
     // marker at the head of the row: west end of a horizontal row, south end of a vertical one
     const hx = r.vertical ? r.c : r.a0 - .16, hz = r.vertical ? r.a1 + .16 : r.c, big = r.stage === 5 ? 1.35 : 1;
     G.poles.push({ p: [ox + hx, lift + .26, oz + hz] });
