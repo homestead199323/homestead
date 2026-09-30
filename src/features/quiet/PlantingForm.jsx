@@ -8,6 +8,7 @@ import { zoneGeometry } from "./farm-model";
 import { cropFitsZone, planPlanting, plantingInput } from "./planting-plan";
 import PlantingControls from "./PlantingControls";
 import CompanionPanel from "./CompanionPanel";
+import { rotationCheck } from "../../lib/insights";
 import FarmIcon from "../../components/FarmIcon";
 import { propagationOf } from "../../data/propagation";
 import {
@@ -283,6 +284,7 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
             plots={data.garden.plots}
             available={crops.filter((c) => cropFitsZone(c, zone))}
             onChoose={setCompanion}
+            rotation={zone ? rotationCheck(data, zone.id, form.crop, form.plantDate || todayLocalKey()) : null}
           />
           {companion && (
             <p className="q-success">

@@ -11,6 +11,7 @@ import Journal from "../quiet/Journal";
 import {relation, growthOf} from "../quiet/farm-model";
 import { toggleStep, isAwaitingSowing, startGrowing, sowVerb, nextStepAfter } from "../../lib/sowing";
 import { toast } from "../../lib/toast";
+import { recordRemoval } from "../../lib/memory";
 
 // "27 Sep" (or "27 Sep 2027" when it is not this year) instead of 2026-09-27.
 function niceDate(key) {
@@ -67,7 +68,8 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   const del = id => {
     if (!confirmDel) { setConfirmDel(true); return; }
     const before = data;
-    setData({...data, garden: {...data.garden, plots: data.garden.plots.filter(p => p.id !== id)}});
+    const remembered = recordRemoval(data, data.garden.plots.find(p => p.id === id), todayLocalKey());
+    setData({...remembered, garden: {...data.garden, plots: data.garden.plots.filter(p => p.id !== id)}});
     toast(`${plot.name || plot.crop} removed`, { actionLabel: "Undo", onAction: () => setData(before) });
     onClose();
   };

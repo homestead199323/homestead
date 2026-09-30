@@ -3,6 +3,7 @@ import {addStock} from "../../lib/inventory";
 import {rCM} from "../../lib/regional";
 import {isRecurringCrop, afterRecurringHarvest} from "../../lib/perennial";
 import {toggleStep, isAwaitingSowing, firstStepIdx, sowVerb} from "../../lib/sowing";
+import {recordHarvest, recordProduce} from "../../lib/memory";
 export function applyTaskCompletion(data, task, logValue) {
   if (!task) return data;
   if ((data.completions?.[todayLocalKey()] || []).includes(task.key)) return data;
@@ -17,10 +18,12 @@ export function applyTaskCompletion(data, task, logValue) {
       const kg = Number(logValue) > 0 ? Number(logValue) : (plot.expectedYieldKg || (crop && crop.yld) || 3);
       // Trees, soft fruit and perennial herbs stay planted and are due again next season.
       const recurring = isRecurringCrop(crop);
-      const stocked = addStock(data, { name: plot.crop, category: "Fresh Produce", qty: kg, unit: "kg", source: "farm", storageNote: (crop && crop.storage) || "" }, todayLocalKey());
+      const expected = plot.expectedYieldKg || null; // only a real per-planting estimate is compared
+      const remembered = recordHarvest(data, plot, kg, todayLocalKey(), expected, !recurring);
+      const stocked = addStock(remembered, { name: plot.crop, category: "Fresh Produce", qty: kg, unit: "kg", source: "farm", storageNote: (crop && crop.storage) || "" }, todayLocalKey());
       const next = {
         ...stocked,
-        garden: { ...data.garden, plots: plots.map(function(x) { return x.id === plot.id ? (recurring ? afterRecurringHarvest(x, crop, todayLocalKey()) : { ...x, status: "harvested" }) : x; }) },
+        garden: { ...stocked.garden, plots: plots.map(function(x) { return x.id === plot.id ? (recurring ? afterRecurringHarvest(x, crop, todayLocalKey()) : { ...x, status: "harvested" }) : x; }) },
         log: appendLog(data.log, { text: "🧺 Harvested " + kg + "kg " + plot.crop }),
       };
       return markTaskDone(next, task.key);
@@ -31,7 +34,7 @@ export function applyTaskCompletion(data, task, logValue) {
   if (task.type === "eggs") {
     const count = Number(logValue) > 0 ? Math.round(Number(logValue)) : 1;
     const next = {
-      ...addStock(data, { name: (task.speciesType ? task.speciesType + " " : "") + "Eggs", category: "Eggs", qty: count, unit: "pcs", source: "livestock", storageNote: "Refrigerate within 2 hours of collection." }, todayLocalKey()),
+      ...addStock(recordProduce(data, task.speciesType, "eggs", count, todayLocalKey()), { name: (task.speciesType ? task.speciesType + " " : "") + "Eggs", category: "Eggs", qty: count, unit: "pcs", source: "livestock", storageNote: "Refrigerate within 2 hours of collection." }, todayLocalKey()),
       log: appendLog(data.log, { text: "🥚 Collected " + count + " eggs" }),
     };
     return markTaskDone(next, task.key);
@@ -41,7 +44,7 @@ export function applyTaskCompletion(data, task, logValue) {
   if (task.type === "milk") {
     const litres = Number(logValue) > 0 ? Math.round(Number(logValue) * 10) / 10 : (task.expected || 1);
     const next = {
-      ...addStock(data, { name: (task.speciesType ? task.speciesType + " " : "") + "Milk", category: "Dairy", qty: litres, unit: "L", source: "livestock", storageNote: "Strain and chill below 4°C within 2 hours. Use within 3–5 days, or make cheese." }, todayLocalKey()),
+      ...addStock(recordProduce(data, task.speciesType, "milkL", litres, todayLocalKey()), { name: (task.speciesType ? task.speciesType + " " : "") + "Milk", category: "Dairy", qty: litres, unit: "L", source: "livestock", storageNote: "Strain and chill below 4°C within 2 hours. Use within 3–5 days, or make cheese." }, todayLocalKey()),
       log: appendLog(data.log, { text: "🥛 Milked " + litres + "L" + (task.speciesType ? " from the " + task.speciesType.toLowerCase() + "s" : "") }),
     };
     return markTaskDone(next, task.key);

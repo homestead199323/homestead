@@ -41,6 +41,7 @@ import Onboarding from "./features/onboarding/Onboarding";
 import { SECTIONS, ADMIN_NAV, sectionOf, normalizePage } from "./app/navigation";
 import PlanScreen from "./features/plan/PlanScreen";
 import ProgressScreen from "./features/progress/ProgressScreen";
+import InsightsScreen from "./features/progress/InsightsScreen";
 import { DEF, dataReducer } from "./app/state";
 import { isSupabaseConfigured, recoveryInUrl, authLinkError } from "./lib/db";
 import { getSession, onAuthChange, signOut, signOutLocal } from "./lib/auth";
@@ -286,6 +287,7 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
   }, []);
   const locked = ent.state !== "unknown" && !ent.canWrite;
   const aiAllowed = ent.state === "unknown" || hasFeature(ent, "ai");
+  const analyticsAllowed = ent.state === "unknown" || hasFeature(ent, "analytics");
   // Ref mirror so the stable setData callback (empty deps) sees the live
   // lock without being re-created on every entitlement change.
   const lockedRef = useRef(false);
@@ -501,6 +503,7 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
       case "manuals": return <Manuals data={data}/>;
       case "plan": return <PlanScreen data={data} setData={setData} setPage={setPage}/>;
       case "progress": return <ProgressScreen data={data} setPage={setPage}/>;
+      case "insights": return <InsightsScreen data={data} setPage={setPage} locked={!analyticsAllowed} onUpgrade={() => setUpgradeOpen(true)}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       case "admin": return <AdminDashboard/>;
       default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks} forecast={forecast} alerts={plan.alerts}/>;

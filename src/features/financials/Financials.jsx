@@ -21,9 +21,16 @@ export default function Financials({data, setData}) {
   const [showAdd,setShowAdd]=useState(false);
   const [chartMode,setChartMode]=useState("monthly");
   const [chartM,setChartM]=useState(new Date().getMonth());
-  const [form,setForm]=useState({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey()});
+  const [form,setForm]=useState({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey(),for:""});
+  // "For": ties an expense to an animal group or bed, so Insights can show cost per egg / litre / kg.
+  const forOptions=useMemo(()=>{
+    const species=[...new Set((data.livestock?.animals||[]).map(a=>a.type).filter(t=>t!=="Bee"))];
+    const beds=(data.zones||[]).filter(z=>["veg","raised","herbs","orchard","greenhouse","container","nursery"].includes(z.type));
+    return [{value:"",label:"General"},...species.map(s=>({value:`species:${s}`,label:s})),...beds.map(z=>({value:`zone:${z.id}`,label:z.name}))];
+  },[data.livestock,data.zones]);
+  const forLabel=v=>{if(!v)return "";const o=forOptions.find(x=>x.value===v);return o?o.label:"";};
   const items = useMemo(() => data.costs?.items || [], [data.costs?.items]);
-  const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey()});setShowAdd(false);};
+  const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey(),for:""});setShowAdd(false);};
   // Deleting a pantry sale puts the sold stock back in the pantry.
   const del=id=>{const it=items.find(i=>i.id===id);setData(it&&it.source==="pantry"&&it.type==="income"?undoSale(data,id,todayLocalKey()):{...data,costs:{...(data.costs||{}),items:items.filter(i=>i.id!==id)}});};
   const unpaid=unpaidTotal(data);
@@ -167,7 +174,7 @@ export default function Financials({data, setData}) {
       <div style={{display:"grid",gap:6}}>{last5.map(i=>(
         <Card key={i.id}><div style={SX.rowCenterG10}>
           <div style={{width:36,height:36,borderRadius:18,background:"var(--surface-soft)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{i.source==="pantry"?(i.type==="income"?"🧺":"📦"):i.type==="expense"?"📤":"📥"}</div>
-          <div style={SX.flex1}><div style={{fontSize:14,fontWeight:600}}>{i.label}</div><div style={SX.t2_12}>{i.date} · {i.cat}{i.paid===false?" · to be paid":""}</div></div>
+          <div style={SX.flex1}><div style={{fontSize:14,fontWeight:600}}>{i.label}</div><div style={SX.t2_12}>{i.date} · {i.cat}{forLabel(i.for)?` · for ${forLabel(i.for)}`:""}{i.paid===false?" · to be paid":""}</div></div>
           <div style={{fontSize:16,fontWeight:700,color:i.type==="expense"?C.red:C.green,fontFamily:F.mono}}>{i.type==="expense"?"-":"+"}{E}{i.amount.toFixed(2)}</div>
           <Btn sm v="ghost" onClick={()=>del(i.id)}><Trash2 size={14} strokeWidth={1.8}/></Btn>
         </div></Card>
@@ -179,6 +186,7 @@ export default function Financials({data, setData}) {
         <Inp label="Amount" type="number" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
         <Inp label="Description" value={form.label} onChange={e=>setForm({...form,label:e.target.value})}/>
         <div style={SX.grid2}><Sel label="Category" value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} options={["Seeds","Tools","Feed","Animals","Fuel","Infrastructure","Produce Sales","Stock purchases","Other"]}/><Inp label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
+        {form.type==="expense"&&forOptions.length>1&&<Sel label="For (optional)" value={form.for} onChange={e=>setForm({...form,for:e.target.value})} options={forOptions}/>}
         <div style={SX.btnRowEnd}><Btn v="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add}>Add</Btn></div>
       </Overlay>}
     </div>

@@ -656,3 +656,69 @@ test('Push digest: frost leads the morning message; days without jobs send nothi
   // A future morning is planned for that day, not today: the lettuce harvest is due every day until picked.
   assert.equal(buildDigests(fixture,null,wxToday,2)[addD(wxToday,1)].count>0,true);
 });
+import {recordHarvest,recordProduce,recordRemoval} from '../src/lib/memory.js';
+import {cropYields,bedYields,animalYields,unitCosts,bedHistory,rotationCheck,harvestsCsv,moneyCsv,insightYears,harvestRecords,toCsv} from '../src/lib/insights.js';
+test('Garden memory: harvest, eggs and milk are remembered against the bed and animal group',()=>{
+  const lettuceTask={key:'plot-lettuce-harvest',type:'harvest',plotId:'lettuce'};
+  const after=applyTaskCompletion(fixture,lettuceTask,2.4);
+  const h=after.memory.harvests[0];
+  assert.equal(h.zoneId,'bed2');assert.equal(h.crop,'Lettuce');assert.equal(h.kg,2.4);assert.equal(h.exp,3);
+  assert.equal(after.memory.beds[0].to,todayLocalKey());
+  const eggs=applyTaskCompletion(after,{key:'species-Chicken-eggs',type:'eggs',speciesType:'Chicken'},5);
+  const mo=todayLocalKey().slice(0,7);
+  assert.equal(eggs.memory.produce[mo].Chicken.eggs,5);
+  const milk=applyTaskCompletion(eggs,{key:'species-Goat-milk',type:'milk',speciesType:'Goat'},2.5);
+  assert.equal(milk.memory.produce[mo].Goat.milkL,2.5);assert.equal(milk.memory.harvests.length,1);
+  // A fig (perennial) harvest keeps the planting open.
+  const fig={id:'fig',crop:'Fig',zone:'bed1',status:'planted',plantDate:'2024-03-01'};
+  const f=recordHarvest({...fixture,memory:undefined},fig,4,'2026-08-20',null,false);
+  assert.equal(f.memory.beds[0].to,null);assert.equal(f.memory.beds[0].lastHarvest,'2026-08-20');
+  // Removing a planting that never went in the ground leaves no history.
+  assert.equal(recordRemoval(fixture,{id:'x',crop:'Kale',status:'planned',sowFrom:'2026-11',steps:[{d:0,l:'Sow'}]},'2026-09-30'),fixture);
+  assert.equal(recordRemoval(fixture,{id:'y',crop:'Kale',zone:'bed2',status:'planted',plantDate:'2026-06-01'},'2026-09-30').memory.beds[0].removed,true);
+});
+test('Insights: yields vs estimate per crop and bed, per-bird lay rate, cost per egg only from real costs',()=>{
+  let d={...fixture,memory:undefined,costs:{items:[]},pantry:{items:[],moves:[{date:'2025-07-01',name:'Tomato',unit:'kg',qty:4,kind:'in',source:'farm'}]}};
+  d=recordHarvest(d,{id:'t1',crop:'Tomato',zone:'bed1',plantDate:'2026-05-01'},9,'2026-08-10',12);
+  d=recordHarvest(d,{id:'t2',crop:'Tomato',zone:'bed1',plantDate:'2026-05-01'},3,'2026-08-20',null);
+  d=recordHarvest(d,{id:'l1',crop:'Lettuce',zone:'bed2',plantDate:'2026-04-01'},2,'2026-06-01',2);
+  const c=cropYields(d,2026);
+  assert.deepEqual(c.map(x=>[x.crop,x.kg,x.pct]),[['Tomato',12,75],['Lettuce',2,100]]);
+  assert.equal(cropYields(d,2025)[0].kg,4,'older pantry harvest still counts for its year');
+  assert.equal(harvestRecords(d).filter(h=>h.legacy).length,1);
+  const b=bedYields(d,2026);assert.equal(b[0].name,'Kitchen bed');assert.equal(b[0].kgPerM2,1.25); // 12 kg / (4 × 2.4 m²)
+  for(let i=0;i<3;i++)d=recordProduce(d,'Chicken','eggs',60,`2026-0${6+i}-15`);
+  const a=animalYields(d,2026).find(x=>x.species==='Chicken');
+  assert.equal(a.eggs,180);assert.equal(a.eggsPerHeadDay,0.67);assert.equal(a.byMonth[6].eggs,60);
+  assert.equal(unitCosts(d,2026).species.length,0,'no costs → no cost per egg');
+  d={...d,livestock:{animals:[{id:'h',type:'Chicken',count:3}]},costs:{items:[{type:'expense',amount:36,cat:'Feed',date:'2026-07-01'},{type:'expense',amount:12,cat:'Seeds',date:'2026-03-01'},{type:'expense',amount:500,cat:'Infrastructure',date:'2026-03-01'}]}};
+  const u=unitCosts(d,2026);
+  assert.equal(u.species[0].perEgg,0.2);assert.equal(u.species[0].perDozen,2.4);assert.match(u.notes[0],/only animal/);
+  assert.equal(u.garden.perKg,0.86); // 12 / 14 kg; the greenhouse build is not a running cost
+  const tagged={...d,livestock:{animals:[{id:'h',type:'Chicken',count:3},{id:'g',type:'Goat',count:1}]}};
+  assert.equal(unitCosts(tagged,2026).species.length,0,'two kinds of animal: untagged feed is not guessed');
+  const t2={...tagged,costs:{items:[{type:'expense',amount:18,cat:'Feed',date:'2026-07-01',for:'species:Chicken'}]}};
+  assert.equal(unitCosts(t2,2026).species[0].perEgg,0.1);
+  assert.deepEqual(insightYears(d,'2026-09-30'),['2026','2025']);
+});
+test('Rotation: same family in the same bed within 3 years warns; other beds, other families and this season do not',()=>{
+  let d={...fixture,memory:undefined,garden:{plots:[]}};
+  d=recordHarvest(d,{id:'p1',crop:'Potato',zone:'bed1',plantDate:'2025-04-01'},10,'2025-08-01',null);
+  const w=rotationCheck(d,'bed1','Tomato','2026-04-10');
+  assert(w);assert.equal(w.label,'potato family');assert.equal(w.crop,'Potato');assert.equal(w.year,2025);
+  assert.equal(rotationCheck(d,'bed2','Tomato','2026-04-10'),null);
+  assert.equal(rotationCheck(d,'bed1','Carrot','2026-04-10'),null);
+  assert.equal(rotationCheck(d,'bed1','Tomato','2029-04-10'),null,'4 years later is fine');
+  assert.equal(rotationCheck(d,'bed1','Zucchini','2026-04-10'),null,'squash family goes anywhere');
+  const same={...fixture,memory:undefined,garden:{plots:[{id:'e',crop:'Potato',zone:'bed1',status:'planted',plantDate:'2026-03-01'}]}};
+  assert.equal(rotationCheck(same,'bed1','Tomato','2026-06-01'),null);
+  const onion=recordHarvest(d,{id:'o',crop:'Garlic',zone:'bed2',plantDate:'2024-10-20'},1,'2025-07-01',null);
+  assert.match(rotationCheck(onion,'bed2','Leek','2026-04-01').note,/White rot/);
+  const hist=bedHistory(onion);assert.equal(hist.find(b=>b.zoneId==='bed1').years[0].year,'2025');
+});
+test('Exports: CSV escapes text and never lets a cell start a formula',()=>{
+  assert.equal(toCsv([['a,b','=SUM(A1)','say "hi"',-3]]),'"a,b",\'=SUM(A1),"say ""hi""",-3\r\n');
+  const d=recordHarvest({...fixture,memory:undefined},{id:'t1',crop:'Tomato',zone:'bed1',plantDate:'2026-05-01'},9,'2026-08-10',12);
+  assert.match(harvestsCsv(d),/^Date,Crop,Variety,Bed,Harvested kg,Expected kg,Planted\r\n2026-08-10,Tomato,,Kitchen bed,9,12,2026-05-01\r\n$/);
+  assert.match(moneyCsv({...fixture,costs:{items:[{type:'expense',amount:5,cat:'Feed',label:'Layers pellets',date:'2026-01-02',for:'species:Chicken'}]}}),/2026-01-02,expense,Feed,Layers pellets,Chicken,-5/);
+});

@@ -30,6 +30,7 @@ export const SECTIONS = [
   ] },
   { id: "progress", l: "Progress", E: TrendingUp, pages: [
     { id: "progress", l: "Overview" },
+    { id: "insights", l: "Insights" },
     { id: "pantry", l: "Pantry" },
     { id: "fin", l: "Money" },
   ] },

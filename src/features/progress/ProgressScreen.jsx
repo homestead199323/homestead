@@ -103,6 +103,15 @@ export default function ProgressScreen({ data, setPage }) {
         )}
       </section>
 
+      <Card style={{ marginBottom: 22, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
+        <span style={{ fontSize: 26 }} aria-hidden="true">📊</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <strong style={{ display: "block", fontSize: 14.5, color: C.text }}>Insights</strong>
+          <small style={{ display: "block", fontSize: 12.5, color: C.t2, marginTop: 2, lineHeight: 1.45 }}>Each crop and bed against the estimate, lay rate, cost per egg or kilo, what grew where, spreadsheet export.</small>
+        </span>
+        <Btn sm v="secondary" onClick={function () { setPage("insights"); }}>Open</Btn>
+      </Card>
+
       <section className="mt-plan-sec" aria-labelledby="prog-pantry">
         <h3 id="prog-pantry">Pantry</h3>
         <Card p={false} style={{ overflow: "hidden" }}>
