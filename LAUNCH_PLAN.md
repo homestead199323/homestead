@@ -340,3 +340,13 @@
   saved, over-budget line on Home, no console errors). Live: both domains serve index-BnJKVkTp.js
   with "Add your own job", "Where the time goes", "over your time". Not verified: signed-in
   production screens.
+- [x] 2026-09-30 — Coop and barn split (045d068): new zone type `coop` (poultry + rabbits), `barn` is
+  grazers + pigs, each falls back to the other; old poultry-named barn zones migrate to coop on load.
+  3D map: both built as a building at the back + fenced run/yard in front inside the zone footprint,
+  hollow walls with open doors, animals indoors and out (coop: raised house, pop door + ramp, nest
+  boxes, roosts, mesh run, feeder, drinker, dust bath; barn: sliding door, stalls, trough, loft +
+  ladder, yard with fence, trough, hay rack, lean-to, muck heap). Verified: ESLint clean, 3 tests,
+  Mac build, Playwright harness screenshots (coop / barn / small barn + tiny coop, no console
+  errors). Live: /app serves index-GnKsVh3a.js + Grove3D-D9vbAnZ_.js with "Chicken Coop", the
+  migration regex and the g3y shader attribute. Not verified: signed-in production screens, flat
+  designer map with a coop zone.
