@@ -26,10 +26,10 @@ import { srand } from "./sceneMath";
 import { todayLocalKey } from "../../lib/utils";
 import { isPlantZone } from "../farm/living/visuals";
 import { taskGlyph } from "./zone-tasks";
+import { buildHerd } from "./animals3d";
 
 const ASPECT = {"alpaca":1.33,"apple":1.074,"basil-2":.925,"basil-3":1.004,"basil-4":1.152,"basil-5":1.064,"bean":1.328,"bee":.934,"broccoli":.993,"cabbage":.905,"carrot-2":1.205,"carrot-3":.938,"carrot-4":.959,"carrot-5":.978,"chicken":1.199,"corn":1.089,"cow":.997,"cucumber":1.184,"donkey":1,"duck":1.29,"eggplant":1.101,"fig":1.064,"goat":1.184,"goose":1.413,"guinea-fowl":1,"horse":1,"lavender":.931,"lemon":1.056,"lettuce-2":.887,"lettuce-3":.817,"lettuce-4":.864,"lettuce-5":.848,"olive":1.099,"onion":1,"pepper":1.127,"pig":1.007,"prop-bench":1.076,"prop-bush":.997,"prop-flowers":1.136,"prop-gate":1.062,"prop-hangpot":1.75,"prop-haybale":.943,"prop-planter":1.02,"prop-pond":.914,"prop-pot":1.333,"prop-rock":.979,"prop-wateringcan":.883,"prop-woodpile":1.062,"pumpkin":.846,"quail":1.094,"rabbit":1.289,"rosemary":1.043,"sheep":1.112,"strawberry":1.021,"tomato-2":1.073,"tomato-3":.977,"tomato-4":1.072,"tomato-5":1.045,"turkey":1.275};
 const aspectOf = (src) => { const m = /\/([a-z0-9-]+?)(?:-[A-Za-z0-9_-]{8})?\.webp/.exec(src || ""); return (m && ASPECT[m[1]]) || 1; };
-const ANIMAL_W = { Cow: 2.2, Horse: 2.3, Donkey: 1.8, Alpaca: 1.6, Pig: 1.3, Goat: 1.1, Sheep: 1.2, Rabbit: .55, Chicken: .55, Duck: .6, Goose: .75, Turkey: .85, Quail: .35, "Guinea Fowl": .55, Bee: .3 };
 const TREE_RE = /apple|pear|peach|plum|cherry|citrus|lemon|orange|fig|olive|walnut|almond|avocado/;
 const CAM = { az: -22, el: 56, fov: 28 };
 // growth stages (farm-model STAGES): Planned, Sown, Seedling, Growing, Maturing, Harvest window
@@ -396,7 +396,8 @@ function ribbonGeo(pts, width) {
 }
 
 /* ---------- reusable structures ---------- */
-function tree(g, x, z, r, seed, M) {
+function tree(g, x, z, r, seed, M, y = 0) {
+  if (y) { const tg = new THREE.Group(); tg.position.y = y; g.add(tg); g = tg; }
   const th = r * .55 + .3, leaf = M.leaf[Math.floor(srand(seed + 3) * M.leaf.length)];
   const trunk = cyl(g, r * .1, r * .17, th + r * .7, M.bark, x, (th + r * .7) / 2, z, { seg: 7 });
   trunk.rotation.z = (srand(seed + 7) - .5) * .08;
@@ -996,19 +997,28 @@ function buildZone(z, ctx) {
     const bw = Math.max(.26, Math.min(1.2, p.size * 1.5 * grow));
     spriteAdd(ctx, cropArtwork(p.crop, p.stage, "side"), { x: ox + p.x + (srand(i) - .5) * .05, y: lift, z: oz + p.y + (srand(i + 7) - .5) * .05, w: bw, r: (srand(i + 3) - .5) * .5, top: cropArtwork(p.crop, p.stage, "top") });
   });
-  // animals
+  // animals: real geometry, collected farm-wide into one animated mesh (see animals3d.js). Each
+  // zone offers an arena — the ground the herd may roam — clear of the shelter, trough and feeder.
   const animals = (data.livestock?.animals || []).filter((a) => animalZone(a, data.zones)?.id === z.id);
-  animals.slice(0, 5).forEach((a, i) => {
-    const n = Math.min(9, a.count || 1), aw = Math.max(.7, Math.min((ANIMAL_W[a.type] || 1) * 1.1, w * .45, d * .5));
-    const src = art(a.type.toLowerCase().replaceAll(" ", "-")) || art("chicken");
-    if (a.type === "Bee") return;
-    const bird = /chicken|duck|goose|turkey|quail|guinea/i.test(a.type);
-    for (let j = 0; j < n; j++) {
-      const xx = w * (.14 + srand(i * 31 + j + 10) * .72);
-      const zz = z.type === "barn" ? d + .9 + srand(i * 29 + j + 5) * 1.3 : d * (.16 + srand(i * 29 + j + 5) * .68);
-      bill(src, aw, xx, 0, zz, { sink: .06, anim: bird ? 2 : 0, phase: srand(i * 17 + j * 3 + 1) });
-    }
-  });
+  if (animals.length) {
+    let A;
+    if (z.type === "barn") A = { x0: .3, x1: w - .3, z0: d + .5, z1: d + 2.6 };
+    else if (z.type === "pasture") {
+      const top = w >= 7 && d >= 5 ? 3.4 : w > 3 && d > 3 ? 1.3 : .35;
+      A = oval ? { x0: cx - w * .3, x1: cx + w * .3, z0: Math.max(cz - d * .3, top), z1: cz + d * .3 } : { x0: .35, x1: w - .35, z0: top, z1: d - .35 };
+      if (A.z1 - A.z0 < 1.5) A.z0 = oval ? cz - d * .3 : .35;
+    } else A = { x0: .4, x1: w - .4, z0: .4, z1: d - .4 };
+    const arena = { x0: z.xM + A.x0, x1: z.xM + A.x1, z0: z.yM + A.z0, z1: z.yM + A.z1 };
+    animals.slice(0, 5).forEach((a, i) => {
+      if (a.type === "Bee") return;
+      const bird = /chicken|duck|goose|turkey|quail|guinea/i.test(a.type), n = Math.min(bird ? 12 : 9, a.count || 1);
+      for (let j = 0; j < n; j++) {
+        const x = arena.x0 + (arena.x1 - arena.x0) * (.08 + srand(i * 31 + j + 10) * .84);
+        const zz = arena.z0 + (arena.z1 - arena.z0) * (.1 + srand(i * 29 + j + 5) * .8);
+        ctx.herd.push({ type: a.type, x, z: zz, heading: srand(i * 17 + j * 3 + 1) * 6.283, arena, seed: z.id.length * 97 + i * 13 + j, variant: (i + j) % 4 });
+      }
+    });
+  }
   return g;
 }
 function buildGrowth(g, ctx, M) { // stage markers, foliage lines, harvest halos and seedlings for the whole farm
@@ -1020,16 +1030,44 @@ function buildGrowth(g, ctx, M) { // stage markers, foliage lines, harvest halos
   instances(g, new THREE.CircleGeometry(1, 8), M.sprout, G.sprouts, { cast: false });
 }
 
+/* ---------- terrain ----------
+   The farm sits on a flat apron; beyond it the land rolls away in low hills (only rising, so the flat
+   overlay planes stay hidden under them). The grid is denser near the farm, coarse far away. */
+function terrainHeightFn(fW, fH, margin) {
+  const flat = Math.max(margin * 1.7, 4) + 2.5, ramp = 16;
+  return (x, z) => {
+    const d = Math.max(0, -x - flat, x - fW - flat, -z - flat, z - fH - flat);
+    if (d <= 0) return 0;
+    const m = smoothstep(0, ramp, d), amp = 2.0 + Math.min(6, d * .06);
+    const n = .5 * Math.sin(x * .041 + 1.7) * Math.cos(z * .036 + .4) + .3 * Math.sin(x * .097 - z * .071 + 2.1) + .2 * Math.sin((x + z) * .16 + .9) + .12 * Math.sin(x * .31) * Math.sin(z * .27 + 1.1);
+    return m * amp * Math.pow(clamp01(n * .5 + .5), 1.35);
+  };
+}
+function terrainGeo(fW, fH, E, height, N = 100) {
+  const GW = fW + E * 2, GH = fH + E * 2, cx = fW / 2, cz = fH / 2, warp = (t) => .08 * t + .92 * t * t * t;
+  const pos = [], uv = [], colr = [], idx = [];
+  for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
+    const x = cx + warp((i / N) * 2 - 1) * (GW / 2), z = cz + warp((j / N) * 2 - 1) * (GH / 2), h = height(x, z);
+    pos.push(x, h, z); uv.push(x / 2.6, z / 2.6);
+    const k = clamp01(h / 4.5); colr.push(1 - k * .1, 1 - k * .06, 1 - k * .24); // higher ground a touch drier
+  }
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, b = a + 1, c = a + N + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute("color", new THREE.Float32BufferAttribute(colr, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return geo;
+}
 function buildWorld(ctx) {
   const { data, zones, roads, fW, fH, margin, env, M } = ctx;
   const world = new THREE.Group();
   const E = Math.max(fW, fH) * 16, GW = fW + E * 2, GH = fH + E * 2;
+  const heightAt = terrainHeightFn(fW, fH, margin); ctx.heightAt = heightAt;
   const style = data.mapStyle || {}, gm = style.groundMaterial || (env === "balcony" ? "stone" : "meadow");
   const tint = { natural: 0xb9cc9e, dry: 0xdcd3a8, deep: 0x97b57e }[style.groundColor] || 0xb9cc9e;
-  const groundMat = gm === "meadow" ? M.lawn(GW / 2.6, GH / 2.6, tint) : gm === "soil" ? M.soil(GW / 1.5, GH / 1.5) : gm === "gravel" ? M.gravel(GW / 1.5, GH / 1.5) : M.stone(GW / 1.5, GH / 1.5);
-  groundMat.polygonOffset = false; // the ground is the base layer; everything on it is offset toward the camera
-  const ground = plane(world, GW, GH, groundMat, fW / 2, 0, fH / 2);
-  ground.receiveShadow = true;
+  const groundMat = gm === "meadow" ? M.lawn(1, 1, tint) : gm === "soil" ? M.soil(1, 1) : gm === "gravel" ? M.gravel(1, 1) : M.stone(1, 1);
+  groundMat.polygonOffset = false; groundMat.vertexColors = true; // the ground is the base layer; everything on it is offset toward the camera
+  const ground = new THREE.Mesh(terrainGeo(fW, fH, E, heightAt), groundMat); // uv already in texture repeats
+  ground.receiveShadow = true; world.add(ground); ctx.ground = ground;
   const mottle = plane(world, GW, GH, layer(new THREE.MeshBasicMaterial({ map: proc("mottle", DRAW.mottle, { size: 512, repeat: [GW / 42, GH / 42] }), transparent: true, blending: THREE.MultiplyBlending, premultipliedAlpha: true, depthWrite: false }), 2), fW / 2, .004, fH / 2);
   mottle.receiveShadow = false;
   const vig = plane(world, GW, GH, layer(new THREE.MeshBasicMaterial({ map: proc("vignette", (g2, sz) => { const gr = g2.createRadialGradient(sz / 2, sz / 2, sz * .18, sz / 2, sz / 2, sz * .5); gr.addColorStop(0, "rgba(20,40,16,0)"); gr.addColorStop(1, "rgba(20,40,16,.55)"); g2.fillStyle = gr; g2.fillRect(0, 0, sz, sz); }, { size: 512, clamp: true }), transparent: true, depthWrite: false }), 4), fW / 2, .006, fH / 2);
@@ -1094,6 +1132,17 @@ function buildWorld(ctx) {
     const rocks = []; const nr = Math.min(28, Math.round((fW + fH) / 5));
     for (let i = 0; i < nr; i++) { const edge = i % 4, t = srand(i + 301), s = .2 + srand(i + 77) * .3; const x = edge === 0 ? -margin * .5 : edge === 1 ? fW + margin * .5 : t * fW, y = edge === 2 ? -margin * .45 : edge === 3 ? fH + margin * .5 : t * fH; rocks.push({ p: [x, s * .35, y], ry: t * 6, s: [s * 1.2, s * .7, s] }); }
     instances(world, new THREE.DodecahedronGeometry(1, 0), M.rock, rocks);
+    // clumps of trees and boulders out on the hills, thinning with distance
+    const far = [], nc = Math.min(64, 24 + Math.round((fW + fH) / 3));
+    for (let i = 0; i < nc; i++) {
+      const a = srand(i * 3 + 701) * 6.283, dist = margin * 2.2 + 9 + Math.pow(srand(i * 5 + 703), 1.4) * 70;
+      const x = fW / 2 + Math.cos(a) * (dist + fW / 2), y = fH / 2 + Math.sin(a) * (dist + fH / 2);
+      if (y > fH && Math.abs(x - fW / 2) < 4) continue; // the drive stays open
+      const r = 1.1 + srand(i * 7 + 709) * 1.3;
+      tree(world, x, y, r, i + 800, M, heightAt(x, y) - .05);
+      if (srand(i * 11 + 713) < .35) { const s = .35 + srand(i * 13 + 717) * .5; far.push({ p: [x + 2.2, heightAt(x + 2.2, y + 1) + s * .3, y + 1], ry: srand(i) * 6, s: [s * 1.3, s * .75, s] }); }
+    }
+    instances(world, new THREE.DodecahedronGeometry(1, 0), M.rock, far);
   }
   const inZone = (x, y) => zones.some((z) => x > z.xM - .35 && x < z.xM + z.wM + .35 && y > z.yM - .35 && y < z.yM + z.hM + .35);
   const onRoad = (x, y) => roads.some((line) => line.some((p, i) => { if (!i) return false; const a = line[i - 1], dx = p.xM - a.xM, dy = p.yM - a.yM, L2 = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((x - a.xM) * dx + (y - a.yM) * dy) / L2)); return Math.hypot(x - a.xM - dx * t, y - a.yM - dy * t) < ctx.roadWidth / 2 + .3; }));
@@ -1105,7 +1154,8 @@ function buildWorld(ctx) {
   // everything collected across the zones is drawn once for the whole farm
   buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M);
   sprites(world, ctx.sprites); faces(world, ctx.faces);
-  bake(world, new Set([...ctx.hits, ...ctx.plotHits]));
+  bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground])); // the terrain keeps its vertex colours
+  const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd); // every animal, one draw call, moving in the vertex shader
   return world;
 }
 /* Merge every static mesh that shares a material into one draw call. Instanced meshes, the
@@ -1386,7 +1436,7 @@ export default function Grove3D(props) {
     try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" }); }
     catch (err) { void err; latest.current.onUnavailable?.(); return; }
     const mobile = (typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches) || Math.min(screen.width, screen.height) < 820;
-    const DPR = Math.min(window.devicePixelRatio || 1, 2), LOW = Math.min(DPR, mobile ? 1.15 : 1.25);
+    const DPR = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2), LOW = Math.min(DPR, mobile ? 1.15 : 1.25);
     renderer.setPixelRatio(DPR);
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.shadowMap.autoUpdate = false; // static scene: shadows render once
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.02;
@@ -1537,8 +1587,8 @@ export default function Grove3D(props) {
     const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
     st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
     const ctx = { data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, todayKey: P.todayKey || todayLocalKey(), hits: st.hits, plotHits: st.plotHits, M: st.M,
-      faces: new Map(), sprites: new Map(), tufts: [], pots: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] } }, growth: { strips: [], glows: [], poles: [], tags: [[], [], [], [], [], []], sprouts: [] } };
-    st.world = buildWorld(ctx); st.cloud = ctx.cloud;
+      faces: new Map(), sprites: new Map(), tufts: [], pots: [], herd: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] } }, growth: { strips: [], glows: [], poles: [], tags: [[], [], [], [], [], []], sprouts: [] } };
+    st.world = buildWorld(ctx); st.cloud = ctx.cloud; st.herd = ctx.herd;
     const faders = new Set(); st.world.traverse((m) => { const mat = m.material; if (mat && !Array.isArray(mat) && mat.userData.fade) faders.add(mat); }); st.faders = [...faders];
     st.scene.add(st.world);
     st.anchors = Object.fromEntries(P.zones.map((z) => [z.id, { cx: z.xM + z.wM / 2, cz: z.yM + z.hM / 2, h: 0, corners: [[z.xM, z.yM], [z.xM + z.wM, z.yM], [z.xM + z.wM, z.yM + z.hM], [z.xM, z.yM + z.hM]], area: z.wM * z.hM, sel: 0, w: Math.min(23, z.name.length) * 6 + 16 }]));

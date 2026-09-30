@@ -132,6 +132,25 @@
     proc:puff, g3size, uFadeV, forceSinglePass, IntersectionObserver present; CSS g3-far,
     q-stage-key-crop, pill/badge min-height:0). Not verified: real-device frame rate and
     battery; animation timing only reasoned about (headless RAF is starved).
+  - [x] **4z-5 (2026-09-30, commit PENDING_SHA): animals in real 3D, rolling terrain.**
+    `src/features/grove/animals3d.js` (MARKER `GROVE_ANIMALS_3D`) replaces the camera-facing
+    animal sprites with procedural geometry for all 14 species (cow, horse, donkey, alpaca, pig,
+    goat, sheep, rabbit, chicken, duck, goose, turkey, quail, guinea fowl): body, neck, head,
+    muzzle, eyes, ears, horns, legs with hooves, tail plus species details (udder, mane, wool,
+    beard, comb, wattle, snood, fan tail, floppy ears, curly tail). Four coat variants per
+    species (cow/goat patches by 3D noise, per-vertex colours). The whole herd is ONE merged
+    mesh (one draw call + one shadow pass); motion lives in the vertex shader on the shared
+    clock: each animal walks a slow loop inside its arena (paddock clear of shelter/trough/
+    feeder, or the apron in front of a coop/barn), turning with its direction of travel, legs
+    swinging in a trot, then stops to graze (neck down, nibbling) — hens strut and peck, tails
+    swish, rabbits hop. Terrain: the ground is now a warped-grid mesh (dense near the farm,
+    coarse far out) with rolling hills beyond a flat apron (`terrainHeightFn`), vertex-tinted
+    drier on high ground, plus tree clumps and boulders out on the hills; the farm itself stays
+    flat so every zone/road/fence is unchanged. Mobile pixel ratio capped at 1.5 (was 2).
+    Verified in sandbox: ESLint, 61+3 tests, Vite build, Playwright harnesses (`tests/g3-all`,
+    new `tests/g3-zoo` with every species) at 1280 and 390 px, zero console errors, walking
+    loop + turning + leg swing seen across frames, draw calls unchanged at the home view (178).
+    NOT verified: real-device frame rate. Revert: `git revert <sha>` (flat SVG map untouched).
 - [x] **Stage 5 — navigation regroup (built 2026-09-28, live 2026-09-30; commit b128c72, label
   follow-up 475fc64).** `src/app/navigation.js` now
   defines SECTIONS: Today (home "Overview" + tasks "All tasks"), My Space (map, crops, live),

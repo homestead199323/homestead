@@ -1,0 +1,289 @@
+/* ═══════════════════════════════════════════
+   ANIMALS 3D — every farm animal on the 3D map is built from geometry (no sprites): a body,
+   neck and head, ears, horns, legs with hooves, a tail, plus species details (udder, mane,
+   wool, comb, wattle, fan tail…), coloured per vertex so a herd has natural variety.
+   All animals of the farm are merged into ONE mesh (one draw call, one shadow pass) and
+   move in the vertex shader from the shared clock: they walk slow loops inside their
+   paddock, stop and graze (head down, nibbling), swish tails, hens strut and peck,
+   rabbits hop. Local space: forward = +z, up = +y, ground = y 0, body centre at x/z 0.
+   MARKER: GROVE_ANIMALS_3D
+   ═══════════════════════════════════════════ */
+import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+
+const HPI = Math.PI / 2, DEG = Math.PI / 180;
+// parts (drive the shader): 0 body, 1 head+neck (pivot at the neck base), 3-6 legs FL FR BL BR (pivot at hip), 7 tail
+const PART = { body: 0, head: 1, FL: 3, FR: 4, BL: 5, BR: 6, tail: 7 };
+// kinds: 0 grazer (head down to the grass), 1 bird (pecks), 2 hopper (rabbit)
+const KIND = { grazer: 0, bird: 1, hopper: 2 };
+const col = (hex) => new THREE.Color(hex);
+function rng(seed) { let t = (Math.floor(seed * 1000003) ^ 0x5bd1e995) >>> 0; return () => { t = (t + 0x6d2b79f5) >>> 0; let x = Math.imul(t ^ (t >>> 15), 1 | t); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; } // mulberry32: consecutive seeds give unrelated sequences
+// blobby patch noise for cow / goat / pinto coats
+function patchy(x, y, z, k) { return Math.sin(x * 4.1 + k) * Math.sin(y * 3.3 + k * .7) + Math.sin(z * 3.7 + k * 1.3) * Math.cos(x * 2.2 - k) + .5 * Math.sin((x + z) * 6.3 + y * 5 + k * 2); }
+
+/* ---------- a rig collects coloured primitives with their part id and pivot ---------- */
+class Rig {
+  constructor() { this.geos = []; }
+  add(geo, color, { part = PART.body, pivot = [0, 0, 0], pos = [0, 0, 0], rot = [0, 0, 0], scale = 1, paint = null } = {}) {
+    const M = new THREE.Matrix4(), E = new THREE.Euler(rot[0], rot[1], rot[2], "YXZ"), Q = new THREE.Quaternion().setFromEuler(E);
+    const S = Array.isArray(scale) ? new THREE.Vector3(...scale) : new THREE.Vector3(scale, scale, scale);
+    M.compose(new THREE.Vector3(...pos), Q, S); geo.applyMatrix4(M);
+    const n = geo.attributes.position.count, cA = new Float32Array(n * 3), pA = new Float32Array(n * 4), P = geo.attributes.position, c0 = color.isColor ? color : col(color);
+    for (let i = 0; i < n; i++) {
+      const c = paint ? paint(P.getX(i), P.getY(i), P.getZ(i), c0) : c0;
+      cA[i * 3] = c.r; cA[i * 3 + 1] = c.g; cA[i * 3 + 2] = c.b;
+      pA[i * 4] = part; pA[i * 4 + 1] = pivot[0]; pA[i * 4 + 2] = pivot[1]; pA[i * 4 + 3] = pivot[2];
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(cA, 3)); geo.setAttribute("g3p", new THREE.BufferAttribute(pA, 4));
+    geo.deleteAttribute("uv");
+    this.geos.push(geo); return geo;
+  }
+  ell(rx, ry, rz, color, o = {}) { return this.add(new THREE.SphereGeometry(1, o.seg || 10, o.rings || 7), color, { ...o, scale: [rx, ry, rz] }); }
+  box(w, h, d, color, o = {}) { return this.add(new THREE.BoxGeometry(w, h, d), color, o); }
+  cyl(rt, rb, h, color, o = {}) { return this.add(new THREE.CylinderGeometry(rt, rb, h, o.seg || 8, 1), color, o); }
+  cone(r, h, color, o = {}) { return this.add(new THREE.ConeGeometry(r, h, o.seg || 6), color, o); }
+  capsule(r, len, color, o = {}) { return this.add(new THREE.CapsuleGeometry(r, len, o.cap || 3, o.seg || 10), color, o); } // along local y before rot
+  // a limb from a to b (world-local points), radius r0 → r1
+  bar(a, b, r0, r1, color, o = {}) {
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), len = A.distanceTo(B), geo = new THREE.CylinderGeometry(r1, r0, len, o.seg || 7, 1);
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()), M = new THREE.Matrix4().compose(A.clone().add(B).multiplyScalar(.5), q, new THREE.Vector3(1, 1, 1));
+    geo.applyMatrix4(M); return this.add(geo, color, o);
+  }
+  build() { const g = mergeGeometries(this.geos, false); this.geos.forEach((x) => x.dispose()); return g; }
+}
+
+/* ---------- quadrupeds ---------- */
+function quadruped(S, r, vi) {
+  const R = new Rig(), C = S.colors(r, vi);
+  const { L, H, br } = S, bw = S.bw || 1, bl = L * (S.bodyFrac || .6), by = H - br * .95;
+  const pk = 2.6 / L, paint = C.patch ? (x, y, z, c) => (patchy(x * pk, y * pk, z * pk, S.seed * 3.7) > (S.patchCut ?? .35) ? C.patch : c) : null;
+  // body: a capsule along z, wider than tall for cattle and pigs
+  R.capsule(br, bl, C.body, { rot: [HPI, 0, 0], pos: [0, by, 0], scale: [bw, 1, 1], paint, cap: 3, seg: 12 });
+  if (S.chest) R.ell(br * bw * .95, br * .92, br * .9, C.body, { pos: [0, by - br * .05, bl / 2 - br * .2], paint }); // deeper chest
+  if (S.belly) R.ell(br * bw * 1.02, br * .8, bl * .38, C.belly || C.body, { pos: [0, by - br * .25, -bl * .05], paint });
+  // neck + head pivot at the withers
+  const n0 = [0, by + br * .35, bl / 2 + br * .1], up = S.neck.up, nl = S.neck.len;
+  const n1 = [0, n0[1] + Math.sin(up) * nl, n0[2] + Math.cos(up) * nl];
+  const head = (g, o) => R.add(g, o.color || C.head, { ...o, part: PART.head, pivot: n0 });
+  R.bar(n0, n1, S.neck.r0, S.neck.r1, C.body, { part: PART.head, pivot: n0, paint, seg: 9 });
+  if (S.mane) R.box(br * .12, S.mane, nl * .9, C.mane || C.tuft, { part: PART.head, pivot: n0, pos: [0, (n0[1] + n1[1]) / 2 + S.neck.r0 * .9, (n0[2] + n1[2]) / 2], rot: [-up, 0, 0] });
+  const hl = S.head.l, hw = S.head.w, hh = S.head.h, pitch = S.head.pitch || 0, hc = [0, n1[1] + Math.sin(-pitch) * hl * .3, n1[2] + hl * .3];
+  head(new THREE.SphereGeometry(1, 10, 8), { pos: hc, scale: [hw, hh, hl * .62], rot: [pitch, 0, 0], paint });
+  // snout / muzzle
+  const sn = S.snout, sc = [0, hc[1] - sn.drop, hc[2] + hl * .5];
+  head(new THREE.SphereGeometry(1, 9, 7), { pos: sc, scale: [sn.w, sn.h, sn.l], color: C.muzzle || C.head, paint: C.muzzle ? null : paint });
+  if (S.noseDisc) head(new THREE.CylinderGeometry(sn.w * .8, sn.w * .8, .03, 10), { pos: [0, sc[1], sc[2] + sn.l * .95], rot: [HPI, 0, 0], color: C.nose || 0x6d4a44 });
+  else head(new THREE.SphereGeometry(1, 7, 5), { pos: [0, sc[1] + sn.h * .25, sc[2] + sn.l * .82], scale: [sn.w * .5, sn.h * .35, sn.l * .3], color: C.nose || 0x33302d });
+  // eyes
+  [-1, 1].forEach((s) => head(new THREE.SphereGeometry(1, 6, 4), { pos: [s * hw * .85, hc[1] + hh * .18, hc[2] + hl * .12], scale: [hw * .16, hh * .16, hw * .12], color: 0x1e1a18 }));
+  // ears
+  const E = S.ears, ey = hc[1] + hh * .6, ez = hc[2] - hl * .12;
+  [-1, 1].forEach((s) => {
+    if (E.type === "up") head(new THREE.SphereGeometry(1, 6, 5), { pos: [s * hw * .8, ey + E.len * .4, ez], scale: [E.w, E.len * .6, E.w * .45], rot: [-.25, 0, s * -.45], color: C.ears || C.head, paint });
+    else if (E.type === "side") head(new THREE.SphereGeometry(1, 6, 5), { pos: [s * (hw + E.len * .45), ey - hh * .25, ez], scale: [E.len * .55, E.w * .55, E.w * .35], rot: [.1, 0, s * .18], color: C.ears || C.head, paint });
+    else if (E.type === "long") head(new THREE.SphereGeometry(1, 6, 5), { pos: [s * hw * .7, ey + E.len * .5, ez - hl * .1], scale: [E.w, E.len * .6, E.w * .4], rot: [-.15, 0, s * -.22], color: C.ears || C.head, paint });
+    else head(new THREE.SphereGeometry(1, 6, 5), { pos: [s * hw * .95, ey - hh * .15, ez + hl * .2], scale: [E.w * .5, E.len * .55, E.w * .35], rot: [.55, 0, s * .35], color: C.ears || C.head, paint }); // floppy, forward
+  });
+  // horns
+  if (S.horns) { const h = S.horns; [-1, 1].forEach((s) => { const a = [s * hw * .55, hc[1] + hh * .75, hc[2] - hl * .05], b = [s * (hw * .55 + h.spread), a[1] + h.up, a[2] - h.back]; R.bar(a, b, h.r, h.r * .35, C.horn || 0xd9cfb5, { part: PART.head, pivot: n0, seg: 6 }); }); }
+  if (S.beard) head(new THREE.ConeGeometry(hw * .35, hh * .9, 6), { pos: [0, sc[1] - sn.h * .9, sc[2] - sn.l * .5], rot: [Math.PI, 0, 0], color: C.tuft || C.head });
+  if (S.topknot) head(new THREE.SphereGeometry(1, 7, 5), { pos: [0, hc[1] + hh * .9, hc[2] - hl * .05], scale: [hw * .9, hh * .45, hl * .45], color: C.tuft || C.head });
+  // legs: FL FR BL BR, pivot at the hip, hoof at the ground
+  const lr = S.legR, lx = br * bw * .62, lzF = bl / 2 - br * .15, lzB = -bl / 2 + br * .2, hipY = by - br * .35, hoofH = lr * 1.6;
+  [[-lx, lzF, PART.FL], [lx, lzF, PART.FR], [-lx, lzB, PART.BL], [lx, lzB, PART.BR]].forEach(([x, z, part]) => {
+    const piv = [x, hipY, z];
+    R.bar([x, hipY + br * .25, z], [x, hoofH * .9, z], lr * 1.25, lr * .85, C.legs || C.body, { part, pivot: piv, paint: C.legs ? null : paint, seg: 7 });
+    R.cyl(lr * 1.05, lr * 1.15, hoofH, C.hoof || 0x3a302a, { part, pivot: piv, pos: [x, hoofH / 2, z], seg: 7 });
+    if (S.haunch) R.ell(br * .55, br * .75, br * .6, C.body, { pos: [x * .92, hipY + br * .2, z + (z < 0 ? .05 : -.05)], paint });
+  });
+  // tail
+  const T = S.tail, t0 = [0, by + br * .55, -bl / 2 - br * .35], t1 = [0, t0[1] - T.down, t0[2] - T.back];
+  if (T.curl) R.add(new THREE.TorusGeometry(T.len * .35, T.len * .12, 5, 9, 4.8), C.body, { part: PART.tail, pivot: t0, pos: [0, t0[1] - T.len * .2, t0[2] - T.len * .15], rot: [0, HPI, .6] });
+  else if (T.up) R.bar(t0, [0, t0[1] + T.len * .8, t0[2] - T.len * .35], T.r, T.r * .5, C.body, { part: PART.tail, pivot: t0, paint, seg: 6 });
+  else { R.bar(t0, t1, T.r, T.r * .7, C.body, { part: PART.tail, pivot: t0, paint, seg: 6 }); if (T.tuft) R.ell(T.r * 2.2, T.tuft, T.r * 2.2, C.tuft || 0x2a2320, { part: PART.tail, pivot: t0, pos: [0, t1[1] - T.tuft * .5, t1[2]] }); }
+  if (S.extras) S.extras(R, C, { by, bl, br, bw, hc, sc, n0, n1, hl, hw, hh, lx, hipY }, r);
+  return R.build();
+}
+
+/* ---------- birds ---------- */
+function bird(S, r, vi) {
+  const R = new Rig(), C = S.colors(r, vi), { L, H } = S, bl = L * .55, bh = L * .33 * (S.plump || 1), bwid = L * .3 * (S.plump || 1), by = H - bh * .55, tilt = S.tilt ?? .35;
+  const paint = C.speckle ? (x, y, z, c) => c.clone().lerp(C.speckle, .18 + .22 * Math.abs(Math.sin(x * 37 + y * 23) * Math.sin(z * 41 - y * 17))) : null; // fine mottling, not vertex-sized blotches
+  R.ell(bwid, bh, bl, C.body, { pos: [0, by, 0], rot: [-tilt, 0, 0], paint, seg: 11, rings: 8 });
+  [-1, 1].forEach((s) => R.ell(bwid * .35, bh * .55, bl * .8, C.wing || C.body, { pos: [s * bwid * .78, by + bh * .1, -bl * .05], rot: [-tilt * .8, 0, s * .12], paint, seg: 8, rings: 5 }));
+  // tail: a few flattened feathers fanned up and back (turkeys carry a full fan)
+  const t0 = [0, by + bh * .35, -bl * .85];
+  if (S.fan) { for (let i = 0; i < 7; i++) { const a = -.9 + i * .3; R.add(new THREE.BoxGeometry(L * .12, L * .55, .008), C.tail || C.body, { part: PART.tail, pivot: t0, pos: [Math.sin(a) * L * .2, t0[1] + Math.cos(a) * L * .26 + L * .04, t0[2] - .04], rot: [-.5, 0, -a] }); } }
+  else for (let i = -1; i <= 1; i++) R.add(new THREE.BoxGeometry(L * .07, L * (S.tailLen || .3), .01), C.tail || C.body, { part: PART.tail, pivot: t0, pos: [i * L * .05, t0[1] + L * .1, t0[2] - L * .08], rot: [-.85 - (S.tailUp || 0), 0, i * .35] });
+  // neck + head, pivot at the front of the body
+  const n0 = [0, by + bh * .45, bl * .55], up = S.neck.up, nl = S.neck.len, n1 = [0, n0[1] + Math.sin(up) * nl, n0[2] + Math.cos(up) * nl];
+  const head = (g, o) => R.add(g, o.color || C.head || C.body, { ...o, part: PART.head, pivot: n0 });
+  R.bar(n0, n1, S.neck.r, S.neck.r * .85, C.neck || C.body, { part: PART.head, pivot: n0, paint, seg: 8 });
+  const hr = S.head.r, hc = [0, n1[1] + hr * .3, n1[2] + hr * .2];
+  head(new THREE.SphereGeometry(1, 9, 7), { pos: hc, scale: [hr, hr * .95, hr * 1.15], paint });
+  head(new THREE.ConeGeometry(hr * .38, S.beak.len, 6), { pos: [0, hc[1] - hr * .1, hc[2] + hr * .95 + S.beak.len * .4], rot: [HPI, 0, 0], color: C.beak, scale: [1, 1, S.beak.flat || 1] });
+  [-1, 1].forEach((s) => head(new THREE.SphereGeometry(1, 6, 4), { pos: [s * hr * .78, hc[1] + hr * .2, hc[2] + hr * .4], scale: [hr * .17, hr * .17, hr * .14], color: 0x1e1a18 }));
+  if (S.comb) head(new THREE.BoxGeometry(hr * .18, hr * .7, hr * 1.1), { pos: [0, hc[1] + hr * .95, hc[2] - hr * .05], rot: [.2, 0, 0], color: 0xd6362e });
+  if (S.wattle) head(new THREE.SphereGeometry(1, 6, 5), { pos: [0, hc[1] - hr * .75, hc[2] + hr * .55], scale: [hr * .32, hr * .5, hr * .3], color: 0xd6362e });
+  if (S.snood) head(new THREE.SphereGeometry(1, 6, 5), { pos: [0, hc[1] - hr * .4, hc[2] + hr * 1.1], scale: [hr * .18, hr * .55, hr * .18], color: 0xc8302a });
+  if (S.plume) head(new THREE.SphereGeometry(1, 6, 5), { pos: [0, hc[1] + hr * 1.2, hc[2] + hr * .1], scale: [hr * .12, hr * .45, hr * .12], rot: [.4, 0, 0], color: 0x2b2420 });
+  if (S.helmet) head(new THREE.ConeGeometry(hr * .35, hr * .7, 6), { pos: [0, hc[1] + hr * 1.05, hc[2] - hr * .1], color: 0xc98b3a });
+  // legs: thin, with a flat foot, pivot at the belly
+  const lr = L * .025, lx = bwid * .42, hipY = by - bh * .5;
+  [[-lx, PART.FL], [lx, PART.FR]].forEach(([x, part]) => {
+    const piv = [x, hipY + bh * .2, L * .05];
+    R.bar([x, hipY + bh * .25, L * .05], [x, 0.01, L * .02], lr * 1.3, lr, C.legs, { part, pivot: piv, seg: 5 });
+    R.box(lr * 4, lr * 1.2, L * .22, C.legs, { part, pivot: piv, pos: [x, lr * .6, L * .1] });
+  });
+  return R.build();
+}
+
+/* ---------- rabbit ---------- */
+function rabbit(S, r, vi) {
+  const R = new Rig(), C = S.colors(r, vi), L = S.L, by = L * .27;
+  R.ell(L * .28, L * .3, L * .48, C.body, { pos: [0, by, -L * .05] });
+  [-1, 1].forEach((s) => R.ell(L * .14, L * .2, L * .24, C.body, { pos: [s * L * .2, by - L * .05, -L * .25] })); // haunches
+  const n0 = [0, by + L * .1, L * .32], hc = [0, n0[1] + L * .12, n0[2] + L * .08];
+  const head = (g, o) => R.add(g, o.color || C.body, { ...o, part: PART.head, pivot: n0 });
+  head(new THREE.SphereGeometry(1, 9, 7), { pos: hc, scale: [L * .17, L * .17, L * .21] });
+  head(new THREE.SphereGeometry(1, 6, 4), { pos: [0, hc[1] - L * .02, hc[2] + L * .2], scale: [L * .035, L * .03, L * .03], color: 0x6a4a48 });
+  [-1, 1].forEach((s) => { head(new THREE.SphereGeometry(1, 6, 4), { pos: [s * L * .13, hc[1] + L * .05, hc[2] + L * .08], scale: [L * .03, L * .03, L * .025], color: 0x1e1a18 }); head(new THREE.SphereGeometry(1, 6, 5), { pos: [s * L * .07, hc[1] + L * .3, hc[2] - L * .06], scale: [L * .05, L * .2, L * .025], rot: [-.25, 0, s * -.15], color: C.ears || C.body }); });
+  [-1, 1].forEach((s) => R.ell(L * .06, L * .05, L * .14, C.body, { pos: [s * L * .13, L * .05, L * .12] }));
+  R.ell(L * .07, L * .07, L * .07, 0xf6f2ea, { part: PART.tail, pivot: [0, by, -L * .5], pos: [0, by + L * .02, -L * .52] });
+  return R.build();
+}
+
+/* ---------- species ---------- */
+const pick = (v, list) => list[v % list.length]; // colour variant → palette entry, so a herd shows every coat
+const SPECIES = {
+  Cow: { graze: 1.0, kind: KIND.grazer, L: 2.3, H: 1.42, br: .44, bw: 1.0, bodyFrac: .62, chest: true, belly: true, legR: .075, walk: .45, seed: 1,
+    neck: { len: .55, up: 18 * DEG, r0: .27, r1: .2 }, head: { l: .62, w: .21, h: .24, pitch: .2 }, snout: { w: .17, h: .14, l: .2, drop: .07 }, noseDisc: true,
+    ears: { type: "side", len: .24, w: .12 }, horns: { spread: .16, up: .16, back: .05, r: .035 }, tail: { len: .9, down: .8, back: .12, r: .028, tuft: .14 },
+    colors: (r, vi) => { const v = pick(vi, [[0xf3f0e7, 0x2a2521], [0xf3f0e7, 0x6f3d24], [0xa8663d, null], [0x3a2f28, null]]); return { body: col(v[0]), patch: v[1] == null ? null : col(v[1]), head: col(v[0]), muzzle: col(0xe7c6bd), hoof: col(0x3a302a), tuft: col(v[1] == null ? 0x3a2f28 : v[1]), horn: col(0xe6dcc3) }; },
+    extras: (R, C, D) => { R.ell(D.br * .42, D.br * .32, D.br * .42, 0xefc2ba, { pos: [0, D.by - D.br * .82, -D.bl * .28] }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => R.cyl(.018, .022, .07, 0xe7b3aa, { pos: [a * D.br * .18, D.by - D.br * 1.08, -D.bl * .28 + b * D.br * .18], seg: 5 })); } },
+  Horse: { graze: 1.65, kind: KIND.grazer, L: 2.4, H: 1.58, br: .38, bw: .9, bodyFrac: .6, chest: true, legR: .06, walk: .55, seed: 2, mane: .12,
+    neck: { len: .8, up: 52 * DEG, r0: .26, r1: .17 }, head: { l: .6, w: .17, h: .22, pitch: .55 }, snout: { w: .13, h: .12, l: .2, drop: .18 },
+    ears: { type: "up", len: .16, w: .05 }, tail: { len: 1.0, down: .95, back: .18, r: .07, tuft: .5 },
+    colors: (r, vi) => { const v = pick(vi, [[0x7a4a2c, 0x2e2119], [0x3a2c25, 0x1c1614], [0xc9a978, 0x2e2119], [0xe9e4dc, 0xd0c8bb], [0x1f1b19, 0x0e0c0b]]); return { body: col(v[0]), head: col(v[0]), muzzle: col(v[0]).multiplyScalar(.8), hoof: col(0x2a2220), tuft: col(v[1]), mane: col(v[1]) }; } },
+  Donkey: { graze: 1.45, kind: KIND.grazer, L: 1.9, H: 1.15, br: .32, bw: .95, bodyFrac: .6, legR: .05, walk: .4, seed: 3, mane: .07,
+    neck: { len: .55, up: 42 * DEG, r0: .2, r1: .15 }, head: { l: .5, w: .15, h: .19, pitch: .5 }, snout: { w: .13, h: .11, l: .16, drop: .14 },
+    ears: { type: "long", len: .34, w: .07 }, tail: { len: .7, down: .62, back: .1, r: .03, tuft: .16 },
+    colors: (r, vi) => { const v = pick(vi, [0x8d8781, 0x6e665e, 0xa39a90]); return { body: col(v), head: col(v), muzzle: col(0xe5ded3), hoof: col(0x2a2220), tuft: col(0x3a332e), mane: col(0x3a332e), ears: col(v) }; } },
+  Alpaca: { graze: 2.0, kind: KIND.grazer, L: 1.6, H: 1.0, br: .34, bw: .95, bodyFrac: .55, belly: true, legR: .045, walk: .4, seed: 4, topknot: true,
+    neck: { len: .75, up: 78 * DEG, r0: .17, r1: .12 }, head: { l: .32, w: .12, h: .15, pitch: .3 }, snout: { w: .09, h: .08, l: .1, drop: .06 },
+    ears: { type: "up", len: .14, w: .045 }, tail: { len: .2, down: .05, back: .18, r: .05, up: false },
+    colors: (r, vi) => { const v = pick(vi, [0xf1e8d6, 0xd9b98f, 0x6d4a33, 0xc7c0b6]); return { body: col(v), head: col(v), muzzle: col(v).multiplyScalar(.85), hoof: col(0x3a302a), tuft: col(v) }; },
+    extras: (R, C, D, r) => { for (let i = 0; i < 9; i++) R.ell(D.br * .34, D.br * .3, D.br * .34, C.body, { pos: [(r() - .5) * D.br * 1.4, D.by + D.br * (.3 + r() * .5), (r() - .5) * D.bl * .95] }); } },
+  Pig: { graze: .45, kind: KIND.grazer, L: 1.35, H: .72, br: .3, bw: 1.05, bodyFrac: .62, chest: true, belly: true, legR: .04, walk: .35, seed: 5,
+    neck: { len: .16, up: 5 * DEG, r0: .24, r1: .19 }, head: { l: .36, w: .17, h: .19, pitch: .25 }, snout: { w: .1, h: .09, l: .14, drop: .04 }, noseDisc: true,
+    ears: { type: "floppy", len: .16, w: .1 }, tail: { len: .18, curl: true },
+    colors: (r, vi) => { const v = pick(vi, [0xf0b8a8, 0xe9a998, 0x4a3a35, 0xd9c2b0]); return { body: col(v), head: col(v), nose: col(v).multiplyScalar(.85), hoof: col(0x5a4a44) }; } },
+  Goat: { graze: 1.1, kind: KIND.grazer, L: 1.15, H: .74, br: .19, bw: .9, bodyFrac: .58, legR: .028, walk: .38, seed: 6, beard: true,
+    neck: { len: .36, up: 42 * DEG, r0: .11, r1: .085 }, head: { l: .3, w: .1, h: .13, pitch: .35 }, snout: { w: .07, h: .07, l: .1, drop: .06 },
+    ears: { type: "side", len: .16, w: .06 }, horns: { spread: .04, up: .14, back: .14, r: .022 }, tail: { len: .14, r: .02, up: true },
+    colors: (r, vi) => { const v = pick(vi, [[0xf3efe6, 0xa86b3c], [0xefe6d4, 0x3a2f28], [0x8a5a3a, 0x3a2a20], [0x5a4638, null]]); return { body: col(v[0]), patch: v[1] == null ? null : col(v[1]), head: col(v[0]), hoof: col(0x3a302a), tuft: col(v[1] == null ? 0x8a7a6a : v[1]), horn: col(0x9a8c76) }; }, patchCut: .5 },
+  Sheep: { graze: .85, kind: KIND.grazer, L: 1.25, H: .78, br: .28, bw: 1.05, bodyFrac: .55, legR: .03, walk: .32, seed: 7,
+    neck: { len: .22, up: 20 * DEG, r0: .12, r1: .09 }, head: { l: .3, w: .1, h: .13, pitch: .3 }, snout: { w: .07, h: .07, l: .1, drop: .05 },
+    ears: { type: "side", len: .12, w: .06 }, tail: { len: .12, down: .12, back: .03, r: .03 },
+    colors: (r, vi) => { const v = pick(vi, [[0xf4efe3, 0x2b2622], [0xf4efe3, 0xf0e8da], [0xe9e2d3, 0x5a4a3c], [0xd8d0c0, 0x2b2622]]); return { body: col(v[0]), head: col(v[1]), legs: col(v[1]), ears: col(v[1]), hoof: col(0x2a2220) }; },
+    extras: (R, C, D, r) => { for (let i = 0; i < 14; i++) R.ell(D.br * .36, D.br * .32, D.br * .38, C.body, { pos: [(r() - .5) * D.br * 1.9, D.by + D.br * (.05 + r() * .55), (r() - .5) * D.bl * 1.1], seg: 7, rings: 5 }); R.ell(D.hw * 1.15, D.hh * .5, D.hl * .35, C.body, { part: PART.head, pivot: D.n0, pos: [0, D.hc[1] + D.hh * .75, D.hc[2] - D.hl * .1] }); } },
+  Rabbit: { kind: KIND.hopper, L: .55, walk: .3, hop: true, colors: (r, vi) => { const v = pick(vi, [0xb9a08a, 0x6f5a49, 0xe8e2d8, 0x8a8078]); return { body: col(v), ears: col(v).multiplyScalar(.9) }; } },
+  Chicken: { graze: 1.9, kind: KIND.bird, L: .5, H: .38, walk: .25, comb: true, wattle: true, tilt: .3, tailUp: .3, neck: { len: .16, up: 65 * DEG, r: .05 }, head: { r: .065 }, beak: { len: .045 },
+    colors: (r, vi) => { const v = pick(vi, [[0xb8622c, 0x7a3d1c, 0x2b2420], [0xf0ebe0, 0xe4dccd, 0xf0ebe0], [0x2b2420, 0x1c1815, 0x2b2420], [0xd9a04e, 0xa9702e, 0x3a2e28]]); return { body: col(v[0]), wing: col(v[1]), tail: col(v[2]), head: col(v[0]), neck: col(v[0]), beak: col(0xe3a83a), legs: col(0xd99a3a) }; } },
+  Duck: { graze: 1.6, kind: KIND.bird, L: .55, H: .32, walk: .2, tilt: .12, plump: 1.05, tailUp: -.4, neck: { len: .13, up: 70 * DEG, r: .045 }, head: { r: .06 }, beak: { len: .07, flat: .45 },
+    colors: (r, vi) => { const v = pick(vi, [[0xf3efe6, 0xf3efe6, 0xf3efe6], [0x8a7a68, 0x6f6152, 0x2f6b3e], [0xf3efe6, 0xe6e0d4, 0xf3efe6]]); return { body: col(v[0]), wing: col(v[1]), head: col(v[2]), neck: col(v[2]), tail: col(v[1]), beak: col(0xe9a33c), legs: col(0xe9a33c) }; } },
+  Goose: { graze: 1.7, kind: KIND.bird, L: .78, H: .5, walk: .25, tilt: .1, plump: 1.0, tailUp: -.3, neck: { len: .33, up: 82 * DEG, r: .05 }, head: { r: .07 }, beak: { len: .08, flat: .5 },
+    colors: (r, vi) => { const v = pick(vi, [0xf6f2ea, 0xd8d3c6]); return { body: col(v), wing: col(v).multiplyScalar(.94), head: col(v), neck: col(v), tail: col(v), beak: col(0xe8842d), legs: col(0xe8842d) }; } },
+  Turkey: { graze: 1.5, kind: KIND.bird, L: .85, H: .6, walk: .25, tilt: .25, plump: 1.15, fan: true, wattle: true, snood: true, neck: { len: .24, up: 70 * DEG, r: .05 }, head: { r: .06 }, beak: { len: .05 },
+    colors: () => ({ body: col(0x3d2c22), wing: col(0x5a3f2c), tail: col(0x4a3324), head: col(0x8fa4b5), neck: col(0xb2555a), beak: col(0xe3c07a), legs: col(0xb98a5a) }) },
+  Quail: { graze: 1.8, kind: KIND.bird, L: .26, H: .17, walk: .15, tilt: .2, plume: true, tailUp: -.5, neck: { len: .05, up: 60 * DEG, r: .03 }, head: { r: .04 }, beak: { len: .02 },
+    colors: (r, vi) => { const v = pick(vi, [0x8a6a48, 0x6f5540]); return { body: col(v), wing: col(v).multiplyScalar(.85), speckle: col(0xe9dcc3), head: col(v), neck: col(v), tail: col(v), beak: col(0x3a302a), legs: col(0xb98a5a) }; } },
+  "Guinea Fowl": { graze: 1.8, kind: KIND.bird, L: .55, H: .38, walk: .25, tilt: .2, plump: 1.15, helmet: true, wattle: true, tailUp: -.6, neck: { len: .16, up: 62 * DEG, r: .035 }, head: { r: .045 }, beak: { len: .03 },
+    colors: () => ({ body: col(0x4a4c52), wing: col(0x3f4147), speckle: col(0xe8e6e0), head: col(0xd9d4cb), neck: col(0x6f7178), tail: col(0x3f4147), beak: col(0xc98b3a), legs: col(0x8a7a6a) }) },
+};
+
+const geoCache = new Map();
+function animalGeometry(type, variant) { // one geometry per species and colour variant, reused across the herd
+  const key = type + "|" + variant; if (geoCache.has(key)) return geoCache.get(key);
+  const S = SPECIES[type] || SPECIES.Sheep, r = rng(variant * 17 + 3);
+  const g = S.kind === KIND.bird ? bird(S, r, variant) : S.kind === KIND.hopper ? rabbit(S, r, variant) : quadruped(S, r, variant);
+  geoCache.set(key, g); return g;
+}
+
+/* ---------- shader: pose + motion from the shared clock ---------- */
+const GLSL_HEAD = `uniform float uTime; attribute vec4 g3a; attribute vec4 g3b; attribute vec4 g3p; attribute vec4 g3q;
+mat3 g3rx(float a){ float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
+mat3 g3ry(float a){ float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
+void g3pose(out mat3 Rp, out mat3 Rh, out vec3 off) {
+  float part = g3p.x, kind = g3a.w, ph = g3b.w;
+  float walking = step(.001, g3b.z);
+  float f = fract((uTime * g3b.z + ph * 6.2832) / 6.2832);
+  float mv = walking * smoothstep(0., .05, f) * (1. - smoothstep(.52, .57, f));
+  float ang = clamp(f / .57, 0., 1.) * 6.2832;
+  vec2 pos = vec2(g3b.x * cos(ang), g3b.y * sin(ang));
+  vec2 tng = vec2(-g3b.x * sin(ang), g3b.y * cos(ang));
+  float heading = walking > .5 ? atan(tng.x, tng.y) : g3a.z;
+  float gt = uTime * g3q.x + ph * 6.2832;
+  float legOff = (part == 3. || part == 6.) ? 0. : 3.1416;
+  float swing = sin(gt + legOff) * g3q.y * mv;
+  float bob = abs(sin(gt)) * g3q.w * mv;
+  float gz = .5 + .5 * sin(uTime * .31 + ph * 6.2832);
+  float down = smoothstep(.35, .7, gz) * (1. - mv);
+  float nib = down * sin(uTime * 5.5 + ph * 9.) * .05;
+  float peck = (1. - mv) * max(0., sin(uTime * 4.5 + ph * 7.)) * step(.55, .5 + .5 * sin(uTime * .6 + ph * 6.2832)) * g3q.z;
+  float strut = mv * sin(gt) * .12;
+  float headA = kind == 1. ? peck + strut : kind == 2. ? sin(uTime * 1.3 + ph * 6.) * .08 : down * g3q.z + nib;
+  float tailA = sin(uTime * 1.4 + ph * 6.2832) * .32 + sin(uTime * 3.3 + ph * 4.) * .1;
+  float a = part == 1. ? headA : (part >= 3. && part <= 6.) ? (kind == 2. ? 0. : swing) : 0.;
+  Rp = part == 7. ? g3ry(tailA) : g3rx(a);
+  Rh = g3ry(heading);
+  off = vec3(g3a.x + pos.x * walking, bob, g3a.y + pos.y * walking);
+}`;
+export function animalShader(sh, depth) {
+  Object.assign(sh.uniforms, { uTime: sh.uniforms.uTime || { value: 0 } });
+  sh.vertexShader = sh.vertexShader
+    .replace("#include <common>", "#include <common>\n" + GLSL_HEAD)
+    .replace("#include <begin_vertex>", `#include <begin_vertex>
+{ mat3 Rp, Rh; vec3 off; g3pose(Rp, Rh, off); vec3 lp = g3p.yzw + Rp * (position - g3p.yzw); transformed = Rh * lp + off; }`);
+  if (!depth) sh.vertexShader = sh.vertexShader.replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>
+{ mat3 Rp, Rh; vec3 off; g3pose(Rp, Rh, off); objectNormal = Rh * (Rp * objectNormal); }`);
+}
+let mats = null;
+export function animalMaterials(TIME) {
+  if (mats) return mats;
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x111111, emissiveIntensity: .35 });
+  mat.onBeforeCompile = (sh) => { sh.uniforms.uTime = TIME; animalShader(sh, false); }; mat.customProgramCacheKey = () => "g3animal";
+  const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  depth.onBeforeCompile = (sh) => { sh.uniforms.uTime = TIME; animalShader(sh, true); }; depth.customProgramCacheKey = () => "g3animalDepth";
+  mats = { mat, depth }; return mats;
+}
+
+/* ---------- the herd: one mesh for every animal on the farm ----------
+   items: [{ type, x, z, heading, arena: { x0, x1, z0, z1 } | null, seed }] in world metres.
+   Each animal gets a colour variant, a walking loop that fits inside its arena (or stands
+   still when there is no room), a gait speed from its size and a random phase. */
+export function buildHerd(items, TIME) {
+  if (!items.length) return null;
+  const { mat, depth } = animalMaterials(TIME), geos = [];
+  items.forEach((it) => {
+    const S = SPECIES[it.type] || SPECIES.Sheep, r = rng(it.seed * 31 + 7), variant = it.variant ?? Math.floor(r() * 4);
+    const g = animalGeometry(it.type, variant).clone(), n = g.attributes.position.count;
+    // walking loop: an ellipse around the base position, clipped to the arena
+    let rx = 0, rz = 0, speed = 0;
+    const A = it.arena;
+    if (A && r() < .72) {
+      const want = S.L * (1.2 + r() * 1.8), wz = S.L * (.8 + r() * 1.4), pad = S.L * .55;
+      rx = Math.min(want, it.x - A.x0 - pad, A.x1 - it.x - pad); rz = Math.min(wz, it.z - A.z0 - pad, A.z1 - it.z - pad);
+      if (rx > S.L * .5 && rz > S.L * .35) { const per = 6.2832 * Math.sqrt((rx * rx + rz * rz) / 2); speed = 6.2832 / (per / S.walk / .57 + 4 + r() * 8); } else { rx = rz = 0; }
+    }
+    const gait = 6.2832 * S.walk / (S.L * (S.kind === KIND.bird ? .32 : .5)), stride = S.kind === KIND.bird ? .45 : .32, graze = S.graze ?? 0, bobH = S.kind === KIND.hopper ? S.L * .22 : S.L * .012;
+    const a = new Float32Array(n * 4), b = new Float32Array(n * 4), q = new Float32Array(n * 4), ph = r();
+    for (let i = 0; i < n; i++) { a.set([it.x, it.z, it.heading, S.kind], i * 4); b.set([rx, rz, speed, ph], i * 4); q.set([gait, stride, graze, bobH], i * 4); }
+    g.setAttribute("g3a", new THREE.BufferAttribute(a, 4)); g.setAttribute("g3b", new THREE.BufferAttribute(b, 4)); g.setAttribute("g3q", new THREE.BufferAttribute(q, 4));
+    geos.push(g);
+  });
+  const merged = mergeGeometries(geos, false); geos.forEach((g) => g.dispose());
+  const mesh = new THREE.Mesh(merged, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true; mesh.customDepthMaterial = depth; mesh.frustumCulled = false; mesh.name = "herd";
+  return mesh;
+}
