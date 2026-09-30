@@ -9,6 +9,8 @@ export const DEF = {schemaVersion:7,zones:[],garden:{plots:[]},livestock:{animal
   // Daily task completions — keyed by local YYYY-MM-DD, value is array of task keys
   // completed on that day. Auto-pruned to last 30 days on migration.
   completions: {},
+  // The user's own one-off and repeating jobs (lib/own-tasks.js).
+  customTasks: [],
   // Onboarding profile — every field is written by onboarding and consumed by
   // suggestion/task/map logic. environment: 'balcony' | 'backyard' | 'farm'.
   // null environment = onboarding not completed yet (new user pre-onboarding).

@@ -722,3 +722,35 @@ test('Exports: CSV escapes text and never lets a cell start a formula',()=>{
   assert.match(harvestsCsv(d),/^Date,Crop,Variety,Bed,Harvested kg,Expected kg,Planted\r\n2026-08-10,Tomato,,Kitchen bed,9,12,2026-05-01\r\n$/);
   assert.match(moneyCsv({...fixture,costs:{items:[{type:'expense',amount:5,cat:'Feed',label:'Layers pellets',date:'2026-01-02',for:'species:Chicken'}]}}),/2026-01-02,expense,Feed,Layers pellets,Chicken,-5/);
 });
+import {isDueOn,ownTasks,repeatText,weeklyMinutes,lessOften,markOwnDone} from '../src/lib/own-tasks.js';
+test('Own jobs: repeat rules, one-offs stay due until ticked, month ends clamp',()=>{
+  assert(isDueOn({start:'2026-09-01',repeat:'weekly'},'2026-09-15'));assert(!isDueOn({start:'2026-09-01',repeat:'weekly'},'2026-09-16'));
+  assert(isDueOn({start:'2026-09-01',repeat:'fortnightly'},'2026-09-15'));assert(!isDueOn({start:'2026-09-01',repeat:'fortnightly'},'2026-09-08'));
+  assert(isDueOn({start:'2026-09-01',repeat:'every',every:3},'2026-09-07'));assert(!isDueOn({start:'2026-09-01',repeat:'every',every:3},'2026-09-08'));
+  assert(isDueOn({start:'2026-01-31',repeat:'monthly'},'2026-02-28'),'31st falls on the last day of February');
+  assert(!isDueOn({start:'2026-09-10',repeat:'daily'},'2026-09-09'),'nothing before the start');
+  assert(!isDueOn({start:'2026-09-01',repeat:'daily',paused:true},'2026-09-09'));
+  assert.equal(repeatText({start:'2026-10-03',repeat:'weekly'}),'Every week on Sat');
+  assert.equal(weeklyMinutes({repeat:'daily',minutes:5}),35);assert.equal(weeklyMinutes({repeat:'once',minutes:60}),0);
+  assert.deepEqual(lessOften({repeat:'daily'}),{repeat:'every',every:2});assert.deepEqual(lessOften({repeat:'weekly'}),{repeat:'fortnightly'});assert.equal(lessOften({repeat:'monthly'}),null);
+  const T=wxToday;
+  const data={...fixture,customTasks:[
+    {id:'a',title:'Turn the compost',repeat:'weekly',start:T,minutes:15,zoneId:'bed1'},
+    {id:'b',title:'Fix the gate',repeat:'once',start:addD(T,-2),minutes:30},
+    {id:'c',title:'Buy seed',repeat:'once',start:addD(T,3)},
+    {id:'d',title:'Check fence',repeat:'weekly',start:addD(T,-1)},
+  ]};
+  const own=ownTasks(data,T);
+  const a=own.find(t=>t.ownId==='a');assert.equal(a.daysOut,0);assert.equal(a.loc,'Kitchen bed');assert.equal(a.zoneId,'bed1');
+  const b=own.find(t=>t.ownId==='b');assert.equal(b.daysOut,0);assert.match(b.desc,/2 days late/);assert(b.once);
+  assert.equal(own.find(t=>t.ownId==='c').type,'upcoming');assert.equal(own.find(t=>t.ownId==='c').daysOut,3);
+  assert.equal(own.find(t=>t.ownId==='d').daysOut,6);
+  // Through the real queue + completion path.
+  const q=buildTaskQueue(data);assert(q.some(t=>t.key==='own-a'));
+  const doneA=applyTaskCompletion(data,q.find(t=>t.key==='own-a'));
+  assert(!buildTaskQueue(doneA).some(t=>t.key==='own-a'),'weekly job ticked for today');
+  const doneB=applyTaskCompletion(data,q.find(t=>t.key==='own-b'));
+  assert.equal(doneB.customTasks.find(t=>t.id==='b').doneOn,T);
+  assert(!buildTaskQueue({...doneB,completions:{}}).some(t=>t.key==='own-b'),'one-off stays done after the completions window');
+  assert.equal(markOwnDone(data,'a',T),data,'repeating jobs are not closed for good');
+});

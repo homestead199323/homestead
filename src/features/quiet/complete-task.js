@@ -4,6 +4,7 @@ import {rCM} from "../../lib/regional";
 import {isRecurringCrop, afterRecurringHarvest} from "../../lib/perennial";
 import {toggleStep, isAwaitingSowing, firstStepIdx, sowVerb} from "../../lib/sowing";
 import {recordHarvest, recordProduce} from "../../lib/memory";
+import {markOwnDone} from "../../lib/own-tasks";
 export function applyTaskCompletion(data, task, logValue) {
   if (!task) return data;
   if ((data.completions?.[todayLocalKey()] || []).includes(task.key)) return data;
@@ -80,6 +81,11 @@ export function applyTaskCompletion(data, task, logValue) {
       if (sowing) next.log = appendLog(data.log, { text: "🌱 " + (sowVerb(plot.steps) === "Plant" ? "Planted " : "Sowed ") + (plot.name || plot.crop) });
       return markTaskDone(next, task.key);
     }
+  }
+
+  // Your own one-off job: done for good (repeating ones are ticked per day below).
+  if (task.type === "own" && task.once && task.ownId) {
+    return markTaskDone(markOwnDone(data, task.ownId, todayLocalKey()), task.key);
   }
 
   // Everything else — pure check-off.

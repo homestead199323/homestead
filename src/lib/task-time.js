@@ -10,6 +10,7 @@ const BY_TYPE = {
 
 export function taskMinutes(task) {
   if (!task) return 5;
+  if (task.ownId) return Number(task.minutes) > 0 ? Number(task.minutes) : 10;
   if (task.type === "step" || task.type === "upcoming") {
     const l = String(task.title || "").toLowerCase();
     if (/sow|plant|transplant|set out|prepare soil|dig/.test(l)) return 10;

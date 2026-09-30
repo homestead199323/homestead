@@ -4,6 +4,7 @@ import { isAwaitingSowing, sowWindowOpen, firstStepIdx, prepStepIdxs } from "./s
 import { nurseryTasks } from "../features/nursery/nursery-model.js";
 import { animalZone as zoneOfAnimal } from "../features/quiet/farm-model.js";
 import { applyWeather, isWeatherDone } from "./weather-alerts.js";
+import { ownTasks } from "./own-tasks.js";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../data/livestock";
 
 /** Dairy species milked by default; sheep only when the keeper says so. A group can be switched off (dry, bucks, meat herd). */
@@ -185,6 +186,9 @@ export function buildTaskPlan(data, opts = {}) {
 
   // Seedling nursery: sowing, pricking out, hardening off, planting out, daily checks.
   tasks.push(...nurseryTasks(data, todayKey));
+
+  // The user's own one-off and repeating jobs (lib/own-tasks.js).
+  tasks.push(...ownTasks(data, todayKey));
 
   // Filter out tasks that have been marked done today via the completions map.
   // Step tasks are filtered by p.steps[i].done above (persistent), not here.

@@ -17,6 +17,8 @@ import { toast } from "../../lib/toast";
 import { milkingHead } from "../../lib/task-queue";
 import { animalZone as zoneOfAnimal } from "../quiet/farm-model";
 import { useFlip } from "../../lib/use-flip";
+import { isDueOn, unmarkOwnDone } from "../../lib/own-tasks";
+import { OwnTaskForm, OwnTaskList } from "./OwnTasks";
 
 /* ═══════════════════════════════════════════
    TASK ROW — extracted outside TaskQueue to prevent remount on every render
@@ -118,6 +120,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
   // default to expanded since they're the high-signal "today" sections.
   const [attentionCollapsed, setAttentionCollapsed] = useState(false);
   const [routineCollapsed, setRoutineCollapsed] = useState(false);
+  const [ownForm, setOwnForm] = useState(null); // null | {} (new) | task (edit)
 
   // Phase 8.1 — FLIP animation for task completion
   // rowRefs: live DOM nodes for completable rows (keyed by task key) — used for snapshot (First)
@@ -350,6 +353,21 @@ function TaskQueue({data, setData, setPage, tasks}) {
       }
     });
 
+    // Your own jobs (lib/own-tasks.js): calendar for 60 days, timeline for 30.
+    (Array.isArray(data.customTasks) ? data.customTasks : []).forEach(t => {
+      if (!t || !t.id || t.paused || (t.repeat === "once" && t.doneOn)) return;
+      const zoneName = (t.zoneId && zoneById.get(t.zoneId)?.name) || "Around your space";
+      for (let d = 0; d <= 60; d++) {
+        const dueDate = new Date(now.getTime() + d * 864e5);
+        const key = toLocalDateKey(dueDate);
+        if (!isDueOn(t, key)) continue;
+        const taskKey = `own-${t.id}`;
+        if (!evts[key]) evts[key] = [];
+        evts[key].push({type: "own", emoji: t.emoji || "📝", label: t.title, key: taskKey, ownId: t.id, minutes: t.minutes});
+        if (d >= 1 && d <= 30) timeline.push({daysOut: d, dueDate, type: "upcoming", emoji: t.emoji || "📝", title: t.title, loc: zoneName, ownId: t.id, minutes: t.minutes, key: taskKey, routine: t.repeat === "daily"});
+      }
+    });
+
     // Hide today's completed tasks from both calendar (today only) and timeline (today only)
     Object.keys(evts).forEach(k => {
       if (k !== todayKey) return;
@@ -417,7 +435,7 @@ function TaskQueue({data, setData, setPage, tasks}) {
   // Coming up this week = important tasks, tomorrow..+7, excluding routine
   const thisWeek = byTime.filter(t => t.daysOut >= 1 && t.daysOut <= 7 && t.routine !== true);
   // Split coming-up into Farm (plots — harvests, growing steps) vs Animals (periodic care)
-  const thisWeekFarm    = thisWeek.filter(t => !!t.plotId);
+  const thisWeekFarm    = thisWeek.filter(t => !!t.plotId || !!t.ownId);
   const thisWeekAnimals = thisWeek.filter(t => !!t.animalId);
 
   // Done today: reconstruct from completion keys by parsing each key and finding the referenced
@@ -428,6 +446,12 @@ function TaskQueue({data, setData, setPage, tasks}) {
   doneTodayKeys.forEach(k => {
     if (seenKeys.has(k)) return;
     seenKeys.add(k);
+    // Your own jobs: "own-<id>" (ids contain dashes, so match before splitting).
+    if (k.startsWith("own-")) {
+      const ot = (data.customTasks || []).find(x => x.id === k.slice(4));
+      if (ot) doneTodayList.push({ key: k, emoji: ot.emoji || "📝", title: ot.title, loc: (ot.zoneId && zoneById.get(ot.zoneId)?.name) || "Around your space" });
+      return;
+    }
     // Try to find a matching task-shape from any source (tasks array won't have it since filtered)
     // Parse the key to reconstruct a minimal display shape
     // keys look like: plot-{id}-{type}, animal-{id}-{type}, or species-{Type}-{type}
@@ -488,8 +512,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
   const undoDone = (key) => {
     const existing = (data.completions && data.completions[todayStr]) || [];
     if (!existing.includes(key)) return;
+    const base = key.startsWith("own-") ? unmarkOwnDone(data, key.slice(4), todayStr) : data;
     setData({
-      ...data,
+      ...base,
       completions: {
         ...(data.completions || {}),
         [todayStr]: existing.filter(k => k !== key),
@@ -528,7 +553,10 @@ function TaskQueue({data, setData, setPage, tasks}) {
   return (
     <div className="page-enter" style={{maxWidth:1100}}>
       <h2 style={{fontFamily:F.head,fontSize:30,margin:"0 0 4px",letterSpacing:"-0.03em",fontWeight:800}}>📋 Task Calendar</h2>
-      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px",fontWeight:500}}>Today's work first, then the week, then the month</p>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",margin:"0 0 16px"}}>
+        <p style={{color:C.t2,fontSize:13,margin:0,fontWeight:500}}>Today's work first, then the week, then the month</p>
+        <button type="button" onClick={()=>setOwnForm({})} style={{border:`1px solid ${C.bdr}`,background:C.card,color:C.green,borderRadius:10,padding:"8px 12px",fontSize:13,fontWeight:700,cursor:"pointer",minHeight:40}}>+ Add your own job</button>
+      </div>
 
       {/* ── Section 1: TODAY — attention banner + location-grouped routine + done-today ── */}
       {/* ── Section 1: NEEDS ATTENTION — harvests, steps, periodic animal care ── */}
@@ -736,6 +764,16 @@ function TaskQueue({data, setData, setPage, tasks}) {
         </Card>
       )}
 
+      {/* ── Your own jobs (lib/own-tasks.js) ── */}
+      <Card style={{marginBottom:16,padding:"14px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{fontSize:16,fontWeight:800,fontFamily:F.head,color:C.text}}>📝 Your own jobs</div>
+          <button type="button" onClick={()=>setOwnForm({})} style={{background:"none",border:"none",color:C.green,fontSize:13,fontWeight:700,cursor:"pointer",minHeight:40}}>+ Add</button>
+        </div>
+        <OwnTaskList data={data} setData={setData} onEdit={t=>setOwnForm(t)}/>
+      </Card>
+      {ownForm && <OwnTaskForm data={data} setData={setData} initial={ownForm} onClose={()=>setOwnForm(null)}/>}
+
       {/* ── Section 4: Calendar — full width ── */}
       <Card p={false} style={SX.overflowHidden}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.bdr}`,gap:8}}>
@@ -836,7 +874,10 @@ function TaskQueue({data, setData, setPage, tasks}) {
                 : <div style={{display:"flex",flexDirection:"column",gap:6}}>
                     {selEvts.map((evt,idx) => {
                       // Synthesize a task-shape object so we can reuse TaskRow
-                      const loc = evt.plotId
+                      const ownT = evt.ownId ? (data.customTasks || []).find(x => x.id === evt.ownId) : null;
+                      const loc = ownT
+                        ? ((ownT.zoneId && zoneById.get(ownT.zoneId)?.name) || "Around your space")
+                        : evt.plotId
                         ? (data.zones.find(z => z.id === (data.garden.plots.find(p => p.id === evt.plotId)?.zone))?.name || "Farm")
                         : (data.zones.find(z => ["barn","pasture"].includes(z.type))?.name || "Farm");
                       const pri = evt.type === "harvest" ? 0 : evt.type === "step" ? 1 : evt.type === "feed" || evt.type === "water" || evt.type === "eggs" ? 1 : 2;
@@ -851,6 +892,9 @@ function TaskQueue({data, setData, setPage, tasks}) {
                         plotId: evt.plotId,
                         animalId: evt.animalId,
                         stepIdx: evt.stepIdx,
+                        ownId: evt.ownId,
+                        minutes: evt.minutes,
+                        once: ownT ? (ownT.repeat === "once" || !ownT.repeat) : undefined,
                         daysOut,
                         dueDate: selDateObj,
                       };
