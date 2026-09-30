@@ -83,19 +83,58 @@ function buildHint(temp, code, hourlyPrecipProb) {
   return "good day for a walk through the farm";
 }
 
-/* ─── Geocode (cached forever per city) ─── */
+/* ─── Geocode (cached forever per city) ───
+   Cities are saved as "London, UK" (Farm → city search) or free text from
+   onboarding. Open-Meteo's search matches place names only, and "London, UK"
+   returns nothing — so search the name part and use the country part to pick
+   the right town (UK/England/… map to GB). Only successful lookups are cached. */
+const COUNTRY_ALIASES = {
+  uk: "GB", "united kingdom": "GB", england: "GB", scotland: "GB", wales: "GB", "northern ireland": "GB",
+  usa: "US", us: "US", "united states": "US", america: "US", canada: "CA",
+  albania: "AL", greece: "GR", italy: "IT", spain: "ES", portugal: "PT", croatia: "HR", turkey: "TR", "türkiye": "TR",
+  france: "FR", ireland: "IE", netherlands: "NL", "the netherlands": "NL", belgium: "BE", luxembourg: "LU", germany: "DE",
+  denmark: "DK", sweden: "SE", norway: "NO", finland: "FI", estonia: "EE", latvia: "LV", lithuania: "LT", poland: "PL",
+  czechia: "CZ", "czech republic": "CZ", austria: "AT", switzerland: "CH", hungary: "HU", slovakia: "SK",
+};
+// City-list entries that are counties/provinces, or named differently in the place search.
+const PLACE_ALIASES = {
+  cornwall: "Truro", devon: "Exeter", kent: "Maidstone", surrey: "Guildford", "washington dc": "Washington",
+  "quebec city": "Québec", "british columbia": "Vancouver", "new brunswick": "Fredericton",
+  "newfoundland and labrador": "St. John's", nunavut: "Iqaluit",
+  patras: "Pátra", arizona: "Phoenix", alberta: "Calgary", ontario: "Toronto", yukon: "Whitehorse",
+};
+
+export function pickPlace(results, countryHint) {
+  const list = Array.isArray(results) ? results.filter((r) => r && typeof r.latitude === "number" && typeof r.longitude === "number") : [];
+  if (!list.length) return null;
+  const hint = String(countryHint || "").trim().toLowerCase();
+  if (!hint) return list[0];
+  const code = COUNTRY_ALIASES[hint] || (hint.length === 2 ? hint.toUpperCase() : "");
+  // A named country that matches nothing → no guess (weather from the wrong continent is worse than none).
+  return list.find((r) => (code && r.country_code === code) || String(r.country || "").toLowerCase() === hint || String(r.admin1 || "").toLowerCase() === hint) || null;
+}
+
+async function searchPlace(name, count) {
+  const url = `${GEO_URL}?name=${encodeURIComponent(name)}&count=${count}&language=en&format=json`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const json = await res.json();
+  return (json && Array.isArray(json.results)) ? json.results : [];
+}
+
 async function geocode(cityName) {
   const key = cityName.trim().toLowerCase();
   if (!key) return null;
   const cache = loadGeoCache();
   if (cache[key]) return cache[key];
 
-  const url = `${GEO_URL}?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const json = await res.json();
-  const hit = (json && Array.isArray(json.results) ? json.results[0] : null);
-  if (!hit || typeof hit.latitude !== "number" || typeof hit.longitude !== "number") return null;
+  const parts = cityName.split(",").map((x) => x.trim()).filter(Boolean);
+  const country = parts.length > 1 ? parts[parts.length - 1] : "";
+  const place = PLACE_ALIASES[(parts[0] || "").toLowerCase()] || parts[0] || cityName.trim();
+  // Name part first, checked against the country; the full text only when no country is given.
+  let hit = pickPlace(await searchPlace(place, 10), country);
+  if (!hit && !country) hit = pickPlace(await searchPlace(cityName.trim(), 1), "");
+  if (!hit) return null;
   const entry = {
     lat: hit.latitude,
     lng: hit.longitude,

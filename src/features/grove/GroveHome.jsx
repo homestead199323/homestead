@@ -1,7 +1,8 @@
 import {useState,useEffect,useMemo} from 'react';
 import {createPortal} from 'react-dom';
 import {ArrowRight,Leaf,Sun,Pencil,ChevronRight} from 'lucide-react';
-import {fetchWeather,describeWeatherCode} from '../../lib/weather';
+import {fetchWeather} from '../../lib/weather';
+import WeatherWeek from './WeatherWeek';
 import {todayLocalKey} from '../../lib/utils';
 import {spaceTitle,defaultSpaceTitle} from '../../lib/environment';
 import {minutesLabel} from '../../lib/task-time';
@@ -44,29 +45,7 @@ function StarterKit({data,setData}) {
   </section>;
 }
 
-/** Next 7 days + what the weather means for this farm (lib/weather-alerts.js). */
-function WeatherWeek({forecast,alerts,onOpenTasks}) {
-  const today=todayLocalKey();
-  const days=(forecast?.days||[]).filter(d=>d.date>=today).slice(0,7);
-  if(!days.length) return null;
-  const alertDays=new Set((alerts||[]).map(a=>a.date));
-  const round=n=>n==null?'–':Math.round(n);
-  return <section className="mt-wx" aria-label="Weather this week">
-    <div className="q-row q-between"><h2>Next 7 days</h2><span className="q-eyebrow">{forecast.location||''}</span></div>
-    {(alerts||[]).length>0?<ul className="mt-wx-alerts">{alerts.map(function(a){
-      return <li key={a.kind+a.date}><button type="button" className={`mt-wx-alert ${a.severity||'warn'}`} onClick={onOpenTasks}><span aria-hidden="true">{a.emoji}</span><span>{a.short||a.title}</span></button></li>;
-    })}</ul>:<p className="mt-wx-calm">No frost, storms or heat ahead for what you grow.</p>}
-    <div className="mt-wx-days" role="list">{days.map(function(d){
-      const w=describeWeatherCode(d.code);
-      return <div role="listitem" key={d.date} className={`mt-wx-day${alertDays.has(d.date)?' flag':''}`} title={w.desc}>
-        <small>{d.date===today?'Today':new Date(d.date+'T12:00').toLocaleDateString(undefined,{weekday:'short'})}</small><span aria-hidden="true">{w.emoji}</span>
-        <b>{round(d.tMax)}°</b><small>{round(d.tMin)}°</small>
-      </div>;
-    })}</div>
-  </section>;
-}
-
-export default function GroveHome({data,setData,setPage,tasks,forecast,alerts}) {
+export default function GroveHome({data,setData,setPage,tasks,forecast,forecastState,alerts}) {
   const [walk,setWalk]=useState(false),[weather,setWeather]=useState(null),[taskZone,setTaskZone]=useState(null);
   useEffect(()=>{let active=true;if(data.city)fetchWeather(data.city).then(w=>{if(active)setWeather(w);});return()=>{active=false;};},[data.city]);
   const due=tasks.filter(t=>t.daysOut===0&&!['forecast','upcoming'].includes(t.type));
@@ -89,7 +68,7 @@ export default function GroveHome({data,setData,setPage,tasks,forecast,alerts}) 
         {due.length>0&&<button className="q-button" onClick={()=>setWalk(true)}><Leaf size={17}/>{data.walkSession?.status==='active'?'Resume morning walk':'Start morning walk'}<ArrowRight size={16}/></button>}
       </section>}
     </section>
-    {!empty&&<WeatherWeek forecast={forecast} alerts={alerts} onOpenTasks={()=>setPage('tasks')}/>}
+    {!empty&&<WeatherWeek data={data} setData={setData} forecast={forecast} forecastState={forecastState} alerts={alerts} onOpenTasks={()=>setPage('tasks')}/>}
     {!empty&&<RemindersPrompt/>}
     <StarterKit data={data} setData={setData}/>
     {!empty&&<section className="q-home-section"><div className="q-row q-between"><h2>Around your {defaultSpaceTitle(data).replace(/^My /,'')}</h2><span className="q-eyebrow">Today’s care</span></div>

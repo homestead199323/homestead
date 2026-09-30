@@ -464,11 +464,14 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
   // 7-day forecast for the farm's city: weather jobs + jobs that move with the
   // weather (lib/weather-alerts.js). Refetched hourly while open; cached 3 h.
   const city = data?.city || "";
-  const [forecast, setForecast] = useState(null);
+  // forecastState: null (no city) | { loading } | the fetchForecast result (ok or error) — Home shows which.
+  const [forecastState, setForecastState] = useState(null);
+  const forecast = forecastState && forecastState.ok ? forecastState : null;
   useEffect(() => {
     let active = true;
-    if (!city) { setForecast(null); return undefined; }
-    const load = () => fetchForecast(city).then((f) => { if (active) setForecast(f && f.ok ? f : null); });
+    if (!city) { setForecastState(null); return undefined; }
+    setForecastState({ loading: true }); // new town: never show the old town's week
+    const load = () => fetchForecast(city).then((f) => { if (active) setForecastState(f || { ok: false, error: "exception" }); });
     load();
     const id = setInterval(load, 60 * 60 * 1000);
     return () => { active = false; clearInterval(id); };
@@ -506,7 +509,7 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
       case "insights": return <InsightsScreen data={data} setPage={setPage} locked={!analyticsAllowed} onUpgrade={() => setUpgradeOpen(true)}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       case "admin": return <AdminDashboard/>;
-      default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks} forecast={forecast} alerts={plan.alerts}/>;
+      default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks} forecast={forecast} forecastState={forecastState} alerts={plan.alerts}/>;
     }
   };
 
