@@ -243,6 +243,8 @@ function materials() {
     fruit: (color) => keep(k("fruit", color), () => std({ color, roughness: .45, emissive: color, emissiveIntensity: .12 })),
     select: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .22, depthWrite: false }), 14),
     selectEdge: layer(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .95, depthWrite: false }), 15),
+    pick: layer(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .3, depthWrite: false }), 16),
+    pickEdge: layer(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .95, depthWrite: false }), 17),
     contact: layer(new THREE.MeshBasicMaterial({ map: proc("contact", DRAW.contact, { size: 128, clamp: true }), transparent: true, depthWrite: false }), 12),
     solar: new THREE.MeshPhysicalMaterial({ map: proc("solar", DRAW.solar, { size: 64 }), roughness: .2, metalness: .5, envMapIntensity: 1.4 }),
     tuft: foliage(new THREE.MeshLambertMaterial({ map: proc("tuft", DRAW.tuft, { size: 128, clamp: true }), transparent: true, alphaTest: .35, side: THREE.DoubleSide }), { sway: .05, fade: [86, 70, 0, 1] }),
@@ -1415,7 +1417,7 @@ class FarmControls {
 
 /* ---------- component ---------- */
 export default function Grove3D(props) {
-  const { data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge } = props;
+  const { data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge, onShowCrops } = props;
   const host = useRef(null), labels = useRef(null), tipRef = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
   const [full, setFull] = useState(false);
   const [ahead, setAhead] = useState(0); // growth preview: days from today
@@ -1438,17 +1440,31 @@ export default function Grove3D(props) {
     });
     return { byZone, totals };
   }, [data.garden?.plots, crops, todayKey]);
+  // tapped planted row → the crop card (top-left) + every row of that crop highlighted on the map
+  const [picked, setPicked] = useState(null);
+  const pickRow = (row) => { if (!row) { setPicked(null); return; } setPicked({ ...row, color: crops?.get?.(row.crop)?.color }); latest.current.showTip?.(null); };
+  const pickInfo = useMemo(() => {
+    if (!picked) return null;
+    const c = crops?.get?.(picked.crop), rows = (data.garden?.plots || []).filter((p) => p.crop === picked.crop && p.status !== "harvested" && p.zone);
+    let plants = 0, soonest = null; const stages = [0, 0, 0, 0, 0, 0], areas = [];
+    rows.forEach((p) => {
+      const g = growthOf(p, c, todayKey); stages[g.index]++; plants += p.plantCount || p.qty || 0;
+      const zn = zones.find((z) => z.id === p.zone)?.name; if (zn && !areas.includes(zn)) areas.push(zn);
+      if (p.harvestDate && !g.waiting) { const left = Math.round(dayNum(p.harvestDate) - dayNum(todayKey)); if (soonest == null || left < soonest) soonest = left; }
+    });
+    return { c, rows: rows.length, plants, areas, stages, soonest };
+  }, [picked, data.garden?.plots, crops, zones, todayKey]);
   const showTip = (hit, x, y) => {
     const el = tipRef.current; if (!el) return;
     if (!hit) { el.style.display = "none"; return; }
     const r = hit.userData.plot, when = r.stage === 5 ? "in its harvest window" : r.left == null ? STAGES[r.stage] : r.left > 0 ? `${STAGES[r.stage]} · harvest in ${r.left} d` : `${STAGES[r.stage]} · past harvest date`;
-    el.innerHTML = `<b>${r.crop}</b> <i style="background:${STAGE_CSS[r.stage]}"></i><br>${when}${r.count ? ` · ${r.count} plants` : ""}${r.estimated ? "" : " · observed"}`;
+    el.innerHTML = `<b>${r.crop}</b> <i style="background:${STAGE_CSS[r.stage]}"></i><br>${when}${r.count ? ` · ${r.count} plants` : ""}${r.estimated ? "" : " · observed"}<br><span style="opacity:.72">${r.zone} · tap for details</span>`;
     el.style.display = ""; const w = el.offsetWidth, hw = host.current ? host.current.clientWidth : 600;
     el.style.left = `${Math.max(4, Math.min(hw - w - 4, x + 14))}px`; el.style.top = `${Math.max(4, y - el.offsetHeight - 12)}px`;
   };
   const dismissHint = () => { setHint(false); try { sessionStorage.setItem("g3-hint", "1"); } catch { /* private mode */ } };
   const showCoop = (kind) => setCoop(kind);
-  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, todayKey }; }); // the engine reads the newest props from here
+  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, pickRow, todayKey }; }); // the engine reads the newest props from here
   useEffect(() => { if (!coop) return; const t = setTimeout(() => setCoop(null), 1800); return () => clearTimeout(t); }, [coop]);
   // renderer, lights and controls: created once
   useEffect(() => {
@@ -1476,7 +1492,7 @@ export default function Grove3D(props) {
     let queued = false, dirty = false, animOn = false, animRaf = 0, lastFrame = 0, inView = true;
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     const IDLE_MS = mobile ? 1000 / 20 : 1000 / 30; // idle animation rate; gestures and camera moves render every frame
-    const st = { renderer, scene, camera, sun, world: null, hits: [], plotHits: [], faders: [], dims: null, fitted: false, anchors: {}, highlight: null, calls: 0, animating: false };
+    const st = { renderer, scene, camera, sun, world: null, hits: [], plotHits: [], faders: [], dims: null, fitted: false, anchors: {}, highlight: null, pickGroup: null, picked: null, calls: 0, animating: false };
     state.current = st;
     if (import.meta.env?.DEV && typeof window !== "undefined") window.__g3 = st; // dev-only inspection hook
     const project = (x, y, z, out) => { const v = out.set(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * S.W, y: ((1 - v.y) / 2) * S.H, on: v.z < 1 }; };
@@ -1537,6 +1553,9 @@ export default function Grove3D(props) {
       tap: (x, y, e) => {
         const P = latest.current; if (!P.interactive || !P.onZoneOpen) return false;
         ptr.set((x / S.W) * 2 - 1, -(y / S.H) * 2 + 1); ray.setFromCamera(ptr, camera);
+        const row = ray.intersectObjects(st.plotHits, false)[0];
+        if (row) { P.pickRow?.(row.object.userData.plot); return true; }
+        P.pickRow?.(null); // ground or a zone: the crop card closes
         const hit = ray.intersectObjects(st.hits, false)[0];
         if (!hit) return false;
         const z = P.zones.find((q) => q.id === hit.object.userData.zoneId); if (!z) return false;
@@ -1574,6 +1593,26 @@ export default function Grove3D(props) {
         scene.add(g); st.highlight = g;
       }
       Object.entries(st.anchors).forEach(([zid, a]) => { a.sel = zid === id ? 1 : 0; });
+      st.requestRender();
+    };
+    // crop group: every planted row of the tapped crop lights up in the crop's colour, the tapped row with a thicker edge
+    st.pick = (sel) => {
+      if (st.pickGroup) { scene.remove(st.pickGroup); st.pickGroup.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); st.pickMats?.forEach((m) => m.dispose()); st.pickGroup = null; st.pickMats = null; }
+      st.picked = sel || null;
+      if (sel && st.world) {
+        st.world.updateMatrixWorld(true);
+        const rows = st.plotHits.filter((h) => h.userData.plot.crop === sel.crop);
+        if (rows.length) {
+          const g = new THREE.Group(), col = new THREE.Color(sel.color || "#ffffff"), white = new THREE.Color(0xffffff), v = new THREE.Vector3();
+          const fill = st.M.pick.clone(), edge = st.M.pickEdge.clone(); fill.color.copy(col).lerp(white, .3); edge.color.copy(col).lerp(white, .15); st.pickMats = [fill, edge];
+          rows.forEach((h) => {
+            const p = h.getWorldPosition(v), q = h.geometry.parameters, w = q.width + .3, d = q.depth + .3, y = p.y - q.height / 2, t = h.userData.plot.id === sel.id ? .14 : .07;
+            plane(g, w, d, fill, p.x, y + .015, p.z, { receive: false });
+            [[p.x, p.z - d / 2, w, t], [p.x, p.z + d / 2, w, t], [p.x - w / 2, p.z, t, d], [p.x + w / 2, p.z, t, d]].forEach(([x, z, bw, bd]) => box(g, bw, .04, bd, edge, x, y + .03, z, { cast: false, receive: false }));
+          });
+          scene.add(g); st.pickGroup = g;
+        }
+      }
       st.requestRender();
     };
     const onLoaded = () => { renderer.shadowMap.needsUpdate = true; st.requestRender(); };
@@ -1621,6 +1660,7 @@ export default function Grove3D(props) {
     return () => clearTimeout(t);
   }, [sceneKey]);
   useEffect(() => { state.current?.select(selectedId); }, [selectedId]);
+  useEffect(() => { state.current?.pick?.(picked); }, [picked, sceneKey]);
   useEffect(() => { state.current?.requestRender(); }, [tasksByZone]);
   // full-screen mode: the map takes the whole viewport, page scroll locked, Escape closes
   useEffect(() => {
@@ -1686,7 +1726,28 @@ export default function Grove3D(props) {
           </div>
         </div>
       )}
-      {hint && !busy && <div className="g3-hint" aria-hidden="true">Drag to move · pinch or scroll to zoom · two fingers to turn</div>}
+      {picked && pickInfo && (
+        <div className="g3-crop" role="dialog" aria-label={`${picked.crop} details`}>
+          <div className="g3-crop-head">
+            <span className="g3-crop-emoji" aria-hidden="true">{pickInfo.c?.emoji || "🌱"}</span>
+            <div><strong>{picked.crop}</strong><small>{picked.zone}{picked.count ? ` · ${picked.count} plants` : ""}</small></div>
+            <button type="button" className="g3-crop-x" aria-label="Close crop details" onClick={() => pickRow(null)}><X size={15} /></button>
+          </div>
+          <div className="g3-crop-stage"><i style={{ background: STAGE_CSS[picked.stage] }} />{picked.stage === 5 ? "In its harvest window" : picked.left == null ? STAGES[picked.stage] : picked.left > 0 ? `${STAGES[picked.stage]} · harvest in ${picked.left} d` : `${STAGES[picked.stage]} · past harvest date`}{picked.estimated ? "" : " · observed"}</div>
+          <div className="g3-crop-group"><strong>{pickInfo.rows} row{pickInfo.rows === 1 ? "" : "s"} highlighted</strong>{pickInfo.plants ? ` · ${pickInfo.plants} plants` : ""}{pickInfo.areas.length ? ` · ${pickInfo.areas.join(", ")}` : ""}{pickInfo.soonest != null ? ` · first harvest ${pickInfo.soonest > 0 ? `in ${pickInfo.soonest} d` : "now"}` : ""}</div>
+          {pickInfo.rows > 1 && <div className="g3-legend g3-crop-stages">{STAGES.map((n, i) => pickInfo.stages[i] ? <span key={n}><i style={{ background: STAGE_CSS[i] }} />{n} {pickInfo.stages[i]}</span> : null)}</div>}
+          {pickInfo.c && (
+            <dl className="g3-crop-facts">
+              <div><dt>Sun</dt><dd>{pickInfo.c.sun}</dd></div>
+              <div><dt>Water</dt><dd>{pickInfo.c.waterFreq}</dd></div>
+              <div><dt>Spacing</dt><dd>{pickInfo.c.spacing} cm</dd></div>
+              <div><dt>Harvest</dt><dd>{pickInfo.c.harvest}</dd></div>
+            </dl>
+          )}
+          {onShowCrops && <button type="button" className="g3-chip" onClick={onShowCrops}>Open Crops →</button>}
+        </div>
+      )}
+      {hint && !busy && !picked && <div className="g3-hint" aria-hidden="true">Drag to move · pinch or scroll to zoom · two fingers to turn</div>}
       {coop && <div className="g3-coop" role="status">{coop === "touch" ? "Use two fingers to move the map, or open it full screen" : "Hold ⌘ / Ctrl and scroll to zoom the map"}</div>}
       {busy && <div className="g3-busy" aria-live="polite">Building your farm…</div>}
     </div>

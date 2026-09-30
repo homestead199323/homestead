@@ -653,7 +653,7 @@ export default function GroveScene({
           <Suspense fallback={<div style={{ width: "100%", aspectRatio: "1 / 0.64" }} />}>
             <Grove3D data={data} zones={zones} roads={allPaths} crops={cropMap} fW={fW} fH={fH} margin={margin} env={env}
               pathTexture={pathTexture} roadWidth={roadWidth} tasksByZone={tasksByZone} selectedId={selectedId}
-              onZoneOpen={open} onBadge={setTaskZone} interactive={canInteract} onUnavailable={() => setNoGL(true)} />
+              onZoneOpen={open} onBadge={setTaskZone} interactive={canInteract} onUnavailable={() => setNoGL(true)} onShowCrops={onShowCrops} />
           </Suspense>
         ) : (
         <svg
