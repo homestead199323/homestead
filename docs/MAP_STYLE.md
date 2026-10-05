@@ -21,7 +21,7 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - **Garden (backyard):** the same hedge, fence and gate — no scarecrow, no tractor.
 - **Balcony:** a stone slab against the building's cream wall (green glazed door, white-framed windows) with a slim rounded railing — capsule posts, thin balusters, a chunky white handrail — on the three open sides. No hedge, fence, gate, pillars, drive, mailbox, wheelbarrow, grass or wild flowers.
 
-## 3. Palette (`PAL` in `toy.js`)
+## 3. Palette (`TOY` in `palette.js` — the one source for both views; `toy.js` turns it into `PAL` numbers for three.js)
 - **Page / fog:** `#eef3ec` — the scene fades into the page; the canvas background is the same colour.
 - **Ground:** pale sage meadow `#c4dfab` with softer patches `#b3d297`; the property inside the hedge a shade lighter; pasture / orchard / lawn close variants. Light enough that objects pop, green enough to read as grass.
 - **Paths:** warm off-white `#f2eee6` with a `#e5e0d5` edge, round ends. Settings → Path color: *Warm sand* `#e8d8b9` / *Slate* `#bfc4be` override the material's own tone.
@@ -54,6 +54,13 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - Everything static is merged per material (`bake()`); repeated parts are instanced (fences, pots, tufts, crops, fruit, bees, smoke).
 - Crop models have three levels of detail chosen farm-wide by plant count (>350 plants, >900 plants).
 - Budget at the home view: ≤ 200 draw calls, ≤ 650 k triangles (verified 2026-10-05 after the standardisation pass: 157 calls / 570 k on the all-zones harness; 118 / 450 k on 36 numbered beds; 32 / 70 k on the balcony).
+
+## 8b. The flat view and the layout editor (`AerialArtwork.jsx`, `GroveScene.jsx`)
+- The same toy style seen straight from above, reading the same `palette.js` colours: flat fills, rounded corners, no photo textures or image sprites, no texture overlays, no sun-tint layer.
+- Shadows are soft and faint and fall to the bottom-left, the way the 3D sun's do (`dx < 0, dy > 0`, opacity ≤ 0.2).
+- Ground and the property apron, hedge, boundary fence with a green gate and stone pillars, paths with an edge, zone surfaces (soil, pale soil rows, gravel, water with a stone rim, orchard and pasture greens), crops as rounded blobs with fruit only in the harvest window, pots under container plants, animals in the 3D coat colours.
+- Labels are the 3D map's white card pills (brand green when selected), job badges are orange with a white rim, selection is a gold frame, edit handles and the grid are brand green.
+- SVG text is drawn at real pixel sizes inside a scaled group — never a sub-1 font size (Chrome mis-measures it).
 
 ## 9. Harnesses (run with Vite, screenshot with Playwright)
 `tests/g3-all.html` (every zone type), `tests/g3-zoo.html` (every animal, coop and barn), `tests/g3-beds.html` (36 narrow numbered beds), `tests/g3-crops.html` (every crop family at growing and harvest stage), `tests/g3-balcony.html` (balcony environment).

@@ -1,147 +1,150 @@
+/* ═══════════════════════════════════════════
+   FLAT MAP ARTWORK — the overhead view and layout editor drawn in the same toy style as the 3D
+   map: flat matte colours from the shared palette (palette.js), rounded shapes, soft faint
+   shadows falling the same way as the 3D sun (towards the bottom-left), no photo textures.
+   The ids (patterns, gradients, filters, symbols) are kept so every caller keeps working.
+   MARKER: FLAT_TOY_ART_V1
+   ═══════════════════════════════════════════ */
 import {memo} from 'react';
 import {srand} from './sceneMath';
-import {art,cropArtwork} from '../quiet/art';
 import {roofBays,buildingScale} from './aerial-layout';
+import {TOY,FRUIT_HEX} from './palette';
 
-const leaves=Array.from({length:28},(_,i)=>({x:Math.cos(i*2.4)*Math.sqrt((i+.5)/28)*.88,y:Math.sin(i*2.4)*Math.sqrt((i+.5)/28)*.82,r:.18+srand(i)*.2}));
+const T=TOY, L=T.leaf;
+const solid=(id,c)=><linearGradient id={id}><stop stopColor={c}/></linearGradient>;
+const flatPattern=(id,c)=><pattern id={id} width="1" height="1" patternUnits="userSpaceOnUse"><rect width="1" height="1" fill={c}/></pattern>;
 export const AerialDefs=memo(function AerialDefs({id}) {
-  const url=n=>`url(#${id}-${n})`;
+  const n=k=>`${id}-${k}`;
   return <defs>
-    <linearGradient id={`${id}-roof`} x2=".75" y2="1"><stop stopColor="#85918b"/><stop offset=".5" stopColor="#687874"/><stop offset="1" stopColor="#495c58"/></linearGradient>
-    <linearGradient id={`${id}-clay`} x2=".8" y2="1"><stop stopColor="#b99b78"/><stop offset="1" stopColor="#806348"/></linearGradient>
-    <linearGradient id={`${id}-glass`} x2=".8" y2="1"><stop stopColor="#e9f3ec" stopOpacity=".6"/><stop offset=".48" stopColor="#aecbb9" stopOpacity=".12"/><stop offset="1" stopColor="#dbeee7" stopOpacity=".68"/></linearGradient>
-    <linearGradient id={`${id}-water`} x2=".4" y2="1"><stop stopColor="#7faaa3"/><stop offset=".55" stopColor="#507e80"/><stop offset="1" stopColor="#315b61"/></linearGradient>
-    <radialGradient id={`${id}-leaf`} cx=".3" cy=".25" r=".8"><stop stopColor="#a7b85e"/><stop offset=".45" stopColor="#6e9341"/><stop offset="1" stopColor="#35592d"/></radialGradient>
-    <radialGradient id={`${id}-lettuce`} cx=".25" cy=".25" r=".85"><stop stopColor="#b9ce6c"/><stop offset=".65" stopColor="#7ca540"/><stop offset="1" stopColor="#42642a"/></radialGradient>
-    <radialGradient id={`${id}-tree`} cx=".25" cy=".22" r=".85"><stop stopColor="#93aa62"/><stop offset=".5" stopColor="#587940"/><stop offset="1" stopColor="#2f502c"/></radialGradient>
-    <radialGradient id={`${id}-fur`} cx=".25" cy=".2" r=".9"><stop stopColor="#fff9e5"/><stop offset=".65" stopColor="#d8d2bb"/><stop offset="1" stopColor="#9f9d84"/></radialGradient>
-    <filter id={`${id}-canopy-shadow`} x="-25%" y="-25%" width="150%" height="150%"><feColorMatrix type="matrix" values="0 0 0 0 .04  0 0 0 0 .08  0 0 0 0 .03  0 0 0 .48 0"/><feGaussianBlur stdDeviation=".07"/></filter>
-    <filter id={`${id}-shadow`} x="-30%" y="-30%" width="170%" height="180%" colorInterpolationFilters="sRGB"><feDropShadow dx=".13" dy=".2" stdDeviation=".10" floodColor="#263627" floodOpacity=".32"/></filter>
-    <filter id={`${id}-building-shadow`} x="-30%" y="-30%" width="175%" height="175%" colorInterpolationFilters="sRGB"><feDropShadow dx=".38" dy=".68" stdDeviation=".14" floodColor="#182c21" floodOpacity=".52"/></filter>
-    <pattern id={`${id}-metal`} width="3.2" height="3.2" patternUnits="userSpaceOnUse"><image href={art('aerial-roof')} width="3.2" height="3.2"/></pattern>
-    <pattern id={`${id}-meadow`} width="9" height="9" patternUnits="userSpaceOnUse"><image href={art('aerial-grass')} width="9" height="9"/></pattern>
-    {['grass','soil','gravel','wood','stone'].map(name=><pattern key={name} id={`${id}-${name}`} width={name==='grass'?1.8:1.2} height={name==='grass'?1.8:1.2} patternUnits="userSpaceOnUse"><image href={art('texture-'+name)} width={name==='grass'?1.8:1.2} height={name==='grass'?1.8:1.2}/></pattern>)}
-    <pattern id={`${id}-lawn`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(-28)"><rect width="2" height="4" fill="#f4f2c7" opacity=".055"/></pattern>
-    <symbol id={`${id}-seedling`} viewBox="-1 -1 2 2"><path d="M0 .4V-.2" stroke="#73934f" strokeWidth=".1"/>{[-1,1].map(t=><ellipse key={t} cx={t*.22} cy={-.09} rx=".33" ry=".17" fill={url('leaf')} transform={`rotate(${t*35} ${t*.22} -.09)`}/>)}</symbol>
-    <symbol id={`${id}-leafy`} viewBox="-1 -1 2 2">{[0,1,2].map(r=><g key={r} transform={`rotate(${r*28}) scale(${1-r*.24})`}>{Array.from({length:7},(_,i)=><path key={i} d="M0 0C-.2-.1-.67-.31-.5-.65Q-.47-.9-.18-.89Q.1-1 .25-.68Q.49-.49 0 0" fill={url('lettuce')} stroke="#435d2a" strokeWidth=".018" transform={`rotate(${i*360/7})`}/>)}</g>)}<circle r=".09" fill="#c6d977"/></symbol>
-    <symbol id={`${id}-herb`} viewBox="-1 -1 2 2">{Array.from({length:12},(_,i)=><g key={i} transform={`rotate(${i*137.5}) scale(${.48+(i%3)*.17})`}><path d="M0 .05Q-.64-.3-.22-.94Q.48-.66 0 .05" fill={url('leaf')} stroke="#b6c781" strokeWidth=".024"/><path d="M0 0L-.22-.82" stroke="#e2e7a5" strokeOpacity=".35" strokeWidth=".018"/></g>)}</symbol>
-    <symbol id={`${id}-vine`} viewBox="-1 -1 2 2">{Array.from({length:9},(_,i)=><g key={i} transform={`rotate(${i*137.5}) scale(${.65+(i%2)*.2})`}><path d="M0 0L-.18-.21-.1-.3-.34-.42-.2-.48-.41-.61-.27-.73-.12-.62 0-.92 .1-.61 .29-.72 .25-.48 .41-.36 .18-.31 .22-.15Z" fill={url('leaf')} stroke="#28462a" strokeWidth=".016"/><path d="M0 0V-.76" stroke="#c1cd8e" strokeWidth=".018"/></g>)}</symbol>
-    <symbol id={`${id}-carrot`} viewBox="-1 -1 2 2">{Array.from({length:10},(_,i)=><g key={i} transform={`rotate(${i*36})`}><path d="M0 0Q-.16-.45 0-.96" stroke="#669047" strokeWidth=".045" fill="none"/>{[.25,.4,.55,.7].map((v,j)=><path key={j} d={`M0 ${-v}l${-.23+j*.035} -.13M0 ${-v}l${.23-j*.035} -.12`} stroke={j%2?'#8ca64f':'#507b38'} strokeWidth=".055" fill="none"/>)}</g>)}</symbol>
-    <symbol id={`${id}-onion`} viewBox="-1 -1 2 2">{Array.from({length:9},(_,i)=><path key={i} d="M0 .08Q-.38-.52-.1-.95Q.09-.32 0 .08" transform={`rotate(${i*137.5})`} fill={i%2?'#547b58':'#92ab76'} stroke="#b6bd8b" strokeWidth=".018"/>)}</symbol>
-    <symbol id={`${id}-tree-crown`} viewBox="-1.3 -1.3 2.6 2.6"><ellipse cx=".14" cy=".2" rx="1.02" ry=".88" fill="#283e25" opacity=".22"/>{leaves.map((l,i)=><circle key={i} cx={l.x} cy={l.y} r={l.r} fill={url('tree')}/>)}{leaves.slice(0,15).map((l,i)=><path key={i} d={`M${l.x-.04} ${l.y}l.08-.04`} stroke="#c0cd8c" strokeWidth=".035" opacity=".4"/>)}</symbol>
+    {solid(n('roof'),T.slate)}{solid(n('clay'),T.terracotta)}{solid(n('water'),T.water)}{solid(n('leaf'),L[1])}{solid(n('lettuce'),L[2])}{solid(n('tree'),L[0])}{solid(n('fur'),T.cream)}
+    <linearGradient id={n('glass')}><stop stopColor={T.glass} stopOpacity=".55"/></linearGradient>
+    {/* soft, faint shadows, offset like the 3D sun's */}
+    <filter id={n('canopy-shadow')} x="-30%" y="-30%" width="160%" height="160%"><feColorMatrix type="matrix" values={`0 0 0 0 .24  0 0 0 0 .35  0 0 0 0 .23  0 0 0 .18 0`}/><feGaussianBlur stdDeviation=".08"/></filter>
+    <filter id={n('shadow')} x="-30%" y="-30%" width="170%" height="180%" colorInterpolationFilters="sRGB"><feDropShadow dx="-.08" dy=".12" stdDeviation=".08" floodColor={T.shadow} floodOpacity=".16"/></filter>
+    <filter id={n('building-shadow')} x="-35%" y="-30%" width="175%" height="175%" colorInterpolationFilters="sRGB"><feDropShadow dx="-.28" dy=".42" stdDeviation=".16" floodColor={T.shadow} floodOpacity=".2"/></filter>
+    {flatPattern(n('metal'),T.slate)}{flatPattern(n('meadow'),T.meadow)}{flatPattern(n('grass'),T.lawn)}{flatPattern(n('soil'),T.soil)}{flatPattern(n('gravel'),T.gravel)}{flatPattern(n('wood'),T.wood)}{flatPattern(n('stone'),T.stone)}
+    <pattern id={n('lawn')} width="1" height="1" patternUnits="userSpaceOnUse"><rect width="1" height="1" fill="none"/></pattern>
+    {/* crop families seen from above: rounded flat blobs in the 3D crop greens */}
+    <symbol id={n('seedling')} viewBox="-1 -1 2 2">{[-1,1].map(t=><ellipse key={t} cx={t*.24} cy="0" rx=".34" ry=".22" fill={L[2]} transform={`rotate(${t*25} ${t*.24} 0)`}/>)}<circle r=".1" fill={L[1]}/></symbol>
+    <symbol id={n('leafy')} viewBox="-1 -1 2 2">{Array.from({length:6},(_,i)=><circle key={i} cx={Math.cos(i*1.05)*.45} cy={Math.sin(i*1.05)*.45} r=".46" fill={L[i%2?0:3]}/>)}<circle r=".48" fill={L[2]}/><circle r=".2" fill="#b8e3a8"/></symbol>
+    <symbol id={n('herb')} viewBox="-1 -1 2 2">{Array.from({length:9},(_,i)=><circle key={i} cx={Math.cos(i*2.4)*Math.sqrt(i/9)*.62} cy={Math.sin(i*2.4)*Math.sqrt(i/9)*.62} r={.3-.012*i} fill={L[i%4]}/>)}</symbol>
+    <symbol id={n('vine')} viewBox="-1 -1 2 2">{Array.from({length:7},(_,i)=><circle key={i} cx={Math.cos(i*.9)*.5} cy={Math.sin(i*.9)*.5} r=".42" fill={L[(i+1)%4]}/>)}<circle r=".45" fill={L[0]}/></symbol>
+    <symbol id={n('carrot')} viewBox="-1 -1 2 2"><g strokeLinecap="round" fill="none">{Array.from({length:8},(_,i)=><path key={i} d={`M0 0L${Math.cos(i*.785)*.82} ${Math.sin(i*.785)*.82}`} stroke={L[i%2?2:1]} strokeWidth=".2"/>)}</g><circle r=".2" fill={L[1]}/></symbol>
+    <symbol id={n('onion')} viewBox="-1 -1 2 2"><g strokeLinecap="round" fill="none">{Array.from({length:6},(_,i)=><path key={i} d={`M0 0L${Math.cos(i*1.05+.3)*.85} ${Math.sin(i*1.05+.3)*.85}`} stroke={i%2?T.leafOlive:L[3]} strokeWidth=".16"/>)}</g><circle r=".18" fill="#e9e2c4"/></symbol>
+    <symbol id={n('tree-crown')} viewBox="-1.3 -1.3 2.6 2.6"><circle cx="0" cy="0" r="1" fill={L[0]}/></symbol>
   </defs>;
 });
 
-export function Canopy({x=0,y=0,r=1,id,fruit}) {return <g transform={`translate(${x} ${y})`}>
- <image href={art('aerial-canopy')} x={-r+r*.42} y={-r+r*.62} width={r*2} height={r*2} filter={`url(#${id}-canopy-shadow)`} preserveAspectRatio="xMidYMid meet"/>
- <image href={art('aerial-canopy')} x={-r} y={-r} width={r*2} height={r*2} preserveAspectRatio="xMidYMid meet"/>
- {fruit&&Array.from({length:6},(_,i)=><circle key={i} cx={Math.cos(i*2.4)*r*.6} cy={Math.sin(i*2.4)*r*.6} r={r*.035} fill={fruit==='lemon'?'#d4bf58':'#b75936'}/>)}
- <circle r={r*.025} fill={`url(#${id}-tree)`} opacity=".15"/>
- </g>;}
+/* a toy tree from above: three overlapping round crowns, a lighter sunny top, a soft shadow to the bottom-left */
+export function Canopy({x=0,y=0,r=1,fruit,seed}) {
+  const s=seed??Math.round(x*7+y*13), c=L[Math.abs(s)%4], light=L[2];
+  return <g transform={`translate(${x} ${y})`}>
+    <ellipse cx={-r*.28} cy={r*.36} rx={r*.95} ry={r*.82} fill={T.shadow} opacity=".14"/>
+    <circle cx={-r*.28} cy={r*.18} r={r*.62} fill={c}/><circle cx={r*.3} cy={r*.12} r={r*.6} fill={c}/>
+    <circle cx="0" cy={-r*.1} r={r*.78} fill={c}/>
+    <circle cx={r*.18} cy={-r*.28} r={r*.36} fill={light} opacity=".55"/>
+    {fruit&&Array.from({length:7},(_,i)=><circle key={i} cx={Math.cos(i*2.4)*r*.5} cy={Math.sin(i*2.4)*r*.45-r*.05} r={r*.09} fill={fruit}/>)}
+  </g>;
+}
+const TREE=/apple|pear|peach|plum|cherry|citrus|lemon|orange|fig|olive|walnut|almond|avocado|apricot|quince|persimmon|pomegranate|hazelnut|chestnut/;
+const FRUITY={tomato:'#e0453a',pepper:'#e0453a',strawberry:'#e0453a',raspberry:'#c8202f',eggplant:'#6a4690',cucumber:'#4f9f61',zucchini:'#4f9f61',pumpkin:'#f5922e',squash:'#f5922e',melon:'#9bd06a',bean:'#7fae4a',pea:'#93d089'};
 export const CropCrown=memo(function CropCrown({crop='',stage=3,x,y,size=.45,id,seed=0}) {
  const name=crop.toLowerCase();
- const tree=/apple|pear|peach|plum|cherry|citrus|lemon|orange|fig|olive|walnut|almond|avocado/.test(name);
- if(stage<2)return <g><ellipse cx={x} cy={y} rx={size*.12} ry={size*.08} fill="#b6a47d"/>{stage===0&&<circle cx={x} cy={y} r={size*.2} fill="none" stroke="#bdb08c" strokeWidth=".025" strokeDasharray=".04 .04"/>}</g>;
- if(tree)return <Canopy x={x} y={y} r={size*.48} id={id} fruit={stage>3?(/lemon|orange/.test(name)?'lemon':'apple'):null}/>;
- if(['Tomato','Carrot','Lettuce','Basil'].includes(crop)){
-  const diameter=size*(stage===2?.52:stage===3?.8:1);
-  return <g><ellipse cx={x+diameter*.15} cy={y+diameter*.2} rx={diameter*.4} ry={diameter*.35} fill="#102714" opacity=".32"/><image href={cropArtwork(crop,stage,'top')} x={x-diameter/2} y={y-diameter/2} width={diameter} height={diameter} preserveAspectRatio="xMidYMid meet"/></g>;
- }
-
- const family=stage===2?'seedling':/carrot|parsnip|fennel|dill/.test(name)?'carrot':/onion|leek|garlic|chive|corn|maize/.test(name)?'onion':/lettuce|cabbage|spinach|chard|kale|broccoli|cauliflower/.test(name)?'leafy':/tomato|pepper|eggplant|bean|pea|cucumber|pumpkin|squash|melon|strawberry/.test(name)?'vine':'herb';
- const r=size*(stage===2?.52:stage===3?.78:1);
- return <g transform={`translate(${x} ${y}) rotate(${srand(seed)*80})`}><ellipse cx={r*.09} cy={r*.15} rx={r*.44} ry={r*.38} fill="#172d16" opacity=".25"/><use href={`#${id}-${family}`} x={-r/2} y={-r/2} width={r} height={r}/>{stage>=4&&/tomato|pepper|strawberry|eggplant/.test(name)&&[0,1,2].map(i=><g key={i}><circle cx={Math.cos(i*2.1)*r*.24} cy={Math.sin(i*2.1)*r*.21} r={r*.09} fill={/eggplant/.test(name)?'#5b3c62':stage===4?'#95a650':'#c04e32'}/><circle cx={Math.cos(i*2.1)*r*.24-r*.025} cy={Math.sin(i*2.1)*r*.21-r*.025} r={r*.025} fill="#f5cd85" opacity=".65"/></g>)}</g>;
+ if(stage<2)return <g><circle cx={x} cy={y} r={size*.1} fill={T.soilDark}/>{stage===0&&<circle cx={x} cy={y} r={size*.22} fill="none" stroke={T.soilLight} strokeWidth=".03" strokeDasharray=".05 .05"/>}</g>;
+ if(TREE.test(name)){const k=Object.keys(FRUIT_HEX).find(f=>name.includes(f));return <Canopy x={x} y={y} r={size*.48*(stage===2?.55:stage===3?.75:1)} id={id} seed={seed} fruit={stage>=5?(FRUIT_HEX[k]||FRUIT_HEX.apple):null}/>;}
+ const family=stage===2?'seedling':/carrot|parsnip|fennel|dill/.test(name)?'carrot':/onion|leek|garlic|chive|corn|maize|wheat/.test(name)?'onion':/lettuce|cabbage|spinach|chard|kale|broccoli|cauliflower|brussels/.test(name)?'leafy':/tomato|pepper|eggplant|bean|pea|cucumber|pumpkin|squash|melon|strawberry|zucchini|raspberry/.test(name)?'vine':'herb';
+ const r=size*(stage===2?.52:stage===3?.78:1), fk=Object.keys(FRUITY).find(f=>name.includes(f));
+ return <g transform={`translate(${x} ${y}) rotate(${srand(seed)*80})`}>
+   <ellipse cx={-r*.12} cy={r*.16} rx={r*.46} ry={r*.4} fill={T.shadow} opacity=".14"/>
+   <use href={`#${id}-${family}`} x={-r/2} y={-r/2} width={r} height={r}/>
+   {stage>=4&&fk&&[0,1,2].map(i=><circle key={i} cx={Math.cos(i*2.1)*r*.24} cy={Math.sin(i*2.1)*r*.21} r={r*(stage===5?.11:.07)} fill={stage===5?FRUITY[fk]:'#9fcf6a'}/>)}
+ </g>;
 });
 
-export function Fence({x=0,y=0,w,h,id,gate=false,pickets=false}) {
- const segments=[[[x,y],[x+w,y]],[[x,y],[x,y+h]],[[x+w,y],[x+w,y+h]],...(!gate?[[[x,y+h],[x+w,y+h]]]:[[[x,y+h],[x+w*.36,y+h]],[[x+w*.64,y+h],[x+w,y+h]]])];
- return <g strokeLinecap="square" filter={`url(#${id}-shadow)`}>{segments.map(([a,b],i)=><g key={i}><path d={`M${a}L${b}`} stroke="#6f6c52" strokeWidth=".13"/><path d={`M${a[0]-.025} ${a[1]-.025}L${b[0]-.025} ${b[1]-.025}`} stroke="#d6c9a6" strokeWidth=".045"/>{Array.from({length:Math.min(800,Math.max(2,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/(pickets?.24:1.2))+1))}).map((_,j,arr)=>{const t=j/(arr.length-1);const px=a[0]+(b[0]-a[0])*t,py=a[1]+(b[1]-a[1])*t;if(pickets)return <path key={j} d={`M${px-.065} ${py+.07}v-.17l.065-.09 .065 .09v.17Z`} fill="#b9996e" stroke="#66513a" strokeWidth=".025"/>;return <rect key={j} x={a[0]+(b[0]-a[0])*t-.09} y={a[1]+(b[1]-a[1])*t-.09} width=".18" height=".18" fill="#dbcfaf" stroke="#6a6853" strokeWidth=".025"/>;})}</g>)}</g>;
+/* post-and-rail (or white picket) fence: round posts, rounded rails; gateW leaves a centred gap with a green gate */
+export function Fence({x=0,y=0,w,h,id,gate=false,pickets=false,gateW}) {
+ const gw=gateW??w*.28, g0=x+w/2-gw/2, g1=x+w/2+gw/2;
+ const segments=[[[x,y],[x+w,y]],[[x,y],[x,y+h]],[[x+w,y],[x+w,y+h]],...(!gate?[[[x,y+h],[x+w,y+h]]]:[[[x,y+h],[g0,y+h]],[[g1,y+h],[x+w,y+h]]])];
+ const rail=pickets?T.woodPale:T.woodMid, post=pickets?T.white:T.woodDark;
+ return <g strokeLinecap="round" filter={`url(#${id}-shadow)`}>
+   {segments.map(([a,b],i)=><g key={i}><path d={`M${a}L${b}`} stroke={rail} strokeWidth={pickets?.07:.1}/>{Array.from({length:Math.min(800,Math.max(2,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/(pickets?.26:1.3))+1))}).map((_,j,arr)=>{const t=j/(arr.length-1);return <circle key={j} cx={a[0]+(b[0]-a[0])*t} cy={a[1]+(b[1]-a[1])*t} r={pickets?.06:.085} fill={post} stroke={pickets?T.stoneDark:'none'} strokeWidth=".015"/>;})}</g>)}
+   {gate&&<path d={`M${g0+.08} ${y+h}H${g1-.08}`} stroke={T.green} strokeWidth=".12"/>}
+ </g>;
 }
 
+/* a rounded toy roof from above: matte slate or terracotta, the sunny (right) slope a shade lighter, a rounded ridge cap */
 export function Roof({x=0,y=0,w,h,id,clay=false,hip=false}) {
- const ridge=Math.min(w*.18,h*.25), bays=roofBays(w);
+ const ridge=Math.min(w*.18,h*.25), base=clay?T.terracotta:T.slate, cap=clay?'#cf7f62':T.slateDark, ov=.14;
+ const X0=x-ov, X1=x+w+ov, Y0=y-ov, Y1=y+h+ov*.7;
  return <g filter={`url(#${id}-building-shadow)`}>
-   <rect x={x-.08} y={y-.08} width={w+.16} height={h+.16} fill="#d7d4bb" stroke="#777c69" strokeWidth=".055"/>
-   <rect x={x-.14} y={y-.13} width={w+.28} height={h+.22} fill={`url(#${id}-${clay?'clay':'roof'})`} stroke="#4b5b50" strokeWidth=".04"/>
-   {!clay&&<rect x={x-.14} y={y-.13} width={w+.28} height={h+.22} fill={`url(#${id}-metal)`}/>}
-   <path d={`M${x-.14} ${y-.13}H${x+w+.14}V${y+h/2}H${x-.14}Z`} fill="#e7eaf0" opacity=".12"/>
-   <path d={`M${x-.14} ${y+h/2}L${x+w+.14} ${y+h/2}V${y+h+.1}H${x-.14}Z`} fill="#15212d" opacity=".36"/>
-   {Array.from({length:bays},(_,i)=>{const xx=x+(i+.5)*w/bays;return <g key={i}><path d={`M${xx} ${y-.1}V${y+h+.08}`} stroke="#203e38" strokeOpacity=".26" strokeWidth=".022"/><path d={`M${xx-.024} ${y-.1}V${y+h+.08}`} stroke="#dce3c7" strokeOpacity=".25" strokeWidth=".017"/></g>;})}
-   {hip&&<><path d={`M${x-.14} ${y-.13}L${x+ridge} ${y+h/2}L${x-.14} ${y+h+.1}Z`} fill="#b2bb9f" opacity=".22"/><path d={`M${x+w+.14} ${y-.13}L${x+w-ridge} ${y+h/2}L${x+w+.14} ${y+h+.1}Z`} fill="#0e302e" opacity=".27"/><path d={`M${x-.14} ${y-.13}L${x+ridge} ${y+h/2}L${x-.14} ${y+h+.1}M${x+w+.14} ${y-.13}L${x+w-ridge} ${y+h/2}L${x+w+.14} ${y+h+.1}`} stroke="#cad0b7" strokeWidth=".035" fill="none"/></>}
-   <path d={`M${x+(hip?ridge:-.12)} ${y+h/2}H${x+w-(hip?ridge:-.12)}`} stroke="#3c554d" strokeWidth=".09"/>
-   <path d={`M${x+(hip?ridge:-.12)} ${y+h/2-.035}H${x+w-(hip?ridge:-.12)}`} stroke="#b9c3ac" strokeWidth=".03"/>
-   <path d={`M${x-.13} ${y+h+.08}H${x+w+.13}`} stroke="#c7cabb" strokeWidth=".065"/>
+   <rect x={X0} y={Y0} width={X1-X0} height={Y1-Y0} rx=".16" fill={base}/>
+   <path d={`M${X0+.05} ${Y0+.05}H${X1-.05}V${y+h/2}H${X0+.05}Z`} fill="#ffffff" opacity=".1"/>
+   {hip&&<><path d={`M${X1} ${Y0}L${x+w-ridge} ${y+h/2}L${X1} ${Y1}Z`} fill="#ffffff" opacity=".1"/><path d={`M${X0} ${Y0}L${x+ridge} ${y+h/2}L${X0} ${Y1}Z`} fill="#000000" opacity=".05"/><path d={`M${X0+.08} ${Y0+.08}L${x+ridge} ${y+h/2}L${X0+.08} ${Y1-.08}M${X1-.08} ${Y0+.08}L${x+w-ridge} ${y+h/2}L${X1-.08} ${Y1-.08}`} stroke={cap} strokeWidth=".09" strokeLinecap="round" fill="none"/></>}
+   <path d={`M${x+(hip?ridge:-.06)} ${y+h/2}H${x+w-(hip?ridge:-.06)}`} stroke={cap} strokeWidth=".16" strokeLinecap="round"/>
+   <path d={`M${X0+.1} ${Y1-.04}H${X1-.1}`} stroke={T.trim} strokeWidth=".06" strokeLinecap="round" opacity=".8"/>
  </g>;
 }
 
 export function Building({type,w,h,id,clay,children}) {
- const glass=type==='greenhouse', barn=type==='barn'||type==='coop';
+ const glass=type==='greenhouse', barn=type==='barn', coop=type==='coop';
  if(glass)return <g>
-   <rect width={w} height={h} fill={`url(#${id}-soil)`}/>
-   <rect x={w*.45} width={w*.1} height={h} fill="#c8c7ab"/>
+   <rect width={w} height={h} fill={T.soil}/>
+   <rect x={w*.44} width={w*.12} height={h} fill={T.gravel}/>
    {children}
    <g filter={`url(#${id}-building-shadow)`}>
-    <rect x="-.06" y="-.06" width={w+.12} height={h+.12} fill={`url(#${id}-glass)`} stroke="#eff2df" strokeWidth=".09"/>
-    <path d={`M${w*.5} 0V${h}`} stroke="#edf1e7" strokeWidth=".11"/>
-    {Array.from({length:roofBays(h,1.1)+1}).map((_,i,a)=><g key={i}><path d={`M0 ${h*i/(a.length-1)}H${w}`} stroke="#6b8678" strokeWidth=".09"/><path d={`M0 ${h*i/(a.length-1)-.035}H${w}`} stroke="#edf1e6" strokeWidth=".035"/></g>)}
-    {Array.from({length:roofBays(h,1.1)}).map((_,i,a)=><g key={i}>
-      <path d={`M${w*.06} ${h*(i+.12)/a.length}H${w*.46}V${h*(i+.88)/a.length}H${w*.06}Z`} fill="#d6e4ea" opacity={i%3===0?.22:.09}/>
-      <path d={`M${w*.55} ${h*(i+.08)/a.length}H${w*.96}V${h*(i+.85)/a.length}H${w*.55}Z`} fill="#f5f8fa" opacity={i%2?.23:.34}/>
-      <path d={`M${w*.55} ${h*(i+.1)/a.length}H${w*.95}`} stroke="#f3f8f8" strokeWidth=".04"/>
-    </g>)}
-
-    <rect x={w*.37} y={h-.025} width={w*.26} height=".06" fill="#496a5e"/>
+    <rect x="-.06" y="-.06" width={w+.12} height={h+.12} rx=".08" fill={T.glass} fillOpacity=".42" stroke={T.trim} strokeWidth=".1"/>
+    <path d={`M${w*.5} 0V${h}`} stroke={T.trim} strokeWidth=".12" strokeLinecap="round"/>
+    {Array.from({length:roofBays(h,1.1)+1}).map((_,i,a)=><path key={i} d={`M0 ${h*i/(a.length-1)}H${w}`} stroke={T.trim} strokeWidth=".07"/>)}
+    <rect x={w*.37} y={h-.04} width={w*.26} height=".09" rx=".03" fill={T.green}/>
    </g>
  </g>;
- if(type==='beehive')return <g filter={`url(#${id}-building-shadow)`}><rect width={w} height={h} rx=".07" fill={`url(#${id}-gravel)`}/>{Array.from({length:Math.min(12,Math.max(1,Math.floor(w/.7)))}).map((_,i,a)=>{const bw=Math.min(.5,w*.7),bh=Math.min(.65,h*.7),xx=(i+.5)*w/a.length-bw/2,yy=h/2-bh/2;return <g key={i}><rect x={xx} y={yy} width={bw} height={bh} fill="#e1d6b2" stroke="#9c8e6a" strokeWidth=".035"/><rect x={xx+.02} y={yy+.02} width={bw-.04} height={bh*.87} fill="#d0d7ca" stroke="#eee9d6" strokeWidth=".025"/><path d={`M${xx} ${yy+bh-.04}h${bw}`} stroke="#b38e46" strokeWidth=".08"/><path d={`M${xx+.12} ${yy+bh+.07}h${Math.max(.08,bw-.24)}`} stroke="#695634" strokeWidth=".04"/></g>;})}</g>;
- if(type==='compost')return <g filter={`url(#${id}-shadow)`}><rect width={w} height={h} fill={`url(#${id}-soil)`} stroke="#9c8d66" strokeWidth=".12"/>{[1,2].map(i=><path key={i} d={`M${w*i/3} 0V${h}`} stroke="#b1a27c" strokeWidth=".1"/>)}{Array.from({length:28},(_,i)=><ellipse key={i} cx={srand(i)*w} cy={srand(i+37)*h} rx=".12" ry=".05" fill={['#57452e','#786246','#a79c65'][i%3]} transform={`rotate(${i*57} ${srand(i)*w} ${srand(i+37)*h})`}/>)}</g>;
+ if(type==='beehive')return <g filter={`url(#${id}-shadow)`}><rect width={w} height={h} rx=".1" fill={T.gravel}/>{Array.from({length:Math.min(12,Math.max(1,Math.floor(w/.7)))}).map((_,i,a)=>{const bw=Math.min(.5,w*.7),bh=Math.min(.6,h*.7),xx=(i+.5)*w/a.length-bw/2,yy=h/2-bh/2;return <g key={i}><rect x={xx-.03} y={yy-.03} width={bw+.06} height={bh+.06} rx=".07" fill={T.zinc}/><rect x={xx+.04} y={yy+.04} width={bw-.08} height={bh-.08} rx=".05" fill={T.hive[i%4]}/><rect x={xx+bw*.3} y={yy+bh+.03} width={bw*.4} height=".05" rx=".02" fill={T.woodDark}/></g>;})}</g>;
+ if(type==='compost')return <g filter={`url(#${id}-shadow)`}><rect width={w} height={h} rx=".08" fill={T.earth} stroke={T.wood} strokeWidth=".14"/>{[1,2].map(i=><path key={i} d={`M${w*i/3} 0V${h}`} stroke={T.wood} strokeWidth=".12"/>)}{[0,1,2].map(i=><ellipse key={i} cx={w*(i+.5)/3} cy={h/2} rx={w/3*.36} ry={h*.32} fill={T.compost[i]}/>)}</g>;
  const dim=buildingScale(w,h,type),front=dim.front,roof=dim.roofDepth,door=dim.door;
+ const wall=type==='house'?T.cream:barn?T.barn:T.wood, plinth=T.stoneDark;
  return <g>
-  <rect width={w} height={h} fill={barn?'#b4a07a':'#d4d0bd'}/>
-  {barn&&<rect y={roof} width={w} height={front} fill={`url(#${id}-gravel)`} opacity=".35"/>}
-  <rect y={roof-.1} width={w} height={Math.min(.4,front)} fill={barn?'#978366':'#e4e1d2'}/>
-  <rect x={(w-door)/2} y={roof-.02} width={door} height={Math.min(.32,front)} fill="#3e4237" stroke="#d8c4a0" strokeWidth=".06"/>
-  {!barn&&Array.from({length:Math.max(0,Math.floor(w/3))},(_,i)=>{const x=(i+.5)*w/Math.floor(w/3);return Math.abs(x-w/2)>1?<rect key={i} x={x-dim.window/2} y={roof} width={dim.window} height={Math.min(.22,front*.65)} fill="#324b55" stroke="#efecdf" strokeWidth=".04"/>:null;})}
-  {barn&&Array.from({length:Math.max(2,Math.ceil(w/3)+1)}).map((_,i,a)=><g key={i}><rect x={i*(w-.12)/(a.length-1)} y={roof-.05} width=".12" height={Math.min(.42,front)} fill="#cec2a1"/><path d={`M${i*(w-.12)/(a.length-1)} ${roof+.3}l.22 .3`} stroke="#263026" strokeWidth=".075" opacity=".4"/></g>)}
-  <Roof w={w} h={roof} id={id} clay={clay||dim.small} hip={type==='house'}/>
-  {type==='house'&&<g transform={`translate(${w*.72} ${Math.min(1,h*.2)})`} filter={`url(#${id}-shadow)`}><rect width=".38" height=".48" fill="#c4b795" stroke="#e9dfc3" strokeWidth=".055"/><rect x=".07" y=".07" width=".23" height=".26" fill="#566254"/></g>}
-  {!barn&&<rect x={(w-Math.min(1.5,w*.7))/2} y={roof+.22} width={Math.min(1.5,w*.7)} height={Math.max(.05,front-.22)} fill="#d2c6a3" stroke="#e2d6b6" strokeWidth=".035"/>}
+  <rect x="-.06" width={w+.12} height={h+.04} rx=".08" fill={plinth}/>
+  {(barn||coop)&&<rect y={roof} width={w} height={front} rx=".06" fill={T.straw} opacity=".9"/>}
+  <rect y={roof-.1} width={w} height={Math.min(.42,front)} rx=".06" fill={wall}/>
+  <rect x={(w-door)/2} y={roof-.04} width={door} height={Math.min(.34,front)} rx=".05" fill={T.green} stroke={T.trim} strokeWidth=".05"/>
+  {!barn&&!coop&&Array.from({length:Math.max(0,Math.floor(w/3))},(_,i)=>{const x=(i+.5)*w/Math.floor(w/3);return Math.abs(x-w/2)>1?<rect key={i} x={x-dim.window/2} y={roof} width={dim.window} height={Math.min(.22,front*.65)} rx=".03" fill={T.winGlass} stroke={T.trim} strokeWidth=".05"/>:null;})}
+  {barn&&Array.from({length:Math.max(2,Math.ceil(w/3)+1)}).map((_,i,a)=><rect key={i} x={i*(w-.1)/(a.length-1)} y={roof-.08} width=".1" height={Math.min(.42,front)} rx=".03" fill={T.trim}/>)}
+  <Roof w={w} h={roof} id={id} clay={clay||dim.small&&type!=='barn'&&type!=='coop'&&type!=='storage'} hip={type==='house'}/>
+  {type==='house'&&<g transform={`translate(${w*.72} ${Math.min(1,h*.2)})`} filter={`url(#${id}-shadow)`}><rect width=".42" height=".5" rx=".06" fill={T.cream}/><rect x=".06" y=".06" width=".3" height=".1" rx=".03" fill={T.stoneDark}/></g>}
+  {type==='house'&&<rect x={(w-Math.min(1.5,w*.7))/2} y={roof+.22} width={Math.min(1.5,w*.7)} height={Math.max(.05,front-.22)} rx=".05" fill={T.concrete}/>}
  </g>;
 }
 
-export function OverheadAnimal({species='Chicken',x,y,id,angle=0,size=1}) {
- const portrait={Cow:'aerial-cow',Goat:'aerial-goat',Sheep:'aerial-sheep',Chicken:'aerial-chicken'}[species];
- if(portrait){const length=species==='Cow'?2.05:species==='Chicken'?.62:1.18;return <g transform={`translate(${x} ${y}) scale(${size})`}><ellipse cx=".16" cy=".24" rx={length*.23} ry={length*.42} fill="#172718" opacity=".4"/><image href={art(portrait)} x={-length/2} y={-length/2} width={length} height={length} transform={`rotate(${angle})`} preserveAspectRatio="xMidYMid meet"/></g>;}
+/* animals from above in the 3D coat colours: plump body, round head, ears, a soft shadow */
+const COAT={Cow:['#f3f0e7','#2a2521'],Goat:['#f3efe6','#a86b3c'],Sheep:['#f3efe6',null],Chicken:['#f3f0e7',null],Duck:['#fdfcf9',null],Goose:['#f1efe8',null],Turkey:['#5a4638',null],Quail:['#a88866',null],'Guinea Fowl':['#5b625c',null],Pig:['#efc2ba',null],Horse:['#a8663d',null],Donkey:['#9a958a',null],Alpaca:['#e6d2b3',null],Rabbit:['#c9b8a4',null],Bee:['#f2c53d',null]};
+export function OverheadAnimal({species='Chicken',x,y,angle=0,size=1}) {
  const bird=['Chicken','Duck','Goose','Turkey','Quail','Guinea Fowl'].includes(species),bee=species==='Bee';
- const horse=['Horse','Donkey'].includes(species),cow=species==='Cow',pig=species==='Pig',rabbit=species==='Rabbit';
- const color=species==='Chicken'?'#b88144':species==='Guinea Fowl'?'#5b625c':pig?'#d9b4a2':horse?(species==='Donkey'?'#969486':'#946b45'):cow?'#f0eddb':`url(#${id}-fur)`;
+ const horse=['Horse','Donkey','Alpaca'].includes(species),rabbit=species==='Rabbit',sheep=species==='Sheep';
+ const [coat,patch]=COAT[species]||['#e9e2d4',null];
+ const bw=bird?.15:rabbit?.17:.25, bl=bird?.22:rabbit?.26:horse?.5:.42, hy=bird?-.22:horse?-.56:-.42;
+ if(bee)return <g transform={`translate(${x} ${y}) scale(${size})`}><ellipse rx=".05" ry=".08" fill={T.bee}/><path d="M-.045-.01h.09M-.04.03h.08" stroke={T.beeDark} strokeWidth=".022"/></g>;
  return <g transform={`translate(${x} ${y}) rotate(${angle}) scale(${size})`}>
-   <ellipse cx=".05" cy=".1" rx={bird?.16:.28} ry={bird?.26:.5} fill="#283926" opacity=".23"/>
-   {bee?<><ellipse rx=".045" ry=".085" fill="#c9a95e"/><path d="M-.04-.02h.08M-.04.03h.08" stroke="#434d39" strokeWidth=".024"/><ellipse cx="-.055" cy="-.015" rx=".055" ry=".023" fill="#f2f1ce"/><ellipse cx=".055" cy="-.015" rx=".055" ry=".023" fill="#f2f1ce"/></>:<>
-   {!bird&&[-1,1].map(side=><path key={side} d={`M${side*.2} -.22l${side*.075} -.1M${side*.2} .23l${side*.065} .09`} stroke={pig?'#ad9180':'#625d49'} strokeWidth=".055"/>)}
-   <ellipse rx={bird?.15:rabbit?.18:.26} ry={bird?.24:rabbit?.29:horse?.52:.44} fill={color} stroke="#48533c" strokeWidth=".015"/>
-   {cow&&<><path d="M-.2-.29Q.11-.42.13-.15T-.22-.06Z" fill="#4d5346"/><path d="M.04.18Q.34.14.2.36L.03.4Z" fill="#4d5346"/></>}
-   {species==='Sheep'&&Array.from({length:10},(_,i)=><circle key={i} cx={Math.cos(i*2.4)*.17} cy={Math.sin(i*2.4)*.29} r=".1" fill={`url(#${id}-fur)`}/>)}
-   <ellipse cy={bird?-.22:horse?-.58:-.4} rx={bird?.09:.11} ry={bird?.12:horse?.2:.15} fill={color} stroke="#59604a" strokeWidth=".015"/>
-   {bird?<><path d="M-.04-.33L0-.41 .04-.33Z" fill="#d0ac55"/><path d="M-.09.14L0 .34 .09.14" fill={color} stroke="#765e3e" strokeWidth=".016"/>{species==='Chicken'&&<ellipse cx="-.02" cy="-.3" rx=".022" ry=".09" fill="#b9553e"/>}{species==='Guinea Fowl'&&Array.from({length:8},(_,i)=><circle key={i} cx={(srand(i)-.5)*.19} cy={(srand(i+19)-.5)*.3} r=".012" fill="#e0dcca"/>)}</>:<>
-   {[-1,1].map(side=><ellipse key={side} cx={side*.105} cy={horse?-.67:rabbit?-.48:-.43} rx=".038" ry={horse||rabbit?.13:.065} fill={color} transform={`rotate(${side*30} ${side*.105} ${horse?-.67:rabbit?-.48:-.43})`}/>)}
-   <path d={pig?'M0 .4q.16.12.09-.02':'M0 .4q.15.2.06.33'} fill="none" stroke={pig?'#bb9887':'#6c6850'} strokeWidth=".027"/>
-   {horse&&<path d="M0-.45V.25" stroke="#574937" strokeWidth=".045"/>}
-   </>}
-   </>}
+   <ellipse cx="-.06" cy=".08" rx={bw*1.1} ry={bl*1.05} fill={T.shadow} opacity=".16"/>
+   {!bird&&[-1,1].map(s=>[-1,1].map(t=><circle key={`${s}${t}`} cx={s*bw*.8} cy={t*bl*.55} r=".05" fill={T.ink} opacity=".7"/>))}
+   <ellipse rx={bw} ry={bl} fill={coat}/>
+   {patch&&<><ellipse cx={-bw*.3} cy={-bl*.2} rx={bw*.45} ry={bl*.3} fill={patch}/><ellipse cx={bw*.35} cy={bl*.35} rx={bw*.4} ry={bl*.25} fill={patch}/></>}
+   {sheep&&Array.from({length:8},(_,i)=><circle key={i} cx={Math.cos(i*.8)*bw*.6} cy={Math.sin(i*.8)*bl*.6} r={bw*.42} fill={coat}/>)}
+   <ellipse cy={hy} rx={bird?.09:.12} ry={bird?.1:horse?.18:.14} fill={sheep?'#3a2f28':coat}/>
+   {bird?<><path d={`M-.035 ${hy-.08}L0 ${hy-.16} .035 ${hy-.08}Z`} fill="#f2b04a"/>{species==='Chicken'&&<ellipse cy={hy-.02} rx=".025" ry=".07" fill="#d6362e"/>}</>
+     :[-1,1].map(s=><ellipse key={s} cx={s*.11} cy={hy-(horse||rabbit?.1:.05)} rx=".045" ry={horse||rabbit?.12:.07} fill={coat} stroke={T.shadow} strokeOpacity=".15" strokeWidth=".012"/>)}
  </g>;
 }
 
 export function Ornament({o,id}) {
  const type=o.type;
- if(type==='tree')return <Canopy id={id} r={.8}/>;
- if(type==='bush'||type==='flowers')return <g><Canopy id={id} r={.45}/>{type==='flowers'&&Array.from({length:9},(_,i)=><circle key={i} cx={(srand(i)-.5)*.6} cy={(srand(i+10)-.5)*.6} r=".045" fill={i%2?'#eee4b4':'#b78386'}/>)}</g>;
- if(type==='pond')return <ellipse rx=".7" ry=".45" fill={`url(#${id}-water)`} stroke="#9c9e80" strokeWidth=".08"/>;
- if(type==='rock')return <path d="M-.3-.1L-.17-.3 .22-.25 .35.06 .1.27-.2.21Z" fill="#acaf9a" stroke="#e3dec8" strokeWidth=".025"/>;
- if(type==='shed')return <Roof x={-.55} y={-.45} w={1.1} h={.9} id={id}/>;
- if(type==='pot'||type==='planter'||type==='hangpot')return <g><circle r=".3" fill="#b8916d" stroke="#d5b18d" strokeWidth=".07"/><CropCrown x={0} y={0} crop="Basil" id={id} size={.5} stage={4}/></g>;
- if(type==='wateringcan')return <g fill="#698776" stroke="#365b4e" strokeWidth=".04"><circle r=".15"/><path d="M.1-.07l.3-.13-.2.26Z"/><ellipse cx="-.15" rx=".1" ry=".13" fill="none"/></g>;
- if(type==='haybale')return <g><rect x="-.4" y="-.24" width=".8" height=".48" rx=".12" fill="#bca568" stroke="#8e7d4e" strokeWidth=".04"/><path d="M-.2-.23v.46M.2-.23v.46" stroke="#7a7752" strokeWidth=".035"/></g>;
- if(type==='woodpile')return <g>{[0,1,2,3].map(i=><rect key={i} x="-.4" y={-.26+i*.14} width=".8" height=".12" rx=".05" fill={i%2?'#a89165':'#7d684b'} stroke="#c1aa83" strokeWidth=".02"/>)}</g>;
- return <g fill="#aa9671" stroke="#776b4e" strokeWidth=".025"><rect x="-.45" y="-.2" width=".9" height=".13"/><rect x="-.45" y="-.02" width=".9" height=".2"/><path d="M-.32-.2v.44M.32-.2v.44" strokeWidth=".07"/></g>;
+ if(type==='tree')return <Canopy id={id} r={.95} seed={o.id?.length}/>;
+ if(type==='bush'||type==='flowers')return <g><Canopy id={id} r={.45} seed={o.id?.length}/>{type==='flowers'&&Array.from({length:9},(_,i)=><circle key={i} cx={(srand(i)-.5)*.6} cy={(srand(i+10)-.5)*.6} r=".06" fill={T.flower[i%6]}/>)}</g>;
+ if(type==='pond')return <ellipse rx=".7" ry=".45" fill={T.water} stroke={T.stone} strokeWidth=".1"/>;
+ if(type==='rock')return <g><ellipse cx="-.06" cy=".08" rx=".34" ry=".24" fill={T.shadow} opacity=".14"/><ellipse rx=".32" ry=".24" fill={T.rock}/><ellipse cx=".06" cy="-.06" rx=".16" ry=".1" fill={T.stone}/></g>;
+ if(type==='shed')return <g><rect x="-.6" y="-.5" width="1.2" height="1" rx=".08" fill={T.wood}/><Roof x={-.55} y={-.45} w={1.1} h={.7} id={id}/></g>;
+ if(type==='pot'||type==='planter'||type==='hangpot')return <g><circle r=".3" fill={T.pot} stroke={T.potRim} strokeWidth=".06"/><circle r=".22" fill={T.soilDark}/><CropCrown x={0} y={0} crop="Basil" id={id} size={.5} stage={4}/></g>;
+ if(type==='wateringcan')return <g fill={T.green}><circle r=".15"/><path d="M.1-.07l.3-.13-.2.26Z"/><rect x="-.22" y="-.04" width=".1" height=".08" rx=".03"/></g>;
+ if(type==='haybale')return <g><ellipse cx="-.06" cy=".1" rx=".42" ry=".28" fill={T.shadow} opacity=".14"/><rect x="-.4" y="-.24" width=".8" height=".48" rx=".2" fill={T.hay}/><path d="M-.18-.22v.44M.18-.22v.44" stroke={T.hayDark} strokeWidth=".04" strokeLinecap="round"/></g>;
+ if(type==='woodpile')return <g>{[0,1,2,3].map(i=><rect key={i} x="-.4" y={-.26+i*.14} width=".8" height=".12" rx=".06" fill={i%2?T.woodMid:T.wood}/>)}</g>;
+ return <g><rect x="-.45" y="-.2" width=".9" height=".4" rx=".08" fill={T.wood}/><path d="M-.45-.07h.9M-.45 .07h.9" stroke={T.woodMid} strokeWidth=".03"/><path d="M-.32-.2v.4M.32-.2v.4" stroke={T.woodDark} strokeWidth=".06" strokeLinecap="round"/></g>;
 }

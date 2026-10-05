@@ -7,36 +7,15 @@
    ═══════════════════════════════════════════ */
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { TOY, STAGE_HEX } from "./palette";
 
 export const HPI = Math.PI / 2;
 export const UP = new THREE.Vector3(0, 1, 0);
 
-/* ---------- palette (app-cohesive: cream page, pale sage ground, brand green as the one accent) ---------- */
-export const PAL = {
-  page: 0xeef3ec,                                   // canvas background and fog: the scene fades into the page
-  meadow: 0xc4dfab, meadowB: 0xb3d297, meadowDry: 0xd6dfb0,
-  lawn: 0xbddba1, pasture: 0xc0dda4, orchard: 0xb8d69c,
-  path: 0xf2eee6, pathEdge: 0xe5e0d5, gravel: 0xe9e4d8, stonePath: 0xe2ded5, soilPath: 0xdccbb3,
-  soil: 0x9e7a5e, soilDark: 0x8a684e, soilLight: 0xb39277, mulch: 0x8a6850, earth: 0xc8b291, floor: 0x9f8a73,
-  wood: 0xddbf95, woodMid: 0xc7a277, woodDark: 0x8f6b4c, woodPale: 0xeadbc0,
-  cream: 0xf8f3e9, white: 0xfdfcf9, trim: 0xffffff, panel: 0xf1ede4,
-  terracotta: 0xde9072, slate: 0x7c8896, slateDark: 0x66727f, zinc: 0xd1d7d9, metal: 0xaab3b9, dark: 0x3b3f44, ink: 0x2a2d31,
-  barn: 0xd5725f, barnDark: 0xbd5f4e,
-  green: 0x128147, greenLight: 0x1fa35c, greenPale: 0xe7f3ec, greenDeep: 0x0c5e33,
-  leaf: [0x7fc57d, 0x6fb873, 0x93d089, 0x64ac6c], leafOlive: 0xabbd96, leafCitrus: 0x4f9f61, leafDark: 0x5a9e64, hedge: 0x72b677,
-  water: 0x8fd1e3, waterDeep: 0x78c0d7, ripple: 0xe6f6fb,
-  glass: 0xdaf2ef,
-  hay: 0xeed27f, hayDark: 0xdcb75e, straw: 0xf0dca0,
-  stone: 0xdfdcd3, stoneDark: 0xcbc7bc, rock: 0xb9b7ae, rockDark: 0xa3a198, concrete: 0xe5e2da,
-  compost: [0x9c7c5e, 0x816449, 0x6b523d],
-  pot: 0xdb9470, potRim: 0xd08360,
-  hive: [0xf8f3e7, 0xe4eef1, 0xf7ecca, 0xe7f1dd],
-  solar: 0x2c3d5a, solarFrame: 0xe0e4e7,
-  glow: 0xffd166, tagPole: 0xa48666,
-  smoke: 0xf2f0ec, bee: 0xf2c53d, beeDark: 0x3a3127,
-  flower: [0xf48fb1, 0xf6d46a, 0xffffff, 0xe8a0dd, 0xffa36e, 0x9fc5ff],
-};
-export const STAGE_COLOR = [0xc3cbc4, 0xdcca92, 0xa9dd8c, 0x5fb24d, 0xc1d44f, 0xf7c552];
+/* ---------- palette: the shared map palette (palette.js) as numbers for three.js ---------- */
+const num = (v) => (Array.isArray(v) ? v.map(num) : parseInt(v.slice(1), 16));
+export const PAL = Object.fromEntries(Object.entries(TOY).map(([k, v]) => [k, num(v)]));
+export const STAGE_COLOR = STAGE_HEX.map(num);
 
 /* ---------- materials: one flat matte material per colour, shared by the whole scene ---------- */
 const mats = new Map();

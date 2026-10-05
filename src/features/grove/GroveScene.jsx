@@ -12,6 +12,7 @@ import { taskGlyph } from "./zone-tasks";
 import { AerialDefs, Building, CropCrown, Fence, OverheadAnimal, Ornament, Canopy } from "./AerialArtwork";
 import { accessPaths, plantedRows, plantPosition, buildingScale } from "./aerial-layout";
 import { srand } from "./sceneMath";
+import { TOY, GROUND_TONES, STAGE_HEX, pathTones } from "./palette";
 import { cameraOf, projectBox } from "./camera";
 const Grove3D = lazy(() => import("./Grove3D"));
 
@@ -20,6 +21,9 @@ const points = (ps) => ps.map((q) => `${q.xM},${q.yM}`).join(" ");
 const zoneLabelWidth = (name = "") =>
   name.length <= 2 ? 15 + name.length * 3 : Math.min(140, Math.min(name.length, 23) * 5.9 + 16);
 const buildings = new Set(["house", "barn", "coop", "storage", "beehive", "compost", "greenhouse"]);
+// container plants stand in their own terracotta pot, as on the 3D map
+const potUnder = (z, x, y, size, key) =>
+  z.type === "container" ? <circle key={key} cx={x} cy={y} r={Math.max(0.18, Math.min(0.42, size * 0.6))} fill={TOY.pot} stroke={TOY.potRim} strokeWidth=".05" /> : null;
 function ModernPlanting({ z, plot, crops, id }) {
   const stage = growthOf(plot, crops.get(plot.crop), todayLocalKey()).index;
   return plantingRows(z, plot).map((row, i) => {
@@ -29,10 +33,10 @@ function ModernPlanting({ z, plot, crops, id }) {
     const d = row.vertical ? `M${row.atM} ${row.fromM}V${row.toM}` : `M${row.fromM} ${row.atM}H${row.toM}`;
     return (
       <g key={i}>
-        <path d={d} stroke="#271e14" strokeOpacity=".23" strokeWidth={width} strokeLinecap="butt" />
+        <path d={d} stroke={TOY.soilDark} strokeOpacity=".55" strokeWidth={width} strokeLinecap="butt" />
         {Array.from({ length: n }, (_, j) => {
           const q = row.points[Math.floor(((j + 0.5) * row.points.length) / n)];
-          return (
+          return [potUnder(z, q.xM, q.yM, size, `p${j}`),
             <CropCrown
               key={j}
               x={q.xM}
@@ -42,8 +46,7 @@ function ModernPlanting({ z, plot, crops, id }) {
               stage={stage}
               id={id}
               seed={i * 39 + j}
-            />
-          );
+            />];
         })}
       </g>
     );
@@ -81,15 +84,15 @@ function Plantings({ z, plots, crops, id }) {
         );
         return (
           <g key={i}>
-            {!orchard && (
+            {!orchard && z.type !== "container" && (
               <path
                 d={
                   vertical
                     ? `M${pos} ${margin}v${along - margin * 2}`
                     : `M${margin} ${pos}h${along - margin * 2}`
                 }
-                stroke="#271e14"
-                strokeOpacity=".23"
+                stroke={TOY.soilDark}
+                strokeOpacity=".55"
                 strokeWidth={gap * 0.74}
                 strokeLinecap="butt"
               />
@@ -101,14 +104,14 @@ function Plantings({ z, plots, crops, id }) {
                     ? `M${pos - gap * 0.38} ${margin}v${along - margin * 2}`
                     : `M${margin} ${pos - gap * 0.38}h${along - margin * 2}`
                 }
-                stroke="#c9b080"
-                strokeOpacity=".16"
+                stroke={TOY.soilLight}
+                strokeOpacity="0"
                 strokeWidth=".025"
               />
             )}
             {Array.from({ length: n }, (_, j) => {
               const at = (row.pitch ? 0 : margin) + plantPosition(row, j, n) * length;
-              return (
+              return [potUnder(z, vertical ? pos : at, vertical ? at : pos, size, `p${j}`),
                 <CropCrown
                   key={j}
                   x={vertical ? pos : at}
@@ -118,8 +121,7 @@ function Plantings({ z, plots, crops, id }) {
                   stage={stage}
                   id={id}
                   seed={i * 39 + j}
-                />
-              );
+                />];
             })}
           </g>
         );
@@ -144,7 +146,7 @@ function Plantings({ z, plots, crops, id }) {
   );
 }
 // Seedling nursery from above: benches along the long side, trays on them tinted by seedling stage.
-function NurseryBenches({ z, data, id }) {
+function NurseryBenches({ z, data }) {
   const long = z.wM >= z.hM,
     along = long ? z.wM : z.hM,
     cross = long ? z.hM : z.wM;
@@ -154,11 +156,11 @@ function NurseryBenches({ z, data, id }) {
   const trayA = 0.55,
     trayC = Math.min(0.35, benchW * 0.9);
   const perBench = Math.max(0, Math.floor((along - 0.3) / (trayA + 0.05)));
-  const colour = { sown: "#6b4a30", sprouted: "#86b85f", potted: "#5f9a45", hardening: "#3f7d3a" };
+  const colour = { sown: STAGE_HEX[1], sprouted: STAGE_HEX[2], potted: STAGE_HEX[3], hardening: TOY.leaf[3] };
   const trays = (data.nursery?.batches || [])
     .filter((b) => b.zoneId === z.id && b.stage && b.stage !== "planted")
     .flatMap((b) =>
-      Array.from({ length: Math.max(1, Math.ceil(b.cells / 60)) }, () => colour[b.stage] || "#6b4a30"),
+      Array.from({ length: Math.max(1, Math.ceil(b.cells / 60)) }, () => colour[b.stage] || STAGE_HEX[1]),
     );
   const offset = (cross - benches * benchW - (benches - 1) * aisle) / 2;
   let n = 0;
@@ -173,9 +175,10 @@ function NurseryBenches({ z, data, id }) {
               y={long ? c0 : 0.15}
               width={long ? along - 0.3 : benchW}
               height={long ? benchW : along - 0.3}
-              fill={`url(#${id}-wood)`}
-              stroke="#4d3a28"
-              strokeWidth=".02"
+              rx=".06"
+              fill={TOY.wood}
+              stroke={TOY.woodMid}
+              strokeWidth=".04"
             />
             {Array.from({ length: perBench }, (_, j) => {
               const tint = trays[n++];
@@ -189,8 +192,8 @@ function NurseryBenches({ z, data, id }) {
                     y={long ? cc : a0}
                     width={long ? trayA : trayC}
                     height={long ? trayC : trayA}
-                    rx=".02"
-                    fill="#2b2f2a"
+                    rx=".05"
+                    fill={TOY.pot}
                   />
                   <rect
                     x={(long ? a0 : cc) + 0.03}
@@ -215,27 +218,36 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
     plant = isPlantZone(z.type),
     building = buildings.has(z.type),
     oval = z.shape === "oval" && !plant && !building;
+  // bed edges as in 3D: raised beds wooden boards, herb beds stone kerbs, rows a low dark board, pots a patio
   const material =
-    z.material === "stone"
-      ? `url(#${id}-stone)`
+    z.material === "stone" || z.type === "herbs" || z.type === "container"
+      ? TOY.stone
       : z.material === "metal"
-        ? "#9ba7a0"
-        : z.color === "clay"
-          ? "#b09a76"
-          : "#bfb69b";
+        ? TOY.zinc
+        : z.type === "veg"
+          ? TOY.woodDark
+          : TOY.wood;
   const animals = (data.livestock?.animals || []).filter((a) => animalZone(a, data.zones)?.id === z.id);
   const fill =
     z.type === "nursery"
-      ? `url(#${id}-gravel)`
+      ? TOY.gravel
       : z.type === "water"
-        ? `url(#${id}-water)`
-        : plant && z.type !== "orchard"
-          ? `url(#${id}-soil)`
-          : `url(#${id}-meadow)`;
+        ? TOY.water
+        : z.type === "container"
+          ? TOY.concrete
+          : z.type === "veg"
+            ? TOY.soilLight
+            : plant && z.type !== "orchard"
+              ? TOY.soil
+              : z.type === "orchard"
+                ? TOY.orchard
+                : z.type === "pasture"
+                  ? TOY.pasture
+                  : TOY.lawn;
   const shapeProps = {
     fill,
-    stroke: z.type === "water" ? "#b6b59b" : plant ? material : "#819267",
-    strokeWidth: plant && z.type !== "orchard" ? 0.1 : 0.04,
+    stroke: z.type === "water" ? TOY.stone : plant && z.type !== "orchard" ? material : "none",
+    strokeWidth: z.type === "water" ? 0.34 : z.type === "raised" ? 0.14 : z.type === "herbs" ? 0.24 : plant && z.type !== "orchard" ? 0.1 : 0,
   };
   return (
     <g
@@ -257,34 +269,19 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
             <rect
               width={w}
               height={h}
-              rx={z.type === "water" ? Math.min(w, h) * 0.1 : 0.025}
+              rx={z.type === "water" ? Math.min(w, h) * 0.12 : plant ? 0.06 : 0.04}
               {...shapeProps}
             />
           )}
-          {plant && z.type !== "orchard" && (
-            <>
-              <path
-                d={`M.035 ${h - 0.045}V.045H${w - 0.035}`}
-                stroke="#e6d8b5"
-                strokeOpacity=".65"
-                strokeWidth=".025"
-                fill="none"
-              />
-              <path
-                d={`M.065 ${h - 0.09}H${w - 0.08}V.07`}
-                stroke="#362b1e"
-                strokeOpacity=".45"
-                strokeWidth=".04"
-                fill="none"
-              />
-            </>
-          )}
+          {z.type === "raised" &&
+            [[0, 0], [w, 0], [0, h], [w, h]].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r=".11" fill={TOY.woodDark} />)}
           {z.type === "water" && (
             <path
               d={`M${w * 0.2} ${h * 0.3}q${w * 0.13} ${-h * 0.04} ${w * 0.26} 0m${-w * 0.12} ${h * 0.06}q${w * 0.13} ${-h * 0.04} ${w * 0.26} 0`}
-              stroke="#d4e0c6"
-              strokeWidth=".02"
-              opacity=".5"
+              stroke={TOY.ripple}
+              strokeWidth=".03"
+              strokeLinecap="round"
+              opacity=".8"
               fill="none"
             />
           )}
@@ -295,7 +292,16 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
           <Plantings z={z} plots={data.garden?.plots || []} crops={crops} id={id} />
         </Building>
       ) : plant ? (
-        <Plantings z={z} plots={data.garden?.plots || []} crops={crops} id={id} />
+        <>
+          {z.type === "container" &&
+            !(data.garden?.plots || []).some((p) => p.zone === z.id && p.status !== "harvested") &&
+            Array.from({ length: Math.max(1, Math.floor(w / 0.8)) * Math.max(1, Math.floor(h / 0.8)) }, (_, i) => {
+              const nx = Math.max(1, Math.floor(w / 0.8)), ny = Math.max(1, Math.floor(h / 0.8));
+              const r = Math.min(0.3, w / nx * 0.36, h / ny * 0.36);
+              return <circle key={i} cx={((i % nx) + 0.5) * w / nx} cy={(Math.floor(i / nx) + 0.5) * h / ny} r={r} fill={TOY.pot} stroke={TOY.potRim} strokeWidth=".05" filter={`url(#${id}-shadow)`} />;
+            })}
+          <Plantings z={z} plots={data.garden?.plots || []} crops={crops} id={id} />
+        </>
       ) : z.type === "nursery" ? (
         <NurseryBenches z={z} data={data} id={id} />
       ) : null}
@@ -336,8 +342,8 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
           width={w + 0.3}
           height={h + 0.3}
           rx=".1"
-          fill="#e4f0d910"
-          stroke="#f4f9e8"
+          fill="#f7c55238"
+          stroke={TOY.gold}
           strokeWidth=".12"
           pointerEvents="none"
         />
@@ -350,7 +356,7 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
         height={h + 0.4}
         rx=".12"
         fill="none"
-        stroke="#245f4b"
+        stroke={TOY.green}
         strokeWidth=".07"
         pointerEvents="none"
       />
@@ -529,8 +535,9 @@ export default function GroveScene({
   const style = data.mapStyle || {},
     ground = style.groundMaterial || (env === "balcony" ? "stone" : "meadow");
   const pathTexture = style.pathMaterial === "earth" ? "soil" : style.pathMaterial || "gravel";
-  const pathColor = { light: "#cccac0", warm: "#b6a17c", dark: "#767b73" }[style.pathColor] || "#cccac0";
-  const groundTint = { natural: "#567635", dry: "#c2ac65", deep: "#163e29" }[style.groundColor] || "#567635";
+  const [pathColor, pathEdge] = pathTones(pathTexture, style.pathColor); // the same tones as the 3D map
+  const groundTones = ground === "meadow" ? GROUND_TONES.meadow[style.groundColor] || GROUND_TONES.meadow.natural : GROUND_TONES[ground] || GROUND_TONES.stone;
+  const apron = ground === "meadow" && groundTones === GROUND_TONES.meadow.natural ? TOY.apron : groundTones[2];
   const selectedZone = zones.find((z) => z.id === selected);
   const canInteract = interactive || !!edit;
   function coords(e) {
@@ -703,50 +710,36 @@ export default function GroveScene({
             <clipPath id={`${id}-boundary`}>
               <rect width={fW} height={fH} />
             </clipPath>
-            <linearGradient id={`${id}-sun`} x2="1" y2="1">
-              <stop stopColor="#fff0b1" stopOpacity=".04" />
-              <stop offset="1" stopColor="#183b2a" stopOpacity=".08" />
-            </linearGradient>
           </defs>
           <g ref={world} transform={cam.W || undefined}>
           <g>
-          <rect x={-margin} y={-margin} width={viewW} height={viewH} fill="#6e8640" />
-          <rect
-            x={-margin}
-            y={-margin}
-            width={viewW}
-            height={viewH}
-            fill={`url(#${id}-${ground})`}
-            opacity=".82"
-          />
-          <rect
-            x={-margin}
-            y={-margin}
-            width={viewW}
-            height={viewH}
-            fill={groundTint}
-            opacity={style.groundColor && style.groundColor !== "natural" ? 0.22 : 0.03}
-          />
-          <rect
-            x={-margin}
-            y={-margin}
-            width={viewW}
-            height={viewH}
-            fill={`url(#${id}-lawn)`}
-            opacity={ground === "meadow" ? 1 : 0}
-          />
-          <rect
-            x="-.10"
-            y="-.1"
-            width={fW + 0.2}
-            height={fH + 0.2}
-            rx=".08"
-            fill="none"
-            stroke="#384c2e"
-            strokeWidth=".18"
-            opacity=".15"
-          />
-          <rect width={fW} height={fH} fill="none" stroke="#c0c4b1" strokeWidth=".12" />
+          {/* ground: one flat colour, the property a shade lighter (as in 3D) */}
+          <rect x={-margin} y={-margin} width={viewW} height={viewH} fill={groundTones[0]} />
+          <rect width={fW} height={fH} fill={apron} />
+          {env === "balcony" ? (
+            <g pointerEvents="none">
+              <rect x="-.45" y="-.4" width={fW + 0.9} height=".32" rx=".06" fill={TOY.cream} filter={`url(#${id}-building-shadow)`} />
+              <path d={`M0 0V${fH}H${fW}V0`} fill="none" stroke={TOY.zinc} strokeWidth=".1" strokeLinejoin="round" />
+              <path d={`M0 0V${fH}H${fW}V0`} fill="none" stroke={TOY.trim} strokeWidth=".05" strokeLinejoin="round" />
+            </g>
+          ) : (
+            <g pointerEvents="none">
+              {/* clipped hedge round the property, open at the entrance */}
+              <path
+                d={`M${fW / 2 - 2.3} ${fH + 0.75}H-.75V-.75H${fW + 0.75}V${fH + 0.75}H${fW / 2 + 2.3}`}
+                fill="none"
+                stroke={TOY.hedge}
+                strokeWidth=".8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter={`url(#${id}-shadow)`}
+              />
+              <Fence w={fW} h={fH} id={id} gate gateW={2.4} />
+              {[-1, 1].map((sd) => (
+                <circle key={sd} cx={fW / 2 + sd * 1.32} cy={fH} r=".26" fill={TOY.stone} stroke={TOY.stoneDark} strokeWidth=".06" />
+              ))}
+            </g>
+          )}
           {env !== "balcony" &&
             Array.from({ length: Math.min(100, Math.ceil((fW + fH) / 2)) }, (_, i) => {
               const edge = i % 4,
@@ -754,12 +747,12 @@ export default function GroveScene({
                 r = margin * (0.48 + srand(i + 25) * 0.46);
               const x = edge === 0 ? -margin * 0.83 : edge === 1 ? fW + margin * 0.83 : t * fW;
               const y = edge === 2 ? -margin * 0.82 : edge === 3 ? fH + margin * 0.88 : t * fH;
-              return <Canopy key={i} x={x} y={y} r={r} id={id} />;
+              return <Canopy key={i} x={x} y={y} r={r} id={id} seed={i} />;
             })}
 
           <g clipPath={`url(#${id}-boundary)`}>
             {edit?.grid > 0 && fW / edit.grid <= 400 && fH / edit.grid <= 400 && (
-              <g stroke="#ffffff" strokeWidth={0.6 * labelUnit} opacity=".22" pointerEvents="none">
+              <g stroke={TOY.green} strokeWidth={0.6 * labelUnit} opacity=".16" pointerEvents="none">
                 {Array.from({ length: Math.floor(fW / edit.grid) + 1 }, (_, i) => (
                   <line
                     key={`gx${i}`}
@@ -784,19 +777,10 @@ export default function GroveScene({
             )}
             <g fill="none" strokeLinejoin="round" strokeLinecap="round">
               {allPaths.map((line, i) => (
-                <polyline key={i} points={points(line)} stroke="#71825b" strokeWidth={roadWidth + 0.15} />
+                <polyline key={i} points={points(line)} stroke={pathEdge} strokeWidth={roadWidth + 0.26} />
               ))}
               {allPaths.map((line, i) => (
                 <polyline key={i} points={points(line)} stroke={pathColor} strokeWidth={roadWidth} />
-              ))}
-              {allPaths.map((line, i) => (
-                <polyline
-                  key={i}
-                  points={points(line)}
-                  stroke={`url(#${id}-${pathTexture})`}
-                  strokeWidth={roadWidth - 0.06}
-                  opacity=".42"
-                />
               ))}
             </g>
             {zones.map((z) => (
@@ -817,25 +801,10 @@ export default function GroveScene({
               .filter((l) => l.kind !== "path")
               .map((l) => (
                 <g key={l.id} filter={`url(#${id}-shadow)`}>
-                  <polyline points={points(l.points)} fill="none" stroke="#6c7055" strokeWidth=".13" />
-                  <polyline
-                    points={points(l.points.map((p) => ({ ...p, xM: p.xM - 0.02, yM: p.yM - 0.02 })))}
-                    fill="none"
-                    stroke="#dbceb0"
-                    strokeWidth=".04"
-                  />
+                  <polyline points={points(l.points)} fill="none" stroke={l.kind === "gate" ? TOY.green : TOY.woodMid} strokeWidth={l.kind === "gate" ? 0.14 : 0.1} strokeLinecap="round" strokeLinejoin="round" />
                   {l.points.map((p, i) => (
-                    <rect key={i} x={p.xM - 0.08} y={p.yM - 0.08} width=".16" height=".16" fill="#e0d4b8" />
+                    <circle key={i} cx={p.xM} cy={p.yM} r=".09" fill={TOY.woodDark} />
                   ))}
-                  {l.kind === "gate" && l.points.length > 1 && (
-                    <polyline
-                      points={points(l.points)}
-                      stroke="#687863"
-                      strokeWidth=".2"
-                      strokeDasharray=".06 .04"
-                      fill="none"
-                    />
-                  )}
                 </g>
               ))}
             {(data.ornaments || []).map((o) => (
@@ -863,14 +832,13 @@ export default function GroveScene({
               >
                 <Ornament o={o} id={id} />
                 {edit?.ornamentSelectedId === o.id && (
-                  <circle r=".65" fill="none" stroke="#f4f8e7" strokeWidth=".08" />
+                  <circle r=".65" fill="none" stroke={TOY.gold} strokeWidth=".1" />
                 )}
               </g>
             ))}
           </g>
           </g>
           </g>
-          <rect x={vbT.x} y={vbT.y} width={vbT.w} height={vbT.h} fill={`url(#${id}-sun)`} pointerEvents="none" />
           <g transform={cam.W || undefined}>
           {edit &&
             !edit.draw &&
@@ -914,7 +882,7 @@ export default function GroveScene({
                   y1={edit.draw.points[edit.draw.points.length - 1].yM}
                   x2={drawHover.xM}
                   y2={drawHover.yM}
-                  stroke="#fff8dc"
+                  stroke={TOY.green}
                   strokeWidth={Math.max(roadWidth * 0.5, 0.12)}
                   strokeDasharray=".3 .2"
                   strokeLinecap="round"
@@ -925,7 +893,7 @@ export default function GroveScene({
                 <polyline
                   points={points(edit.draw.points)}
                   fill="none"
-                  stroke={edit.draw.kind === "path" ? pathColor : "#dbceb0"}
+                  stroke={edit.draw.kind === "path" ? pathColor : edit.draw.kind === "gate" ? TOY.green : TOY.woodMid}
                   strokeWidth={edit.draw.kind === "path" ? roadWidth : 0.14}
                   strokeLinejoin="round"
                   strokeLinecap="round"
@@ -939,8 +907,8 @@ export default function GroveScene({
                   cx={P(p.xM, p.yM)[0]}
                   cy={P(p.xM, p.yM)[1]}
                   r={(i === edit.draw.points.length - 1 ? 7 : 5) * labelUnit}
-                  fill={i === edit.draw.points.length - 1 ? "#f7c552" : "#fffdf3"}
-                  stroke="#2b5948"
+                  fill={i === edit.draw.points.length - 1 ? TOY.gold : "#ffffff"}
+                  stroke={TOY.green}
                   strokeWidth={1.5 * labelUnit}
                 />
               ))}
@@ -951,8 +919,8 @@ export default function GroveScene({
               transform={cam.W || undefined}
               points={points(route.map(stopPoint))}
               fill="none"
-              stroke="#f4f6df"
-              strokeOpacity={focus ? 0.55 : 1}
+              stroke={TOY.green}
+              strokeOpacity={focus ? 0.55 : 0.8}
               strokeWidth={focus ? 2.2 * labelUnit : 0.065}
               strokeDasharray={focus ? `${5 * labelUnit} ${5 * labelUnit}` : ".14 .14"}
               pointerEvents="none"
@@ -970,13 +938,13 @@ export default function GroveScene({
                   transform={`translate(${P(q.xM, q.yM)[0]} ${P(q.xM, q.yM)[1]}) scale(${labelUnit})`}
                   pointerEvents="none"
                 >
-                  <circle r="7" fill={done ? "#2b5948" : "#fffffff0"} stroke="#2b5948" strokeWidth="1.5" />
+                  <circle r="7" fill={done ? TOY.green : "#fffffff0"} stroke={TOY.green} strokeWidth="1.5" />
                   <text
                     textAnchor="middle"
                     y="3.2"
                     fontSize="8.5"
                     fontWeight="700"
-                    fill={done ? "white" : "#2b5948"}
+                    fill={done ? "white" : TOY.green}
                   >
                     {done ? "✓" : i + 1}
                   </text>
@@ -989,7 +957,7 @@ export default function GroveScene({
               y1={P(stopPoint(focus.from).xM, stopPoint(focus.from).yM)[1]}
               x2={P((focusBox.x0 + focusBox.x1) / 2, (focusBox.y0 + focusBox.y1) / 2)[0]}
               y2={P((focusBox.x0 + focusBox.x1) / 2, (focusBox.y0 + focusBox.y1) / 2)[1]}
-              stroke="#fff6c9"
+              stroke={TOY.gold}
               strokeWidth={3 * labelUnit}
               strokeDasharray={`${6 * labelUnit} ${4 * labelUnit}`}
               strokeLinecap="round"
@@ -1005,8 +973,8 @@ export default function GroveScene({
                 width={focusBox.x1 - focusBox.x0}
                 height={focusBox.y1 - focusBox.y0}
                 rx={Math.min(0.15, (focusBox.x1 - focusBox.x0) / 4)}
-                fill="#fff6c933"
-                stroke="#fff6c9"
+                fill="#f7c55233"
+                stroke={TOY.gold}
                 strokeWidth={3 * labelUnit}
               />
               <g
@@ -1038,16 +1006,15 @@ export default function GroveScene({
                   aria-hidden="true"
                 >
                   {selectedId === z.id && (
-                    <circle r={place.fs * 0.95} cy={-place.fs * 0.35} fill="#2b5948" stroke="#f7c552" strokeWidth=".8" />
+                    <circle r={place.fs * 0.95} cy={-place.fs * 0.35} fill={TOY.green} stroke="#ffffff" strokeWidth=".8" />
                   )}
                   <text
                     textAnchor="middle"
                     fontSize={place.fs}
                     fontWeight="700"
-                    fill="#f6efd8"
-                    stroke="#1a2618"
-                    strokeOpacity=".6"
-                    strokeWidth="1.8"
+                    style={{ fill: selectedId === z.id ? "#ffffff" : "var(--color-text, #23362e)", stroke: selectedId === z.id ? TOY.green : "var(--color-card, #ffffff)" }}
+                    strokeOpacity=".9"
+                    strokeWidth="2.4"
                     strokeLinejoin="round"
                     paintOrder="stroke"
                   >
@@ -1064,18 +1031,14 @@ export default function GroveScene({
                 style={{ cursor: canInteract ? "pointer" : undefined }}
                 aria-hidden="true"
               >
-                {/* Field-sign style: a soft, see-through earth-green plate with cream lettering,
-                    so the name sits in the scenery but still reads on grass, roofs and paths. */}
+                {/* the same white card pill as the 3D map; brand green when selected */}
                 <rect
                   x={-labelWidth / 2}
                   y="-8.5"
                   width={labelWidth}
                   height="18"
                   rx="9"
-                  fill={selectedId === z.id ? "#2b5948" : "#1d2c1b"}
-                  fillOpacity={selectedId === z.id ? 0.95 : 0.46}
-                  stroke={selectedId === z.id ? "#f7c552" : "#f3ecd2"}
-                  strokeOpacity={selectedId === z.id ? 0.9 : 0.22}
+                  style={{ fill: selectedId === z.id ? TOY.green : "var(--color-card, #ffffff)", stroke: selectedId === z.id ? TOY.green : "var(--color-border, #dce3dc)" }}
                   strokeWidth="0.8"
                 />
                 <text
@@ -1085,12 +1048,7 @@ export default function GroveScene({
                   fontSize="10"
                   fontWeight="650"
                   letterSpacing=".25"
-                  fill="#fbf6e4"
-                  stroke="#16231a"
-                  strokeOpacity=".55"
-                  strokeWidth="2.2"
-                  strokeLinejoin="round"
-                  paintOrder="stroke"
+                  style={{ fill: selectedId === z.id ? "#ffffff" : "var(--color-text, #23362e)" }}
                 >
                   {z.name.length > 23 ? z.name.slice(0, 22) + "…" : z.name}
                 </text>
@@ -1133,12 +1091,12 @@ export default function GroveScene({
                 >
                   <circle r="22" fill="transparent" />
                   <g className="q-badge-bob">
-                    <rect className="q-badge-ring" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" fill="none" stroke="#eea92b" strokeWidth="2" />
-                    <rect className="q-badge-pill" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" fill="#f7c552" stroke="#c9851a" strokeWidth="1.2" />
+                    <rect className="q-badge-ring" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" fill="none" stroke={TOY.orange} strokeWidth="2" />
+                    <rect className="q-badge-pill" x={-pillW / 2} y="-10" width={pillW} height="20" rx="10" style={{ fill: "var(--color-orange, #c97f17)", stroke: "var(--color-card, #ffffff)" }} strokeWidth="2" />
                     <text x={-pillW / 2 + 10} y="4.2" textAnchor="middle" fontSize="11">
                       {taskGlyph(list[0])}
                     </text>
-                    <text x={pillW / 2 - 9} y="4" textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#4b2f06">
+                    <text x={pillW / 2 - 9} y="4" textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#ffffff">
                       {list.length}
                     </text>
                   </g>
@@ -1157,45 +1115,47 @@ export default function GroveScene({
                     style={{ cursor: "nwse-resize" }}
                   >
                     <circle r="22" fill="transparent" />
-                    <circle r="9" fill="#295f4c" stroke="white" strokeWidth="2" />
+                    <circle r="9" fill={TOY.green} stroke="white" strokeWidth="2" />
                     <path d="M-4 4L4-4M-1-4H4V1M-4-1V4H1" fill="none" stroke="white" strokeWidth="1.2" />
                   </g>
-                  <text
-                    x={P(z.xM + z.wM / 2, z.yM - 0.25)[0]}
-                    y={P(z.xM + z.wM / 2, z.yM - 0.25, cam.on ? 2.5 : 0)[1]}
-                    fontSize={11 * labelUnit}
-                    textAnchor="middle"
-                    fill="#203f31"
-                    stroke="#eff3dc"
-                    strokeWidth={2 * labelUnit}
-                    paintOrder="stroke"
-                  >
-                    {z.wM} × {z.hM} m
-                  </text>
+                  {/* drawn at 11 px and scaled: Chrome mis-measures SVG text under 1 px font size */}
+                  <g transform={`translate(${P(z.xM + z.wM / 2, z.yM - 0.25)[0]} ${P(z.xM + z.wM / 2, z.yM - 0.25, cam.on ? 2.5 : 0)[1]}) scale(${labelUnit})`} pointerEvents="none">
+                    <text
+                      fontSize="11"
+                      fontWeight="650"
+                      textAnchor="middle"
+                      style={{ fill: "var(--color-text, #23362e)", stroke: "var(--color-card, #ffffff)" }}
+                      strokeWidth="2.4"
+                      strokeLinejoin="round"
+                      paintOrder="stroke"
+                    >
+                      {`${z.wM} × ${z.hM} m`}
+                    </text>
+                  </g>
                 </g>
               ))}
           <g transform={`translate(${P(margin * 0.45, fH + margin * 0.53)[0]} ${P(margin * 0.45, fH + margin * 0.53)[1]})`} pointerEvents="none">
             <path
               d={`M0 -.08V.08M0 0H${scaleMetres}M${scaleMetres} -.08V.08`}
-              stroke="#f8f7e5"
-              strokeWidth=".035"
+              stroke={TOY.woodDark}
+              strokeWidth=".05"
+              strokeLinecap="round"
             />
-            <text x={scaleMetres / 2} y={-0.14} textAnchor="middle" fontSize={8 * labelUnit} fill="#354b35" style={{ letterSpacing: 0 }}>
-              {scaleMetres} m
+            <text transform={`translate(${scaleMetres / 2} -0.14) scale(${labelUnit})`} textAnchor="middle" fontSize="8" style={{ letterSpacing: 0, fill: "var(--color-text-2, #617169)" }}>
+              {`${scaleMetres} m`}
             </text>
           </g>
-          <g transform={`translate(${P(fW / 2, fH)[0]} ${P(fW / 2, fH)[1]})`} pointerEvents="none">
-            <path d="M-.45-.1V.12M.45-.1V.12M-.45 .03H.45" stroke="#e1d6b7" strokeWidth=".06" />
+          {env !== "balcony" && <g transform={`translate(${P(fW / 2, fH)[0]} ${P(fW / 2, fH)[1]})`} pointerEvents="none">
+
             <text
-              y={Math.max(0.3, 10 * labelUnit)}
+              transform={`translate(0 ${Math.max(0.3, 10 * labelUnit)}) scale(${labelUnit})`}
               textAnchor="middle"
-              fontSize={8 * labelUnit}
-              fill="#354b35"
-              style={{ letterSpacing: 0 }}
+              fontSize="8"
+              style={{ letterSpacing: 0, fill: "var(--color-text-2, #617169)" }}
             >
               Entrance
             </text>
-          </g>
+          </g>}
         </svg>
         )}
       </div>

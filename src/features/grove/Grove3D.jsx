@@ -22,6 +22,7 @@ import { todayLocalKey } from "../../lib/utils";
 import { isPlantZone } from "../farm/living/visuals";
 import { taskGlyph } from "./zone-tasks";
 import { buildHerd } from "./animals3d";
+import { GROUND_TONES, pathTones } from "./palette";
 import { PAL, STAGE_COLOR, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
 import { cropScale, buildCrops } from "./crops3d";
 import { ORNAMENTS, wheelbarrow, barrel, crates, birdbath, mailbox, scarecrow, tractor } from "./props3d";
@@ -965,11 +966,8 @@ function terrainGeo(fW, fH, E, height, colors, N = 84) {
   geo.setIndex(idx); geo.computeVertexNormals();
   return geo;
 }
-const PATH_TONE = { warm: [0xe8d8b9, 0xd9c6a2], dark: [0xbfc4be, 0xaab0aa] }; // Settings → Path color (light = the material's own tone)
-const GROUNDS = {
-  meadow: { natural: [PAL.meadow, PAL.meadowB, PAL.meadowDry], dry: [0xe0e3c1, 0xd4d9b4, 0xe8e5c6], deep: [0xc2dcb0, 0xb4d1a0, 0xd3dfb6] },
-  soil: [0xcdb79b, 0xc2ab8e, 0xd9c7aa], gravel: [0xe6e1d5, 0xdcd6c8, 0xece7dc], stone: [0xe1ddd4, 0xd6d1c7, 0xe8e4dc],
-};
+const hexN = (v) => (Array.isArray(v) ? v.map(hexN) : typeof v === "string" ? parseInt(v.slice(1), 16) : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, hexN(x)])));
+const GROUNDS = hexN(GROUND_TONES); // shared with the flat map (palette.js)
 /* a balcony: the building's cream wall behind it (with a glazed door and a window), a pale slab edge and a
    slim rounded metal railing — capsule posts, a chunky rounded handrail — on the three open sides */
 function balconyEdge(world, ctx, fW, fH, M) {
@@ -1014,8 +1012,7 @@ function buildWorld(ctx) {
   }
   const drive = balcony ? [] : [{ xM: fW / 2, yM: fH - .2 }, { xM: fW / 2, yM: fH + Math.max(margin * 1.6, 3) }];
   // paths: pale rounded ribbons with a soft edge and round ends
-  const paved = ctx.pathTexture === "stone", tone = PATH_TONE[style.pathColor];
-  const pathCol = tone ? tone[0] : paved ? PAL.stonePath : ctx.pathTexture === "soil" ? PAL.soilPath : PAL.path, edgeCol = tone ? tone[1] : paved ? 0xd6d2c9 : ctx.pathTexture === "soil" ? 0xcdbaa0 : PAL.pathEdge;
+  const [pathCol, edgeCol] = hexN(pathTones(ctx.pathTexture, style.pathColor)); // same tones as the flat map
   const roadMat = layered(flat(pathCol, { rough: .95, side: THREE.DoubleSide }), 10), edgeMat = layered(flat(edgeCol, { rough: .95, side: THREE.DoubleSide }), 8), rw = ctx.roadWidth;
   [...roads, drive].forEach((raw) => {
     if (raw.length < 2) return; const line = smooth(raw);
