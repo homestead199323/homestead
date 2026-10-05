@@ -368,7 +368,7 @@
   index-D7xnE6TC.js with "Frost and storm warnings", "How much did you pick?", "Running costs only".
   Not fixed (architecture): whole-document last-write-wins can drop one device's offline ticks.
 
-- [~] **2026-10-05 — 3D map restyled as a toy diorama (every object, every crop, every animal, the
+- [x] **2026-10-05 — 3D map restyled as a toy diorama (every object, every crop, every animal, the
   overlay UI).** Direction: the rounded, flat-coloured, soft-lit look of the "WareTrack" warehouse
   dashboard (Dilum Sanjaya, X, 3 Oct 2026), in the app's own palette; the rules are written down in
   `docs/MAP_STYLE.md` (read it before touching `src/features/grove/`). Engine
@@ -396,4 +396,11 @@
   g3-crops / g3-balcony at 1280 px and 390 px with zero console errors or warnings; home-view draw
   calls 157 (was 178), 561 k triangles; 36 numbered beds 119 calls / 447 k; world build 0.4–0.5 s on
   the sandbox CPU; growth panel + crop card opened by a synthetic tap. Not verified: real-device frame
-  rate and battery; the landing-page hero video still shows the old look (re-record).
+  rate and battery; the landing-page hero video still shows the old look (re-record). Shipped as
+  commit bc509e6 (deployment dpl_23meGF4TFDVk9NyGrfroqbH5cJfg READY): myterra-sigma.vercel.app and
+  www.myterra.farm (myterra.farm 308-redirects there) both serve index-B2I6Nf1d.js →
+  Grove3D-CXZBlAUH.js (712,090 B) with `toy-v1`, `g3crop`, `g3motion`, `g3f|`, "Building your farm";
+  index-Q2FsQoDh.css carries `--g3-accent` and no trace of the old dark pills; CSP header intact.
+  Signed-in production screen checked in the owner's Chrome: the real farm (house, kitchen workshop,
+  greenhouse, chicken-coop barn, 11 numbered beds, orchard, beehive) renders in the new style with
+  job badges, no console errors on load.
