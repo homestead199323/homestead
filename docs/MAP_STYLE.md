@@ -12,14 +12,19 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - **Real geometry for everything that is a thing.** Crops (`crops3d.js`), animals (`animals3d.js`), props (`props3d.js`). No sprites, no billboards, no camera-facing quads.
 
 ## 2. Surface
-- **Flat matte colour only.** `flat(color)` — `MeshStandardMaterial`, roughness ≈ 0.88, metalness 0. No photo textures, no procedural textures. The two exceptions are alpha masks (soft contact shadow under a footprint, the mulch disc under a tree).
+- **Flat matte colour only.** `flat(color)` — `MeshStandardMaterial`, roughness ≈ 0.88, metalness 0. No photo textures, no procedural textures, no alpha-gradient masks (retired 2026-10-05: the blurred contact patches and the soft mulch disc looked photoreal next to the flat shapes). Objects are grounded by the sun's soft shadow; the mulch under a tree is a crisp flat disc with a lighter rim.
 - Glass (greenhouse, windows, tractor cab) and water are the only glossy materials: `MeshPhysicalMaterial`, low roughness, env map.
 - Vertex colours carry variety inside one mesh (crop leaves lighter toward the tip, animal coats, ground patches) — never a texture.
+
+## 2b. Environments (the boundary and the props follow `profile.environment`)
+- **Farm:** clipped hedge, post-and-rail fence, stone gate pillars and a green gate, a drive, mailbox, tree border, scarecrow, tractor by the barn.
+- **Garden (backyard):** the same hedge, fence and gate — no scarecrow, no tractor.
+- **Balcony:** a stone slab against the building's cream wall (green glazed door, white-framed windows) with a slim rounded railing — capsule posts, thin balusters, a chunky white handrail — on the three open sides. No hedge, fence, gate, pillars, drive, mailbox, wheelbarrow, grass or wild flowers.
 
 ## 3. Palette (`PAL` in `toy.js`)
 - **Page / fog:** `#eef3ec` — the scene fades into the page; the canvas background is the same colour.
 - **Ground:** pale sage meadow `#c4dfab` with softer patches `#b3d297`; the property inside the hedge a shade lighter; pasture / orchard / lawn close variants. Light enough that objects pop, green enough to read as grass.
-- **Paths:** warm off-white `#f2eee6` with a `#e5e0d5` edge, round ends.
+- **Paths:** warm off-white `#f2eee6` with a `#e5e0d5` edge, round ends. Settings → Path color: *Warm sand* `#e8d8b9` / *Slate* `#bfc4be` override the material's own tone.
 - **Soil:** `#9e7a5e` (raised beds, rows), lighter `#b39277` for in-ground beds, `#c8b291` trampled earth.
 - **Buildings:** cream walls `#f8f3e9`, white trims; roofs soft terracotta `#de9072` or slate `#7c8896`; barn muted red `#d5725f` with white boards; coop and sheds warm wood `#ddbf95`.
 - **Wood:** `#ddbf95` / `#c7a277` / `#8f6b4c`. Stone `#dfdcd3`. Zinc `#d1d7d9`.
@@ -42,12 +47,13 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - Selection: a gold rounded frame. Crop pick: the crop's own colour, lighter.
 
 ## 7. UI over the map (`.g3-*` in `quiet.css`)
+- Floating panels (growth preview, crop card) never run under the control column; zone labels are clamped inside the view and drop out when their area's centre leaves it.
 - The same white cards as the rest of the app: `var(--color-card)`, hairline `var(--color-border)`, `var(--shadow)`-style soft shadow, brand green for selected / pressed, orange job badges. Dark mode follows the tokens. Never dark translucent pills.
 
 ## 8. Performance rules that keep the look affordable
 - Everything static is merged per material (`bake()`); repeated parts are instanced (fences, pots, tufts, crops, fruit, bees, smoke).
 - Crop models have three levels of detail chosen farm-wide by plant count (>350 plants, >900 plants).
-- Budget at the home view: ≤ 200 draw calls, ≤ 650 k triangles (verified 2026-10-05: 157 calls / 561 k on the all-zones harness; 119 / 447 k on 36 numbered beds).
+- Budget at the home view: ≤ 200 draw calls, ≤ 650 k triangles (verified 2026-10-05 after the standardisation pass: 157 calls / 570 k on the all-zones harness; 118 / 450 k on 36 numbered beds; 32 / 70 k on the balcony).
 
 ## 9. Harnesses (run with Vite, screenshot with Playwright)
 `tests/g3-all.html` (every zone type), `tests/g3-zoo.html` (every animal, coop and barn), `tests/g3-beds.html` (36 narrow numbered beds), `tests/g3-crops.html` (every crop family at growing and harvest stage), `tests/g3-balcony.html` (balcony environment).

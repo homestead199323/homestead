@@ -33,17 +33,7 @@ const STAGE_CSS = ["#c3cbc4", "#dcca92", "#a9dd8c", "#5fb24d", "#c1d44f", "#f7c5
 const dayNum = (key) => { const [y, m, d] = String(key || "").split("-").map(Number); return Date.UTC(y || 1970, (m || 1) - 1, d || 1) / 864e5; };
 const addDays = (key, n) => { const t = new Date((dayNum(key) + n) * 864e5); return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`; };
 
-/* ---------- soft masks (the only canvas textures left: alpha gradients for glows and contact shadows) ---------- */
-const canvases = new Map(), cache = new Map();
-function proc(key, draw, size = 128) {
-  if (cache.has(key)) return cache.get(key);
-  let c = canvases.get(key); if (!c) { c = document.createElement("canvas"); c.width = c.height = size; draw(c.getContext("2d"), size); canvases.set(key, c); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; cache.set(key, t); return t;
-}
-const DRAW = {
-  contact(g, s) { g.clearRect(0, 0, s, s); const grad = g.createRadialGradient(s / 2, s / 2, s * .3, s / 2, s / 2, s / 2); grad.addColorStop(0, "rgba(30,50,30,.34)"); grad.addColorStop(1, "rgba(30,50,30,0)"); g.fillStyle = grad; g.fillRect(0, 0, s, s); },
-  soilDisc(g, s) { g.clearRect(0, 0, s, s); const grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2); grad.addColorStop(0, "rgba(143,109,86,.95)"); grad.addColorStop(.7, "rgba(143,109,86,.85)"); grad.addColorStop(1, "rgba(143,109,86,0)"); g.fillStyle = grad; g.fillRect(0, 0, s, s); },
-};
+/* No textures at all (MAP_STYLE §2): grounding comes from the sun's soft shadow, the mulch under a tree is a flat disc. */
 
 /* ---------- shader effects ----------
    The engine renders on demand, so motion has to be cheap: everything that moves does so in the
@@ -98,11 +88,10 @@ function materials() {
     hedge: foliage(flat(PAL.hedge, { rough: .95 }), { sway: .02, freq: .6, from: .4 }),
     leaf: [...PAL.leaf, PAL.leafOlive, PAL.leafCitrus].map((c) => foliage(flat(c, { rough: .95 }), { sway: .06, freq: .25, from: 1.2 })), // 0-3 greens, 4 silvery olive, 5 deep citrus / fig
     tuft: flat(0x8fc77e, { rough: 1 }), flower: PAL.flower.map((c) => flat(c, { rough: .9 })), flowerStem: flat(0x6fa05a, { rough: 1 }),
-    compost: PAL.compost.map((c) => flat(c, { rough: 1 })), hive: PAL.hive.map((c) => flat(c)), pot: flat(PAL.pot), potRim: flat(PAL.potRim), mulch: layered(new THREE.MeshStandardMaterial({ map: proc("soilDisc", DRAW.soilDisc), transparent: true, depthWrite: false, roughness: 1 }), 13),
-    netting: flat(0xffffff, { transparent: true, opacity: .14, side: THREE.DoubleSide, depthWrite: false, rough: 1 }), shade: flat(0xf7f7f2, { transparent: true, opacity: .32, side: THREE.DoubleSide, depthWrite: false, rough: 1 }),
+    compost: PAL.compost.map((c) => flat(c, { rough: 1 })), hive: PAL.hive.map((c) => flat(c)), pot: flat(PAL.pot), potRim: flat(PAL.potRim), mulch: layered(flat(0xb08d6f, { rough: 1 }), 13), mulchRim: layered(flat(0xc4a585, { rough: 1 }), 12),
+    netting: flat(0xffffff, { transparent: true, opacity: .14, side: THREE.DoubleSide, depthWrite: false, rough: 1 }), shade: flat(0xeef2e6, { rough: .95 }),
     hit: new THREE.MeshBasicMaterial({ visible: false }),
     glow: new THREE.MeshStandardMaterial({ color: 0xffc83d, emissive: 0xffb300, emissiveIntensity: .55, roughness: .5, transparent: true, opacity: .95 }),
-    contact: layered(new THREE.MeshBasicMaterial({ map: proc("contact", DRAW.contact), transparent: true, depthWrite: false }), 12),
     stageTag: STAGE_COLOR.map((c, i) => flat(c, { rough: .6, emissive: i === 5 ? 0x8a6a10 : 0x000000, ei: 1 })), tagPole: flat(PAL.tagPole),
     fruit: (color) => flat(color, { rough: .45, emissive: color, ei: .1 }),
     select: layered(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .22, depthWrite: false }), 14),
@@ -148,9 +137,7 @@ function ribbonGeo(pts, width) {
   geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
   return geo;
 }
-function contact(g, M, cx, cz, w, d, y = .0075) { // soft ambient-occlusion patch under a footprint
-  const m = plane(g, w + 1.4, d + 1.4, M.contact, cx, y, cz); m.receiveShadow = false; return m;
-}
+function contact() { /* retired 2026-10-05: blurred AO patches broke the flat-colour rule; the sun's soft shadow grounds objects */ }
 
 /* ---------- reusable structures ---------- */
 function tree(g, x, z, r, seed, M, y = 0, leafIdx = null) {
@@ -172,7 +159,7 @@ function fruitTree(g, ctx, x, z, size, stage, name, seed, M, off) {
   const key = Object.keys(FRUIT).find((k) => name.includes(k)) || "apple", [color, fr] = FRUIT[key];
   const leafIdx = key === "olive" ? 4 : /lemon|orange|citrus|fig|avocado|persimmon/.test(key) ? 5 : null;
   tree(g, x, z, r, seed, M, 0, leafIdx);
-  disc(g, Math.min(1.1, r * .8 + .2), M.mulch, x, .015, z, { seg: 20 });
+  { const mr = Math.min(1.1, r * .8 + .2); disc(g, mr + .08, M.mulchRim, x, .013, z, { seg: 28 }); disc(g, mr, M.mulch, x, .016, z, { seg: 28 }); }
   if (stage < 4) pill(g, [x + .22, 0, z + .1], [x + .2, Math.min(1.5, r * 1.4 + .6), z + .08], .022, M.woodDark, { seg: 6 }); // stake for young trees
   if (stage < 5) return; // like the crop rows, a tree shows its harvest: fruit and a gold halo appear only in the harvest window
   ctx.growth.glows.push({ p: [off[0] + x, .012, off[1] + z], tree: true, s: [r * 2.2 + 1.2, r * 2.2 + 1.2, 1] });
@@ -201,6 +188,8 @@ function buildFences(g, ctx, M) {
   instances(g, rboxGeo(.09, .84, .035, .016, 1), M.white, K.posts);
   instances(g, sphereGeo(8, 6), M.white, K.caps.map((c) => ({ ...c, s: .055 })), { cast: false });
   instances(g, rboxGeo(1, .07, .04, .018, 1), M.woodPale, K.rails);
+  const R = ctx.fences.rail; // balcony railing
+  if (R) { instances(g, capsuleGeo(.035, .95, 10, 3), M.zinc, R.posts); instances(g, cylGeo(.013, .013, .82, 8), M.zinc, R.bars, { cast: false }); instances(g, rboxGeo(1, .07, .11, .03, 1), M.white, R.rails); }
 }
 function gate(g, x, z, width, ry, M, { pickets = false } = {}) {
   const gg = new THREE.Group(); gg.position.set(x, 0, z); gg.rotation.y = ry; g.add(gg);
@@ -219,14 +208,21 @@ function hedge(g, segs, M, { h = 1.4, t = .8 } = {}) { // a clipped hedge: one r
     rbox(g, len + t * .5, h, t, M.hedge, (a[0] + b[0]) / 2, h / 2 - .02, (a[1] + b[1]) / 2, { ry: Math.atan2(-(b[1] - a[1]), b[0] - a[0]), r: Math.min(h, t) * .42, seg: 2 });
   });
 }
-function shelter(g, x, z, w, d, M, ry = 0) { // open-sided field shelter: posts, plank back wall, mono-pitch roof
+function shelter(g, x, z, w, d, M, ry = 0) { // open-sided field shelter: chunky capsule posts, a rounded plank back wall, a thick rounded mono-pitch roof
   const sg = new THREE.Group(); sg.position.set(x, 0, z); sg.rotation.y = ry; g.add(sg);
   const hi = 2.4, lo = 1.9;
-  [[-w / 2, -d / 2, hi], [w / 2, -d / 2, hi], [-w / 2, d / 2, lo], [w / 2, d / 2, lo], [0, -d / 2, hi], [0, d / 2, lo]].forEach(([px, pz, ph]) => rbox(sg, .16, ph, .16, M.woodDark, px, ph / 2, pz, { r: .05 }));
-  rbox(sg, w, hi - .3, .1, M.wood, 0, (hi - .3) / 2, -d / 2 + .05, { r: .04 });
-  const ang = Math.atan2(hi - lo, d), slope = Math.hypot(d + .5, hi - lo);
-  rbox(sg, w + .5, .14, slope, M.slate, 0, (hi + lo) / 2 + .06, 0, { rx: ang, r: .05 });
-  ball(sg, [w * .36, .3, d * .34], M.hay, 0, .16, .1, { seg: 14, rings: 9 });
+  [[-w / 2, -d / 2, hi], [w / 2, -d / 2, hi], [-w / 2, d / 2, lo], [w / 2, d / 2, lo], [0, -d / 2, hi], [0, d / 2, lo]].forEach(([px, pz, ph]) => {
+    pill(sg, [px, 0, pz], [px, ph, pz], .09, M.woodDark, { seg: 12 });
+    rbox(sg, .3, .1, .3, M.stoneDark, px, .05, pz, { r: .04, cast: false }); // a rounded foot pad
+  });
+  const pl = 4, ph = (hi - .35) / pl; // back wall: stacked rounded planks
+  for (let i = 0; i < pl; i++) rbox(sg, w, ph - .03, .14, i % 2 ? M.woodMid : M.wood, 0, .12 + ph * (i + .5), -d / 2 + .05, { r: .05 });
+  const ang = Math.atan2(hi - lo, d), slope = Math.hypot(d + .6, hi - lo), ry0 = (hi + lo) / 2 + .14;
+  rbox(sg, w + .6, .24, slope, M.slate, 0, ry0, 0, { rx: ang, r: .1, seg: 2 });
+  pill(sg, [-w / 2 - .3, hi + .26, -d / 2 - .3], [w / 2 + .3, hi + .26, -d / 2 - .3], .13, M.slateDark, { seg: 14 }); // rounded ridge cap
+  rbox(sg, w + .6, .1, .12, M.trim, 0, lo + .02, d / 2 + .3, { r: .04, cast: false }); // white fascia on the low edge
+  ball(sg, [w * .36, .3, d * .34], M.hay, 0, .16, .1, { seg: 16, rings: 10 });
+  rbox(sg, .9, .55, .5, M.woodMid, w / 2 - .7, .3, -d / 2 + .45, { r: .1 }); ball(sg, [.38, .18, .2], M.hay, w / 2 - .7, .6, -d / 2 + .45, { seg: 12, rings: 8 }); // hay rack
   return sg;
 }
 function solarPanels(g, cx, cz, W, D, H, rise, M) { // a grid of panels on the roof slope that faces the camera
@@ -860,7 +856,8 @@ function buildZone(z, ctx) {
     if (Math.min(w, d) > 2.2) { // shade frame: round posts, rails, a soft translucent cloth
       const sh = 2.2; [[.2, .2], [w - .2, .2], [.2, d - .2], [w - .2, d - .2]].forEach(([x, zz]) => pill(g, [x, 0, zz], [x, sh, zz], .045, M.metal, { seg: 8 }));
       rbox(g, w - .2, .06, .06, M.metal, cx, sh, .2, { r: .02, cast: false }); rbox(g, w - .2, .06, .06, M.metal, cx, sh, d - .2, { r: .02, cast: false }); rbox(g, .06, .06, d - .2, M.metal, .2, sh, cz, { r: .02, cast: false }); rbox(g, .06, .06, d - .2, M.metal, w - .2, sh, cz, { r: .02, cast: false });
-      plane(g, w - .3, d - .3, M.shade, cx, sh + .02, cz, { cast: true, receive: false });
+      const sl = w >= d, span = (sl ? d : w) - .3, run = (sl ? w : d) - .3, ns = Math.max(3, Math.round(span / .7)), sw = span / ns * .36;
+      for (let i = 0; i < ns; i++) { const o = -span / 2 + (i + .5) * span / ns; rbox(g, sl ? run : sw, .035, sl ? sw : run, M.shade, sl ? cx : cx + o, sh + .05, sl ? cz + o : cz, { r: .015, cast: true, receive: false }); }
     }
     ORNAMENTS.wateringcan(g, w - .45, d - .35, { seed: z.id.length });
   }
@@ -968,10 +965,29 @@ function terrainGeo(fW, fH, E, height, colors, N = 84) {
   geo.setIndex(idx); geo.computeVertexNormals();
   return geo;
 }
+const PATH_TONE = { warm: [0xe8d8b9, 0xd9c6a2], dark: [0xbfc4be, 0xaab0aa] }; // Settings → Path color (light = the material's own tone)
 const GROUNDS = {
   meadow: { natural: [PAL.meadow, PAL.meadowB, PAL.meadowDry], dry: [0xe0e3c1, 0xd4d9b4, 0xe8e5c6], deep: [0xc2dcb0, 0xb4d1a0, 0xd3dfb6] },
   soil: [0xcdb79b, 0xc2ab8e, 0xd9c7aa], gravel: [0xe6e1d5, 0xdcd6c8, 0xece7dc], stone: [0xe1ddd4, 0xd6d1c7, 0xe8e4dc],
 };
+/* a balcony: the building's cream wall behind it (with a glazed door and a window), a pale slab edge and a
+   slim rounded metal railing — capsule posts, a chunky rounded handrail — on the three open sides */
+function balconyEdge(world, ctx, fW, fH, M) {
+  const wallH = 2.7, t = .3;
+  rbox(world, fW + .9, wallH, t, M.cream, fW / 2, wallH / 2, -t / 2 - .05, { r: .08, seg: 2 });
+  rbox(world, fW + 1.0, .14, t + .14, M.white, fW / 2, wallH + .02, -t / 2 - .05, { r: .05, cast: false });
+  const dx = Math.min(fW * .25, 1.6), dW = 1.0, dH = 2.15;
+  rbox(world, dW + .2, dH + .1, .1, M.green, dx, (dH + .1) / 2, .02, { r: .04 }); rbox(world, dW - .16, dH - .2, .04, M.winGlass, dx, dH / 2 + .02, .08, { r: .015, cast: false });
+  rbox(world, .06, .2, .06, M.metal, dx + dW * .36, 1.0, .1, { r: .02, cast: false });
+  for (let k = 0; k < Math.min(3, Math.floor((fW - dx - 1.4) / 2.2)); k++) { const wx = dx + 1.9 + k * 2.2; rbox(world, 1.1, 1.15, .1, M.trim, wx, 1.55, .02, { r: .04 }); rbox(world, .9, .95, .04, M.winGlass, wx, 1.55, .08, { r: .015, cast: false }); rbox(world, 1.3, .1, .22, M.trim, wx, .94, .1, { r: .04, cast: false }); }
+  rbox(world, fW + .5, .16, .5, M.concreteSolid, fW / 2, -.06, fH + .1, { r: .06, cast: false }); // slab nose
+  [[[0, 0], [0, fH]], [[fW, 0], [fW, fH]], [[0, fH], [fW, fH]]].forEach(([a, b]) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(2, Math.ceil(len / 1.2) + 1), ry = Math.atan2(-(b[1] - a[1]), b[0] - a[0]);
+    for (let j = 0; j < n; j++) { const u = j / (n - 1); ctx.fences.rail.posts.push({ p: [a[0] + (b[0] - a[0]) * u, .5, a[1] + (b[1] - a[1]) * u] }); }
+    const nb = Math.max(2, Math.round(len / .14)); for (let j = 1; j < nb; j++) { const u = j / nb; ctx.fences.rail.bars.push({ p: [a[0] + (b[0] - a[0]) * u, .52, a[1] + (b[1] - a[1]) * u] }); }
+    ctx.fences.rail.rails.push({ p: [(a[0] + b[0]) / 2, 1.04, (a[1] + b[1]) / 2], ry, s: [len + .1, 1, 1] }, { p: [(a[0] + b[0]) / 2, .1, (a[1] + b[1]) / 2], ry, s: [len, .6, .6] });
+  });
+}
 function buildWorld(ctx) {
   const { data, zones, roads, fW, fH, margin, env, M } = ctx;
   const world = new THREE.Group();
@@ -982,19 +998,24 @@ function buildWorld(ctx) {
   const ground = new THREE.Mesh(terrainGeo(fW, fH, E, heightAt, colors), flat(0xffffff, { rough: .96, vertexColors: true }));
   ground.receiveShadow = true; world.add(ground); ctx.ground = ground;
   if (gm === "meadow") { const apron = plane(world, fW + .6, fH + .6, M.lawn(colors[0] === PAL.meadow ? 0xcde4b4 : colors[0]), fW / 2, .004, fH / 2); apron.material = layered(flat(gm === "meadow" ? 0xcbe2b1 : colors[0], { rough: .96 }), 3); } // the property itself: a shade lighter, like a mown lawn inside the hedge
-  // farm boundary: round-capped post-and-rail fence, rounded stone gate pillars, a green gate
-  const gap = 2.4;
-  fence(ctx, [[[0, 0], [fW, 0]], [[0, 0], [0, fH]], [[fW, 0], [fW, fH]], [[0, fH], [fW / 2 - gap / 2 - .25, fH]], [[fW / 2 + gap / 2 + .25, fH], [fW, fH]]], { post: 1.0 });
-  [-1, 1].forEach((s) => { const x = fW / 2 + s * (gap / 2 + .12); rbox(world, .5, 1.4, .5, M.stone, x, .7, fH, { r: .12 }); rbox(world, .62, .14, .62, M.stoneDark, x, 1.46, fH, { r: .05, cast: false }); ball(world, .17, M.stoneDark, x, 1.65, fH, { seg: 12, rings: 9 }); });
-  gate(world, fW / 2, fH, gap - .3, 0, M);
-  if (env !== "balcony") {
+  // boundary by environment: a balcony is a slab against the building wall with a slim rounded railing;
+  // a garden and a farm get the round-capped post-and-rail fence, stone gate pillars and a green gate
+  const gap = 2.4, balcony = env === "balcony", farm = env === "farm";
+  if (balcony) balconyEdge(world, ctx, fW, fH, M);
+  else {
+    fence(ctx, [[[0, 0], [fW, 0]], [[0, 0], [0, fH]], [[fW, 0], [fW, fH]], [[0, fH], [fW / 2 - gap / 2 - .25, fH]], [[fW / 2 + gap / 2 + .25, fH], [fW, fH]]], { post: 1.0 });
+    [-1, 1].forEach((s) => { const x = fW / 2 + s * (gap / 2 + .12); rbox(world, .5, 1.4, .5, M.stone, x, .7, fH, { r: .12 }); rbox(world, .62, .14, .62, M.stoneDark, x, 1.46, fH, { r: .05, cast: false }); ball(world, .17, M.stoneDark, x, 1.65, fH, { seg: 12, rings: 9 }); });
+    gate(world, fW / 2, fH, gap - .3, 0, M);
+  }
+  if (!balcony) {
     const ho = .75, hg = gap / 2 + 1.1;
     hedge(world, [[[-ho, -ho], [fW + ho, -ho]], [[-ho, -ho], [-ho, fH + ho]], [[fW + ho, -ho], [fW + ho, fH + ho]], [[-ho, fH + ho], [fW / 2 - hg, fH + ho]], [[fW / 2 + hg, fH + ho], [fW + ho, fH + ho]]], M, { h: 1.3, t: .8 });
     ctx.details.push({ kind: "mailbox", x: fW / 2 + gap / 2 + 1.1, z: fH + 1.4, ry: 0 });
   }
-  const drive = [{ xM: fW / 2, yM: fH - .2 }, { xM: fW / 2, yM: fH + Math.max(margin * 1.6, 3) }];
+  const drive = balcony ? [] : [{ xM: fW / 2, yM: fH - .2 }, { xM: fW / 2, yM: fH + Math.max(margin * 1.6, 3) }];
   // paths: pale rounded ribbons with a soft edge and round ends
-  const paved = ctx.pathTexture === "stone", pathCol = paved ? PAL.stonePath : ctx.pathTexture === "soil" ? PAL.soilPath : PAL.path, edgeCol = paved ? 0xd6d2c9 : ctx.pathTexture === "soil" ? 0xcdbaa0 : PAL.pathEdge;
+  const paved = ctx.pathTexture === "stone", tone = PATH_TONE[style.pathColor];
+  const pathCol = tone ? tone[0] : paved ? PAL.stonePath : ctx.pathTexture === "soil" ? PAL.soilPath : PAL.path, edgeCol = tone ? tone[1] : paved ? 0xd6d2c9 : ctx.pathTexture === "soil" ? 0xcdbaa0 : PAL.pathEdge;
   const roadMat = layered(flat(pathCol, { rough: .95, side: THREE.DoubleSide }), 10), edgeMat = layered(flat(edgeCol, { rough: .95, side: THREE.DoubleSide }), 8), rw = ctx.roadWidth;
   [...roads, drive].forEach((raw) => {
     if (raw.length < 2) return; const line = smooth(raw);
@@ -1032,12 +1053,13 @@ function buildWorld(ctx) {
   // detail props: a wheelbarrow by the first bed, a scarecrow in the biggest vegetable area, and the
   // props the buildings asked for (rain barrel, bird bath, crates, tractor, mailbox) — only on open ground
   const beds = zones.filter((z) => z.type === "veg" || z.type === "raised" || z.type === "herbs");
-  if (beds.length) { const b = beds[0]; ctx.details.push({ kind: "wheelbarrow", x: b.xM - .8, z: b.yM + Math.min(b.hM - .4, 1.2), ry: HPI * .9 }); }
-  const bigVeg = zones.filter((z) => z.type === "veg" && z.wM >= 3 && z.hM >= 3).sort((a, b) => b.wM * b.hM - a.wM * a.hM)[0];
+  if (beds.length && !balcony) { const b = beds[0]; ctx.details.push({ kind: "wheelbarrow", x: b.xM - .8, z: b.yM + Math.min(b.hM - .4, 1.2), ry: HPI * .9 }); }
+  const bigVeg = farm && zones.filter((z) => z.type === "veg" && z.wM >= 3 && z.hM >= 3).sort((a, b) => b.wM * b.hM - a.wM * a.hM)[0];
   if (bigVeg) scarecrow(world, bigVeg.xM + bigVeg.wM - .5, bigVeg.yM + .5, { ry: .4 });
   const DETAIL = { wheelbarrow, barrel, crates, birdbath, mailbox, tractor };
   ctx.details.forEach((dd) => {
     const fn = DETAIL[dd.kind]; if (!fn) return;
+    if (dd.kind === "tractor" && !farm) return; // farm machinery only on a farm
     const free = dd.kind === "tractor" || (!inZone(dd.x, dd.z, .2) && !onRoad(dd.x, dd.z)) || dd.kind === "barrel" || dd.kind === "birdbath" || dd.kind === "crates";
     if (free) fn(world, dd.x, dd.z, { ry: dd.ry || 0 });
   });
@@ -1065,6 +1087,13 @@ function buildWorld(ctx) {
       if (srand(i * 11 + 713) < .35) { const s = .35 + srand(i * 13 + 717) * .5; far.push({ p: [x + 2.2, heightAt(x + 2.2, y + 1) + s * .4, y + 1], ry: srand(i) * 6, s: [s * 1.3, s * .75, s] }); }
     }
     instances(world, sphereGeo(12, 9), M.rock, far);
+  }
+  if (balcony) { // a stone slab: no grass, no wild flowers
+    buildFences(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M); buildMotion(world, ctx, M);
+    buildCrops(world, ctx.plants, TIME);
+    bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground]));
+    const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd);
+    return world;
   }
   const open = (i, seed) => { for (let k = 0; k < 6; k++) { const x = -margin * .6 + srand(seed + i * 3 + k) * (fW + margin * 1.2), y = -margin * .6 + srand(seed + i * 5 + k + 1) * (fH + margin * 1.2); if (!inZone(x, y) && !onRoad(x, y)) return [x, y]; } return [null, null]; };
   tuftsIn(ctx, Math.min(320, Math.round(fW * fH / 5)), 17, (i) => open(i, 500));
@@ -1416,9 +1445,11 @@ export default function Grove3D(props) {
         a.corners.forEach(([x, z]) => { const q = project(x, 0, z, pv); minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); });
         items.push({ n, a, x: c.x, y: c.y, on: c.on, px: maxX - minX });
       });
-      items.sort((u, v) => (v.a.sel - u.a.sel) || (v.a.area - u.a.area)).forEach(({ n, a, x, y, on, px }) => {
-        const w = a.w * ls, h = 20 * ls, badge = n.querySelector(".g3-badge") ? 24 * ls : 0, box = { x0: x - w / 2 - 3, x1: x + w / 2 + 3 + badge, y0: y - h / 2 - badge * .4, y1: y + h / 2 };
-        const inside = x > -w && x < S.W + w && y > -h && y < S.H + h && (a.sel || px >= 28);
+      items.sort((u, v) => (v.a.sel - u.a.sel) || (v.a.area - u.a.area)).forEach(({ n, a, x: x0, y: y0, on, px }) => {
+        let x = x0, y = y0; const w = a.w * ls, h = 20 * ls, badge = n.querySelector(".g3-badge") ? 24 * ls : 0, box = { x0: x - w / 2 - 3, x1: x + w / 2 + 3 + badge, y0: y - h / 2 - badge * .4, y1: y + h / 2 };
+        const inside = x > 0 && x < S.W && y > 0 && y < S.H && (a.sel || px >= 28);
+        x = clamp(x, w / 2 + 4, S.W - w / 2 - badge - 4); y = clamp(y, h / 2 + badge * .4 + 4, S.H - h / 2 - 4); // the pill never runs off the edge
+        box.x0 = x - w / 2 - 3; box.x1 = x + w / 2 + 3 + badge; box.y0 = y - h / 2 - badge * .4; box.y1 = y + h / 2;
         const free = a.sel || !placed.some((q) => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0);
         if (free) placed.push(box);
         n.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%) scale(${ls.toFixed(3)})`; n.style.display = on && free && inside ? "" : "none";
@@ -1551,7 +1582,7 @@ export default function Grove3D(props) {
     const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
     st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
     const ctx = { data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, todayKey: P.todayKey || todayLocalKey(), hits: st.hits, plotHits: st.plotHits, M: st.M,
-      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
+      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
     const t0 = performance.now(); st.world = buildWorld(ctx); st.herd = ctx.herd; st.buildMs = performance.now() - t0;
     st.scene.add(st.world);
     st.anchors = Object.fromEntries(P.zones.map((z) => [z.id, { cx: z.xM + z.wM / 2, cz: z.yM + z.hM / 2, h: 0, corners: [[z.xM, z.yM], [z.xM + z.wM, z.yM], [z.xM + z.wM, z.yM + z.hM], [z.xM, z.yM + z.hM]], area: z.wM * z.hM, sel: 0, w: Math.min(23, z.name.length) * 6 + 16 }]));

@@ -44,7 +44,7 @@ class Rig {
   box(w, h, d, color, o = {}) { return this.add(new THREE.BoxGeometry(w, h, d), color, o); }
   cyl(rt, rb, h, color, o = {}) { return this.add(new THREE.CylinderGeometry(rt, rb, h, o.seg || 8, 1), color, o); }
   cone(r, h, color, o = {}) { return this.add(new THREE.ConeGeometry(r, h, o.seg || 6), color, o); }
-  capsule(r, len, color, o = {}) { return this.add(new THREE.CapsuleGeometry(r, len, o.cap || 3, o.seg || 10), color, o); } // along local y before rot
+  capsule(r, len, color, o = {}) { return this.add(new THREE.CapsuleGeometry(r, len, o.cap || 3, o.seg || 10, o.hseg || 1), color, o); } // along local y before rot
   // a limb from a to b (world-local points), radius r0 → r1
   bar(a, b, r0, r1, color, o = {}) {
     const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), len = A.distanceTo(B), geo = new THREE.CylinderGeometry(r1, r0, len, o.seg || 7, 1);
@@ -60,9 +60,9 @@ function quadruped(S, r, vi) {
   const { L, H } = S, br = S.br * 1.3, bw = S.bw || 1, bl = L * (S.bodyFrac || .6) * .78, by = H - br * .95;
   const pk = 2.6 / L, paint = C.patch ? (x, y, z, c) => (patchy(x * pk, y * pk, z * pk, S.seed * 3.7) > (S.patchCut ?? .35) ? C.patch : c) : null;
   // body: a capsule along z, wider than tall for cattle and pigs
-  R.capsule(br, bl, C.body, { rot: [HPI, 0, 0], pos: [0, by, 0], scale: [bw, 1, 1], paint, cap: 4, seg: 18 });
-  R.ell(br * bw * 1.05, br * 1.04, br * 1.0, C.body, { pos: [0, by - br * .03, bl / 2 - br * .25], paint, seg: 16, rings: 12 }); // a deep round chest
-  R.ell(br * bw * 1.08, br * 1.02, br * .95, C.body, { pos: [0, by - br * .02, -bl / 2 + br * .3], paint, seg: 16, rings: 12 }); // and a round rump: every toy animal is a little plump
+  R.capsule(br, bl, C.body, { rot: [HPI, 0, 0], pos: [0, by, 0], scale: [bw, 1, 1], paint, cap: paint ? 7 : 4, seg: paint ? 26 : 18, hseg: paint ? 12 : 1 }); // patched coats need a fine mesh or the patches go blocky
+  R.ell(br * bw * 1.05, br * 1.04, br * 1.0, C.body, { pos: [0, by - br * .03, bl / 2 - br * .25], paint, seg: paint ? 24 : 16, rings: paint ? 18 : 12 }); // a deep round chest
+  R.ell(br * bw * 1.08, br * 1.02, br * .95, C.body, { pos: [0, by - br * .02, -bl / 2 + br * .3], paint, seg: paint ? 24 : 16, rings: paint ? 18 : 12 }); // and a round rump: every toy animal is a little plump
   // neck + head pivot at the withers
   const n0 = [0, by + br * .35, bl / 2 + br * .1], up = S.neck.up, nl = S.neck.len;
   const n1 = [0, n0[1] + Math.sin(up) * nl, n0[2] + Math.cos(up) * nl];
