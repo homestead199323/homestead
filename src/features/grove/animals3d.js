@@ -6,7 +6,9 @@
    move in the vertex shader from the shared clock: they walk slow loops inside their
    paddock, stop and graze (head down, nibbling), swish tails, hens strut and peck,
    rabbits hop. Local space: forward = +z, up = +y, ground = y 0, body centre at x/z 0.
-   MARKER: GROVE_ANIMALS_3D
+   Toy proportions (v2): plump rounded bodies, big heads and eyes, short chunky legs with
+   rounded hooves, smooth high-segment surfaces, matte vertex colours.
+   MARKER: GROVE_ANIMALS_3D_V2
    ═══════════════════════════════════════════ */
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -55,27 +57,27 @@ class Rig {
 /* ---------- quadrupeds ---------- */
 function quadruped(S, r, vi) {
   const R = new Rig(), C = S.colors(r, vi);
-  const { L, H, br } = S, bw = S.bw || 1, bl = L * (S.bodyFrac || .6), by = H - br * .95;
+  const { L, H } = S, br = S.br * 1.3, bw = S.bw || 1, bl = L * (S.bodyFrac || .6) * .78, by = H - br * .95;
   const pk = 2.6 / L, paint = C.patch ? (x, y, z, c) => (patchy(x * pk, y * pk, z * pk, S.seed * 3.7) > (S.patchCut ?? .35) ? C.patch : c) : null;
   // body: a capsule along z, wider than tall for cattle and pigs
-  R.capsule(br, bl, C.body, { rot: [HPI, 0, 0], pos: [0, by, 0], scale: [bw, 1, 1], paint, cap: 3, seg: 12 });
-  if (S.chest) R.ell(br * bw * .95, br * .92, br * .9, C.body, { pos: [0, by - br * .05, bl / 2 - br * .2], paint }); // deeper chest
-  if (S.belly) R.ell(br * bw * 1.02, br * .8, bl * .38, C.belly || C.body, { pos: [0, by - br * .25, -bl * .05], paint });
+  R.capsule(br, bl, C.body, { rot: [HPI, 0, 0], pos: [0, by, 0], scale: [bw, 1, 1], paint, cap: 4, seg: 18 });
+  R.ell(br * bw * 1.05, br * 1.04, br * 1.0, C.body, { pos: [0, by - br * .03, bl / 2 - br * .25], paint, seg: 16, rings: 12 }); // a deep round chest
+  R.ell(br * bw * 1.08, br * 1.02, br * .95, C.body, { pos: [0, by - br * .02, -bl / 2 + br * .3], paint, seg: 16, rings: 12 }); // and a round rump: every toy animal is a little plump
   // neck + head pivot at the withers
   const n0 = [0, by + br * .35, bl / 2 + br * .1], up = S.neck.up, nl = S.neck.len;
   const n1 = [0, n0[1] + Math.sin(up) * nl, n0[2] + Math.cos(up) * nl];
   const head = (g, o) => R.add(g, o.color || C.head, { ...o, part: PART.head, pivot: n0 });
   R.bar(n0, n1, S.neck.r0, S.neck.r1, C.body, { part: PART.head, pivot: n0, paint, seg: 9 });
   if (S.mane) R.box(br * .12, S.mane, nl * .9, C.mane || C.tuft, { part: PART.head, pivot: n0, pos: [0, (n0[1] + n1[1]) / 2 + S.neck.r0 * .9, (n0[2] + n1[2]) / 2], rot: [-up, 0, 0] });
-  const hl = S.head.l, hw = S.head.w, hh = S.head.h, pitch = S.head.pitch || 0, hc = [0, n1[1] + Math.sin(-pitch) * hl * .3, n1[2] + hl * .3];
-  head(new THREE.SphereGeometry(1, 10, 8), { pos: hc, scale: [hw, hh, hl * .62], rot: [pitch, 0, 0], paint });
+  const hl = S.head.l * 1.12, hw = S.head.w * 1.3, hh = S.head.h * 1.28, pitch = S.head.pitch || 0, hc = [0, n1[1] + Math.sin(-pitch) * hl * .3, n1[2] + hl * .3];
+  head(new THREE.SphereGeometry(1, 16, 12), { pos: hc, scale: [hw, hh, hl * .66], rot: [pitch, 0, 0], paint });
   // snout / muzzle
   const sn = S.snout, sc = [0, hc[1] - sn.drop, hc[2] + hl * .5];
-  head(new THREE.SphereGeometry(1, 9, 7), { pos: sc, scale: [sn.w, sn.h, sn.l], color: C.muzzle || C.head, paint: C.muzzle ? null : paint });
+  head(new THREE.SphereGeometry(1, 14, 10), { pos: sc, scale: [sn.w * 1.15, sn.h * 1.1, sn.l], color: C.muzzle || C.head, paint: C.muzzle ? null : paint });
   if (S.noseDisc) head(new THREE.CylinderGeometry(sn.w * .8, sn.w * .8, .03, 10), { pos: [0, sc[1], sc[2] + sn.l * .95], rot: [HPI, 0, 0], color: C.nose || 0x6d4a44 });
   else head(new THREE.SphereGeometry(1, 7, 5), { pos: [0, sc[1] + sn.h * .25, sc[2] + sn.l * .82], scale: [sn.w * .5, sn.h * .35, sn.l * .3], color: C.nose || 0x33302d });
   // eyes
-  [-1, 1].forEach((s) => head(new THREE.SphereGeometry(1, 6, 4), { pos: [s * hw * .85, hc[1] + hh * .18, hc[2] + hl * .12], scale: [hw * .16, hh * .16, hw * .12], color: 0x1e1a18 }));
+  [-1, 1].forEach((s) => { head(new THREE.SphereGeometry(1, 10, 8), { pos: [s * hw * .82, hc[1] + hh * .2, hc[2] + hl * .14], scale: [hw * .24, hh * .24, hw * .17], color: 0x1e1a18 }); head(new THREE.SphereGeometry(1, 6, 5), { pos: [s * hw * .86, hc[1] + hh * .27, hc[2] + hl * .25], scale: [hw * .07, hh * .07, hw * .05], color: 0xffffff }); });
   // ears
   const E = S.ears, ey = hc[1] + hh * .6, ez = hc[2] - hl * .12;
   [-1, 1].forEach((s) => {
@@ -92,9 +94,9 @@ function quadruped(S, r, vi) {
   const lr = S.legR, lx = br * bw * .62, lzF = bl / 2 - br * .15, lzB = -bl / 2 + br * .2, hipY = by - br * .35, hoofH = lr * 1.6;
   [[-lx, lzF, PART.FL], [lx, lzF, PART.FR], [-lx, lzB, PART.BL], [lx, lzB, PART.BR]].forEach(([x, z, part]) => {
     const piv = [x, hipY, z];
-    R.bar([x, hipY + br * .25, z], [x, hoofH * .9, z], lr * 1.25, lr * .85, C.legs || C.body, { part, pivot: piv, paint: C.legs ? null : paint, seg: 7 });
-    R.cyl(lr * 1.05, lr * 1.15, hoofH, C.hoof || 0x3a302a, { part, pivot: piv, pos: [x, hoofH / 2, z], seg: 7 });
-    if (S.haunch) R.ell(br * .55, br * .75, br * .6, C.body, { pos: [x * .92, hipY + br * .2, z + (z < 0 ? .05 : -.05)], paint });
+    R.bar([x, hipY + br * .25, z], [x, hoofH * .9, z], lr * 1.7, lr * 1.35, C.legs || C.body, { part, pivot: piv, paint: C.legs ? null : paint, seg: 10 });
+    R.ell(lr * 1.5, lr * 1.0, lr * 1.6, C.hoof || 0x3a302a, { part, pivot: piv, pos: [x, lr * .85, z + lr * .15], seg: 10, rings: 7 });
+
   });
   // tail
   const T = S.tail, t0 = [0, by + br * .55, -bl / 2 - br * .35], t1 = [0, t0[1] - T.down, t0[2] - T.back];
@@ -109,8 +111,8 @@ function quadruped(S, r, vi) {
 function bird(S, r, vi) {
   const R = new Rig(), C = S.colors(r, vi), { L, H } = S, bl = L * .55, bh = L * .33 * (S.plump || 1), bwid = L * .3 * (S.plump || 1), by = H - bh * .55, tilt = S.tilt ?? .35;
   const paint = C.speckle ? (x, y, z, c) => c.clone().lerp(C.speckle, .18 + .22 * Math.abs(Math.sin(x * 37 + y * 23) * Math.sin(z * 41 - y * 17))) : null; // fine mottling, not vertex-sized blotches
-  R.ell(bwid, bh, bl, C.body, { pos: [0, by, 0], rot: [-tilt, 0, 0], paint, seg: 11, rings: 8 });
-  [-1, 1].forEach((s) => R.ell(bwid * .35, bh * .55, bl * .8, C.wing || C.body, { pos: [s * bwid * .78, by + bh * .1, -bl * .05], rot: [-tilt * .8, 0, s * .12], paint, seg: 8, rings: 5 }));
+  R.ell(bwid * 1.08, bh * 1.05, bl, C.body, { pos: [0, by, 0], rot: [-tilt, 0, 0], paint, seg: 16, rings: 12 });
+  [-1, 1].forEach((s) => R.ell(bwid * .38, bh * .58, bl * .8, C.wing || C.body, { pos: [s * bwid * .82, by + bh * .1, -bl * .05], rot: [-tilt * .8, 0, s * .12], paint, seg: 12, rings: 8 }));
   // tail: a few flattened feathers fanned up and back (turkeys carry a full fan)
   const t0 = [0, by + bh * .35, -bl * .85];
   if (S.fan) { for (let i = 0; i < 7; i++) { const a = -.9 + i * .3; R.add(new THREE.BoxGeometry(L * .12, L * .55, .008), C.tail || C.body, { part: PART.tail, pivot: t0, pos: [Math.sin(a) * L * .2, t0[1] + Math.cos(a) * L * .26 + L * .04, t0[2] - .04], rot: [-.5, 0, -a] }); } }
@@ -119,10 +121,10 @@ function bird(S, r, vi) {
   const n0 = [0, by + bh * .45, bl * .55], up = S.neck.up, nl = S.neck.len, n1 = [0, n0[1] + Math.sin(up) * nl, n0[2] + Math.cos(up) * nl];
   const head = (g, o) => R.add(g, o.color || C.head || C.body, { ...o, part: PART.head, pivot: n0 });
   R.bar(n0, n1, S.neck.r, S.neck.r * .85, C.neck || C.body, { part: PART.head, pivot: n0, paint, seg: 8 });
-  const hr = S.head.r, hc = [0, n1[1] + hr * .3, n1[2] + hr * .2];
-  head(new THREE.SphereGeometry(1, 9, 7), { pos: hc, scale: [hr, hr * .95, hr * 1.15], paint });
+  const hr = S.head.r * 1.25, hc = [0, n1[1] + hr * .3, n1[2] + hr * .2];
+  head(new THREE.SphereGeometry(1, 14, 10), { pos: hc, scale: [hr, hr * .95, hr * 1.1], paint });
   head(new THREE.ConeGeometry(hr * .38, S.beak.len, 6), { pos: [0, hc[1] - hr * .1, hc[2] + hr * .95 + S.beak.len * .4], rot: [HPI, 0, 0], color: C.beak, scale: [1, 1, S.beak.flat || 1] });
-  [-1, 1].forEach((s) => head(new THREE.SphereGeometry(1, 6, 4), { pos: [s * hr * .78, hc[1] + hr * .2, hc[2] + hr * .4], scale: [hr * .17, hr * .17, hr * .14], color: 0x1e1a18 }));
+  [-1, 1].forEach((s) => head(new THREE.SphereGeometry(1, 8, 6), { pos: [s * hr * .8, hc[1] + hr * .2, hc[2] + hr * .4], scale: [hr * .22, hr * .22, hr * .17], color: 0x1e1a18 }));
   if (S.comb) head(new THREE.BoxGeometry(hr * .18, hr * .7, hr * 1.1), { pos: [0, hc[1] + hr * .95, hc[2] - hr * .05], rot: [.2, 0, 0], color: 0xd6362e });
   if (S.wattle) head(new THREE.SphereGeometry(1, 6, 5), { pos: [0, hc[1] - hr * .75, hc[2] + hr * .55], scale: [hr * .32, hr * .5, hr * .3], color: 0xd6362e });
   if (S.snood) head(new THREE.SphereGeometry(1, 6, 5), { pos: [0, hc[1] - hr * .4, hc[2] + hr * 1.1], scale: [hr * .18, hr * .55, hr * .18], color: 0xc8302a });
@@ -141,11 +143,11 @@ function bird(S, r, vi) {
 /* ---------- rabbit ---------- */
 function rabbit(S, r, vi) {
   const R = new Rig(), C = S.colors(r, vi), L = S.L, by = L * .27;
-  R.ell(L * .28, L * .3, L * .48, C.body, { pos: [0, by, -L * .05] });
-  [-1, 1].forEach((s) => R.ell(L * .14, L * .2, L * .24, C.body, { pos: [s * L * .2, by - L * .05, -L * .25] })); // haunches
+  R.ell(L * .3, L * .32, L * .48, C.body, { pos: [0, by, -L * .05], seg: 16, rings: 12 });
+  [-1, 1].forEach((s) => R.ell(L * .15, L * .21, L * .25, C.body, { pos: [s * L * .2, by - L * .05, -L * .25], seg: 12, rings: 9 })); // haunches
   const n0 = [0, by + L * .1, L * .32], hc = [0, n0[1] + L * .12, n0[2] + L * .08];
   const head = (g, o) => R.add(g, o.color || C.body, { ...o, part: PART.head, pivot: n0 });
-  head(new THREE.SphereGeometry(1, 9, 7), { pos: hc, scale: [L * .17, L * .17, L * .21] });
+  head(new THREE.SphereGeometry(1, 14, 10), { pos: hc, scale: [L * .2, L * .2, L * .23] });
   head(new THREE.SphereGeometry(1, 6, 4), { pos: [0, hc[1] - L * .02, hc[2] + L * .2], scale: [L * .035, L * .03, L * .03], color: 0x6a4a48 });
   [-1, 1].forEach((s) => { head(new THREE.SphereGeometry(1, 6, 4), { pos: [s * L * .13, hc[1] + L * .05, hc[2] + L * .08], scale: [L * .03, L * .03, L * .025], color: 0x1e1a18 }); head(new THREE.SphereGeometry(1, 6, 5), { pos: [s * L * .07, hc[1] + L * .3, hc[2] - L * .06], scale: [L * .05, L * .2, L * .025], rot: [-.25, 0, s * -.15], color: C.ears || C.body }); });
   [-1, 1].forEach((s) => R.ell(L * .06, L * .05, L * .14, C.body, { pos: [s * L * .13, L * .05, L * .12] }));
@@ -251,7 +253,7 @@ export function animalShader(sh, depth) {
 let mats = null;
 export function animalMaterials(TIME) {
   if (mats) return mats;
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x111111, emissiveIntensity: .35 });
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .9, metalness: 0 });
   mat.onBeforeCompile = (sh) => { sh.uniforms.uTime = TIME; animalShader(sh, false); }; mat.customProgramCacheKey = () => "g3animal";
   const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   depth.onBeforeCompile = (sh) => { sh.uniforms.uTime = TIME; animalShader(sh, true); }; depth.customProgramCacheKey = () => "g3animalDepth";

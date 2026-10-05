@@ -8,7 +8,7 @@ import "../src/features/quiet/quiet.css";
 const zone = (id, type, name, xM, yM, wM, hM, extra = {}) => ({ id, type, name, xM, yM, wM, hM, rowCount: 5, ...extra });
 const zones = [
   zone("field", "pasture", "Big paddock", 2, 2, 30, 16),
-  zone("coop", "barn", "Coop", 2, 20, 6, 3),
+  zone("coop", "coop", "Coop", 2, 20, 7, 5),
   zone("barn", "barn", "Barn", 12, 20, 8, 5),
 ];
 const data = { ...fixture, farmW: 36, farmH: 30, profile: { ...fixture.profile, environment: "farm" }, zones, garden: { plots: [] }, ornaments: [], mapLines: [],

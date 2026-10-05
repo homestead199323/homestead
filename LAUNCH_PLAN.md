@@ -367,3 +367,33 @@
   Bristol forecast with a real blight alert, "Couldn't find" state. Live: both domains serve
   index-D7xnE6TC.js with "Frost and storm warnings", "How much did you pick?", "Running costs only".
   Not fixed (architecture): whole-document last-write-wins can drop one device's offline ticks.
+
+- [~] **2026-10-05 — 3D map restyled as a toy diorama (every object, every crop, every animal, the
+  overlay UI).** Direction: the rounded, flat-coloured, soft-lit look of the "WareTrack" warehouse
+  dashboard (Dilum Sanjaya, X, 3 Oct 2026), in the app's own palette; the rules are written down in
+  `docs/MAP_STYLE.md` (read it before touching `src/features/grove/`). Engine
+  (`Grove3D.jsx`, MARKER GROVE_3D_ENGINE_V4_TOY): every photo and procedural texture gone; one flat matte
+  material per palette colour (`toy.js`: rounded-box / capsule / torus kit, `PAL`, `flat()`); every zone
+  builder rewritten with rounded bodies, chunky roofs with capped ridges, white trims, brand-green doors and
+  gates; terrain one colour with vertex-painted patches (vignette, mottle and cloud layers removed);
+  bright soft light (hemisphere .85 + sun 2.1, shadow intensity .62, PCF radius 4, env .22) fading into
+  the page colour `#eef3ec`. Crops (`crops3d.js`, GROVE_CROPS_3D_V1): 47 crop entries in 13 families
+  cover all 70 crops as rounded plant models per growth stage (sprout → seedling → growing → maturing
+  with green fruit → harvest window with ripe fruit), vertex-coloured, instanced per crop+stage,
+  swaying in the shader, three farm-wide levels of detail by plant count. Props (`props3d.js`,
+  GROVE_PROPS_3D_V1): all 11 ornaments as geometry plus detail props placed by the builders — wheelbarrow
+  by the first bed, rain barrel and bird bath by the house, crates by the shed, mailbox by the gate,
+  scarecrow in the biggest vegetable area, a green tractor in a barn yard ≥ 6 × 4 m; chimney smoke and
+  bees are animated instanced spheres. Animals (`animals3d.js`, GROVE_ANIMALS_3D_V2): same rig and
+  walking shader, plump rounded bodies with a round chest and rump, heads ×1.3, eyes with a highlight,
+  chunky legs with rounded hooves, 16–18-segment surfaces, matte standard material. Harvest halo is now
+  a pulsing gold rounded frame round the row (ring round a tree). Overlay UI (`quiet.css`,
+  G3_UI_CARDS_V1): labels, buttons, growth panel, crop card, tooltip and hints are the app's white
+  cards with hairline borders, green for selected / pressed, orange job badges; canvas background
+  `#eef3ec`. New harnesses `tests/g3-crops.html` (every family, growing + harvest) and
+  `tests/g3-balcony.html`; `g3-zoo` now has a real `coop` zone. Verified in sandbox: ESLint clean,
+  79+3 tests, Vite build (Grove3D chunk 716 kB, +31 kB), Playwright on g3-all / g3-zoo / g3-beds /
+  g3-crops / g3-balcony at 1280 px and 390 px with zero console errors or warnings; home-view draw
+  calls 157 (was 178), 561 k triangles; 36 numbered beds 119 calls / 447 k; world build 0.4–0.5 s on
+  the sandbox CPU; growth panel + crop card opened by a synthetic tap. Not verified: real-device frame
+  rate and battery; the landing-page hero video still shows the old look (re-record).
