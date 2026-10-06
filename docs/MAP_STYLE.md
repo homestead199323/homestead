@@ -62,5 +62,11 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - Labels are the 3D map's white card pills (brand green when selected), job badges are orange with a white rim, selection is a gold frame, edit handles and the grid are brand green.
 - SVG text is drawn at real pixel sizes inside a scaled group — never a sub-1 font size (Chrome mis-measures it).
 
+## 8c. Small pictures everywhere else in the app (`src/assets/toy/`, `toy-art.js`)
+- Every crop, fruit tree, animal and area picture in lists, cards, popups and the morning walk is **rendered from the 3D map's own models** — same shapes, colours and light — by `scripts/render-icons.mjs` (dev server + Playwright). Re-run it after any change to the models or palette; never hand-draw or import outside artwork.
+- Crops: `crop-<family>-<stage>.webp` for stages 2–5 on a soil board sized to the plant; young stages are framed tighter so they still read at 32 px but stay visibly smaller. `crop-planned` / `crop-sown` for stages 0–1. Fruit trees: `tree-<fruit>-<stage>`. Animals: `animal-<species>` (standing, head up). Areas: `zone-<type>` on a rounded meadow tile. Bees use the beehive tile.
+- 192 px transparent WebP, kept out of the JS bundle (`assetsInlineLimit` in `vite.config.js`); `tests/artwork.test.js` checks every crop and species has its icons.
+- The flat produce icons in `FarmIcon.jsx` use the palette's leaf greens.
+
 ## 9. Harnesses (run with Vite, screenshot with Playwright)
 `tests/g3-all.html` (every zone type), `tests/g3-zoo.html` (every animal, coop and barn), `tests/g3-beds.html` (36 narrow numbered beds), `tests/g3-crops.html` (every crop family at growing and harvest stage), `tests/g3-balcony.html` (balcony environment).

@@ -24,7 +24,7 @@ import "../grove/zone-tasks.css";
 import "./walk-popup.css";
 import PlantArt from "../quiet/PlantArt";
 import AnimalArt from "../quiet/AnimalArt";
-import { art } from "../quiet/art";
+import { zoneIcon } from "../quiet/toy-art";
 import { growthOf, animalZone } from "../quiet/farm-model";
 
 const PLANT_TYPES = ["veg", "herbs", "orchard", "greenhouse", "raised", "container"];
@@ -152,14 +152,14 @@ function WalkStop({ stop, session, data, setData, onAdvance }) {
       <div className="q-walk-card">
         <div className="q-walk-stop-head">
           {/* Only show art for what is really there: the crop, the animals, or the building. An empty bed gets none. */}
-          {(heroPlot || animal || (!plant && art(stop.type))) && (
+          {(heroPlot || animal || (!plant && zoneIcon(stop.type))) && (
             <div className="q-walk-stop-art">
               {heroPlot ? (
                 <PlantArt crop={heroPlot.crop} stage={stage.index} size={60} />
               ) : animal ? (
                 <AnimalArt species={animal.type} size={60} />
               ) : (
-                <img src={art(stop.type)} alt="" />
+                <img src={zoneIcon(stop.type)} alt="" />
               )}
             </div>
           )}

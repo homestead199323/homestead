@@ -4,27 +4,23 @@ import {access} from 'node:fs/promises';
 import sharp from 'sharp';
 import {fileURLToPath} from 'node:url';
 import {LDB} from '../src/data/livestock.js';
-const assets=new URL('../src/assets/quiet/',import.meta.url);
-test('Every supported animal species has a standalone transparent portrait',async()=>{
- for(const species of Object.keys(LDB)){
-  const path=new URL(species.toLowerCase().replaceAll(' ','-')+'.webp',assets);
-  await access(path);const meta=await sharp(fileURLToPath(path)).metadata();
-  assert(meta.hasAlpha,`${species} must have transparent edges`);
-  assert(meta.width<=480&&meta.height<=480,`${species} should remain mobile sized`);
- }
+import {CROP_MAP} from '../src/data/crops.js';
+import {cropSlug, treeKey} from '../src/features/grove/crop-families.js';
+// The app's small pictures are rendered from the 3D map's models (scripts/render-icons.mjs).
+const dir=new URL('../src/assets/toy/',import.meta.url);
+async function icon(name){
+ const path=new URL(name+'.webp',dir);await access(path);
+ const meta=await sharp(fileURLToPath(path)).metadata();
+ assert(meta.hasAlpha,`${name} must have a transparent background`);
+ assert(meta.width<=256&&meta.height<=256,`${name} should stay mobile sized`);
+}
+test('Every livestock species has a toy portrait (bees show their hive)',async()=>{
+ for(const species of Object.keys(LDB))await icon(species==='Bee'?'zone-beehive':'animal-'+species.toLowerCase().replaceAll(' ','-'));
 });
-test('Primary crop stages use separate transparent images, including overhead views',async()=>{
- for(const crop of ['tomato','carrot','lettuce','basil'])for(const view of ['','-top'])for(const stage of [2,3,4,5]){
-  const path=new URL(`${crop}${view}-${stage}.webp`,assets);
-  const meta=await sharp(fileURLToPath(path)).metadata();
-  assert(meta.hasAlpha,`${path} must be an isolated cutout`);
-  assert(meta.width<=480&&meta.height<=480,'Portrait must not be an entire sprite atlas');
- }
+test('Every crop in the database has a toy icon for each visible growth stage',async()=>{
+ for(const name of CROP_MAP.keys()){const t=treeKey(name);for(const st of [2,3,4,5])await icon(t?`tree-${t}-${st}`:`crop-${cropSlug(name)}-${st}`);}
+ await icon('crop-planned');await icon('crop-sown');
 });
-test('Aerial subjects are separate transparent assets and terrain materials are bounded',async()=>{
- for(const name of ['canopy','cow','goat','sheep','chicken','roof','grass']){
-  const meta=await sharp(fileURLToPath(new URL(`aerial-${name}.webp`,assets))).metadata();
-  if(!['roof','grass'].includes(name))assert(meta.hasAlpha,`${name} must not have a rectangular background`);
-  assert(meta.width<=768&&meta.height<=768);
- }
+test('Every building and area type has a toy tile',async()=>{
+ for(const t of ['house','barn','coop','storage','greenhouse','beehive','compost','nursery','water','pasture','orchard','veg','raised','herbs','container'])await icon('zone-'+t);
 });

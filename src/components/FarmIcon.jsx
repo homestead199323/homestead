@@ -13,10 +13,12 @@ import PlantArt from "../features/quiet/PlantArt";
 import AnimalArt from "../features/quiet/AnimalArt";
 import {CROP_MAP} from "../data/crops";
 import {LDB} from "../data/livestock";
+import {TOY} from "../features/grove/palette";
 
-const LEAF = "#4d9263";
-const LEAF_D = "#356b47";
-const STEM = "#5d8a4f";
+// leaf greens from the shared map palette, so produce icons sit with the 3D-rendered crop icons
+const LEAF = TOY.leaf[1];
+const LEAF_D = TOY.leaf[3];
+const STEM = TOY.leafDark;
 
 const Radish = () => (
   <svg viewBox="0 0 32 32" width="100%" height="100%">

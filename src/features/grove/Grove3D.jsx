@@ -23,11 +23,11 @@ import { isPlantZone } from "../farm/living/visuals";
 import { taskGlyph } from "./zone-tasks";
 import { buildHerd } from "./animals3d";
 import { GROUND_TONES, pathTones } from "./palette";
+import { TREE_RE } from "./crop-families";
 import { PAL, STAGE_COLOR, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
 import { cropScale, buildCrops } from "./crops3d";
 import { ORNAMENTS, wheelbarrow, barrel, crates, birdbath, mailbox, scarecrow, tractor } from "./props3d";
 
-const TREE_RE = /apple|pear|peach|plum|cherry|citrus|lemon|orange|fig|olive|walnut|almond|avocado|apricot|quince|persimmon|pomegranate|hazelnut|chestnut/;
 const CAM = { az: -22, el: 54, fov: 28 };
 // growth stages (farm-model STAGES): Planned, Sown, Seedling, Growing, Maturing, Harvest window
 const STAGE_CSS = ["#c3cbc4", "#dcca92", "#a9dd8c", "#5fb24d", "#c1d44f", "#f7c552"];
@@ -166,8 +166,9 @@ function fruitTree(g, ctx, x, z, size, stage, name, seed, M, off) {
   ctx.growth.glows.push({ p: [off[0] + x, .012, off[1] + z], tree: true, s: [r * 2.2 + 1.2, r * 2.2 + 1.2, 1] });
   const top = r * .55 + .3 + r * .9, n = Math.round(26 * Math.min(1, r / 1.2)), list = ctx.fruit.get(color) || []; ctx.fruit.set(color, list);
   for (let i = 0; i < n; i++) {
-    const a = srand(seed * 7 + i * 3) * 6.283, b = (srand(seed * 11 + i * 5) - .5) * 2.4, rr = r * .9 * (.5 + srand(seed * 13 + i * 7) * .4);
-    list.push({ p: [off[0] + x + Math.cos(a) * Math.cos(b) * rr, top + Math.sin(b) * rr * .8, off[1] + z + Math.sin(a) * Math.cos(b) * rr], s: fr * Math.min(1, .55 + r * .4) });
+    // on the surface of the main crown (an r·.92 sphere squashed to .86 in y), upper and side faces, so the fruit shows
+    const a = srand(seed * 7 + i * 3) * 6.283, b = -.35 + srand(seed * 11 + i * 5) * 1.35, fs = fr * Math.min(1, .55 + r * .4), R = r * .92 + fs * .35;
+    list.push({ p: [off[0] + x + Math.cos(a) * Math.cos(b) * R, top + Math.sin(b) * R * .86, off[1] + z + Math.sin(a) * Math.cos(b) * R], s: fs });
   }
 }
 function buildFruit(g, ctx, M) { ctx.fruit.forEach((list, color) => instances(g, sphereGeo(10, 8), M.fruit(color), list, { cast: false })); }
@@ -1103,6 +1104,30 @@ function buildWorld(ctx) {
   bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground])); // the terrain keeps its vertex colours
   const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd); // every animal, one draw call, moving in the vertex shader
   return world;
+}
+/* One area on its own, no terrain or farm boundary: the source of the app's small area icons
+   (scripts/render-icons.mjs renders it to src/assets/toy/zone-<type>.webp). Growth markers are left out. */
+// eslint-disable-next-line react-refresh/only-export-components -- used only by the icon renderer
+export function buildZoneIcon({ zone, data, crops, todayKey }) {
+  const M = materials(), d = { ...data, zones: [zone] };
+  const ctx = { data: d, zones: [zone], roads: [], crops, fW: zone.xM + zone.wM, fH: zone.yM + zone.hM, margin: 2, env: "farm", pathTexture: "gravel", roadWidth: .5, todayKey, hits: [], plotHits: [], M,
+    plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
+  ctx.heightAt = () => 0;
+  const world = new THREE.Group(); world.add(buildZone(zone, ctx));
+  const DETAIL = { barrel, crates, birdbath, tractor };
+  ctx.details.forEach((dd) => { const fn = DETAIL[dd.kind]; if (fn) fn(world, dd.x, dd.z, { ry: dd.ry || 0 }); });
+  buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildFruit(world, ctx, M);
+  ctx.motion.smoke = []; buildMotion(world, ctx, M);
+  buildCrops(world, ctx.plants, TIME);
+  const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd);
+  return world;
+}
+/* One fruit tree on its own at a growth stage, for the crop icons (tree-<key>-<stage>.webp). */
+// eslint-disable-next-line react-refresh/only-export-components -- used only by the icon renderer
+export function buildTreeIcon({ name, stage }) {
+  const M = materials(), ctx = { fruit: new Map(), growth: { glows: [] } }, g = new THREE.Group();
+  fruitTree(g, ctx, 0, 0, 3.4, stage, name.toLowerCase(), 7, M, [0, 0]); buildFruit(g, ctx, M);
+  return g;
 }
 /* Merge every static mesh that shares a material into one draw call. Instanced meshes, the
    hit boxes and the ground are left alone. Turns thousands of draw calls into a couple of hundred. */
