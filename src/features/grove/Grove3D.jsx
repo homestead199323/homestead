@@ -24,7 +24,7 @@ import { taskGlyph } from "./zone-tasks";
 import { buildHerd } from "./animals3d";
 import { GROUND_TONES, pathTones } from "./palette";
 import { TREE_RE } from "./crop-families";
-import { PAL, STAGE_COLOR, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, planeGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
+import { PAL, STAGE_COLOR, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
 import { cropScale, buildCrops } from "./crops3d";
 import { ORNAMENTS, wheelbarrow, barrel, crates, birdbath, mailbox, scarecrow, tractor, ladder, fruitCrate, rake, lilyPads, reeds, jetty, silo, cloche, hoseReel, hayScatter } from "./props3d";
 
@@ -1016,9 +1016,18 @@ function buildWorld(ctx) {
   const ground = new THREE.Mesh(terrainGeo(fW, fH, E, heightAt, colors), flat(0xffffff, { rough: .96, vertexColors: true }));
   ground.receiveShadow = true; world.add(ground); ctx.ground = ground;
   if (gm === "meadow") {
-    const apron = plane(world, fW + .6, fH + .6, M.lawn(colors[0] === PAL.meadow ? PAL.apron : colors[0]), fW / 2, .004, fH / 2); apron.material = layered(flat(colors[0] === PAL.meadow ? PAL.apron : colors[0], { rough: .96 }), 3); // the property itself: a shade lighter, like a mown lawn inside the hedge
-    if (env !== "balcony") { const stripe = layered(flat(colors[0] === PAL.meadow ? PAL.stripe : new THREE.Color(colors[0]).lerp(new THREE.Color(0xffffff), .08).getHex(), { rough: .96 }), 4), sw = Math.max(1.2, Math.min(2.4, fW / 14)), along = fW >= fH, L = along ? fH : fW, N = Math.floor((along ? fW : fH) / sw); // faint mown stripes
-      instances(world, planeGeo(sw * .5, L), stripe, Array.from({ length: Math.floor(N / 2) }, (_, i) => ({ p: along ? [(2 * i + 1.5) * sw - sw * .5 + sw * .25, .005, fH / 2] : [fW / 2, .005, (2 * i + 1.5) * sw - sw * .5 + sw * .25], rx: -HPI, ry: along ? 0 : HPI })), { cast: false, receive: true }); }
+    // the property inside the hedge: a shade lighter than the meadow, with soft irregular patches painted into the
+    // vertices (lusher and drier spots), the same way the outer meadow gets its variety — no stripes, no texture
+    const base = new THREE.Color(colors[0] === PAL.meadow ? PAL.apron : colors[0]), lush = base.clone().lerp(new THREE.Color(colors[1]), .55), dry = base.clone().lerp(new THREE.Color(colors[2]), .45);
+    const N = Math.max(12, Math.min(60, Math.round(Math.max(fW, fH) / 1.2))), geo = new THREE.PlaneGeometry(fW + .6, fH + .6, N, Math.max(8, Math.round(N * fH / fW))), P = geo.attributes.position, col = [], tmp = new THREE.Color();
+    for (let i = 0; i < P.count; i++) {
+      const x = P.getX(i) + fW / 2, y = -P.getY(i) + fH / 2;
+      const n = .5 + .5 * (Math.sin(x * .31 + 1.7) * Math.cos(y * .27 + .4) + .5 * Math.sin((x - y) * .47 + 2.0) + .3 * Math.sin(x * .9 + y * .7));
+      tmp.copy(base); if (n > .62) tmp.lerp(lush, (n - .62) * 2.2); else if (n < .38) tmp.lerp(dry, (.38 - n) * 1.6);
+      col.push(tmp.r, tmp.g, tmp.b);
+    }
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    const apron = new THREE.Mesh(geo, layered(flat(0xffffff, { rough: .96, vertexColors: true }), 3)); apron.rotation.x = -HPI; apron.position.set(fW / 2, .004, fH / 2); apron.receiveShadow = true; world.add(apron); ctx.apron = apron; // kept out of bake(): it carries vertex colours
   }
   // boundary by environment: a balcony is a slab against the building wall with a slim rounded railing;
   // a garden and a farm get the round-capped post-and-rail fence, stone gate pillars and a green gate
@@ -1115,7 +1124,7 @@ function buildWorld(ctx) {
   if (balcony) { // a stone slab: no grass, no wild flowers
     buildFences(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M); buildMotion(world, ctx, M);
     buildCrops(world, ctx.plants, TIME);
-    bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground]));
+    bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron]));
     const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd);
     return world;
   }
@@ -1127,7 +1136,7 @@ function buildWorld(ctx) {
   // everything collected across the zones is drawn once for the whole farm
   buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M); buildMotion(world, ctx, M);
   buildCrops(world, ctx.plants, TIME);
-  bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground])); // the terrain keeps its vertex colours
+  bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron])); // the terrain keeps its vertex colours
   const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd); // every animal, one draw call, moving in the vertex shader
   return world;
 }

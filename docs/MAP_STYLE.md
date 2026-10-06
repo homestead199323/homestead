@@ -23,7 +23,7 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 
 ## 3. Palette (`TOY` in `palette.js` — the one source for both views; `toy.js` turns it into `PAL` numbers for three.js)
 - **Backdrop / fog:** mid sage `#cfdcbf` — the land fades into it far away (fog starts well beyond the farm); the canvas background is the same colour.
-- **Ground:** meadow green `#8fb466` with softer patches `#7fa659` (darkened 2026-10-06 toward the old photo map's `#5f7136`, stopping where the soft shadows still read); the property inside the hedge a shade lighter `#99bd6f` with faint mown stripes `#a2c578`; pasture / orchard / lawn close variants.
+- **Ground:** meadow green `#8fb466` with softer patches `#7fa659` (darkened 2026-10-06 toward the old photo map's `#5f7136`, stopping where the soft shadows still read); the property inside the hedge a shade lighter `#99bd6f` with soft irregular lusher/drier patches painted into the vertices (no stripes); pasture / orchard / lawn close variants.
 - **Paths:** warm off-white `#ebe5d8` with a `#d9d2c3` edge, round ends. Settings → Path color: *Warm sand* `#e8d8b9` / *Slate* `#bfc4be` override the material's own tone.
 - **Soil:** `#886347` (raised beds, rows), lighter `#a07e5e` for in-ground beds, `#b69f82` trampled earth.
 - **Buildings:** cream walls `#f2ebdd`, white trims; roofs terracotta `#cf8260` or slate `#6b7784`; barn red `#c7624f` with white boards; coop and sheds warm wood `#cfae82`.
