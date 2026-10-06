@@ -6,9 +6,9 @@
    MARKER: MAP_PALETTE_V1
    ═══════════════════════════════════════════ */
 export const TOY = {
-  page: "#cfdcbf",
-  meadow: "#8fb466", meadowB: "#7fa659", meadowDry: "#b9bf84", apron: "#99bd6f",
-  lawn: "#94b86a", pasture: "#97ba6e", orchard: "#8cb063",
+  page: "#b4c69d",
+  meadow: "#6d8f49", meadowB: "#5f7f3e", meadowDry: "#a0a86c", apron: "#75984f",
+  lawn: "#72944d", pasture: "#769750", orchard: "#6a8c47",
   path: "#ebe5d8", pathEdge: "#d9d2c3", gravel: "#dfd9ca", stonePath: "#d8d3c8", soilPath: "#cfbca2",
   soil: "#886347", soilDark: "#71513a", soilLight: "#a07e5e", mulch: "#6f4f3a", earth: "#b69f82", floor: "#8e7861",
   wood: "#cfae82", woodMid: "#b68e63", woodDark: "#7c5a3d", woodPale: "#e2cfae",
@@ -16,7 +16,7 @@ export const TOY = {
   terracotta: "#cf8260", slate: "#6b7784", slateDark: "#55606c", zinc: "#c6cdd0", metal: "#9ea8ae", dark: "#3b3f44", ink: "#2a2d31",
   barn: "#c7624f", barnDark: "#ad5041",
   green: "#128147", greenLight: "#1fa35c", greenPale: "#e7f3ec", greenDeep: "#0c5e33",
-  leaf: ["#5ea75e", "#509b55", "#71b56b", "#47904d"], leafOlive: "#8fa37c", leafCitrus: "#3d8547", leafDark: "#45884e", hedge: "#519150",
+  leaf: ["#4b9150", "#3f8446", "#5b9f58", "#357a3c"], leafOlive: "#7d916a", leafCitrus: "#33733d", leafDark: "#3a7742", hedge: "#427c41",
   water: "#7cc0d6", waterDeep: "#66afc9", ripple: "#dff2f8",
   glass: "#daf2ef", winGlass: "#9fc9dc",
   hay: "#e4c66f", hayDark: "#cfa94f", straw: "#e8d393",
@@ -34,7 +34,7 @@ export const TOY = {
 export const STAGE_HEX = ["#c3cbc4", "#dcca92", "#a9dd8c", "#5fb24d", "#c1d44f", "#f7c552"];
 /* Settings → Ground material / colour: [base, patch, dry] */
 export const GROUND_TONES = {
-  meadow: { natural: ["#8fb466", "#7fa659", "#b9bf84"], dry: ["#c9cc9c", "#bcc08f", "#d4d2a4"], deep: ["#7dab5f", "#6f9c54", "#adbd84"] },
+  meadow: { natural: ["#6d8f49", "#5f7f3e", "#a0a86c"], dry: ["#aeb27f", "#9fa472", "#bdb98a"], deep: ["#5d8440", "#507536", "#92a26a"] },
   soil: ["#bda583", "#b09876", "#cab596"], gravel: ["#dcd6c8", "#d0c9ba", "#e3ded1"], stone: ["#d6d2c8", "#cac5ba", "#dfdbd2"],
 };
 /* Settings → Path material / colour: [surface, edge] */

@@ -22,20 +22,20 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - **Balcony:** a stone slab against the building's cream wall (green glazed door, white-framed windows) with a slim rounded railing — capsule posts, thin balusters, a chunky white handrail — on the three open sides. No hedge, fence, gate, pillars, drive, mailbox, wheelbarrow, grass or wild flowers.
 
 ## 3. Palette (`TOY` in `palette.js` — the one source for both views; `toy.js` turns it into `PAL` numbers for three.js)
-- **Backdrop / fog:** mid sage `#cfdcbf` — the land fades into it far away (fog starts well beyond the farm); the canvas background is the same colour.
-- **Ground:** meadow green `#8fb466` with softer patches `#7fa659` (darkened 2026-10-06 toward the old photo map's `#5f7136`, stopping where the soft shadows still read); the property inside the hedge a shade lighter `#99bd6f` with soft irregular lusher/drier patches painted into the vertices (no stripes); pasture / orchard / lawn close variants.
+- **Backdrop / fog:** sage `#b4c69d` — the land fades into it far away (fog starts well beyond the farm); the canvas background is the same colour.
+- **Ground:** meadow green `#6d8f49` with softer patches `#5f7f3e` (set 2026-10-06 so the lit render ≈ `#779849`, close to the old photo map's `#5f7136`); the property inside the hedge a shade lighter `#75984f` with soft irregular lusher/drier patches painted into the vertices (no stripes); pasture / orchard / lawn close variants.
 - **Paths:** warm off-white `#ebe5d8` with a `#d9d2c3` edge, round ends. Settings → Path color: *Warm sand* `#e8d8b9` / *Slate* `#bfc4be` override the material's own tone.
 - **Soil:** `#886347` (raised beds, rows), lighter `#a07e5e` for in-ground beds, `#b69f82` trampled earth.
 - **Buildings:** cream walls `#f2ebdd`, white trims; roofs terracotta `#cf8260` or slate `#6b7784`; barn red `#c7624f` with white boards; coop and sheds warm wood `#cfae82`.
 - **Wood:** `#cfae82` / `#b68e63` / `#7c5a3d`. Stone `#d3cfc5`. Zinc `#c6cdd0`.
 - **Water** `#7cc0d6`, **glass** `#daf2ef`, **hay** `#e4c66f`, **smoke** `#f2f0ec`.
-- **Foliage:** four greens `#5ea75e #509b55 #71b56b #47904d`, silvery olive `#8fa37c`, deep citrus `#3d8547`, hedge `#519150`.
+- **Foliage:** four greens `#4b9150 #3f8446 #5b9f58 #357a3c`, silvery olive `#7d916a`, deep citrus `#33733d`, hedge `#427c41`.
 - **The one accent is the brand green `#128147`** (with `#1fa35c` light and `#0c5e33` deep): every door, every gate, the greenhouse door, the tractor, the wheelbarrow, the watering can, the mailbox, the tap wheel, the drinker base. Nothing else is saturated green-blue. Attention stays with `#f7c552` gold (harvest frames, stage tags) and the app's orange (job badges).
 
 ## 4. Light
 - Hemisphere light: white sky, pale green bounce, intensity 0.85. One warm sun (`#fff3e4`, 2.1) high in the afternoon sky so shadows are short.
 - **Shadows are soft and faint**: PCF radius 4, shadow intensity 0.62. Shadows show volume; they never darken the scene.
-- RoomEnvironment at 0.22 for a gentle gradient on matte surfaces. ACES, exposure 0.92. Hemisphere ground bounce `#b9cc9f`.
+- RoomEnvironment at 0.22 for a gentle gradient on matte surfaces. ACES, exposure 0.92. Hemisphere ground bounce `#9fb48a`.
 - No vignette, no mottle, no cloud-shadow layers, no darkening of the ground anywhere.
 
 ## 5. Motion (all in the vertex shader, one shared clock)

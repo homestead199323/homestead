@@ -1471,7 +1471,7 @@ export default function Grove3D(props) {
     const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture; scene.environmentIntensity = .22; pmrem.dispose();
     const camera = new THREE.PerspectiveCamera(CAM.fov, 1, 1, 4000);
     // bright, soft, toy-box light: a white sky with a pale green bounce, one warm sun with faint soft shadows
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9cc9f, .85));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x9fb48a, .85));
     const sun = new THREE.DirectionalLight(0xfff3e4, 2.1); sun.castShadow = true;
     sun.shadow.mapSize.set(mobile ? 2048 : 3072, mobile ? 2048 : 3072); sun.shadow.radius = 4; sun.shadow.bias = -.0003; sun.shadow.normalBias = .04; sun.shadow.intensity = .62;
     scene.add(sun); scene.add(sun.target);
@@ -1668,7 +1668,7 @@ export default function Grove3D(props) {
   useEffect(() => { if (!hint) return; const t = setTimeout(() => latest.current.dismissHint?.(), 6000); return () => clearTimeout(t); }, [hint]);
   const ctl = (f) => { const st = state.current; if (st?.controls) f(st.controls, st); };
   const hostStyle = full
-    ? { position: "fixed", inset: 0, zIndex: 6500, overflow: "hidden", touchAction: "none", background: "#cfdcbf" }
+    ? { position: "fixed", inset: 0, zIndex: 6500, overflow: "hidden", touchAction: "none", background: "#b4c69d" }
     : { position: "relative", width: "100%", overflow: "hidden", touchAction: "pan-y" };
   return (
     <div className={`g3-host${full ? " full" : ""}`} ref={host} style={hostStyle}>
