@@ -8,7 +8,7 @@
    MARKER: GROVE_PROPS_3D_V1
    ═══════════════════════════════════════════ */
 import * as THREE from "three";
-import { PAL, flat, rbox, box, ball, tube, ring, disc, pill, cone, HPI } from "./toy";
+import { PAL, flat, rbox, box, ball, tube, ring, disc, pill, bar, cone, HPI } from "./toy";
 
 const F = (c, o) => flat(c, o);
 const srnd = (seed) => { const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -151,5 +151,72 @@ export function tractor(g, x, z, { ry = 0 } = {}) {
   const wheel = (px, pz, R, w) => { ring(h, R, w, I, px, R + .02, pz, { rx: 0, ry: HPI, tube: 10, seg: 24 }); disc(h, R * .8, Z, px + w * 1.02, R + .02, pz, { rx: 0, ry: HPI, seg: 16 }); disc(h, R * .8, Z, px - w * 1.02, R + .02, pz, { rx: 0, ry: -HPI, seg: 16 }); };
   wheel(-.62, -.45, .42, .16); wheel(.62, -.45, .42, .16); wheel(-.52, .75, .26, .12); wheel(.52, .75, .26, .12);
   [-.3, .3].forEach((px) => ball(h, .06, F(PAL.glow), px, .78, 1.27, { seg: 8, rings: 6, cast: false }));
+}
+/* ---------- detail props added in the 2026-10-06 detail pass ---------- */
+export function ladder(g, x, z, { ry = 0, h = 2.2, lean = .42 } = {}) { // a wooden ladder leaning back (toward -z) against something
+  const L = at(g, x, z, ry), top = [0, h, -lean], W = .22;
+  [-1, 1].forEach((s) => pill(L, [s * W, 0, 0], [s * W, top[1], top[2]], .028, F(PAL.woodMid), { seg: 8 }));
+  const n = Math.round(h / .3); for (let i = 1; i < n; i++) { const t = i / n; bar(L, [-W, t * top[1], t * top[2]], [W, t * top[1], t * top[2]], .02, F(PAL.wood), { seg: 6 }); }
+}
+export function fruitCrate(g, x, z, { ry = 0, fruit = 0xe0453a, seed = 1 } = {}) { // a slatted crate heaped with fruit
+  const h = at(g, x, z, ry);
+  rbox(h, .5, .28, .36, F(PAL.woodPale), 0, .14, 0, { r: .03 });
+  [-1, 1].forEach((s) => { rbox(h, .52, .05, .03, F(PAL.woodMid), 0, .1, s * .18, { r: .01, cast: false }); rbox(h, .52, .05, .03, F(PAL.woodMid), 0, .22, s * .18, { r: .01, cast: false }); });
+  for (let i = 0; i < 9; i++) ball(h, .055, F(fruit), -.17 + (i % 3) * .17 + (srnd(seed + i) - .5) * .03, .3 + (i >= 3 && i < 6 ? .04 : 0), -.1 + Math.floor(i / 3) * .1, { seg: 10, rings: 8 });
+}
+export function rake(g, x, z, { ry = 0 } = {}) { // leaning rake: a long handle, a wooden head with short tines
+  const h = at(g, x, z, ry);
+  pill(h, [0, .02, 0], [.12, 1.55, -.36], .02, F(PAL.woodMid), { seg: 7 });
+  rbox(h, .4, .05, .05, F(PAL.woodDark), 0, .06, .02, { r: .015 });
+  for (let i = 0; i < 7; i++) bar(h, [-.17 + i * .057, .05, .03], [-.17 + i * .057, .005, .1], .007, F(PAL.metal), { seg: 4, cast: false });
+}
+export function lilyPads(g, x, z, { seed = 1, n = 4, y = 0, r = .9 } = {}) { // flat round pads with a notch (two discs), one or two pink flowers
+  const h = at(g, x, z, srnd(seed) * 6.28);
+  for (let i = 0; i < n; i++) {
+    const a = srnd(seed * 3 + i) * 6.28, dd = Math.sqrt(srnd(seed * 5 + i)) * r, px = Math.cos(a) * dd, pz = Math.sin(a) * dd, pr = .14 + srnd(seed * 7 + i) * .1;
+    const pad = disc(h, pr, F(PAL.leafDark), px, y + .004, pz, { seg: 18 }); pad.rotation.z = srnd(i) * 6.28;
+    disc(h, pr * .9, F(PAL.leaf[2]), px, y + .006, pz, { seg: 18 });
+    if (i % 2 === 0) { ball(h, [.055, .04, .055], F(0xf48fb1), px + pr * .3, y + .04, pz, { seg: 10, rings: 7 }); ball(h, .025, F(0xf6d46a), px + pr * .3, y + .07, pz, { seg: 8, rings: 6 }); }
+  }
+}
+export function reeds(g, x, z, { seed = 1, n = 7, h0 = .7 } = {}) { // a clump of tall stems with brown cattail heads
+  const h = at(g, x, z, srnd(seed) * 6.28);
+  for (let i = 0; i < n; i++) {
+    const a = srnd(seed * 3 + i) * 6.28, dd = Math.sqrt(srnd(seed * 5 + i)) * .16, px = Math.cos(a) * dd, pz = Math.sin(a) * dd, hh = h0 * (.7 + srnd(seed * 7 + i) * .5), lean = (srnd(seed * 11 + i) - .5) * .12;
+    pill(h, [px, 0, pz], [px + lean, hh, pz + lean], .014, F(PAL.leafOlive), { seg: 5, cap: 2, cast: false });
+    if (i % 3 === 0) pill(h, [px + lean * .8, hh * .72, pz + lean * .8], [px + lean, hh - .02, pz + lean], .03, F(0x8f6b4c), { seg: 7, cap: 3, cast: false });
+  }
+}
+export function jetty(g, x, z, { ry = 0, len = 1.4, w = .8, y = .5 } = {}) { // a short plank deck on four capsule posts, reaching over the water
+  const h = at(g, x, z, ry);
+  [[-w / 2 + .08, .1], [w / 2 - .08, .1], [-w / 2 + .08, len - .15], [w / 2 - .08, len - .15]].forEach(([px, pz]) => pill(h, [px, .02, pz], [px, y + .06, pz], .045, F(PAL.woodDark), { seg: 8 }));
+  const n = Math.round(len / .22); for (let i = 0; i < n; i++) rbox(h, w, .05, .18, F(i % 2 ? PAL.wood : PAL.woodPale), 0, y + .09, .1 + i * (len / n), { r: .015 });
+  [-1, 1].forEach((s) => rbox(h, .06, .05, len, F(PAL.woodMid), s * (w / 2 - .03), y + .05, len / 2, { r: .015, cast: false }));
+}
+export function silo(g, x, z, { r = .9, h = 4.6 } = {}) { // the classic round feed silo: zinc drum, rounded dome, a ladder up the side
+  const s = at(g, x, z, 0);
+  tube(s, r + .08, r + .08, .18, F(PAL.stoneDark), 0, .09, 0, { seg: 24 });
+  tube(s, r, r, h - r * .9, F(PAL.zinc, { rough: .6, metal: .15 }), 0, (h - r * .9) / 2 + .1, 0, { seg: 28 });
+  [.3, .55, .8].forEach((k) => ring(s, r + .01, .02, F(PAL.metal), 0, .1 + (h - r * .9) * k, 0, { tube: 6, seg: 28, cast: false }));
+  const dome = ball(s, [r, r * .9, r], F(PAL.slate), 0, h - r * .9 + .1, 0, { seg: 28, rings: 14 }); dome.scale.y = r * .9;
+  ball(s, .1, F(PAL.metal), 0, h + .05, 0, { seg: 10, rings: 8 });
+  [-1, 1].forEach((k) => pill(s, [r + .02, .3, k * .09], [r + .02, h - r * .8, k * .09], .018, F(PAL.metal), { seg: 6, cast: false }));
+  for (let i = 0; i < Math.round((h - r * .8) / .3); i++) bar(s, [r + .02, .35 + i * .3, -.09], [r + .02, .35 + i * .3, .09], .012, F(PAL.metal), { seg: 4, cast: false });
+}
+export function cloche(g, x, z, { ry = 0, len = 2, w = 1, y = 0 } = {}) { // low white hoops with a pale translucent cover, over young plants
+  const h = at(g, x, z, ry), n = Math.max(2, Math.round(len / .6)), hh = Math.min(.45, w * .5);
+  for (let i = 0; i < n; i++) { const m = ring(h, w / 2, .018, F(PAL.trim), 0, y, -len / 2 + (i + .5) * (len / n), { tube: 6, seg: 18, arc: Math.PI, rx: 0, cast: false }); m.scale.y = hh / (w / 2); }
+  const cover = new THREE.Mesh(new THREE.CylinderGeometry(w / 2, w / 2, len, 18, 1, true, 0, Math.PI), F(0xeef4f0, { transparent: true, opacity: .5, side: THREE.DoubleSide, depthWrite: false, rough: .3 }));
+  cover.rotation.z = HPI; cover.rotation.y = HPI; cover.position.set(0, y, 0); cover.scale.set(1, 1, hh / (w / 2)); cover.castShadow = false; h.add(cover);
+}
+export function hoseReel(g, x, z, { ry = 0 } = {}) { // a wall-mounted reel with a green coiled hose
+  const h = at(g, x, z, ry);
+  rbox(h, .36, .06, .18, F(PAL.metal), 0, .55, 0, { r: .02, cast: false }); rbox(h, .06, .4, .06, F(PAL.metal), 0, .35, .02, { r: .02, cast: false });
+  for (let i = 0; i < 4; i++) ring(h, .17, .028, F(PAL.greenLight), 0, .8, .07 + i * .045, { tube: 7, seg: 20, rx: 0 });
+  ring(h, .2, .012, F(PAL.metal), 0, .8, .03, { tube: 5, seg: 20, rx: 0, cast: false });
+}
+export function hayScatter(g, x, z, { seed = 1, n = 9, r = .9 } = {}) { // loose hay round a feeder: flat pale yellow blobs
+  const h = at(g, x, z, srnd(seed) * 6.28);
+  for (let i = 0; i < n; i++) { const a = srnd(seed * 3 + i) * 6.28, dd = Math.sqrt(srnd(seed * 5 + i)) * r; ball(h, [.14 + srnd(i) * .1, .025, .09 + srnd(i + 3) * .06], F(i % 2 ? PAL.hay : PAL.straw), Math.cos(a) * dd, .02, Math.sin(a) * dd, { seg: 10, rings: 6, cast: false, ry: srnd(seed + i) * 3 }); }
 }
 export const ORNAMENTS = { bush, flowers, pond, pot, planter, hangpot, wateringcan, haybale, woodpile, bench, rock };

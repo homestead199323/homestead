@@ -22,20 +22,20 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - **Balcony:** a stone slab against the building's cream wall (green glazed door, white-framed windows) with a slim rounded railing — capsule posts, thin balusters, a chunky white handrail — on the three open sides. No hedge, fence, gate, pillars, drive, mailbox, wheelbarrow, grass or wild flowers.
 
 ## 3. Palette (`TOY` in `palette.js` — the one source for both views; `toy.js` turns it into `PAL` numbers for three.js)
-- **Page / fog:** `#eef3ec` — the scene fades into the page; the canvas background is the same colour.
-- **Ground:** pale sage meadow `#c4dfab` with softer patches `#b3d297`; the property inside the hedge a shade lighter; pasture / orchard / lawn close variants. Light enough that objects pop, green enough to read as grass.
-- **Paths:** warm off-white `#f2eee6` with a `#e5e0d5` edge, round ends. Settings → Path color: *Warm sand* `#e8d8b9` / *Slate* `#bfc4be` override the material's own tone.
-- **Soil:** `#9e7a5e` (raised beds, rows), lighter `#b39277` for in-ground beds, `#c8b291` trampled earth.
-- **Buildings:** cream walls `#f8f3e9`, white trims; roofs soft terracotta `#de9072` or slate `#7c8896`; barn muted red `#d5725f` with white boards; coop and sheds warm wood `#ddbf95`.
-- **Wood:** `#ddbf95` / `#c7a277` / `#8f6b4c`. Stone `#dfdcd3`. Zinc `#d1d7d9`.
-- **Water** `#8fd1e3`, **glass** `#daf2ef`, **hay** `#eed27f`, **smoke** `#f2f0ec`.
-- **Foliage:** four greens `#7fc57d #6fb873 #93d089 #64ac6c`, silvery olive `#abbd96`, deep citrus `#4f9f61`, hedge `#72b677`.
+- **Backdrop / fog:** mid sage `#cfdcbf` — the land fades into it far away (fog starts well beyond the farm); the canvas background is the same colour.
+- **Ground:** meadow green `#8fb466` with softer patches `#7fa659` (darkened 2026-10-06 toward the old photo map's `#5f7136`, stopping where the soft shadows still read); the property inside the hedge a shade lighter `#99bd6f` with faint mown stripes `#a2c578`; pasture / orchard / lawn close variants.
+- **Paths:** warm off-white `#ebe5d8` with a `#d9d2c3` edge, round ends. Settings → Path color: *Warm sand* `#e8d8b9` / *Slate* `#bfc4be` override the material's own tone.
+- **Soil:** `#886347` (raised beds, rows), lighter `#a07e5e` for in-ground beds, `#b69f82` trampled earth.
+- **Buildings:** cream walls `#f2ebdd`, white trims; roofs terracotta `#cf8260` or slate `#6b7784`; barn red `#c7624f` with white boards; coop and sheds warm wood `#cfae82`.
+- **Wood:** `#cfae82` / `#b68e63` / `#7c5a3d`. Stone `#d3cfc5`. Zinc `#c6cdd0`.
+- **Water** `#7cc0d6`, **glass** `#daf2ef`, **hay** `#e4c66f`, **smoke** `#f2f0ec`.
+- **Foliage:** four greens `#5ea75e #509b55 #71b56b #47904d`, silvery olive `#8fa37c`, deep citrus `#3d8547`, hedge `#519150`.
 - **The one accent is the brand green `#128147`** (with `#1fa35c` light and `#0c5e33` deep): every door, every gate, the greenhouse door, the tractor, the wheelbarrow, the watering can, the mailbox, the tap wheel, the drinker base. Nothing else is saturated green-blue. Attention stays with `#f7c552` gold (harvest frames, stage tags) and the app's orange (job badges).
 
 ## 4. Light
 - Hemisphere light: white sky, pale green bounce, intensity 0.85. One warm sun (`#fff3e4`, 2.1) high in the afternoon sky so shadows are short.
 - **Shadows are soft and faint**: PCF radius 4, shadow intensity 0.62. Shadows show volume; they never darken the scene.
-- RoomEnvironment at 0.22 for a gentle gradient on matte surfaces. ACES, exposure 1.0.
+- RoomEnvironment at 0.22 for a gentle gradient on matte surfaces. ACES, exposure 0.92. Hemisphere ground bounce `#b9cc9f`.
 - No vignette, no mottle, no cloud-shadow layers, no darkening of the ground anywhere.
 
 ## 5. Motion (all in the vertex shader, one shared clock)
@@ -46,6 +46,13 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - Row markers: a wooden pole with a rounded tag in the stage colour.
 - Selection: a gold rounded frame. Crop pick: the crop's own colour, lighter.
 
+## 6b. Detail pass (2026-10-06) — what every object carries now
+- **Trees:** five-blob crowns with a lighter sunlit top blob and two branch forks. **Hedge:** flowering bushes and wild-flower clumps along the outside.
+- **House:** window boxes with flowers under the front windows, a doormat, a downpipe at the front corner (plus the existing porch canopy, lamp, chimney smoke, solar panels, clipped hedge and corner bushes).
+- **Barn:** a round zinc feed silo with a slate dome behind the back corner (barns ≥ 7 m). **Shed:** woodpile and a rake against the side wall, a green water butt at the back.
+- **Pond:** lily pads with pink flowers, reed clumps at the rim, a plank jetty on ponds ≥ 4 × 3 m. **Pasture:** loose hay round the feeder. **Apiary:** wild flowers. **Greenhouse:** a hose reel by the door.
+- **Raised beds:** white cloche hoops with a pale cover while every row is still at seedling stage or younger. **Orchard:** at harvest, a ladder against the first ripe tree and a crate of its fruit.
+
 ## 7. UI over the map (`.g3-*` in `quiet.css`)
 - Floating panels (growth preview, crop card) never run under the control column; zone labels are clamped inside the view and drop out when their area's centre leaves it.
 - The same white cards as the rest of the app: `var(--color-card)`, hairline `var(--color-border)`, `var(--shadow)`-style soft shadow, brand green for selected / pressed, orange job badges. Dark mode follows the tokens. Never dark translucent pills.
@@ -53,7 +60,7 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 ## 8. Performance rules that keep the look affordable
 - Everything static is merged per material (`bake()`); repeated parts are instanced (fences, pots, tufts, crops, fruit, bees, smoke).
 - Crop models have three levels of detail chosen farm-wide by plant count (>350 plants, >900 plants).
-- Budget at the home view: ≤ 200 draw calls, ≤ 650 k triangles (verified 2026-10-05 after the standardisation pass: 157 calls / 570 k on the all-zones harness; 118 / 450 k on 36 numbered beds; 32 / 70 k on the balcony).
+- Budget at the home view: ≤ 200 draw calls, ≤ 700 k triangles on the all-zones harness (every zone type at once, the worst case). Verified 2026-10-06 after the detail pass: 171 calls / 662 k all-zones; 136 / 530 k on 36 numbered beds.
 
 ## 8b. The flat view and the layout editor (`AerialArtwork.jsx`, `GroveScene.jsx`)
 - The same toy style seen straight from above, reading the same `palette.js` colours: flat fills, rounded corners, no photo textures or image sprites, no texture overlays, no sun-tint layer.
