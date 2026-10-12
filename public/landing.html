@@ -17,11 +17,11 @@
     <meta property="og:title" content="MyTerra — Everyone can be a farmer">
     <meta property="og:description" content="A living 3D map of your balcony, backyard or farm that tells you what to plant, what to do today and what comes next. 7-day free trial, no card.">
     <meta property="og:url" content="https://www.myterra.farm/">
-    <meta property="og:image" content="https://www.myterra.farm/og-image-v4.jpg">
+    <meta property="og:image" content="https://www.myterra.farm/og-image-v5.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="MyTerra's 3D farm map with the line Everyone can be a farmer">
-    <meta property="og:video" content="https://www.myterra.farm/landing/tour-h.mp4">
+    <meta property="og:video" content="https://www.myterra.farm/landing/tour3-h.mp4">
     <meta property="og:video:type" content="video/mp4">
     <meta property="og:video:width" content="1280">
     <meta property="og:video:height" content="720">
@@ -30,7 +30,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="MyTerra — Everyone can be a farmer">
     <meta name="twitter:description" content="The farm game that runs on real life: map your space in 3D, tick off today's jobs, harvest real food. 7-day free trial, no card.">
-    <meta name="twitter:image" content="https://www.myterra.farm/og-image-v4.jpg">
+    <meta name="twitter:image" content="https://www.myterra.farm/og-image-v5.jpg">
 
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"SoftwareApplication","name":"MyTerra","url":"https://www.myterra.farm/","applicationCategory":"LifestyleApplication","operatingSystem":"Web, iOS, Android (installable web app)","description":"Grow food without the guesswork: a living 3D map of your balcony, backyard or farm, with daily jobs, a growth preview, 70 crop and 14 animal guides, and offline use.","offers":[{"@type":"Offer","name":"Basic","price":"4.99","priceCurrency":"USD"},{"@type":"Offer","name":"Pro","price":"9.99","priceCurrency":"USD"},{"@type":"Offer","name":"Lifetime","price":"190","priceCurrency":"USD"}]}
@@ -43,9 +43,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="preload" as="image" href="/landing/hero-h.webp" media="(min-aspect-ratio: 4/5)" fetchpriority="high">
-    <link rel="preload" as="image" href="/landing/hero-v.webp" media="(max-aspect-ratio: 4/5)" fetchpriority="high">
-    <noscript><style>.tour-frame{background:#0a2a1c url(/landing/tour-h-poster.webp) center/cover no-repeat}.tour-toggle{display:none}@media (max-aspect-ratio:4/5){.tour-frame{background-image:url(/landing/tour-v-poster.webp)}}</style></noscript>
+    <link rel="preload" as="image" href="/landing/hero3-h.webp" media="(min-aspect-ratio: 4/5)" fetchpriority="high">
+    <link rel="preload" as="image" href="/landing/hero3-v.webp" media="(max-aspect-ratio: 4/5)" fetchpriority="high">
+    <noscript><style>.tour-frame{background:#0a2a1c url(/landing/tour3-h-poster.webp) center/cover no-repeat}.tour-toggle{display:none}@media (max-aspect-ratio:4/5){.tour-frame{background-image:url(/landing/tour3-v-poster.webp)}}</style></noscript>
 
     <style>
         /* ═══ TOKENS — matched to the app (Inter, MyTerra green, the amber of the in-app job buttons) ═══ */
@@ -127,7 +127,7 @@
 
         /* ═══ HERO — real 3D map footage from the app, behind the headline ═══ */
         .hero { position: relative; min-height: 100svh; min-height: min(100svh, 960px); color: #fff; background: var(--forest); overflow: hidden; display: flex; align-items: center; isolation: isolate; }
-        .hero-media { position: absolute; inset: 0; z-index: -2; background: var(--forest) url(/landing/hero-h.webp) 60% 50% / cover no-repeat; }
+        .hero-media { position: absolute; inset: 0; z-index: -2; background: var(--forest) url(/landing/hero3-h.webp) 60% 50% / cover no-repeat; }
         .hero-media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; opacity: 0; transition: opacity 1s ease; }
         .hero-media video.on { opacity: 1; }
         .hero-shade { position: absolute; inset: 0; z-index: -1; background:
@@ -288,7 +288,7 @@
 
         /* ═══ FINAL CTA ═══ */
         .final { padding: 0 0 104px; background: var(--paper); }
-        .final-card { position: relative; overflow: hidden; border-radius: var(--r-xl); padding: 88px 32px; text-align: center; color: #fff; background: var(--forest) url(/landing/final-bg.webp) center / cover no-repeat; isolation: isolate; }
+        .final-card { position: relative; overflow: hidden; border-radius: var(--r-xl); padding: 88px 32px; text-align: center; color: #fff; background: var(--forest) url(/landing/final-bg2.webp) center / cover no-repeat; isolation: isolate; }
         .final-card::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at center, rgba(4,24,15,.55), rgba(4,24,15,.86)); }
         .final-card h2 { font-size: clamp(38px, 5.6vw, 72px); font-weight: 900; letter-spacing: -0.045em; }
         .final-card h2 em { font-style: normal; color: var(--amber); }
@@ -341,7 +341,7 @@
         /* portrait screens: the vertical versions of the footage */
         @media (max-aspect-ratio: 4/5) {
             .hero { align-items: flex-end; min-height: 100svh; }
-            .hero-media { background-image: url(/landing/hero-v.webp); background-position: 50% 30%; }
+            .hero-media { background-image: url(/landing/hero3-v.webp); background-position: 50% 30%; }
             .hero-media video { object-position: 50% 30%; }
             .hero-shade { background:
                 linear-gradient(0deg, rgba(4,24,15,.96) 0%, rgba(4,24,15,.86) 34%, rgba(4,24,15,.3) 62%, rgba(4,24,15,.15) 100%),
@@ -449,7 +449,7 @@
 <!-- HERO -->
 <section class="hero" id="top">
     <div class="hero-media" aria-hidden="true">
-        <video id="heroVideo" muted loop playsinline preload="none" data-h="/landing/hero-h.mp4" data-hw="/landing/hero-h.webm" data-v="/landing/hero-v.mp4" data-vw="/landing/hero-v.webm" tabindex="-1"></video>
+        <video id="heroVideo" muted loop playsinline preload="none" data-h="/landing/hero3-h.mp4" data-hw="/landing/hero3-h.webm" data-v="/landing/hero3-v.mp4" data-vw="/landing/hero3-v.webm" tabindex="-1"></video>
     </div>
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="container hero-grid">
@@ -474,8 +474,8 @@
             </ul>
         </div>
         <div class="hero-stage" aria-hidden="true">
-            <div class="phone"><img src="/landing/p2-coop.webp" width="720" height="1558" decoding="async" alt=""></div>
-            <div class="chip chip-1"><span class="ico">🥚</span><span><b>+2 eggs to the pantry</b><small>Chicken coop · just now</small></span></div>
+            <div class="phone"><img src="/landing/p4-coop.webp" width="720" height="1558" decoding="async" alt=""></div>
+            <div class="chip chip-1"><span class="ico">🥚</span><span><b>+3 eggs to the pantry</b><small>Chicken coop · just now</small></span></div>
             <div class="chip chip-2 g"><span class="ico">🥬</span><span><b>Lettuce · sow now</b><small>Quick win · food in ~6 weeks</small></span></div>
         </div>
     </div>
@@ -496,7 +496,7 @@
         </div>
         <div class="panel" id="panel-balcony" role="tabpanel" aria-labelledby="tab-balcony" hidden>
             <div class="space-grid">
-                <div class="space-shot"><img src="/landing/d2-balcony-960.webp" srcset="/landing/d2-balcony-960.webp 960w, /landing/d2-balcony-1600.webp 1600w" sizes="(max-width: 900px) 100vw, 700px" width="1600" height="1000" loading="lazy" decoding="async" alt="A balcony in 3D: tomato pots, a railing planter, herb pots, a strawberry tower and a salad trough"></div>
+                <div class="space-shot"><img src="/landing/d3-balcony-960.webp" srcset="/landing/d3-balcony-960.webp 960w, /landing/d3-balcony-1600.webp 1600w" sizes="(max-width: 900px) 100vw, 700px" width="1600" height="1000" loading="lazy" decoding="async" alt="A balcony in 3D: tomato pots, a railing planter, herb pots, a strawberry tower and a salad trough"></div>
                 <div class="space-copy">
                     <h3>Balcony</h3>
                     <span class="size">A few pots count</span>
@@ -510,7 +510,7 @@
         </div>
         <div class="panel" id="panel-backyard" role="tabpanel" aria-labelledby="tab-backyard">
             <div class="space-grid">
-                <div class="space-shot"><img src="/landing/d2-backyard-960.webp" srcset="/landing/d2-backyard-960.webp 960w, /landing/d2-backyard-1600.webp 1600w" sizes="(max-width: 900px) 100vw, 700px" width="1600" height="1000" loading="lazy" decoding="async" alt="A backyard in 3D: house, raised beds, a veg patch, a greenhouse, a chicken coop and herbs"></div>
+                <div class="space-shot"><img src="/landing/d3-backyard-960.webp" srcset="/landing/d3-backyard-960.webp 960w, /landing/d3-backyard-1600.webp 1600w" sizes="(max-width: 900px) 100vw, 700px" width="1600" height="1000" loading="lazy" decoding="async" alt="A backyard in 3D: house, raised beds, a veg patch, a greenhouse, a chicken coop and herbs"></div>
                 <div class="space-copy">
                     <h3>Backyard</h3>
                     <span class="size">Beds, greenhouse, a few hens</span>
@@ -524,7 +524,7 @@
         </div>
         <div class="panel" id="panel-farm" role="tabpanel" aria-labelledby="tab-farm" hidden>
             <div class="space-grid">
-                <div class="space-shot"><img src="/landing/d2-farm-960.webp" srcset="/landing/d2-farm-960.webp 960w, /landing/d2-farm-1600.webp 1600w" sizes="(max-width: 900px) 100vw, 700px" width="1600" height="1000" loading="lazy" decoding="async" alt="A smallholding in 3D: farmhouse, hen house, goat paddock, greenhouse, kitchen garden, orchard, beehives and a pond"></div>
+                <div class="space-shot"><img src="/landing/d3-farm-960.webp" srcset="/landing/d3-farm-960.webp 960w, /landing/d3-farm-1600.webp 1600w" sizes="(max-width: 900px) 100vw, 700px" width="1600" height="1000" loading="lazy" decoding="async" alt="A smallholding in 3D: farmhouse, hen house, goat paddock, greenhouse, kitchen garden, orchard, beehives and a pond"></div>
                 <div class="space-copy">
                     <h3>Farm</h3>
                     <span class="size">Orchard, paddocks, hives</span>
@@ -549,14 +549,14 @@
         </div>
         <div class="tour-frame paused reveal" id="tourFrame">
             <video id="tourVideo" muted loop playsinline preload="none"
-                   data-h="/landing/tour-h.mp4" data-hw="/landing/tour-h.webm" data-v="/landing/tour-v.mp4" data-vw="/landing/tour-v.webm"
-                   data-poster-h="/landing/tour-h-poster.webp" data-poster-v="/landing/tour-v-poster.webp" aria-describedby="tourText"></video>
+                   data-h="/landing/tour3-h.mp4" data-hw="/landing/tour3-h.webm" data-v="/landing/tour3-v.mp4" data-vw="/landing/tour3-v.webm"
+                   data-poster-h="/landing/tour3-h-poster.webp" data-poster-v="/landing/tour3-v-poster.webp" aria-describedby="tourText"></video>
             <button type="button" class="tour-toggle" id="tourToggle" aria-label="Play the tour video">
                 <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>
                 <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5.2a1.6 1.6 0 0 1 2.4-1.4l10 6.2a1.6 1.6 0 0 1 0 2.8l-10 6.2A1.6 1.6 0 0 1 7 17.6z"/></svg>
             </button>
         </div>
-        <p class="sr-only" id="tourText">A 15-second tour of the MyTerra app. Never grown a thing? You're about to. You tell MyTerra about your space with a few easy questions, such as backyard, sunny all day, and pick radish, lettuce and strawberry; it draws your starter garden in 3D. On the home map, tapping the chicken coop shows today's jobs: collect eggs, feed and water, each ticked off with one tap, and the eggs go to the pantry. The growth preview slides three months ahead and the beds fill in and ripen. The crop library holds 70 crops and 14 animals, every step explained. Everyone can be a farmer. Start free for 7 days at myterra.farm, no card needed.</p>
+        <p class="sr-only" id="tourText">A 15-second tour of the MyTerra app. Never grown a thing? You're about to. You tell MyTerra about your space with a few easy questions, such as backyard, sunny all day, and pick spinach, broad bean and rhubarb; it draws your starter garden in 3D. On the home map, tapping the chicken coop shows today's jobs: collect eggs, feed, water and clean, each ticked off with one tap, and the eggs go to the pantry. The growth preview slides three months ahead and the beds fill in and ripen. The crop library holds 70 crops and 14 animals, every step explained. Everyone can be a farmer. Start free for 7 days at myterra.farm, no card needed.</p>
         <ul class="tour-points reveal" aria-label="In the tour">
             <li>🌱 Set up in minutes</li>
             <li>🗺️ Your space in 3D</li>
@@ -580,25 +580,25 @@
                 <span class="step-num">1</span>
                 <h3>Tell it about your space</h3>
                 <p>Where you grow, how big, how sunny, how much time you have. Plain questions, no jargon.</p>
-                <div class="shot"><div class="phone sm"><img src="/landing/p-ob-where.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Set-up question: Where will you grow? Balcony or patio, backyard or garden, smallholding or farm, with Backyard selected"></div></div>
+                <div class="shot"><div class="phone sm"><img src="/landing/p4-ob-where.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Set-up question: Where will you grow? Balcony or patio, backyard or garden, smallholding or farm, with Backyard selected"></div></div>
             </article>
             <article class="step reveal">
                 <span class="step-num">2</span>
                 <h3>Get a plan that fits</h3>
                 <p>Plants matched to your answers, a first bed sized for your time and your space drawn in 3D.</p>
-                <div class="shot"><div class="phone sm"><img src="/landing/p2-ob-map.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Here's your starter map: an 8 by 5 metre garden in 3D with a raised bed of radish, lettuce and strawberry"></div></div>
+                <div class="shot"><div class="phone sm"><img src="/landing/p4-ob-map.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Here's your starter map: an 8 by 5 metre garden in 3D with a 2 by 1.2 metre raised bed of spinach and broad bean, rhubarb planned for later"></div></div>
             </article>
             <article class="step reveal">
                 <span class="step-num">3</span>
                 <h3>Tap the map. Tick off the jobs.</h3>
                 <p>Badges show what's waiting. One tap logs eggs, milk and harvests straight into your pantry.</p>
-                <div class="shot"><div class="phone sm"><img src="/landing/p2-coop.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Chicken coop pop-up with four jobs: collect eggs, feed, water and clean the housing, the first ticked off with plus two eggs"></div></div>
+                <div class="shot"><div class="phone sm"><img src="/landing/p4-coop.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Chicken coop pop-up with four jobs: collect eggs, feed, water and clean the housing, the first ticked off with plus three eggs"></div></div>
             </article>
             <article class="step reveal">
                 <span class="step-num">4</span>
                 <h3>See it grow before you plant</h3>
                 <p>Slide the growth preview weeks ahead and watch every bed sprout, fill in and ripen.</p>
-                <div class="shot"><div class="phone sm"><img src="/landing/p2-growth.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Growth preview 70 days ahead: the garden map with beds filled in and a legend of growth stages"></div></div>
+                <div class="shot"><div class="phone sm"><img src="/landing/p4-growth.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Growth preview 70 days ahead: the garden map with beds filled in and a legend of growth stages"></div></div>
             </article>
         </div>
         <p class="note">Real app screens. Demo gardens, not customer data.</p>
@@ -623,19 +623,19 @@
         </div>
         <div class="trio rail">
             <figure class="reveal">
-                <div class="phone"><img src="/landing/p-ob-plants.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Your matched plants: radish, lettuce and strawberry picked, with spinach and broad bean as other options that are in season now"></div>
+                <div class="phone"><img src="/landing/p4-ob-plants.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Your matched plants: spinach and broad bean to sow now and rhubarb to plan ahead are picked, with blackberry and pea as other options"></div>
                 <figcaption><b>Plants matched to you</b><span>Picked for your space, light and experience. Change them any time.</span></figcaption>
             </figure>
             <figure class="reveal">
-                <div class="phone"><img src="/landing/p3-plan.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Plan screen for a balcony: spinach is good to sow in September, and a season timeline shows when the tomatoes, basil, hot peppers, mint and lettuce will be ready"></div>
+                <div class="phone"><img src="/landing/p4-plan.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Plan screen for a balcony: spinach is good to sow in October, and a season timeline shows when the basil, tomatoes, lettuce and hot peppers will be ready"></div>
                 <figcaption><b>What to sow this month</b><span>Fresh picks for your region, and when each plant is ready.</span></figcaption>
             </figure>
             <figure class="reveal">
-                <div class="phone"><img src="/landing/p2-guide.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Garlic guide: planting calendar, companions, watering and step-by-step instructions"></div>
+                <div class="phone"><img src="/landing/p4-guide.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Garlic guide: planting calendar, companions, watering and step-by-step instructions"></div>
                 <figcaption><b>A guide for every crop</b><span>From soil prep to storage, step by step.</span></figcaption>
             </figure>
             <figure class="reveal">
-                <div class="phone"><img src="/landing/p2-assistant.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Farm assistant answering When should I plant garlic? with a growing guide, working offline"></div>
+                <div class="phone"><img src="/landing/p4-assistant.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Farm assistant answering When should I plant garlic? with a growing guide, working offline"></div>
                 <figcaption><b>Ask the farm assistant</b><span>Instant answers, even with no signal.</span></figcaption>
             </figure>
         </div>
@@ -657,7 +657,7 @@
                     <h3>Watch real food pile up</h3>
                     <p>Harvests, eggs and milk land in your pantry, and Progress adds up what your space has given you, month by month. Sell some and it's logged under Money.</p>
                 </div>
-                <div class="crop"><div class="phone sm"><img src="/landing/p-progress.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Progress screen of the demo farm: 188.9 kg harvested in 45 harvests, 869 eggs and 340 litres of milk collected"></div></div>
+                <div class="crop"><div class="phone sm"><img src="/landing/p4-progress.webp" width="720" height="1558" loading="lazy" decoding="async" alt="Progress screen of the demo farm: 144.3 kg harvested in 47 harvests, 936 eggs and 338 litres of milk collected, with harvest per month"></div></div>
             </article>
             <article class="card reveal">
                 <div class="ci" aria-hidden="true">🚶</div>
