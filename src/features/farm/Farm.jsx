@@ -15,7 +15,7 @@ import { REGIONS, REGION_MAP } from "../../data/regions";
 import { ZT, ZT_MAP } from "../../data/zones";
 import { searchCity } from "../../data/cities";
 import { uid } from "../../lib/storage";
-import { todayLocalKey, localDateFromKey } from "../../lib/utils";
+import { todayLocalKey, localDateFromKey, localDayNumber } from "../../lib/utils";
 import { getRegionalCrops, rCM } from "../../lib/regional";
 import PlotOverlay from "./PlotOverlay";
 import GroveScene from "../grove/GroveScene";
@@ -90,7 +90,9 @@ function MeterField({label, value, min, max, onCommit}) {
     if (!isFinite(n)) { setDraft(String(value)); return; }
     if (min != null && n < min) n = min;
     if (max != null && n > max) n = max;
-    onCommit(Math.round(n * 10) / 10);
+    const v = Math.round(n * 10) / 10;
+    setDraft(String(v)); // clamped to the same value as before → no prop change, so resync here
+    onCommit(v);
   };
   return (
     <label style={{display:"flex", flexDirection:"column", gap:3, minWidth:0}}>
@@ -121,6 +123,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
   const [tray, setTray] = useState("zones");        // bottom tray tab: zones | decor | paths
   const [draw, setDraw] = useState(null);           // drawing a path/fence: {kind, points}
   const [selLine, setSelLine] = useState(null);     // selected drawn path/fence id
+  const [rowsDraft, setRowsDraft] = useState(null);  // "Number of rows" field while being typed (so it can be cleared)
   const [lineKind, setLineKind] = useState("path");
   const [sheet, setSheet] = useState(null);         // null | "settings"
   const [farmW, setFarmW] = useState(data.farmW || 100);
@@ -178,7 +181,10 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
   }
   // Snapping (grid + neighbour edges) applies while dragging; typed measurements stay exact.
   const snapOn = data.designerSnap ? data.designerSnap.on !== false : true;
-  const grid = (data.designerSnap && data.designerSnap.grid) || defaultGrid(farmW, farmH);
+  // A saved grid finer than the picker allows for this canvas size (farm grown since) falls back to the coarsest allowed option.
+  const gridOptions = [0.25,0.5,1,2,5,10].filter(g=>Math.max(farmW,farmH)/g<=400);
+  const savedGrid = (data.designerSnap && data.designerSnap.grid) || defaultGrid(farmW, farmH);
+  const grid = gridOptions.includes(savedGrid) ? savedGrid : (gridOptions[0] || savedGrid);
   const activeGrid = snapOn ? grid : 0;
   function setSnap(patch) { saveData({...data, designerSnap: {on: snapOn, grid: grid, ...patch}}); }
   function handleZoneGeom(id, g, opts) {
@@ -499,7 +505,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
       <div style={{flex:"0 0 auto", background:C.card, borderTop:`1px solid ${C.bdr}`,
         maxHeight:"43dvh",overflowY:"auto",padding:"10px 14px calc(10px + env(safe-area-inset-bottom))"}}>
         <div style={{maxWidth:720, margin:"0 auto"}}>
-          <div className="q-row q-wrap" style={{marginBottom:10}}><button className="q-secondary" disabled={!history.past.length} onClick={()=>travel(false)}>Undo</button><button className="q-secondary" disabled={!history.future.length} onClick={()=>travel(true)}>Redo</button><div className="fd-snap" role="group" aria-label="Snapping"><div className="q-seg"><button type="button" aria-pressed={snapOn} onClick={()=>setSnap({on:true})}>🧲 Snap</button><button type="button" aria-pressed={!snapOn} onClick={()=>setSnap({on:false})}>Free</button></div>{snapOn&&<select aria-label="Grid size" value={grid} onChange={e=>setSnap({grid:+e.target.value})}>{[0.25,0.5,1,2,5,10].filter(g=>Math.max(farmW,farmH)/g<=400).map(g=><option key={g} value={g}>{g} m grid</option>)}</select>}</div></div>
+          <div className="q-row q-wrap" style={{marginBottom:10}}><button className="q-secondary" disabled={!history.past.length} onClick={()=>travel(false)}>Undo</button><button className="q-secondary" disabled={!history.future.length} onClick={()=>travel(true)}>Redo</button><div className="fd-snap" role="group" aria-label="Snapping"><div className="q-seg"><button type="button" aria-pressed={snapOn} onClick={()=>setSnap({on:true})}>🧲 Snap</button><button type="button" aria-pressed={!snapOn} onClick={()=>setSnap({on:false})}>Free</button></div>{snapOn&&<select aria-label="Grid size" value={grid} onChange={e=>setSnap({grid:+e.target.value})}>{gridOptions.map(g=><option key={g} value={g}>{g} m grid</option>)}</select>}</div></div>
 
           {sz && (
             <div className="fd-panel" data-fd-zone-panel>
@@ -519,7 +525,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                 <MeterField label="Height" value={sz.hM} min={.2} max={farmH} onCommit={function(n) { commitGeom("hM", n); }}/>
               </div>
               <details className="q-inset"><summary>Rows & appearance</summary><div className="q-grid2">
-                {isPlantZone&&<label>Number of rows<input type="number" min="1" max="100" value={sz.rowCount||bedRows(sz)} onChange={e=>{const n=+e.target.value;if(Number.isInteger(n)&&n>=1&&n<=100)upZ(sz.id,{rowCount:n});}}/></label>}
+                {isPlantZone&&<label>Number of rows<input type="number" min="1" max="100" value={rowsDraft??String(sz.rowCount||bedRows(sz))} onChange={e=>{const t=e.target.value;setRowsDraft(t);const n=+t;if(t!==""&&Number.isInteger(n)&&n>=1&&n<=100)upZ(sz.id,{rowCount:n});}} onBlur={()=>setRowsDraft(null)}/></label>}
                 <label>Material<select value={sz.material||"wood"} onChange={e=>upZ(sz.id,{material:e.target.value})}><option value="wood">Natural wood</option><option value="stone">Pale stone</option><option value="metal">Soft metal</option></select></label>
                 <label>Colour<select value={sz.color||"sage"} onChange={e=>upZ(sz.id,{color:e.target.value})}><option value="sage">Sage</option><option value="clay">Clay</option></select></label>
                 {["water","pasture","compost"].includes(sz.type)&&<label>Shape<select value={sz.shape||"rectangle"} onChange={e=>upZ(sz.id,{shape:e.target.value})}><option value="rectangle">Rectangle</option><option value="oval">Oval</option></select></label>}
@@ -698,9 +704,9 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
               <div style={{fontSize:11, fontWeight:700, color:C.t2, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:6}}>{sizeLabel}</div>
               <div style={{display:"grid", gridTemplateColumns:"1fr 1fr auto", gap:10, alignItems:"end", marginBottom:4}}>
                 <MeterField label="Width (m)" value={farmW} min={sizeMin} max={2000}
-                  onCommit={function(n) { const v = n; setFarmW(v); setData({...data, farmW: v,zones:zones.map(z=>({...z,wM:Math.min(z.wM,v),xM:Math.max(0,Math.min(z.xM,v-z.wM))}))}); }}/>
+                  onCommit={function(n) { const v = n; setFarmW(v); setData({...data, farmW: v,zones:zones.map(z=>({...z,wM:Math.min(z.wM,v),xM:Math.max(0,Math.min(z.xM,v-z.wM))})),ornaments:(data.ornaments||[]).map(o=>({...o,xM:Math.min(o.xM,v)})),mapLines:(data.mapLines||[]).map(l=>({...l,points:(l.points||[]).map(pt=>({...pt,xM:Math.min(pt.xM,v)}))}))}); }}/>
                 <MeterField label="Height (m)" value={farmH} min={sizeMin} max={2000}
-                  onCommit={function(n) { const v = n; setFarmH(v); setData({...data, farmH: v,zones:zones.map(z=>({...z,hM:Math.min(z.hM,v),yM:Math.max(0,Math.min(z.yM,v-z.hM))}))}); }}/>
+                  onCommit={function(n) { const v = n; setFarmH(v); setData({...data, farmH: v,zones:zones.map(z=>({...z,hM:Math.min(z.hM,v),yM:Math.max(0,Math.min(z.yM,v-z.hM))})),ornaments:(data.ornaments||[]).map(o=>({...o,yM:Math.min(o.yM,v)})),mapLines:(data.mapLines||[]).map(l=>({...l,points:(l.points||[]).map(pt=>({...pt,yM:Math.min(pt.yM,v)}))}))}); }}/>
                 <div style={{fontSize:11, color:C.t3, fontFamily:F.mono, paddingBottom:10, whiteSpace:"nowrap"}}>{(farmW*farmH).toLocaleString()} m²</div>
               </div>
               <div style={{fontSize:11, color:C.t3, marginBottom:16}}>Areas are kept inside the space when its size changes. Recheck planting rows after shrinking an area.</div>
@@ -777,7 +783,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                     {[["last","Last spring frost"],["first","First autumn frost"]].map(function([key,label]){
                       const v=(data.frost&&data.frost[key])||curRegion.frost[key];
                       return <label key={key} style={{fontSize:12,color:C.t2}}>{label}
-                        <input type="date" value={`2026-${v}`} onChange={function(e){if(e.target.value)setData({...data,frost:{...(data.frost||{}),[key]:e.target.value.slice(5)}});}}
+                        <input type="date" value={`${new Date().getFullYear()}-${v}`} onChange={function(e){if(e.target.value)setData({...data,frost:{...(data.frost||{}),[key]:e.target.value.slice(5)}});}}
                           style={{display:"block",width:"100%",marginTop:4,padding:"8px 10px",border:`1.5px solid ${C.bdr}`,borderRadius:10,fontSize:16,background:C.card,color:C.text,boxSizing:"border-box"}}/></label>;
                     })}
                   </div>
@@ -858,7 +864,7 @@ function Farming({data, setData, pageData, clearPageData, setPage}) {
         const todayDate = localDateFromKey(todayLocalKey());
         const harvestDate = localDateFromKey(p.harvestDate);
         const isR=!growth.waiting&&p.harvestDate&&harvestDate<=todayDate;
-        const dL=harvestDate?Math.ceil((harvestDate-todayDate)/864e5):null;
+        const dL=harvestDate?localDayNumber(harvestDate)-localDayNumber(todayDate):null; // whole calendar days (DST-safe)
         const zone=data.zones.find(z=>z.id===p.zone);
         const hasQty = p.plantCount || p.qty;
         return (
@@ -870,11 +876,11 @@ function Farming({data, setData, pageData, clearPageData, setPage}) {
                 <div style={{fontSize:15,fontWeight:600}}>{p.name||p.crop}</div>
                 <div style={{fontSize:12,color:C.t2,marginTop:2,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {zone&&<span>📍 {zone.name}</span>}
-                  {p.plantCount&&<span>{unit==="trees"?"🌳":"🌱"} {p.plantCount} {p.plantCount===1?unit.slice(0,-1):unit}</span>}
-                  {p.qty&&p.measureType==="area"&&<span>📐 {p.qty}m²</span>}
-                  {p.expectedYieldKg&&<span>📦 ~{p.expectedYieldKg}kg</span>}
-                  {!hasQty&&p.plantDate&&!growth.waiting&&<span>{localDateFromKey(p.plantDate).toLocaleDateString(undefined,{day:"numeric",month:"short"})}</span>}
-                  {p.status==="planned"&&p.plannedDate&&<span>🌱 from nursery · plant out {localDateFromKey(p.plannedDate).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>}
+                  {p.plantCount>0&&<span>{unit==="trees"?"🌳":"🌱"} {p.plantCount} {p.plantCount===1?unit.slice(0,-1):unit}</span>}
+                  {p.qty>0&&p.measureType==="area"&&<span>📐 {p.qty}m²</span>}
+                  {p.expectedYieldKg>0&&<span>📦 ~{p.expectedYieldKg}kg</span>}
+                  {!hasQty&&p.plantDate&&!growth.waiting&&localDateFromKey(p.plantDate)&&<span>{localDateFromKey(p.plantDate).toLocaleDateString(undefined,{day:"numeric",month:"short"})}</span>}
+                  {p.status==="planned"&&p.plannedDate&&localDateFromKey(p.plannedDate)&&<span>🌱 from nursery · plant out {localDateFromKey(p.plannedDate).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>}
                 </div>
               </div>
               <div style={{display:"flex",gap:4,flexDirection:"column",alignItems:"flex-end"}}>

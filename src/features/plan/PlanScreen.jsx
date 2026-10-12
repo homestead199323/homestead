@@ -44,7 +44,6 @@ export default function PlanScreen({ data, setData, setPage }) {
   const cropMap = rCM(data.region);
 
   function sowToday(plot) {
-    const before = data;
     const crop = cropMap.get(plot.crop);
     const started = startGrowing(plot, today, crop && crop.days);
     setData({ ...data, garden: { ...data.garden, plots: data.garden.plots.map(function (p) { return p.id === plot.id ? started : p; }) } });
@@ -52,7 +51,7 @@ export default function PlanScreen({ data, setData, setPage }) {
     toast(`${plot.name || plot.crop} is in the ground 🌱`, {
       detail: next ? `Next: ${String(next.label).toLowerCase()} in ${next.inDays} days` : `Harvest from about ${niceDate(started.harvestDate)}`,
       actionLabel: "Undo",
-      onAction: function () { setData(before); },
+      onAction: function () { setData(function (d) { return { ...d, garden: { ...d.garden, plots: (d.garden.plots || []).map(function (p) { return p.id === plot.id ? plot : p; }) } }; }); },
     });
   }
 

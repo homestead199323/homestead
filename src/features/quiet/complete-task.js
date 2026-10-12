@@ -35,19 +35,24 @@ export function applyTaskCompletion(data, task, logValue, meta) {
     const plot = plots.find(function(p) { return p.id === task.plotId; });
     if (plot) {
       const crop = rCM(data.region).get(plot.crop);
-      const kg = Number(logValue) > 0 ? Number(logValue) : (plot.expectedYieldKg || (crop && crop.yld) || 3);
-      const est = isEstimate(data, task, logValue, meta);
+      // crop.yld is kg PER PLANT — the planting's estimate scales it by the plant count.
+      // meta.allowZero: the user deliberately recorded a failed crop (0 kg) — keep it, don't substitute the estimate.
+      const typed = Number(logValue);
+      const zero = !!(meta && meta.allowZero) && Number.isFinite(typed) && typed <= 0;
+      const kg = typed > 0 ? typed : zero ? 0 : (plot.expectedYieldKg || Math.round((crop && crop.yld ? crop.yld * (Number(plot.plantCount) || 1) : 3) * 10) / 10 || 3);
+      const est = zero ? false : isEstimate(data, task, logValue, meta);
       // Trees, soft fruit and perennial herbs stay planted and are due again next season.
       const recurring = isRecurringCrop(crop);
       const expected = plot.expectedYieldKg || null; // only a real per-planting estimate is compared
       const remembered = recordHarvest(data, plot, kg, today, expected, !recurring, est);
-      const stocked = addStock(remembered, { name: plot.crop, category: "Fresh Produce", qty: kg, unit: "kg", source: "farm", storageNote: (crop && crop.storage) || "" }, today);
+      // Nothing picked → nothing goes into the pantry (no empty 0 kg lot).
+      const stocked = kg > 0 ? addStock(remembered, { name: plot.crop, category: "Fresh Produce", qty: kg, unit: "kg", source: "farm", storageNote: (crop && crop.storage) || "" }, today) : remembered;
       const next = {
         ...stocked,
         garden: { ...stocked.garden, plots: plots.map(function(x) { return x.id === plot.id ? (recurring ? afterRecurringHarvest(x, crop, today) : { ...x, status: "harvested" }) : x; }) },
         log: appendLog(data.log, { text: "🧺 Harvested " + kg + "kg " + plot.crop }),
       };
-      return markTaskDone(rememberTick(next, task.key, { d: today, kind: "harvest", q: kg, est, prevPlot: plot, ...lastIds(stocked) }), task.key);
+      return markTaskDone(rememberTick(next, task.key, { d: today, kind: "harvest", q: kg, est, prevPlot: plot, ...(kg > 0 ? lastIds(stocked) : {}) }), task.key);
     }
   }
 
@@ -97,7 +102,9 @@ export function applyTaskCompletion(data, task, logValue, meta) {
         },
       };
       if (sowing) next.log = appendLog(data.log, { text: "🌱 " + (sowVerb(plot.steps) === "Plant" ? "Planted " : "Sowed ") + (plot.name || plot.crop) });
-      return markTaskDone(next, task.key);
+      // Remember the plot as it was so "Done today → Undo" can un-tick the step
+      // (and un-start the growing clock when this was the sowing step).
+      return markTaskDone(rememberTick(next, task.key, { d: today, kind: "step", prevPlot: plot }), task.key);
     }
   }
 
@@ -123,7 +130,7 @@ export function undoTaskCompletion(data, key) {
   const taken = takeTick(data, key, today);
   let next = taken.data;
   const t = taken.tick;
-  if (t) {
+  if (t && (t.item || t.move)) {
     const pantry = next.pantry || { items: [] };
     const items = (pantry.items || []).map(function(it) {
       if (it.id !== t.item) return it;
@@ -132,8 +139,12 @@ export function undoTaskCompletion(data, key) {
     }).filter(Boolean);
     const moves = (pantry.moves || []).filter(function(m) { return m.id !== t.move; });
     next = { ...next, pantry: { ...pantry, items: items, moves: moves } };
+  }
+  if (t) {
     if (t.kind === "harvest" && t.prevPlot) {
       next = removeHarvest(next, t.prevPlot.id, today);
+      next = { ...next, garden: { ...next.garden, plots: (next.garden.plots || []).map(function(p) { return p.id === t.prevPlot.id ? t.prevPlot : p; }) } };
+    } else if (t.kind === "step" && t.prevPlot) {
       next = { ...next, garden: { ...next.garden, plots: (next.garden.plots || []).map(function(p) { return p.id === t.prevPlot.id ? t.prevPlot : p; }) } };
     } else if (t.sp) {
       next = subtractProduce(next, t.sp, t.kind, t.q, today, t.est);

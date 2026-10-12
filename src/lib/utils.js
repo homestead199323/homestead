@@ -33,12 +33,19 @@ export const addDaysToLocalKey = (key, days) => {
   return toLocalDateKey(d);
 };
 
+// DST-safe ordinal of a local calendar day (whole days since 1970-01-01).
+// Local midnights are NOT always 24 h apart (23 h / 25 h on clock-change
+// days), so never divide a difference of local Dates by 864e5 and floor it —
+// compare day numbers instead.
+export const localDayNumber = (d) =>
+  Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+
 export const daysBetweenLocalKeys = (fromKey, toDate) => {
   const from = localDateFromKey(fromKey);
   if (!from) return 0;
-  const to = new Date(toDate);
-  to.setHours(0, 0, 0, 0);
-  return Math.floor((to - from) / 864e5);
+  const to = toDate instanceof Date ? toDate : new Date(toDate);
+  if (isNaN(to.getTime())) return 0;
+  return localDayNumber(to) - localDayNumber(from);
 };
 
 // Append a task key to today's completions list (no-op if already present).

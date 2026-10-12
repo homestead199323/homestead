@@ -36,6 +36,9 @@ const empty = {
 };
 export default function PlantingForm({ data, setData, initial = {}, onClose }) {
   const [form, setForm] = useState({ ...empty, ...initial }),
+    // The seedling batch this form plants out — consumed by the FIRST save only, so a
+    // companion follow-up planting doesn't re-link the batch to the wrong bed.
+    [fromBatch, setFromBatch] = useState(initial.fromBatch || null),
     [query, setQuery] = useState(""),
     [browse, setBrowse] = useState(!initial.crop),
     [companion, setCompanion] = useState(""),
@@ -66,7 +69,7 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
   // Raise transplant crops in the nursery: the bed planting waits until the seedlings are planted out.
   const prop = crop ? propagationOf(crop) : null,
     nurseries = nurseryZones(data),
-    canNursery = !!crop && prop.method !== "direct" && !initial.fromBatch && zone?.type !== "orchard";
+    canNursery = !!crop && prop.method !== "direct" && !fromBatch && zone?.type !== "orchard";
   const fromSeed = canNursery && nurseries.length > 0 && (form.fromSeed ?? prop.method === "transplant");
   const frost = frostDates(data),
     covered = zone?.type === "greenhouse";
@@ -94,6 +97,10 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
     }
     if (plan.error) {
       setError(plan.error);
+      return;
+    }
+    if (!fromSeed && form.plantDate && form.plantDate > todayLocalKey()) {
+      setError("The plant date can't be in the future — leave it blank to plan this planting.");
       return;
     }
     const name = form.name || (form.variety ? `${crop.name} (${form.variety})` : crop.name),
@@ -143,14 +150,15 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
       }).batch;
       next.nursery = { ...(data.nursery || {}), batches: [...(data.nursery?.batches || []), batch] };
     }
-    if (initial.fromBatch) {
+    if (fromBatch) {
       next.nursery = {
         ...(next.nursery || {}),
         batches: (next.nursery?.batches || []).map((b) =>
-          b.id === initial.fromBatch ? { ...b, plotId: plot.id, targetZoneId: zone.id } : b,
+          b.id === fromBatch ? { ...b, plotId: plot.id, targetZoneId: zone.id } : b,
         ),
       };
-      next = applySeedlingStage(next, initial.fromBatch, "planted", todayLocalKey());
+      next = applySeedlingStage(next, fromBatch, "planted", todayLocalKey());
+      setFromBatch(null);
     }
     if (+form.cost > 0)
       next.costs = {

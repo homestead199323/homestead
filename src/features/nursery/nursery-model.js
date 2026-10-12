@@ -167,7 +167,9 @@ export function nurseryTasks(data, todayKey) {
         });
       }
     }
-    const prep = days(todayKey, b.plantOutDate);
+    // Against the schedule's actual plant-out day (a late sowing keeps the planned
+    // plantOutDate, but the seedlings are ready weeks later).
+    const prep = days(todayKey, scheduleOf(b).planted || b.plantOutDate);
     if (b.plotId && !b.bedPrepped && prep <= 7 && prep >= -3)
       tasks.push({
         key: `seed-${b.id}-bedprep`,

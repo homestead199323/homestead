@@ -67,6 +67,7 @@ export function BatchCard({ batch, data, onOpen }) {
 /** Detail of one batch: trays, dated steps, tick the next step, plant out. */
 export function SeedlingOverlay({ batchId, data, setData, onClose }) {
   const [plantOut, setPlantOut] = useState(false);
+  const [cellsDraft, setCellsDraft] = useState(null); // "Cells sown" while being typed (so it can be cleared)
   const batch = (data.nursery?.batches || []).find((b) => b.id === batchId);
   if (!batch) return null;
   const plot = batch.plotId && data.garden.plots.find((p) => p.id === batch.plotId);
@@ -77,7 +78,7 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
     today = todayLocalKey();
   const at = batch.stage ? stages.indexOf(batch.stage) : -1;
   function advance(stage) {
-    if (stage === "planted" && !batch.plotId) {
+    if (stage === "planted" && !plot) {
       setPlantOut(true);
       return;
     }
@@ -236,8 +237,9 @@ export function SeedlingOverlay({ batchId, data, setData, onClose }) {
           label="Cells sown"
           type="number"
           min="1"
-          value={batch.cells}
-          onChange={(e) => +e.target.value >= 1 && update({ cells: Math.round(+e.target.value) })}
+          value={cellsDraft ?? batch.cells}
+          onChange={(e) => { const t = e.target.value; setCellsDraft(t); if (+t >= 1) update({ cells: Math.max(batch.plants || 1, Math.round(+t)) }); }}
+          onBlur={() => setCellsDraft(null)}
         />
       </div>
       <small className="q-step-why">
@@ -297,7 +299,7 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
   const plantOutDate =
     form.plantOutDate || (crop ? suggestDates(crop, todayLocalKey(), frost).plantOutDate : "");
   const plan =
-    crop && form.zone && +form.plants > 0 && plantOutDate
+    crop && form.zone && Number.isInteger(+form.plants) && +form.plants > 0 && plantOutDate
       ? planBatch({
           crop,
           zoneId: form.zone,
@@ -350,6 +352,7 @@ export function StartSeedsForm({ data, setData, onClose, zoneId = "" }) {
           label="Plants you want"
           type="number"
           min="1"
+          step="1"
           value={form.plants}
           onChange={(e) => setForm({ ...form, plants: e.target.value })}
         />

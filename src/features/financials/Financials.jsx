@@ -7,6 +7,8 @@ import { Btn, Card, Inp, Sel, Overlay, Stat } from "../../components/ui";
 import { undoSale, markPaid, unpaidTotal } from "../../lib/inventory";
 import { currencySymbol } from "../../lib/money";
 
+const DATE_RE=/^\d{4}-\d{2}-\d{2}$/; // local YYYY-MM-DD keys, as every other record in the app
+
 const CAT_COLORS = {
   Seeds: "#27ae60", Tools: "#8d6e63", Feed: "#ffa726",
   Animals: "#e65100", Fuel: "#5e35b1", Infrastructure: "#37474f",
@@ -30,17 +32,20 @@ export default function Financials({data, setData}) {
   },[data.livestock,data.zones]);
   const forLabel=v=>{if(!v)return "";const o=forOptions.find(x=>x.value===v);return o?o.label:"";};
   const items = useMemo(() => data.costs?.items || [], [data.costs?.items]);
-  const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;setData({...data,costs:{items:[...items,{...form,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey(),for:""});setShowAdd(false);};
+  const add=()=>{if(!form.amount||!form.label||+form.amount<=0)return;const date=DATE_RE.test(form.date||"")?form.date:todayLocalKey();setData({...data,costs:{...(data.costs||{}),items:[...items,{...form,date,id:uid(),amount:Math.abs(+form.amount)}]}});setForm({type:"expense",amount:"",label:"",cat:"Seeds",date:todayLocalKey(),for:""});setShowAdd(false);};
+  // Open the Add sheet with today's date (not the date the page was mounted on).
+  const openAdd=()=>{setForm(f=>({...f,date:todayLocalKey()}));setShowAdd(true);};
   // Deleting a pantry sale puts the sold stock back in the pantry.
   const del=id=>{const it=items.find(i=>i.id===id);setData(it&&it.source==="pantry"&&it.type==="income"?undoSale(data,id,todayLocalKey()):{...data,costs:{...(data.costs||{}),items:items.filter(i=>i.id!==id)}});};
   const unpaid=unpaidTotal(data);
   const unpaidSales=items.filter(i=>i.type==="income"&&i.paid===false);
   const {exp,inc,net,catT}=useMemo(()=>{let e=0,r=0;const ct={};items.forEach(i=>{if(i.type==="expense"){e+=i.amount;ct[i.cat]=(ct[i.cat]||0)+i.amount;}else r+=i.amount;});return{exp:e,inc:r,net:r-e,catT:ct};},[items]);
   const mN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const mData=useMemo(()=>{const acc=Array.from({length:12},()=>({e:0,r:0}));items.forEach(i=>{const m=new Date(i.date).getMonth();if(i.type==="expense")acc[m].e+=i.amount;else acc[m].r+=i.amount;});return acc;},[items]);
+  const year=new Date().getFullYear();
+  const mData=useMemo(()=>{const acc=Array.from({length:12},()=>({e:0,r:0}));items.forEach(i=>{const d=String(i.date||"");if(!DATE_RE.test(d)||+d.slice(0,4)!==year)return;const m=+d.slice(5,7)-1;if(m<0||m>11)return;if(i.type==="expense")acc[m].e+=i.amount;else acc[m].r+=i.amount;});return acc;},[items,year]);
   const maxM=Math.max(1,...mData.map(d=>Math.max(d.e,d.r)));
   const dim=new Date(new Date().getFullYear(),chartM+1,0).getDate();
-  const dData=useMemo(()=>{const acc=Array.from({length:dim},()=>({e:0,r:0}));const pfx=new Date().getFullYear()+"-"+String(chartM+1).padStart(2,"0")+"-";items.forEach(i=>{if(!i.date.startsWith(pfx))return;const d=parseInt(i.date.slice(-2),10)-1;if(d>=0&&d<dim){if(i.type==="expense")acc[d].e+=i.amount;else acc[d].r+=i.amount;}});return acc;},[items,chartM,dim]);
+  const dData=useMemo(()=>{const acc=Array.from({length:dim},()=>({e:0,r:0}));const pfx=year+"-"+String(chartM+1).padStart(2,"0")+"-";items.forEach(i=>{const ds=String(i.date||"");if(!ds.startsWith(pfx))return;const d=parseInt(ds.slice(8,10),10)-1;if(d>=0&&d<dim){if(i.type==="expense")acc[d].e+=i.amount;else acc[d].r+=i.amount;}});return acc;},[items,chartM,dim,year]);
   const maxD=Math.max(1,...dData.map(d=>Math.max(d.e,d.r)));
   // catT computed in useMemo above
   const last5=items.slice(-5).reverse();
@@ -76,7 +81,7 @@ export default function Financials({data, setData}) {
     <div className="page-enter" style={SX.mw800}>
       <div style={SX.pageHead}>
         <div><h2 style={SX.headerH2}>Financials</h2><p style={SX.pageSubHead}>Income, expenses, and profitability</p></div>
-        <Btn onClick={()=>setShowAdd(true)}>+ Add Entry</Btn>
+        <Btn onClick={openAdd}>+ Add Entry</Btn>
       </div>
       {/* 6.6.1 — empty state replaces the body when there are zero entries */}
       {items.length === 0 ? (
@@ -87,7 +92,7 @@ export default function Financials({data, setData}) {
             Add your first seed packet to start tracking. We'll handle the math — categories, monthly trends, profit and loss.
           </div>
           <div style={{marginTop:18}}>
-            <Btn onClick={()=>setShowAdd(true)}>+ Add your first entry</Btn>
+            <Btn onClick={openAdd}>+ Add your first entry</Btn>
           </div>
         </Card>
       ) : (

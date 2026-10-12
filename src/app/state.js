@@ -56,7 +56,7 @@ export function dataReducer(state, action) {
       }
       return p;
     });
-    return {...state, garden: {plots}};
+    return {...state, garden: {...state.garden, plots}};
   }
   // Fallback: merge like the old setData({...data, ...changes})
   return {...state, ...action};

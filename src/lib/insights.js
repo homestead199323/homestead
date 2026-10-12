@@ -13,6 +13,7 @@
 
 import { familyOf, familyInfo, ROTATE, ROTATION_YEARS } from "../data/families.js";
 import { isAwaitingSowing } from "./sowing.js";
+import { todayLocalKey } from "./utils.js";
 import { migrateMemory } from "./memory.js";
 
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -91,7 +92,7 @@ function daysInMonth(y, m0) { return new Date(y, m0 + 1, 0).getDate(); }
  */
 export function animalYields(data, year, todayKey) {
   const buckets = produceBuckets(data);
-  const today = todayKey || new Date().toISOString().slice(0, 10);
+  const today = todayKey || todayLocalKey();
   const head = {};
   ((data.livestock && data.livestock.animals) || []).forEach((a) => { head[a.type] = (head[a.type] || 0) + (Number(a.count) || 1); });
   const by = {};

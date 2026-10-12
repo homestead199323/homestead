@@ -492,6 +492,8 @@ export default function WalkOverlay({ tasks, data, setData, onClose }) {
       };
     }
     const end = session.index + 1 >= session.stops.length;
+    // Never write into the live state object (next === data on Skip): copy first.
+    next = { ...next };
     next.walkSession = {
       ...session,
       index: session.index + 1,

@@ -17,6 +17,14 @@ export function applySeedlingStage(data, batchId, stage, dateKey) {
   const batch = batches.find((b) => b.id === batchId);
   if (!batch || !SEEDLING_STAGES.includes(stage)) return data;
   const order = SEEDLING_STAGES.indexOf(stage);
+  // Linked bed planting removed since: unlink the batch rather than mark it
+  // planted into nothing (the nursery then offers "Plant out…" again).
+  if (stage === "planted" && batch.plotId && !(data.garden?.plots || []).some((p) => p.id === batch.plotId)) {
+    return {
+      ...data,
+      nursery: { ...(data.nursery || {}), batches: batches.map((b) => (b.id === batchId ? { ...b, plotId: null, targetZoneId: null } : b)) },
+    };
+  }
   const stageDates = { ...(batch.stageDates || {}) };
   // Reaching a stage implies the earlier ones happened; keep their real dates, fill gaps with today.
   SEEDLING_STAGES.slice(0, order + 1).forEach((s) => {

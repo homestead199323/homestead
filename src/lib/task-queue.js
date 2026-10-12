@@ -1,4 +1,4 @@
-import { toLocalDateKey, daysBetweenLocalKeys, localDateFromKey, addDaysToLocalKey } from "./utils";
+import { toLocalDateKey, daysBetweenLocalKeys, localDateFromKey, addDaysToLocalKey, localDayNumber } from "./utils";
 import { rCM } from "./regional";
 import { isAwaitingSowing, sowWindowOpen, firstStepIdx, prepStepIdxs } from "./sowing.js";
 import { nurseryTasks } from "../features/nursery/nursery-model.js";
@@ -6,6 +6,16 @@ import { animalZone as zoneOfAnimal } from "../features/quiet/farm-model.js";
 import { applyWeather, isWeatherDone } from "./weather-alerts.js";
 import { ownTasks } from "./own-tasks.js";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../data/livestock";
+
+/**
+ * Split a completion key into its parts: "plot-<uuid>-water" → { kind: "plot", id: "<uuid>", suffix: "water" },
+ * "plot-<uuid>-step-2" → suffix "step-2", "species-Goat-feed" → { kind: "species", id: "Goat", suffix: "feed" }.
+ * Ids are UUIDs (they contain dashes), so only the first and the LAST dash split — never key.split("-").
+ */
+export function parseTaskKey(key) {
+  const m = /^([a-z]+)-(.+?)-(step-\d+|[A-Za-z0-9]+)$/.exec(String(key || ""));
+  return m ? { kind: m[1], id: m[2], suffix: m[3] } : null;
+}
 
 /** Dairy species milked by default; sheep only when the keeper says so. A group can be switched off (dry, bucks, meat herd). */
 const MILKED_BY_DEFAULT = new Set(["Goat", "Cow"]);
@@ -90,16 +100,22 @@ export function buildTaskPlan(data, opts = {}) {
 
     // Harvest forecast (upcoming) — info-only, no Done button
     if (dLeft > 0 && dLeft <= 14) {
-      const hDate = localDateFromKey(addDaysToLocalKey(p.plantDate, days));
-      const estYld = p.expectedYieldKg || crop.yld || 3;
-      tasks.push({ key: `plot-${p.id}-forecast`, pri: 4, type: "forecast", emoji: "📅", title: `${p.name || p.crop} harvest in ${dLeft}d`, desc: `Expected: ${hDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}. ~${estYld}kg yield.`, loc, plotId: p.id, daysOut: dLeft });
+      // Date from today's key, not the plot's: a malformed plantDate (old
+      // import) must not take the whole task plan down with a null date.
+      const hDate = localDateFromKey(addDaysToLocalKey(todayKey, dLeft));
+      const when = hDate ? hDate.toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : `${dLeft} days`;
+      const estYld = p.expectedYieldKg || Math.round((crop.yld || 0) * (Number(p.plantCount) || 1) * 10) / 10 || 3;
+      tasks.push({ key: `plot-${p.id}-forecast`, pri: 4, type: "forecast", emoji: "📅", title: `${p.name || p.crop} harvest in ${dLeft}d`, desc: `Expected: ${when}. ~${estYld}kg yield.`, loc, plotId: p.id, daysOut: dLeft });
     }
   });
 
   // ─── Animal tasks ───
   // Species-grouped: feed, water, eggs, clean, bedding, paddock (one task per species)
   // Per-animal:      health, hoof, hive inspection (one task per individual)
-  const dayNum = Math.floor(now.getTime() / 864e5);
+  // Calendar-day ordinal (DST-safe). floor(getTime()/864e5) on a local
+  // midnight repeats or skips a day around the clock change in UTC+0 zones
+  // (UK/IE), which doubled or dropped the staggered animal jobs twice a year.
+  const dayNum = localDayNumber(now);
   const curMonth = now.getMonth() + 1; // 1-12
   const animalZone = data.zones.find(z => ["barn","coop","pasture"].includes(z.type));
   const animalLoc = animalZone ? animalZone.name : "Farm";

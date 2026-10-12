@@ -8,13 +8,13 @@ import AnimalOverlay from "../animals/AnimalOverlay";
 import { LDB, POULTRY_SPECIES, HOOFED_SPECIES, GRAZER_SPECIES, animalPlural } from "../../data/livestock";
 import { ZT_MAP } from "../../data/zones";
 import { rCM } from "../../lib/regional";
-import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, todayLocalKey } from "../../lib/utils";
+import { toLocalDateKey, localDateFromKey, addDaysToLocalKey, todayLocalKey, localDayNumber } from "../../lib/utils";
 import { applyTaskCompletion, undoTaskCompletion } from "../quiet/complete-task";
 import { taskAction } from "../grove/zone-tasks";
 import { toggleStep, isAwaitingSowing, firstStepIdx, nextStepAfter } from "../../lib/sowing";
 import { minutesLabel } from "../../lib/task-time";
 import { toast } from "../../lib/toast";
-import { milkingHead } from "../../lib/task-queue";
+import { milkingHead, parseTaskKey } from "../../lib/task-queue";
 import { animalZone as zoneOfAnimal } from "../quiet/farm-model";
 import { useFlip } from "../../lib/use-flip";
 import { isDueOn, unmarkOwnDone } from "../../lib/own-tasks";
@@ -40,7 +40,9 @@ const TaskRow = React.memo(function TaskRow({t, onOpen, onToggleStep, onMarkDone
   const dateLabel = t.dueDate
     ? (t.daysOut === 0 ? "Today" : t.dueDate.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))
     : (t.daysOut === 0 ? "Today" : t.daysOut > 0 ? `In ${t.daysOut}d` : null);
-  const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest";
+  // Only a job due today can be ticked: the week lists reuse the same key for
+  // a future occurrence, and ticking that wrote TODAY's completion.
+  const canMarkDone = t.type !== "step" && t.type !== "upcoming" && t.type !== "forecast" && t.type !== "harvest" && !(t.daysOut > 0);
   const isStep = t.stepIdx != null;
   // Pick the single completion action: step → toggle step, otherwise → mark done.
   // Harvest/upcoming/forecast get no checkbox (no completable action from here).
@@ -134,7 +136,6 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
   // its growing clock today (lib/sowing.js). Every tick says what comes next
   // and can be undone for a few seconds.
   const togStep = (pid, si) => {
-    const before = data;
     const plot = data.garden.plots.find(p => p.id === pid);
     if (!plot || !plot.steps || !plot.steps[si]) return;
     const turningOn = !plot.steps[si].done;
@@ -147,7 +148,8 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
     toast(wasWaiting ? `${plot.name || plot.crop} is in the ground 🌱` : `${plot.name || plot.crop}: ${plot.steps[si].l} ✓`, {
       detail: next ? `Next: ${next.label.toLowerCase()} ${next.inDays === 0 ? "today" : next.inDays === 1 ? "tomorrow" : `in ${next.inDays} days`}` : undefined,
       actionLabel: "Undo",
-      onAction: () => setData(before),
+      // Put the plot back as it was — on the farm as it is NOW, so edits made since the tick survive.
+      onAction: () => setData(d => ({...d, garden: {...d.garden, plots: (d.garden.plots || []).map(p => p.id === pid ? plot : p)}})),
     });
   };
 
@@ -163,12 +165,12 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
     // expected amount (editable there), watering is logged.
     const task = tasks.find(t => t.key === key) || { key };
     const amount = taskAction(task, data).amount;
-    const before = data;
     setData(applyTaskCompletion(data, task, amount ? amount.value : undefined));
     toast(`${task.title || "Job"} ✓`, {
       detail: amount ? `+${amount.value} ${amount.unit} added to your pantry` : undefined,
       actionLabel: "Undo",
-      onAction: () => setData(before),
+      // Reverse exactly this tick (pantry lot, memory record, plot) on the current farm.
+      onAction: () => setData(d => undoTaskCompletion(d, key)),
     });
   }, [data, setData, snapshot, tasks]);
 
@@ -192,11 +194,17 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
   const animalLocOf = useCallback((a) => zoneOfAnimal(a, data.zones || [])?.name || animalLocName, [data.zones, animalLocName]);
 
   // ── CONSOLIDATED: compute calendar events AND by-time list in ONE pass over plots ──
+  // Today's key is read outside the memo so the projection re-runs after
+  // midnight (App re-renders on its day tick) instead of staying on yesterday.
+  const todayStr = todayLocalKey();
   const { calendarEvents, byTime } = useMemo(() => {
     const evts = {};
     const timeline = [];
-    const now = new Date(); now.setHours(0,0,0,0);
+    const now = localDateFromKey(todayStr) || new Date(); now.setHours(0,0,0,0);
     const todayKey = toLocalDateKey(now);
+    const today0 = localDayNumber(now);
+    // d calendar days from today, as a local Date — DST-safe (now + d*864e5 is not).
+    const dayAfter = (d) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + d);
     const doneToday = new Set((data.completions && data.completions[todayKey]) || []);
 
     data.garden.plots.forEach(p => {
@@ -215,7 +223,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
       const hKey = toLocalDateKey(hDate);
       if (!evts[hKey]) evts[hKey] = [];
       evts[hKey].push({type:"harvest", emoji:crop.emoji, cropName:p.crop, label:`Harvest ${p.name||p.crop}`, plotId:p.id, key:`plot-${p.id}-harvest`});
-      const dLeft = Math.ceil((hDate - now) / 864e5);
+      const dLeft = localDayNumber(hDate) - today0;
       if (dLeft >= 0 && dLeft <= 60) {
         timeline.push({daysOut: dLeft, dueDate: hDate, type:"harvest", emoji:crop.emoji, cropName:p.crop, title:`Harvest ${p.name||p.crop}`, loc, plotId:p.id, key:`plot-${p.id}-harvest`});
       }
@@ -227,7 +235,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
         const sKey = toLocalDateKey(sDate);
         if (!evts[sKey]) evts[sKey] = [];
         evts[sKey].push({type:"step", emoji:crop.emoji, cropName:p.crop, label:`${p.name||p.crop}: ${s.l}`, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
-        const sLeft = Math.ceil((sDate - now) / 864e5);
+        const sLeft = localDayNumber(sDate) - today0;
         if (sLeft >= -1 && sLeft <= 30) {
           timeline.push({daysOut: Math.max(0,sLeft), dueDate: sDate, type:"step", emoji:crop.emoji, cropName:p.crop, title:`${p.name||p.crop}: ${s.l}`, loc, plotId:p.id, stepIdx:i, key:`plot-${p.id}-step-${i}`});
         }
@@ -235,7 +243,6 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
     });
 
     // ─── Animal tasks projected forward (species-grouped + per-animal) ───
-    const today0 = Math.floor(now.getTime() / 864e5);
 
     // Hash helper (local — matches buildTaskQueue)
     const hashStr2 = (str) => {
@@ -274,7 +281,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
       }
       dailies.forEach(dt => {
         for (let d = 0; d <= 60; d++) {
-          const dueDate = new Date(now.getTime() + d * 864e5);
+          const dueDate = dayAfter(d);
           const key = toLocalDateKey(dueDate);
           const taskKey = `species-${type}-${dt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
@@ -295,7 +302,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
       periodics.forEach(pt => {
         for (let d = 0; d <= 60; d++) {
           if ((today0 + d + sHash + pt.offset) % pt.period !== 0) continue;
-          const dueDate = new Date(now.getTime() + d * 864e5);
+          const dueDate = dayAfter(d);
           const key = toLocalDateKey(dueDate);
           const taskKey = `species-${type}-${pt.keySuffix}`;
           if (!evts[key]) evts[key] = [];
@@ -316,7 +323,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
       if (a.type !== "Bee") {
         for (let d = 0; d <= 60; d++) {
           if ((today0 + d + aHash + 3) % 7 !== 0) continue;
-          const dueDate = new Date(now.getTime() + d * 864e5);
+          const dueDate = dayAfter(d);
           const key = toLocalDateKey(dueDate);
           const taskKey = `animal-${a.id}-health`;
           if (!evts[key]) evts[key] = [];
@@ -329,7 +336,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
       if (HOOFED_SPECIES.has(a.type)) {
         for (let d = 0; d <= 60; d++) {
           if ((today0 + d + aHash) % 14 !== 0) continue;
-          const dueDate = new Date(now.getTime() + d * 864e5);
+          const dueDate = dayAfter(d);
           const key = toLocalDateKey(dueDate);
           const taskKey = `animal-${a.id}-hoof`;
           if (!evts[key]) evts[key] = [];
@@ -341,7 +348,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
       // Bee hive inspections — 10d cycle, Mar–Sep only, per hive
       if (a.type === "Bee") {
         for (let d = 0; d <= 60; d++) {
-          const due = new Date(now.getTime() + d * 864e5);
+          const due = dayAfter(d);
           const m = due.getMonth() + 1;
           if (m < 3 || m > 9) continue;
           if ((today0 + d + aHash) % 10 !== 0) continue;
@@ -359,7 +366,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
       if (!t || !t.id || t.paused || (t.repeat === "once" && t.doneOn)) return;
       const zoneName = (t.zoneId && zoneById.get(t.zoneId)?.name) || "Around your space";
       for (let d = 0; d <= 60; d++) {
-        const dueDate = new Date(now.getTime() + d * 864e5);
+        const dueDate = dayAfter(d);
         const key = toLocalDateKey(dueDate);
         if (!isDueOn(t, key)) continue;
         const taskKey = `own-${t.id}`;
@@ -378,10 +385,9 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
 
     filteredTimeline.sort((a,b) => a.daysOut - b.daysOut);
     return { calendarEvents: evts, byTime: filteredTimeline };
-  }, [data, zoneById, speciesLocName, animalLocOf]);
+  }, [data, zoneById, speciesLocName, animalLocOf, todayStr]);
 
   // ─── Group today's tasks by location (Option D: location-batched with attention banner) ───
-  const todayStr = toLocalDateKey(new Date());
   const doneTodayKeys = new Set((data.completions && data.completions[todayStr]) || []);
 
   // ─── Two-bucket model ───
@@ -456,8 +462,11 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
     // Try to find a matching task-shape from any source (tasks array won't have it since filtered)
     // Parse the key to reconstruct a minimal display shape
     // keys look like: plot-{id}-{type}, animal-{id}-{type}, or species-{Type}-{type}
-    const [kind, id, ...rest] = k.split("-");
-    const typeSuffix = rest.join("-");
+    // Plot/animal ids are UUIDs (they contain dashes): parseTaskKey splits on the
+    // first and the LAST dash only (plot-<uuid>-water, plot-<uuid>-step-2).
+    const km = parseTaskKey(k);
+    if (!km) return;
+    const kind = km.kind, id = km.id, typeSuffix = km.suffix;
     if (kind === "plot") {
       const p = data.garden.plots.find(x => x.id === id);
       if (!p) return;
@@ -879,7 +888,7 @@ function TaskQueue({data, setData, setPage, tasks, forecast}) {
                         ? (data.zones.find(z => z.id === (data.garden.plots.find(p => p.id === evt.plotId)?.zone))?.name || "Farm")
                         : (data.zones.find(z => ["barn","coop","pasture"].includes(z.type))?.name || "Farm");
                       const pri = evt.type === "harvest" ? 0 : evt.type === "step" ? 1 : evt.type === "feed" || evt.type === "water" || evt.type === "eggs" ? 1 : 2;
-                      const daysOut = Math.max(0, Math.ceil((selDateObj - today) / 864e5));
+                      const daysOut = Math.max(0, localDayNumber(selDateObj) - localDayNumber(today));
                       const tAsTask = {
                         key: evt.key,
                         pri,

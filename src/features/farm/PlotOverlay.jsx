@@ -57,22 +57,28 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
     setData({...data, garden: {...data.garden, plots}});
   };
   const startNow = () => {
-    const before = data;
     const started = startGrowing(plot, todayLocalKey(), crop && crop.days);
     setData({...data, garden: {...data.garden, plots: data.garden.plots.map(p => p.id === plot.id ? started : p)}});
     const next = nextStepAfter(started, todayLocalKey());
     toast(`${plot.name || plot.crop} is in the ground 🌱`, {
       detail: next ? `Next: ${next.label.toLowerCase()} in ${next.inDays} days` : `Harvest from about ${niceDate(started.harvestDate)}`,
       actionLabel: "Undo",
-      onAction: () => setData(before),
+      onAction: () => setData(d => ({...d, garden: {...d.garden, plots: (d.garden.plots || []).map(p => p.id === plot.id ? plot : p)}})),
     });
   };
   const del = id => {
     if (!confirmDel) { setConfirmDel(true); return; }
-    const before = data;
-    const remembered = recordRemoval(data, data.garden.plots.find(p => p.id === id), todayLocalKey());
-    setData({...remembered, garden: {...data.garden, plots: data.garden.plots.filter(p => p.id !== id)}});
-    toast(`${plot.name || plot.crop} removed`, { actionLabel: "Undo", onAction: () => setData(before) });
+    const removed = data.garden.plots.find(p => p.id === id);
+    const remembered = recordRemoval(data, removed, todayLocalKey());
+    const next = {...remembered, garden: {...data.garden, plots: data.garden.plots.filter(p => p.id !== id)}};
+    // A seedling batch waiting to go into this planting loses its link (it can be planted out elsewhere).
+    const batches = data.nursery?.batches;
+    if (Array.isArray(batches) && batches.some(b => b.plotId === id)) {
+      next.nursery = {...data.nursery, batches: batches.map(b => b.plotId === id ? {...b, plotId: null, targetZoneId: null} : b)};
+    }
+    setData(next);
+    // Undo puts the planting back on the farm as it is now (its removal note in the garden memory is harmless).
+    toast(`${plot.name || plot.crop} removed`, { actionLabel: "Undo", onAction: () => setData(d => (d.garden.plots || []).some(p => p.id === id) ? d : {...d, garden: {...d.garden, plots: [...(d.garden.plots || []), removed]}}) });
     onClose();
   };
   // Same path as harvesting from tasks: stock in the pantry, and trees/perennials stay planted.
@@ -84,8 +90,10 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   const harv = (p) => {
     const def = harvDefault(p);
     const typed = Number(harvKg);
-    const qty = typed > 0 ? typed : def;
-    setData(applyTaskCompletion(data, { key: `plot-${p.id}-harvest`, type: "harvest", plotId: p.id }, qty, { estimated: !(typed > 0) || !harvEdited }));
+    // A typed 0 means the crop failed: record 0 kg rather than the estimate.
+    const zero = harvEdited && String(harvKg).trim() !== "" && Number.isFinite(typed) && typed <= 0;
+    const qty = typed > 0 ? typed : zero ? 0 : def;
+    setData(applyTaskCompletion(data, { key: `plot-${p.id}-harvest`, type: "harvest", plotId: p.id }, qty, { estimated: !zero && (!(typed > 0) || !harvEdited), allowZero: zero }));
     onClose();
   };
 
@@ -98,7 +106,7 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
   }
 
   return (
-    <Overlay title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={plot.crop} emoji={crop.emoji} size={24}/>{plot.name || plot.crop}</span>} onClose={onClose} sheet layoutId={layoutId}>
+    <Overlay ariaLabel={plot.name || plot.crop} title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={plot.crop} emoji={crop.emoji} size={24}/>{plot.name || plot.crop}</span>} onClose={onClose} sheet layoutId={layoutId}>
       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
         <Pill>{plot.status === "harvested" ? "Harvested" : growth.label}</Pill>
         <Pill>☀ {crop.sun}</Pill>
@@ -106,12 +114,12 @@ function PlotOverlay({plot, data, setData, onClose, setPage=null}) {
         {zone && <Pill c={C.blue} bg={C.waterBg}>📍 {zone.name}</Pill>}
       </div>
 
-      {(plot.plantCount || plot.qty || plot.expectedYieldKg) && (
+      {(plot.plantCount > 0 || plot.qty > 0 || plot.expectedYieldKg > 0) && (
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:14}}>
-          {plot.plantCount && <Card style={{background:C.soft,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{plot.plantCount}</div><div style={SX.t2_10}>{notStarted ? "planned" : "in the ground"}</div></Card>}
-          {plot.qty && plot.measureType === "area" && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
-          {plot.qty && plot.measureType === "plants" && !plot.plantCount && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}</div><div style={SX.t2_10}>plants</div></Card>}
-          {plot.expectedYieldKg && <Card style={{background:C.harvestBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{plot.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
+          {plot.plantCount > 0 && <Card style={{background:C.soft,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Plants</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>{plot.plantCount}</div><div style={SX.t2_10}>{notStarted ? "planned" : "in the ground"}</div></Card>}
+          {plot.qty > 0 && plot.measureType === "area" && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Area</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}m²</div><div style={SX.t2_10}>bed size</div></Card>}
+          {plot.qty > 0 && plot.measureType === "plants" && !plot.plantCount && <Card style={{background:C.waterBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Count</div><div style={{fontSize:20,fontWeight:700,color:C.blue}}>{plot.qty}</div><div style={SX.t2_10}>plants</div></Card>}
+          {plot.expectedYieldKg > 0 && <Card style={{background:C.harvestBg,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Est. Yield</div><div style={{fontSize:20,fontWeight:700,color:C.orange}}>~{plot.expectedYieldKg}kg</div><div style={SX.t2_10}>at harvest</div></Card>}
           {plot.plantCount && crop.spacing ? <Card style={{background:C.surface,padding:"10px 14px"}}><div style={SX.capHeaderT2}>Spacing</div><div style={{fontSize:20,fontWeight:700,color:C.text}}>{plot.layout?.spacingCM||crop.spacing}cm</div><div style={SX.t2_10}>{plot.layout?.pattern==='scatter'?'minimum distance':'between plants'}</div></Card> : null}
         </div>
       )}
