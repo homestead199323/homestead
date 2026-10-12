@@ -26,7 +26,7 @@ function Livestock({data, setData}) {
   const add=()=>{
     if(!Number.isInteger(+form.count)||+form.count<1)return;
     const nd={...data,livestock:{...data.livestock,animals:[...data.livestock.animals,{...form,id:uid(),count:+form.count||1}]},log:appendLog(data.log,{text:`🐄 Added ${form.count} ${form.type}${form.breed?` (${form.breed})`:""}`})};
-    if(form.cost&&+form.cost>0)nd.costs={items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:todayLocalKey(),cat:"Animals",for:`species:${form.type}`,capital:true}]};
+    if(form.cost&&+form.cost>0)nd.costs={...(data.costs||{}),items:[...(data.costs?.items||[]),{id:uid(),type:"expense",amount:+form.cost,label:`${form.type}${form.breed?` ${form.breed}`:""}`,date:todayLocalKey(),cat:"Animals",for:`species:${form.type}`,capital:true}]};
     setData(nd);setForm({name:"",type:"Chicken",breed:"",count:"1",cost:"",zone:""});setShowAdd(false);
   };
   // del moved into AnimalOverlay component — no longer needed here
@@ -34,6 +34,8 @@ function Livestock({data, setData}) {
   const doCollect=(animal, produce, qty)=>{
     const db=LDB[animal.type];if(!db)return;
     const p=db.out[produce];if(!p)return;
+    const daily = produce === "Eggs" || produce === "Milk";
+    if (!(qty > 0) && !daily) return; // LDB figures for honey/wool/meat are per year or per animal, never a day's default
     const finalQty = qty > 0 ? qty : Math.round(p.p*animal.count*10)/10;
     const kind=produce==="Eggs"?"eggs":produce==="Milk"?"milkL":produce==="Meat"?"meatKg":null;
     // Blank amount = MyTerra's default → flagged as an estimate in the garden memory.
@@ -80,7 +82,7 @@ function Livestock({data, setData}) {
         <div style={{fontSize:12,color:C.t2,marginBottom:12}}>Suggested daily: ~{LDB[showCollect.animal.type]?.out[showCollect.produce]?.p||0} {LDB[showCollect.animal.type]?.out[showCollect.produce]?.u||""} per animal</div>
         <div style={SX.btnRowEnd}>
           <Btn v="secondary" onClick={()=>setShowCollect(null)}>Cancel</Btn>
-          <Btn v="success" onClick={()=>doCollect(showCollect.animal,showCollect.produce,+collectQty||0)}>Collect → Pantry</Btn>
+          <Btn v="success" dis={!(+collectQty>0)&&showCollect.produce!=="Eggs"&&showCollect.produce!=="Milk"} onClick={()=>doCollect(showCollect.animal,showCollect.produce,+collectQty||0)}>Collect → Pantry</Btn>
         </div>
       </Overlay>}
 

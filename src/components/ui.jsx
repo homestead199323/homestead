@@ -53,7 +53,7 @@ export const Txt = React.memo(function Txt({label,...p}) {
   </div>;
 });
 
-export function Overlay({title,onClose,children,wide,sheet}) {
+export function Overlay({title,ariaLabel,onClose,children,wide,sheet}) {
   const isSheet = !!sheet;
   const dialogRef=useRef(null);
   const closeRef=useRef(onClose);
@@ -100,7 +100,7 @@ export function Overlay({title,onClose,children,wide,sheet}) {
       <div className="overlay-backdrop" style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(18,26,20,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:16,boxSizing:"border-box",overflowX:"hidden"}}>
         <div
           onClick={function(e){e.stopPropagation();}}
-          className="overlay-sheet overlay-pop" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
+          className="overlay-sheet overlay-pop" ref={dialogRef} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : (ariaLabel || "Dialog")} tabIndex={-1}
           style={{background:C.card,borderRadius:C.r+4,maxWidth:wide?720:520,width:"100%",maxHeight:"calc(100% - 32px)",overflowY:"scroll",overflowX:"hidden",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",boxSizing:"border-box",boxShadow:"0 20px 60px rgba(0,0,0,.2), 0 8px 20px rgba(0,0,0,.1)"}}>
           <div className="overlay-handle-row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0",position:"sticky",top:0,background:C.card,zIndex:1,borderRadius:`${C.r+4}px ${C.r+4}px 0 0`}}>
             <h3 style={{margin:0,fontSize:20,fontFamily:F.head,fontWeight:700}}>{title}</h3>
@@ -136,7 +136,7 @@ export function Overlay({title,onClose,children,wide,sheet}) {
           boxSizing:"border-box",
           boxShadow:"0 20px 60px rgba(0,0,0,.22), 0 8px 20px rgba(0,0,0,.1)",
         }}
-        className="overlay-sheet overlay-sheet--drag overlay-pop" ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
+        className="overlay-sheet overlay-sheet--drag overlay-pop" ref={dialogRef} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : (ariaLabel || "Dialog")} tabIndex={-1}
       >
         {/* Drag zone — ONLY this top area drags the sheet. The body below
             scrolls normally on touch (previously the whole sheet captured

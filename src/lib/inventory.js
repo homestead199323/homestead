@@ -21,7 +21,10 @@ const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toStrin
 export function normalizeUnit(unit, qty = 0, name = "") {
   const u = String(unit || "").trim().toLowerCase();
   if (["lb", "lbs"].includes(u)) return { unit: "kg", qty: r3(qty * 0.4536) };
+  if (["g", "gram", "grams"].includes(u)) return { unit: "kg", qty: r3(qty / 1000) };
+  if (["oz"].includes(u)) return { unit: "kg", qty: r3(qty * 0.02835) };
   if (["l", "litre", "litres", "liter", "liters"].includes(u)) return { unit: "L", qty };
+  if (["ml"].includes(u)) return { unit: "L", qty: r3(qty / 1000) };
   if (["count", "eggs", "egg", "unit", "units", "jar", "jars", "pc", "pcs", "piece", "pieces"].includes(u))
     return { unit: "pcs", qty };
   // Milk logged in kg before litres existed: 1 kg of milk ≈ 1 L.
@@ -106,7 +109,7 @@ export function takeStock(data, { key, qty, kind = "use", today }) {
   const q = Math.min(Number(qty) || 0, have);
   if (q <= 0) return data;
   const pantry = data.pantry;
-  const verb = kind === "waste" ? "Spoiled" : kind === "gift" ? "Gave away" : "Used";
+  const verb = kind === "waste" ? "Spoiled" : kind === "gift" ? "Gave away" : kind === "remove" ? "Removed" : "Used";
   return {
     ...data,
     pantry: {
@@ -212,9 +215,11 @@ export function migratePantry(data) {
     const norm = normalizeUnit(it.unit, Number(it.qty) || 0, it.name);
     let name = it.name;
     if (name === "Eggs" && layers.length === 1) name = `${layers[0]} Eggs`;
-    if (norm.unit === it.unit && norm.qty === it.qty && name === it.name) return it;
+    // Lots are taken out by id (takeFifo): an old lot without one must get its own.
+    const id = it.id || newId();
+    if (norm.unit === it.unit && norm.qty === it.qty && name === it.name && id === it.id) return it;
     changed = true;
-    return { ...it, name, unit: norm.unit, qty: norm.qty };
+    return { ...it, id, name, unit: norm.unit, qty: norm.qty };
   });
   return changed ? { ...data, pantry: { ...data.pantry, items: next } } : data;
 }

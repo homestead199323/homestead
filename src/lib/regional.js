@@ -9,7 +9,7 @@
 
 import { CROPS, CROP_MAP } from "../data/crops";
 import { RO, LDB_RO } from "../data/regional-overrides";
-import { VARIETIES } from "../data/varieties";
+import { VARIETIES, VAR_RO } from "../data/varieties";
 import { LIVESTOCK_CALENDAR } from "../data/livestock-calendar";
 
 export function getRegionalCrop(baseCrop, region) {
@@ -58,8 +58,16 @@ export function rCR(region) {
   return _rCacheCrops;
 }
 
-export function getRegionalVarieties(cropName) {
+// Region-specific variety lists (VAR_RO) sit on top of the Western-Europe base
+// (VARIETIES). Restored 2026-10-12: the extraction in b8e887c dropped the
+// region argument, so every region saw the UK list (and its yields).
+export function getRegionalVarieties(cropName, region) {
   if (!cropName) return [];
+  const r = region || "western_europe";
+  if (r !== "western_europe") {
+    const rov = VAR_RO[r];
+    if (rov && rov[cropName]) return rov[cropName];
+  }
   return VARIETIES[cropName] || [];
 }
 

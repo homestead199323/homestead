@@ -15,6 +15,7 @@
    ═══════════════════════════════════════════ */
 
 import { loadWeatherCache, saveWeatherCache, loadGeoCache, saveGeoCache, loadForecastCache, saveForecastCache } from "./storage";
+import { todayLocalKey } from "./utils";
 
 const GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -114,10 +115,19 @@ export function pickPlace(results, countryHint) {
   return list.find((r) => (code && r.country_code === code) || String(r.country || "").toLowerCase() === hint || String(r.admin1 || "").toLowerCase() === hint) || null;
 }
 
+// A hung request (captive portal, flaky mobile) must not leave "Getting the
+// forecast…" on screen until the hourly retry: give every call a deadline.
+const FETCH_TIMEOUT_MS = 12000;
+function fetchWithTimeout(url) {
+  const signal = typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(FETCH_TIMEOUT_MS) : undefined;
+  return signal ? fetch(url, { signal }) : fetch(url);
+}
+
 async function searchPlace(name, count) {
   const url = `${GEO_URL}?name=${encodeURIComponent(name)}&count=${count}&language=en&format=json`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
+  const res = await fetchWithTimeout(url);
+  // Server trouble is not "town not found": let it surface as unreachable, keep [] for a genuine empty result.
+  if (!res.ok) throw new Error("geocoding " + res.status);
   const json = await res.json();
   return (json && Array.isArray(json.results)) ? json.results : [];
 }
@@ -173,7 +183,7 @@ export async function fetchWeather(cityName) {
 
     const url = `${FORECAST_URL}?latitude=${geo.lat}&longitude=${geo.lng}`
       + `&current_weather=true&hourly=precipitation_probability&forecast_days=1&timezone=auto`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return { ok: false, error: "api_error" };
     const json = await res.json();
     const cw = (json && json.current_weather) || null;
@@ -245,16 +255,22 @@ export async function fetchForecast(cityName) {
     if (!geo) return { ok: false, error: "geocode_failed" };
     const url = `${FORECAST_URL}?latitude=${geo.lat}&longitude=${geo.lng}`
       + `&daily=${DAILY_VARS}&hourly=relative_humidity_2m&forecast_days=7&timezone=auto`;
-    const res = await fetch(url);
-    if (!res.ok) return hit && hit.ok ? hit : { ok: false, error: "api_error" };
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) return usable(hit) ? hit : { ok: false, error: "api_error" };
     const parsed = parseForecast(await res.json());
-    if (!parsed) return hit && hit.ok ? hit : { ok: false, error: "api_error" };
+    if (!parsed) return usable(hit) ? hit : { ok: false, error: "api_error" };
     const result = { ok: true, ...parsed, location: geo.name, fetchedAt: Date.now() };
     saveForecastCache({ [key]: result }); // one city at a time — keeps storage small
     return result;
   } catch (e) {
-    // Offline: an older forecast is still better than nothing.
-    if (hit && hit.ok) return hit;
+    // Offline: an older forecast is still better than nothing — as long as it still covers today.
+    if (usable(hit)) return hit;
     return { ok: false, error: "exception", message: String(e && e.message || e) };
   }
+}
+
+// A cached forecast whose last day is already behind us would show an empty week as "ok".
+function usable(hit) {
+  if (!hit || !hit.ok || !Array.isArray(hit.days) || !hit.days.length) return false;
+  return String(hit.days[hit.days.length - 1].date || "") >= todayLocalKey();
 }

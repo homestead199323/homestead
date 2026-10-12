@@ -111,8 +111,10 @@ export default function Pantry({ data, setData }) {
   }
 
   const sellTotal = sell ? Math.round((+sell.qty || 0) * (+sell.price || 0) * 100) / 100 : 0;
-  const sellValid = sell && +sell.qty > 0 && +sell.qty <= sell.line.qty && sell.price !== "" && +sell.price >= 0;
-  const useValid = use && +use.qty > 0 && +use.qty <= use.line.qty;
+  // Stock is kept to 3 decimals (lb/g conversions) but shown to 2: an amount within rounding of the stock is accepted (sellStock/takeStock clamp to what is there).
+  const within = (q, have) => +q > 0 && +q <= have + 0.005;
+  const sellValid = sell && within(sell.qty, sell.line.qty) && sell.price !== "" && +sell.price >= 0;
+  const useValid = use && within(use.qty, use.line.qty);
   const addValid = add && add.name.trim() && +add.qty > 0;
   const known = [...new Set([...lines.map((l) => l.name), ...cropMap.keys()])];
 
@@ -236,7 +238,7 @@ export default function Pantry({ data, setData }) {
               Quantity
               <div className="q-row q-wrap">
                 <QtyStepper value={sell.qty} unit={sell.line.unit} max={sell.line.qty} onChange={(qty) => setSell({ ...sell, qty })} />
-                <button type="button" className="q-text-button" onClick={() => setSell({ ...sell, qty: fmtQty(sell.line.qty) })}>
+                <button type="button" className="q-text-button" onClick={() => setSell({ ...sell, qty: String(sell.line.qty) })}>
                   All
                 </button>
               </div>
@@ -297,7 +299,7 @@ export default function Pantry({ data, setData }) {
               Quantity
               <div className="q-row q-wrap">
                 <QtyStepper value={use.qty} unit={use.line.unit} max={use.line.qty} onChange={(qty) => setUse({ ...use, qty })} />
-                <button type="button" className="q-text-button" onClick={() => setUse({ ...use, qty: fmtQty(use.line.qty) })}>
+                <button type="button" className="q-text-button" onClick={() => setUse({ ...use, qty: String(use.line.qty) })}>
                   All
                 </button>
               </div>

@@ -84,7 +84,13 @@ export default function AuthScreen({ initialMode, initialNotice, onPasswordUpdat
       // (supabase-js ≥2.10x may also return user: null here, so don't require
       // data.user.) Show a check-your-email notice instead of hanging on "Please wait…".
       if (isSignup && !(data && data.session)) {
-        setNotice(`Almost there: we sent a confirmation link to ${mail}. Open it on this device to start your trial (check spam too).`);
+        // An email that already has a confirmed account comes back as a user
+        // with NO identities (Supabase anti-enumeration): no link is sent, so
+        // tell them to sign in — in the same breath, so nothing is given away.
+        const existing = !!(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
+        setNotice(existing
+          ? `If ${mail} is new to MyTerra, a confirmation link is on its way (check spam too). Already have an account with this email? Use "Sign in" or "Forgot password?" instead.`
+          : `Almost there: we sent a confirmation link to ${mail}. Open it on this device to start your trial (check spam too).`);
         setBusy(false);
         return;
       }

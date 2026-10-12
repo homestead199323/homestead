@@ -53,7 +53,8 @@ export function BadgeCelebration({ queue, onDismiss }) {
 
   // Auto-dismiss + vibration on mount (per badge)
   useEffect(() => {
-    if (!badge) return;
+    // Unknown id (badge renamed between app versions): drop it, or every later badge stays hidden.
+    if (!badge) { if (currentId) onDismiss(currentId); return; }
     // Try vibration — Android only, silently fails on iOS
     try {
       if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
@@ -63,7 +64,7 @@ export function BadgeCelebration({ queue, onDismiss }) {
 
     const t = setTimeout(() => onDismiss(badge.id), 1800);
     return () => clearTimeout(t);
-  }, [badge, onDismiss, reduceMotion]);
+  }, [badge, currentId, onDismiss, reduceMotion]);
 
   if (!badge) return null;
 

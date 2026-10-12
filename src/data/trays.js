@@ -39,7 +39,8 @@ function best(range, fallback, cells, minCell = 0) {
   let fits = TRAYS.filter((t) => t.cellCM >= range[0] && t.cellCM <= range[1] && t.cellCM > minCell);
   // Nothing in range is bigger than the sowing cells: take the next sizes up.
   if (!fits.length) fits = TRAYS.filter((t) => t.cellCM > minCell).slice(-2);
-  if (!fits.length) return fallback;
+  // A pot-on request (minCell set) with nothing bigger available: potting on would shrink the cells — say so with null.
+  if (!fits.length) return minCell > 0 ? null : fallback;
   if (!cells) return fits.some((t) => t.cells === fallback) ? fallback : fits[fits.length - 1].cells;
   // Fewest trays first, then fewest empty cells, then the crop's usual tray.
   const score = (t) => [

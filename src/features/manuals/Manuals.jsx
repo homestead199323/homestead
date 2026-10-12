@@ -48,10 +48,10 @@ function Manuals({data}) {
           </div>
         ))}</div>
         {fil.length===0 && <Card style={{textAlign:"center",padding:"40px 24px",marginTop:12}}><div style={{fontSize:40,marginBottom:8}}>🔍</div><div style={SX.s15Bold}>No crops match "{s}"</div><div style={{color:C.t2,marginTop:4,fontSize:12}}>Try a different name or browse the full list</div></Card>}
-        {sel&&<Overlay title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={sel.name} emoji={sel.emoji} size={24}/>{sel.name}</span>} onClose={()=>setSel(null)} wide>
+        {sel&&<Overlay ariaLabel={sel.name} title={<span style={{display:"inline-flex",alignItems:"center",gap:8}}><FarmIcon name={sel.name} emoji={sel.emoji} size={24}/>{sel.name}</span>} onClose={()=>setSel(null)} wide>
           {sel && <div style={{background:C.tGreen2,borderRadius:C.rs,padding:10,marginBottom:12,border:`1px solid ${C.tGreenBandBd}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{fontSize:13,fontWeight:700,color:C.green}}>🌱 Crop Data</span>{sel.pH&&<Pill>pH {sel.pH}</Pill>}</div></div>}
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}><Pill c="#fff" bg={sel.color}>{sel.cat}</Pill><Pill>☀ {sel.sun}</Pill><Pill>💧 {sel.waterFreq}</Pill>{sel?.pH ? <Pill>pH {sel.pH}</Pill> : null}</div>
-          <div style={{marginBottom:16}}><div style={{fontSize:11,fontFamily:F.mono,color:C.t2,marginBottom:4}}>CALENDAR</div><div style={{display:"flex",gap:2}}>{mn.map(m=>{const iS=sel.sowIn.toLowerCase().includes(m.toLowerCase());const iH=sel.harvest.toLowerCase().includes(m.toLowerCase());return <div key={m} style={{flex:1,textAlign:"center"}}><div style={{fontSize:8,color:C.t2,fontFamily:F.mono}}>{m}</div><div style={{height:14,borderRadius:3,background:iS&&iH?`linear-gradient(135deg,${C.green} 50%,${C.orange} 50%)`:iS?C.green:iH?C.orange:C.bdr,opacity:(iS||iH)?1:.25}}/></div>})}</div><div style={{display:"flex",gap:12,marginTop:4}}><span style={{fontSize:10,color:C.green}}>■ Sow</span><span style={{fontSize:10,color:C.orange}}>■ Harvest</span></div></div>
+          <div style={{marginBottom:16}}><div style={{fontSize:11,fontFamily:F.mono,color:C.t2,marginBottom:4}}>CALENDAR</div><div style={{display:"flex",gap:2}}>{mn.map((m,mi)=>{const iS=parseSowMonths(sel.sowIn).includes(mi);const iH=parseHarvestMonths(sel.harvest).includes(mi);return <div key={m} style={{flex:1,textAlign:"center"}}><div style={{fontSize:8,color:C.t2,fontFamily:F.mono}}>{m}</div><div style={{height:14,borderRadius:3,background:iS&&iH?`linear-gradient(135deg,${C.green} 50%,${C.orange} 50%)`:iS?C.green:iH?C.orange:C.bdr,opacity:(iS||iH)?1:.25}}/></div>})}</div><div style={{display:"flex",gap:12,marginTop:4}}><span style={{fontSize:10,color:C.green}}>■ Sow</span><span style={{fontSize:10,color:C.orange}}>■ Harvest</span></div></div>
           {sel.regionNote && <Card style={{marginBottom:12,background:C.tGreenBand,border:`1.5px solid ${C.tGreenBandBd}`}}><div style={SX.lblGreen}>{curRegion ? curRegion.emoji + " " : "🌍 "}Regional Note — {curRegion ? curRegion.name : "Your Region"}</div><div style={{fontSize:12,marginTop:4,lineHeight:1.5,color:C.text}}>{sel.regionNote}</div></Card>}
           {COMP[sel.name]&&<Card style={{marginBottom:12,background:C.tGreen}}><div style={SX.lblGreen}>🌱 Companions</div><div style={{fontSize:12,marginTop:4}}>✓ {COMP[sel.name].good.join(", ")||"—"}{COMP[sel.name].bad.length>0?<span style={{color:C.red}}> · ✕ {COMP[sel.name].bad.join(", ")}</span>:""}</div></Card>}
           <Card style={{marginBottom:12,background:C.tBlue}}><div style={{fontSize:12,fontWeight:700,color:C.blue}}>💧 Water</div><div style={SX.s13mt4}>{sel.waterNote}</div></Card>
@@ -382,12 +382,14 @@ export function SeasonalCalendar({data, setPage, embedded}) {
       if (sowM.includes(month)) sow.push({...c, diff, planted, action: "sow"});
       if (harM.includes(month)) harvest.push({...c, diff, planted, action: "harvest"});
     });
-    // Maintenance: crops planted that are growing during this month
+    // Maintenance: steps that fall in the SELECTED month (its middle ± 2 weeks covers the month), not just around today.
+    const now = new Date();
+    const midMonth = new Date(now.getFullYear() + (month < now.getMonth() - 6 ? 1 : 0), month, 15);
     data.garden.plots.filter(p => p.status !== "harvested" && p.plantDate).forEach(p => {
       const crop = rCM(data.region).get(p.crop);
       if (!crop) return;
-      const ds = daysBetweenLocalKeys(p.plantDate, new Date());
-      const pendingSteps = (p.steps||[]).filter(s => !s.done && Math.abs(s.d - ds) <= 14);
+      const ds = daysBetweenLocalKeys(p.plantDate, midMonth);
+      const pendingSteps = (p.steps||[]).filter(s => !s.done && Math.abs(s.d - ds) <= 16);
       if (pendingSteps.length > 0) maintain.push({...crop, plot: p, pendingSteps, action: "maintain"});
     });
     return {sow, harvest, maintain};

@@ -55,7 +55,8 @@ export default function WeatherWeek({ data, setData, forecast, forecastState, al
 
   const days = (forecast?.days || []).filter(function (d) { return d.date >= today; }).slice(0, 7);
   if (!days.length) {
-    const failed = forecastState && forecastState.ok === false;
+    // ok:true with no days left means a stale cached forecast (nothing fresh could be fetched).
+    const failed = !!forecastState && (forecastState.ok === false || forecastState.ok === true);
     return (
       <section className="mt-wx" aria-label="Weather this week">
         <div className="q-row q-between"><h2>Next 7 days</h2><button type="button" className="q-text-button" onClick={function () { setChanging(true); }}>Change town</button></div>
