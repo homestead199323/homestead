@@ -70,24 +70,31 @@ export function noteAppliedUpdatedAt(ts) {
 }
 
 // ── PULL: fetch this user's farm row ────────────────────────────────
-// Returns { data, source, updatedAt } or null when signed out / no row.
-//   source: "cloud" (a real saved farm) | "empty" (fresh row, data === {})
+// Returns { data, source, updatedAt } or null when signed out / unconfigured.
+//   source: "cloud" (a real saved farm) | "empty" (no row yet, or data === {})
+//           | "error" (the query failed — the cloud farm may well exist, so the
+//             caller must NOT treat this like an empty row and seed/push over it)
 export async function pullFarm() {
   if (!isSupabaseConfigured) return null;
   const session = await getSession();
   if (!session) return null;
 
-  const { data: row, error } = await supabase
-    .from("farms")
-    .select("data, schema_version, updated_at")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
+  let row, error;
+  try {
+    ({ data: row, error } = await supabase
+      .from("farms")
+      .select("data, schema_version, updated_at")
+      .eq("user_id", session.user.id)
+      .maybeSingle());
+  } catch (e) {
+    error = e; // network failure (fetch rejected) — same as a query error
+  }
 
   if (error) {
-    console.warn("[sync] pullFarm failed:", error.message);
-    return null;
+    console.warn("[sync] pullFarm failed:", error.message || error);
+    return { data: null, source: "error", updatedAt: 0 };
   }
-  if (!row) return null; // signup trigger should have created a row, but be safe
+  if (!row) return { data: null, source: "empty", updatedAt: 0 }; // signup trigger should have created a row, but be safe
 
   const isEmpty =
     !row.data || (typeof row.data === "object" && Object.keys(row.data).length === 0);
@@ -97,6 +104,17 @@ export async function pullFarm() {
     source: isEmpty ? "empty" : "cloud",
     updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : 0,
   };
+}
+
+// pullFarm with a deadline. A slow network must never be mistaken for an
+// empty cloud farm: on timeout the result is { source: "timeout" } and the
+// caller decides (AuthGate: use this user's own local cache, or ask to retry).
+export function pullFarmWithTimeout(ms) {
+  let timer = null;
+  const deadline = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ data: null, source: "timeout", updatedAt: 0 }), ms);
+  });
+  return Promise.race([pullFarm(), deadline]).finally(() => { if (timer) clearTimeout(timer); });
 }
 
 // ── PUSH: upsert the farm blob (debounced, offline-aware) ───────────

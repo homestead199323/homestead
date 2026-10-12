@@ -14,7 +14,7 @@ import {
   loadFirstUse, saveFirstUse,
 } from "./lib/storage";
 import { C, F, SX } from "./lib/theme";
-import { todayLocalKey } from "./lib/utils";
+import { todayLocalKey, localDateFromKey } from "./lib/utils";
 import { buildTaskPlan } from "./lib/task-queue";
 import { fetchForecast } from "./lib/weather";
 import { syncDigests, disablePush, pushPrefs } from "./lib/push";
@@ -47,7 +47,7 @@ import InsightsScreen from "./features/progress/InsightsScreen";
 import { DEF, dataReducer } from "./app/state";
 import { isSupabaseConfigured, recoveryInUrl, authLinkError } from "./lib/db";
 import { getSession, onAuthChange, signOut, signOutLocal } from "./lib/auth";
-import { pullFarm, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt, resetSync } from "./lib/sync";
+import { pullFarmWithTimeout, pushFarm, flushPush, initSyncReconnect, pullIfRemoteNewer, noteAppliedUpdatedAt, resetSync, getSyncStatus } from "./lib/sync";
 import { SyncStatus } from "./components/SyncStatus";
 import AuthScreen from "./features/auth/AuthScreen";
 import SettingsPanel from "./features/settings/SettingsPanel";
@@ -57,7 +57,7 @@ import { fetchEntitlement, getCachedEntitlement, resetEntitlement, hasFeature, p
 import { spaceTitle } from "./lib/environment";
 import { parseBackup, farmSummary, describeSummary } from "./lib/backup";
 import { toast } from "./lib/toast";
-import { TrialBanner, UpgradeSheet, LockedAssistantFab } from "./features/payments/Paywall";
+import { TrialBanner, UpgradeSheet, LockedAssistantFab, onPaddlePurchase } from "./features/payments/Paywall";
 /* ═══════════════════════════════════════════
    ERROR BOUNDARY — graceful crash recovery
    ═══════════════════════════════════════════ */
@@ -213,7 +213,7 @@ const AccountSheet = React.memo(function AccountSheet({page, setPage, onClose, o
   );
 });
 
-function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
+function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDeleted }) {
   // Lazy initializer — loads data synchronously, no loading flash
   // Wrapped in try-catch: if storage is corrupt or migration throws, fall back to DEF
   // instead of crashing the reducer with undefined state.
@@ -276,6 +276,8 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
   // unlocked — the farms RLS is the real security boundary, and blocking a
   // paying user on a network blip is worse than letting a write bounce.
   const [ent, setEnt] = useState(() => getCachedEntitlement());
+  const entRef = useRef(ent);
+  useEffect(() => { entRef.current = ent; }, [ent]);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   useEffect(() => {
     let on = true;
@@ -286,6 +288,36 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
     };
     window.addEventListener("focus", refresh);
     return () => { on = false; window.removeEventListener("focus", refresh); };
+  }, []);
+  // Checkout completed: the plan is unlocked by the Paddle webhook a few
+  // seconds later. Close the plan sheet and re-check the entitlement until it
+  // changes (up to ~90 s), so the user isn't left on the picker, read-only,
+  // wondering whether the payment worked.
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    const unsub = onPaddlePurchase(() => {
+      setUpgradeOpen(false);
+      toast("Payment received", { detail: "Activating your plan…" });
+      const before = entRef.current;
+      let tries = 0;
+      const poll = () => {
+        if (cancelled) return;
+        fetchEntitlement().then((e) => {
+          if (cancelled) return;
+          setEnt(e);
+          // A purchase always lands on a paid plan: trial → basic/pro/lifetime, or an
+          // ended subscription back to active. Anything else is the webhook not there yet.
+          const paid = e.canWrite && e.plan !== "trial" && e.plan !== "none";
+          const changed = e.plan !== before.plan || e.state !== before.state;
+          if (paid && changed) { toast("You're on " + (planLabel(e) || "your new plan"), { detail: "Thanks for supporting MyTerra 🌱" }); return; }
+          if (++tries < 30) timer = setTimeout(poll, 3000);
+          else toast("Still activating", { detail: "Your payment went through; the plan unlocks within a few minutes. Reload if it hasn't." });
+        }).catch(() => { if (!cancelled && ++tries < 30) timer = setTimeout(poll, 3000); });
+      };
+      timer = setTimeout(poll, 2500);
+    });
+    return () => { cancelled = true; if (timer) clearTimeout(timer); unsub(); };
   }, []);
   const locked = ent.state !== "unknown" && !ent.canWrite;
   const aiAllowed = ent.state === "unknown" || hasFeature(ent, "ai");
@@ -359,12 +391,14 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
     };
   }, []);
 
-  // One-time initial cloud push on mount. Ensures the cloud row reflects the
-  // seeded local state right away (covers the fresh-signup case where cloud
-  // was empty and we seeded from local/DEF, and the offline-edit-then-login
-  // case where local is authoritative). Ongoing changes push via setData.
+  // One-time initial cloud push on mount — ONLY when AuthGate saw an empty
+  // cloud row (fresh signup, or a farm built offline before the first push).
+  // When the farm came from the cloud there is nothing to push, and when the
+  // cloud could not be reached (timeout / error) pushing would overwrite the
+  // real farm with this device's cache or a blank DEF. Ongoing changes push
+  // via setData as usual.
   useEffect(() => {
-    if (data && !lockedRef.current) pushFarm(data);
+    if (seedCloud && data && !lockedRef.current) pushFarm(data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -383,19 +417,29 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
     try { savePage(p); } catch(e) {}
   }, []);
 
+  // Latest committed farm, for functional updates (see setData).
+  const dataRef = useRef(data);
+  useEffect(() => { dataRef.current = data; }, [data]);
+
   // Save wrapper — backward-compatible setData that dispatches + debounced save
-  // Also runs gamification updates (streak, badges) on every data change
+  // Also runs gamification updates (streak, badges) on every data change.
+  // Accepts a whole farm object, or an updater `(latest) => next` for changes
+  // that must build on the CURRENT farm (toast "Undo" after other edits, a
+  // cloud pull landing in between) rather than on a snapshot taken earlier.
   const setData = useCallback((nd) => {
     // Phase 8.2 — read-only after trial/subscription expiry. The farms RLS
     // rejects the upsert anyway; blocking here keeps local state consistent
     // with the cloud and turns a dead click into an upgrade prompt.
     if (lockedRef.current) { setUpgradeOpen(true); return; }
-    const withGamify = updateGamify(nd);
+    const resolved = typeof nd === "function" ? nd(dataRef.current) : nd;
+    if (!resolved || typeof resolved !== "object") return;
+    const withGamify = updateGamify(resolved);
     // Phase 8.4 — extract transient _pendingCelebrations before persisting
     const { _pendingCelebrations, ...persistable } = withGamify;
     if (Array.isArray(_pendingCelebrations) && _pendingCelebrations.length > 0) {
       setBadgeQueue(q => [...q, ..._pendingCelebrations]);
     }
+    dataRef.current = persistable; // keep functional updates in the same tick consistent
     dispatchData({type:'SET_ALL', data: persistable});
     saveFarm(persistable);
     pushFarm(persistable); // cloud backup (debounced, offline-aware, no-op when signed out)
@@ -478,7 +522,18 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
     const id = setInterval(load, 60 * 60 * 1000);
     return () => { active = false; clearInterval(id); };
   }, [city]);
-  const plan = useMemo(() => data ? buildTaskPlan(data, { forecast }) : { tasks: [], alerts: [] }, [data, forecast]);
+  // Day tick: a PWA left open overnight must move on to the new day. Every
+  // screen reads todayLocalKey() per render, so one state change here is
+  // enough to refresh the plan, the calendar projection and the 3D map.
+  const [dayKey, setDayKey] = useState(todayLocalKey);
+  useEffect(() => {
+    const check = () => { const k = todayLocalKey(); setDayKey((prev) => (prev === k ? prev : k)); };
+    const id = setInterval(check, 60 * 1000);
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", check); window.removeEventListener("focus", check); };
+  }, []);
+  const plan = useMemo(() => data ? buildTaskPlan(data, { forecast, now: localDateFromKey(dayKey) }) : { tasks: [], alerts: [] }, [data, forecast, dayKey]);
   const tasks = plan.tasks;
   // Reminders on for this device → keep the next 7 mornings' digests current (lib/push.js).
   const pushOn = usePushPrefs().on;
@@ -592,16 +647,24 @@ function AppInner({ cloudData, allowLocal, onSignOut, onAccountDeleted }) {
    1. On mount, check for an existing session (getSession) and subscribe
       to auth changes (onAuthChange) so sign-in/out swaps the view live.
    2. No session  → render <AuthScreen/>.
-   3. Has session → run pullFarm() and reconcile cloud vs local BEFORE
-      mounting AppInner (Option X), with a 3s timeout fallback to local
-      so a slow/broken network never hangs the app forever.
+   3. Has session → pull the cloud farm (12 s deadline) and reconcile cloud
+      vs local BEFORE mounting AppInner. Cloud farm → use it. Confirmed
+      empty → seed from this user's own cache or DEF and push once.
+      Timeout/error → this user's own cache if there is one (no push), else
+      a "can't reach your farm" screen with Retry. A blank farm is never
+      seeded over an unreadable cloud one.
    4. AppInner mounts once with the reconciled `cloudData` seed.
 
    If Supabase isn't configured (missing env vars), skip the wall
    entirely and run local-only — the app still works offline-first.
    ═══════════════════════════════════════════ */
+// How long the first cloud pull may take before we stop waiting. Slow mobile
+// networks and a cold Supabase project both exceed 3 s regularly; a timeout
+// must never be mistaken for "this user has no farm".
+const RECONCILE_TIMEOUT_MS = 12000;
+
 function AuthGate() {
-  const [phase, setPhase] = useState("checking"); // checking | signedout | recovery | reconciling | ready
+  const [phase, setPhase] = useState("checking"); // checking | signedout | recovery | reconciling | unreachable | ready
   // Opened from a password-reset email: hold the recovery session on the
   // "choose a new password" screen instead of walking straight into the app.
   const recoveryRef = useRef(recoveryInUrl);
@@ -613,6 +676,11 @@ function AuthGate() {
   // it ignores local and starts from DEF. Set per-account by reconcileAndReady
   // so a fresh user on a shared browser never inherits a prior user's farm.
   const [allowLocal, setAllowLocal] = useState(false);
+  // True only when the cloud row was confirmed EMPTY: AppInner then pushes
+  // its seed (local cache or DEF) once on mount. Never true after a timeout
+  // or error, so a blank farm can't overwrite a real one (data-loss fix,
+  // 2026-10-12).
+  const [seedCloud, setSeedCloud] = useState(false);
   // bump remounts AppInner cleanly on each fresh sign-in so its reducer
   // re-seeds from the new user's reconciled data.
   const [sessionKey, setSessionKey] = useState(0);
@@ -639,32 +707,27 @@ function AuthGate() {
   // cached farm.
   const reconcileAndReady = useCallback(async () => {
     setPhase("reconciling");
-    let settled = false;
-    // 3s timeout fallback — mount from local ONLY if it belongs to this user.
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        // We don't have the user id resolved here (pull timed out), so the
-        // safest fallback is to honour the existing owner stamp: AppInner's
-        // initData reads local only when allowLocal is true. On timeout we
-        // can't verify ownership, so disallow local to avoid cross-account
-        // leakage; AppInner seeds DEF and the user's next pull/edit syncs.
-        setCloudData(null);
-        setAllowLocal(false);
-        setSessionKey(k => k + 1);
-        setPhase("ready");
-      }
-    }, 3000);
 
+    // Decide what to seed from, then mount. The cloud is the source of truth;
+    // this device's cache is only ever used when it belongs to THIS user.
+    const mount = (cloud, local, seed) => {
+      setCloudData(cloud);
+      setAllowLocal(local);
+      setSeedCloud(seed);
+      setSessionKey(k => k + 1);
+      setPhase("ready");
+    };
+
+    let localBelongsToUser = false;
     try {
       const session = await getSession();
       const userId = session && session.user ? session.user.id : null;
+      if (!userId) { setPhase("signedout"); return; }
 
       // Owner check BEFORE deciding what to seed.
-      let localBelongsToUser = false;
       try {
         const owner = loadFarmOwner();
-        localBelongsToUser = !!userId && owner === userId;
+        localBelongsToUser = owner === userId;
       } catch (e) { localBelongsToUser = false; }
 
       // If local belongs to a different (or no) user, wipe it now so a stale
@@ -673,41 +736,45 @@ function AuthGate() {
         try { clearFarm(); } catch (e) { /* ignore */ }
       }
 
-      const pulled = await pullFarm(); // { data, source, updatedAt } | null
-      if (settled) return; // timeout already won
-      settled = true;
-      clearTimeout(timer);
+      // { data, source: cloud|empty|error|timeout, updatedAt } | null (signed out)
+      const pulled = await pullFarmWithTimeout(RECONCILE_TIMEOUT_MS);
+      if (!pulled) { setPhase("signedout"); return; }
 
-      // Stamp the cache as belonging to this user from here on.
-      if (userId) { try { saveFarmOwner(userId); } catch (e) { /* ignore */ } }
-
-      // Tell sync which cloud revision we now hold, so a later focus-pull
-      // only hydrates when ANOTHER device has written something newer.
-      noteAppliedUpdatedAt(pulled ? (pulled.updatedAt || 0) : 0);
-
-      if (pulled && pulled.source === "cloud" && pulled.data) {
-        // Cloud has a real saved farm — it's the source of truth. Use it.
-        setCloudData(pulled.data);
-        setAllowLocal(false);
-      } else {
-        // Cloud empty (fresh signup, or row exists but data === {}).
-        // Seed from local ONLY if that local farm belongs to THIS user
-        // (e.g. they built offline before their first successful push).
-        // Otherwise start clean from DEF.
-        setCloudData(null);
-        setAllowLocal(localBelongsToUser);
+      if (pulled.source === "cloud" && pulled.data) {
+        // Cloud has a real saved farm — use it. Nothing to push back.
+        try { saveFarmOwner(userId); } catch (e) { /* ignore */ }
+        noteAppliedUpdatedAt(pulled.updatedAt || 0);
+        mount(pulled.data, false, false);
+        return;
       }
-      setSessionKey(k => k + 1);
-      setPhase("ready");
+      if (pulled.source === "empty") {
+        // Confirmed empty (fresh signup, or row exists but data === {}).
+        // Seed from local ONLY if that local farm belongs to THIS user
+        // (e.g. they built offline before their first successful push),
+        // otherwise start clean from DEF — and push that seed up once.
+        try { saveFarmOwner(userId); } catch (e) { /* ignore */ }
+        noteAppliedUpdatedAt(pulled.updatedAt || 0);
+        mount(null, localBelongsToUser, true);
+        return;
+      }
+
+      // Timeout or query error: the cloud farm may exist, we just can't see
+      // it. NEVER seed DEF here (that showed the onboarding wizard and — via
+      // the mount push — overwrote the real farm with a blank one). Open this
+      // user's own offline cache if there is one; the next focus-pull picks
+      // up the cloud copy, and any edit pushes as usual. Otherwise ask to retry.
+      console.warn("[auth] cloud pull " + pulled.source + " — not seeding a blank farm");
+      noteAppliedUpdatedAt(0);
+      if (localBelongsToUser && loadFarm()) {
+        mount(null, true, false);
+      } else {
+        setPhase("unreachable");
+      }
     } catch (e) {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      console.warn("[auth] reconcile failed, starting clean:", e);
-      setCloudData(null);
-      setAllowLocal(false);
-      setSessionKey(k => k + 1);
-      setPhase("ready");
+      console.warn("[auth] reconcile failed:", e);
+      noteAppliedUpdatedAt(0);
+      if (localBelongsToUser && loadFarm()) mount(null, true, false);
+      else setPhase("unreachable");
     }
   }, []);
 
@@ -781,9 +848,32 @@ function AuthGate() {
     try {
       flushFarm();
       await flushPush(); // push any pending change before dropping the session
+      // Unsynced edits (offline, or the push just failed) would be lost with
+      // the local cache below — say so and let the user keep them.
+      const status = getSyncStatus();
+      if (status === "offline" || status === "error" || status === "syncing") {
+        const ok = window.confirm(
+          "Your latest changes haven't reached the cloud yet" +
+          (status === "offline" ? " (you're offline)." : ".") +
+          " Sign out anyway? Changes that aren't backed up will be lost."
+        );
+        if (!ok) return;
+      }
       // This device stops getting this account's reminders once it signs out.
       if (pushPrefs().on) await disablePush().catch(() => {});
-      await signOut();
+      // supabase-js reports a failed sign-out (no network) as { error } and
+      // KEEPS the session — wiping the cache in that state would leave the
+      // only copy of the farm in memory. Fall back to a local sign-out when
+      // offline (the user just confirmed above); otherwise stop and say so.
+      const { error } = await signOut();
+      if (error) {
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          await signOutLocal();
+        } else {
+          toast("Couldn't sign out", { detail: "Check your connection and try again." });
+          return;
+        }
+      }
       // Wipe the local farm cache + owner stamp so the next account that
       // signs in on this browser starts clean instead of inheriting this
       // user's farm. (Cloud copy is already saved by the flush above.)
@@ -794,8 +884,20 @@ function AuthGate() {
       resetEntitlement(); // Phase 8.2 — same hygiene as resetSync (see entitlements.js)
     } catch (e) {
       console.warn("[auth] sign-out error:", e);
+      toast("Couldn't sign out", { detail: "Check your connection and try again." });
     }
     // onAuthChange SIGNED_OUT will flip phase to "signedout".
+  }, []);
+
+  // "Can't reach your farm" screen: leave this device without touching any
+  // farm data (there is nothing of this user's here to keep).
+  const handleUnreachableSignOut = useCallback(async () => {
+    const { error } = await signOut().catch((e) => ({ error: e }));
+    if (error) { try { await signOutLocal(); } catch (e) { /* ignore */ } }
+    resetSync();
+    resetEntitlement();
+    reconciledFor.current = null;
+    setPhase("signedout");
   }, []);
 
   // Settings → Delete account succeeded: the cloud rows and the login are
@@ -805,6 +907,10 @@ function AuthGate() {
     resetSync();
     try { clearFarm(); } catch (e) { /* ignore */ }
     resetEntitlement();
+    // The server rows are gone (cascade); drop this device's browser
+    // subscription + "reminders on" flag too, or the next account here shows
+    // reminders as on with no server row behind them.
+    if (pushPrefs().on) { try { await disablePush(); } catch (e) { /* ignore */ } }
     reconciledFor.current = null;
     setCloudData(null);
     setAuthNotice("Your account and your farm have been deleted. Thanks for growing with MyTerra.");
@@ -823,6 +929,30 @@ function AuthGate() {
     );
   }
 
+  if (phase === "unreachable") {
+    return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.bg,fontFamily:F.body,padding:24}}>
+        <div role="alert" style={{background:C.card,borderRadius:C.r,padding:28,maxWidth:420,boxShadow:C.shL,textAlign:"center"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:8,color:C.green,fontFamily:F.head,fontSize:22,fontWeight:800,marginBottom:12}}>
+            <Leaf size={22} strokeWidth={2}/> MyTerra
+          </div>
+          <h2 style={{fontFamily:F.head,fontSize:19,margin:"0 0 8px"}}>Can't reach your farm right now</h2>
+          <p style={{color:C.t2,fontSize:14,margin:"0 0 18px",lineHeight:1.5}}>
+            Your farm is saved in the cloud, but this device can't connect to it at the moment. Check your connection and try again — nothing has been changed.
+          </p>
+          <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+            <button type="button" onClick={() => { reconcileAndReady(); }} style={{padding:"10px 20px",borderRadius:10,border:"none",background:C.green,color:"#fff",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:F.body}}>
+              Try again
+            </button>
+            <button type="button" onClick={handleUnreachableSignOut} style={{padding:"10px 20px",borderRadius:10,border:`1.5px solid ${C.bdr}`,background:C.card,color:C.text,cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:F.body}}>
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "recovery") {
     return <AuthScreen initialMode="reset" onPasswordUpdated={finishRecovery}/>;
   }
@@ -832,7 +962,7 @@ function AuthGate() {
   }
 
   // ready
-  return <AppInner key={sessionKey} cloudData={cloudData} allowLocal={allowLocal} onSignOut={isSupabaseConfigured ? handleSignOut : null} onAccountDeleted={isSupabaseConfigured ? handleAccountDeleted : null}/>;
+  return <AppInner key={sessionKey} cloudData={cloudData} allowLocal={allowLocal} seedCloud={seedCloud} onSignOut={isSupabaseConfigured ? handleSignOut : null} onAccountDeleted={isSupabaseConfigured ? handleAccountDeleted : null}/>;
 }
 
 export default function App() {

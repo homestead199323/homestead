@@ -69,6 +69,10 @@ Deno.serve(async (req: Request) => {
   const eventType: string = event.event_type;
   const data = event.data ?? {};
   const userId: string | undefined = data.custom_data?.user_id;
+  // Paddle does not guarantee delivery order. Each profile remembers the
+  // occurred_at of the last event applied; an older event (or a duplicate
+  // delivery) is skipped so a late "updated" can't undo a "canceled".
+  const occurredAt: string | null = typeof event.occurred_at === "string" ? event.occurred_at : null;
 
   if (!userId) {
     console.log("skip: no custom_data.user_id", eventType);
@@ -78,12 +82,29 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  async function applyProfile(update: Record<string, unknown>): Promise<boolean> {
+    let q = supabase.from("profiles").update({ ...update, paddle_event_at: occurredAt }).eq("id", userId);
+    if (occurredAt) q = q.or(`paddle_event_at.is.null,paddle_event_at.lt.${occurredAt}`);
+    const { data: rows, error } = await q.select("id");
+    if (error) throw error;
+    if (!rows || rows.length === 0) {
+      console.log("skip: stale event or unknown user", eventType, userId, occurredAt);
+      return false;
+    }
+    return true;
+  }
+
   try {
-    if (eventType === "subscription.created" || eventType === "subscription.updated") {
+    if (eventType.startsWith("subscription.")) {
+      // created / activated / updated / trialing / past_due / paused / resumed /
+      // canceled / imported — every one carries the full subscription entity,
+      // so the row always mirrors Paddle's current status.
       const priceId = data.items?.[0]?.price?.id;
-      const tier = PRICE_TIER[priceId] ?? null;
-      const status = data.status;
+      const tier = PRICE_TIER[priceId as keyof typeof PRICE_TIER] ?? null;
+      const status = typeof data.status === "string" ? data.status : null;
       const periodEnd = data.current_billing_period?.ends_at ?? null;
+
+      const { data: existing } = await supabase.from("profiles").select("tier, paddle_subscription_id, subscription_status").eq("id", userId).maybeSingle();
 
       const update: Record<string, unknown> = {
         paddle_customer_id: data.customer_id ?? null,
@@ -91,30 +112,28 @@ Deno.serve(async (req: Request) => {
         subscription_status: status,
         current_period_end: periodEnd,
       };
-      if (tier) update.tier = tier;
+      // A Lifetime account keeps its tier whatever happens to an old subscription.
+      if (tier && tier !== "lifetime" && existing?.tier !== "lifetime") update.tier = tier;
 
-      const { error } = await supabase.from("profiles").update(update).eq("id", userId);
-      if (error) throw error;
-    } else if (eventType === "subscription.canceled") {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ subscription_status: "canceled" })
-        .eq("id", userId);
-      if (error) throw error;
+      if (eventType === "subscription.created") {
+        // Two live subscriptions for one account means double billing — the app
+        // blocks a second checkout, so log loudly if it ever happens anyway.
+        if (existing?.paddle_subscription_id && existing.paddle_subscription_id !== data.id &&
+            ["active", "trialing", "past_due", "paused"].includes(existing.subscription_status ?? "")) {
+          console.error("WARNING second subscription for user", userId, "old:", existing.paddle_subscription_id, "new:", data.id);
+        }
+      }
+      await applyProfile(update);
     } else if (eventType === "transaction.completed") {
       const priceId = data.items?.[0]?.price?.id;
-      const tier = PRICE_TIER[priceId];
+      const tier = PRICE_TIER[priceId as keyof typeof PRICE_TIER];
       if (tier === "lifetime") {
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            tier: "lifetime",
-            paddle_customer_id: data.customer_id ?? null,
-            subscription_status: null,
-            current_period_end: null,
-          })
-          .eq("id", userId);
-        if (error) throw error;
+        await applyProfile({
+          tier: "lifetime",
+          paddle_customer_id: data.customer_id ?? null,
+          subscription_status: null,
+          current_period_end: null,
+        });
       }
     } else {
       console.log("unhandled event type", eventType);

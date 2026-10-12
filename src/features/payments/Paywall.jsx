@@ -21,6 +21,8 @@ import { createPortal } from "react-dom";
 import { Lock, MessageCircle, Sparkles, X } from "lucide-react";
 import { C, F } from "../../lib/theme";
 import { supabase } from "../../lib/db";
+import { toast } from "../../lib/toast";
+import { SUPPORT_EMAIL } from "../../lib/auth-messages";
 
 // Phase 8.5: Paddle checkout is live.
 export const PADDLE_ENABLED = true;
@@ -39,43 +41,78 @@ const PRICE_IDS = {
   lifetime: "pri_01kxdcrgmy4jnxycc4h9fa2jsp",
 };
 
-let paddleLoadPromise = null;
+// Who to tell when a checkout completes (App refreshes the entitlement —
+// the webhook that unlocks the plan lands a few seconds after the payment).
+const purchaseListeners = new Set();
+// eslint-disable-next-line react-refresh/only-export-components -- plain helper next to the sheet that uses it
+export function onPaddlePurchase(fn) {
+  purchaseListeners.add(fn);
+  return () => { purchaseListeners.delete(fn); };
+}
+function notifyPurchase(ev) {
+  purchaseListeners.forEach((fn) => { try { fn(ev); } catch (e) { /* one listener must not break the rest */ } });
+}
+
+const PADDLE_SRC = "https://cdn.paddle.com/paddle/v2/paddle.js";
+let paddleLoadPromise = null; // resolved once paddle.js is loaded AND initialised
+function loadScript() {
+  if (window.Paddle) return Promise.resolve(window.Paddle);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = PADDLE_SRC;
+    script.onload = function () { resolve(window.Paddle); };
+    script.onerror = function () { reject(new Error("paddle.js failed to load")); };
+    document.head.appendChild(script);
+  });
+}
 function loadPaddle() {
   if (typeof window === "undefined") return Promise.resolve(null);
-  if (window.Paddle) return Promise.resolve(window.Paddle);
   if (paddleLoadPromise) return paddleLoadPromise;
-  paddleLoadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
-    script.onload = function () {
-      try {
-        window.Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN });
-        resolve(window.Paddle);
-      } catch (e) { reject(e); }
-    };
-    script.onerror = reject;
-    document.head.appendChild(script);
+  paddleLoadPromise = loadScript().then((Paddle) => {
+    if (!Paddle) throw new Error("paddle.js did not define window.Paddle");
+    Paddle.Initialize({
+      token: PADDLE_CLIENT_TOKEN,
+      eventCallback: function (ev) {
+        if (ev && ev.name === "checkout.completed") notifyPurchase(ev);
+      },
+    });
+    return Paddle;
+  }).catch((e) => {
+    // Don't cache a failure (a content blocker, a flaky network): the next
+    // click loads the script again instead of failing instantly forever.
+    paddleLoadPromise = null;
+    if (typeof document !== "undefined" && !window.Paddle) {
+      document.querySelectorAll(`script[src="${PADDLE_SRC}"]`).forEach((el) => el.remove());
+    }
+    throw e;
   });
   return paddleLoadPromise;
 }
 
 // custom_data.user_id is how the webhook attributes the Paddle event
 // back to a profiles row — see paddle-webhook/index.ts.
+// Resolves true when the Paddle overlay opened; says why (toast) when it did not.
 // eslint-disable-next-line react-refresh/only-export-components -- checkout fn lives with the sheet that calls it; dev-only Fast Refresh nit
 export async function openPaddleCheckout(planId) {
   try {
     const Paddle = await loadPaddle();
-    if (!Paddle) return;
+    if (!Paddle) return false;
     const { data } = await supabase.auth.getUser();
     const user = data && data.user;
-    if (!user) return;
+    if (!user) {
+      toast("Couldn't open checkout", { detail: "Sign in again, then choose a plan." });
+      return false;
+    }
     Paddle.Checkout.open({
       items: [{ priceId: PRICE_IDS[planId], quantity: 1 }],
       customer: user.email ? { email: user.email } : undefined,
       customData: { user_id: user.id },
     });
+    return true;
   } catch (e) {
     console.error("Paddle checkout failed to open", e);
+    toast("Couldn't open checkout", { detail: "Check your connection, or turn off a content blocker for this site, and try again." });
+    return false;
   }
 }
 
@@ -141,6 +178,7 @@ export function TrialBanner({ ent, onUpgrade }) {
 
 /* ── UpgradeSheet ──────────────────────────────────────────────────── */
 export function UpgradeSheet({ open, onClose, ent }) {
+  const [opening, setOpening] = useState(null); // plan id while the overlay loads
   // Escape closes — matches the app's other overlays.
   useEffect(() => {
     if (!open) return;
@@ -152,6 +190,19 @@ export function UpgradeSheet({ open, onClose, ent }) {
   if (!open) return null;
 
   const locked = ent ? !ent.canWrite : false;
+  // A subscription that is still billing (active, or in Paddle's retry
+  // window) must not start a second checkout: Paddle would create a second
+  // subscription and the first would keep charging. Plan changes go through
+  // support until a customer portal exists.
+  const subscribed = !!ent && (ent.plan === "basic" || ent.plan === "pro") && (ent.state === "active" || ent.state === "past_due");
+  const currentPlan = subscribed ? ent.plan : null;
+  const mailChange = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Change my MyTerra plan")}`;
+
+  async function choose(planId) {
+    if (opening) return;
+    setOpening(planId);
+    try { await openPaddleCheckout(planId); } finally { setOpening(null); }
+  }
 
   return createPortal(
     <div onClick={onClose} style={{
@@ -177,7 +228,11 @@ export function UpgradeSheet({ open, onClose, ent }) {
           {locked ? "Keep farming" : "Upgrade your farm"}
         </div>
         <p style={{ fontSize: 13, color: C.t2, margin: "0 0 16px", lineHeight: 1.5 }}>
-          {locked
+          {subscribed
+            ? (ent.state === "past_due"
+              ? `You're on ${currentPlan === "pro" ? "Pro" : "Basic"}. Paddle emailed you a link to update your card; access continues while the payment is retried.`
+              : `You're on ${currentPlan === "pro" ? "Pro" : "Basic"}. To switch plans or cancel, email us and we'll change it without charging you twice.`)
+            : locked
             ? "Your farm and all its data are saved. Pick a plan to unlock editing again."
             : "Pick the plan that fits how you farm. Nothing is charged until you choose one. Cancel any time, and your first payment has a 14-day money-back guarantee."}
         </p>
@@ -207,19 +262,28 @@ export function UpgradeSheet({ open, onClose, ent }) {
                   <span style={{ fontSize: 11.5, color: C.t2 }}>{plan.per}</span>
                 </div>
                 <p style={{ fontSize: 12, color: C.t2, margin: "6px 0 10px", lineHeight: 1.5 }}>{plan.blurb}</p>
+                {subscribed ? (
+                  plan.id === currentPlan
+                    ? <div style={{ fontSize: 12.5, fontWeight: 700, color: C.green, padding: "8px 0" }}>✓ Your current plan</div>
+                    : <a href={mailChange} style={{ display: "block", textAlign: "center", borderRadius: 10, padding: "9px 0", fontSize: 13, fontWeight: 700, fontFamily: F.body, background: C.soft, color: C.text, textDecoration: "none" }}>
+                        Switch to {plan.name} — email us
+                      </a>
+                ) : (
                 <button
-                  disabled={!PADDLE_ENABLED}
-                  onClick={function(){ openPaddleCheckout(plan.id); }}
+                  disabled={!PADDLE_ENABLED || !!opening}
+                  onClick={function(){ choose(plan.id); }}
                   style={{
                     width: "100%", border: "none", borderRadius: 10,
                     padding: "9px 0", fontSize: 13, fontWeight: 700, fontFamily: F.body,
                     background: PADDLE_ENABLED ? C.green : C.soft,
                     color: PADDLE_ENABLED ? "#fff" : C.t2,
-                    cursor: PADDLE_ENABLED ? "pointer" : "not-allowed",
+                    cursor: PADDLE_ENABLED && !opening ? "pointer" : "not-allowed",
+                    opacity: opening && opening !== plan.id ? .6 : 1,
                   }}
                 >
-                  {PADDLE_ENABLED ? `Choose ${plan.name}` : "Checkout coming soon"}
+                  {!PADDLE_ENABLED ? "Checkout coming soon" : opening === plan.id ? "Opening checkout…" : `Choose ${plan.name}`}
                 </button>
+                )}
               </div>
             );
           })}
