@@ -10,7 +10,7 @@
     "postbuild": "mv dist/index.html dist/app.html && mv dist/landing.html dist/index.html && node scripts/inject-build-id.js",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node scripts/test.mjs && node --test tests/artwork.test.js"
+    "test": "TZ=Europe/London node scripts/test.mjs && node --test tests/artwork.test.js"
   },
   "dependencies": {
     "@capacitor/core": "^8.4.0",
