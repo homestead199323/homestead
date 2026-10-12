@@ -218,7 +218,7 @@ export function cropGeometry(name, stage, lod = 0) {
   if (cache.has(key)) return cache.get(key);
   const P = new Parts(); P.detail = lod === 2 ? .5 : lod === 1 ? .66 : 1; // level of detail: a big farm gets lighter plant models
   if (st === 1) sprout(P); else BUILD[fam.family](P, fam.o, st);
-  const g = P.build(); cache.set(key, g); return g;
+  const g = P.build(); g.userData.shared = true; cache.set(key, g); return g; // shared across world rebuilds
 }
 export function cropKey(name, stage, lod = 0) { const st = Math.max(1, Math.min(5, stage)); return st === 1 ? `sprout|${lod}` : `${cropFamily(name).idx}|${st}|${lod}`; }
 /* the model space is a unit footprint; scale by the plant's real spread in metres */

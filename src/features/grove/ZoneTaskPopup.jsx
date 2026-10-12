@@ -108,16 +108,21 @@ export default function ZoneTaskPopup({ zone, tasks, data, setData, onClose, onO
   const [list] = useState(tasks);
   const [done, setDone] = useState({});
   const sheet = useRef(null),
-    dataRef = useRef(data);
+    dataRef = useRef(data),
+    closeRef = useRef(onClose);
   useEffect(() => {
     dataRef.current = data;
-  }, [data]);
+    closeRef.current = onClose;
+  }, [data, onClose]);
+  // Focus the sheet once on open. onClose is a fresh function on every parent
+  // render; reading it through a ref keeps focus from being yanked off the
+  // amount field each time a task completion re-renders the map.
   useEffect(() => {
     sheet.current?.focus();
-    const key = (e) => e.key === "Escape" && onClose();
+    const key = (e) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [onClose]);
+  }, []);
   const finished = list.filter((t) => done[t.key]).length,
     total = list.length,
     clear = total > 0 && finished === total;

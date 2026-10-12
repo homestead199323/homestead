@@ -652,7 +652,7 @@ function tuftGeo() { // a clump of five soft blades, merged: grass tufts and wil
   if (tuftGeos.has("t")) return tuftGeos.get("t");
   const parts = [];
   for (let i = 0; i < 5; i++) { const a = (i / 5) * 6.28, c = new THREE.ConeGeometry(.035, .26 + (i % 2) * .08, 5); c.translate(0, .13 + (i % 2) * .04, 0); c.rotateX(.45); c.rotateY(a); c.translate(Math.sin(a) * .04, 0, Math.cos(a) * .04); parts.push(c); }
-  const g = mergeGeometries(parts, false); parts.forEach((p) => p.dispose()); tuftGeos.set("t", g); return g;
+  const g = mergeGeometries(parts, false); parts.forEach((p) => p.dispose()); g.userData.shared = true; tuftGeos.set("t", g); return g;
 }
 function buildTufts(g, ctx, M) { instances(g, tuftGeo(), M.tuft, ctx.tufts, { cast: false, receive: true }); }
 function pots(ctx, items, plantsList, off = [0, 0]) { // items: [{x, y, z}] — pot + soil + a small 3D plant, collected farm-wide
@@ -1194,8 +1194,16 @@ function bake(world, keep) {
 }
 
 /* The world's merged and per-build geometries are freed on rebuild; the shared cached primitives
-   (toy kit, crop models) are kept because the next world reuses them. */
-function disposeWorld(world) { world.traverse((m) => { if (m.isMesh && m.geometry && !m.isInstancedMesh && !m.geometry.userData.shared) m.geometry.dispose(); }); }
+   (toy kit, crop and animal models, tufts — flagged userData.shared where they are cached) are kept
+   because the next world reuses them. Instanced meshes also own per-instance GPU buffers that only
+   InstancedMesh.dispose() releases — rebuilding on every growth-preview step used to leak them. */
+function disposeWorld(world) {
+  world.traverse((m) => {
+    if (!m.isMesh) return;
+    if (m.isInstancedMesh) m.dispose();
+    if (m.geometry && !m.geometry.userData.shared) m.geometry.dispose();
+  });
+}
 
 /* ---------- map-game camera controls ----------
    One finger / left mouse: drag the ground (with inertia). Two fingers: pinch to zoom, twist to
@@ -1408,7 +1416,10 @@ export default function Grove3D(props) {
   const [full, setFull] = useState(false);
   const [ahead, setAhead] = useState(0); // growth preview: days from today
   const [timeOpen, setTimeOpen] = useState(false);
-  const todayKey = useMemo(() => addDays(todayLocalKey(), ahead), [ahead]);
+  // Read per render so the stages move on after midnight (App re-renders on
+  // its day tick); the memo only folds in the growth-preview offset.
+  const today = todayLocalKey();
+  const todayKey = useMemo(() => addDays(today, ahead), [ahead, today]);
   const [hint, setHint] = useState(() => { try { return !sessionStorage.getItem("g3-hint"); } catch { return true; } });
   const [busy, setBusy] = useState(true);
   const [coop, setCoop] = useState(null); // "touch" | "wheel" | null — short hint when a page gesture hit the inline map

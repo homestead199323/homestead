@@ -209,7 +209,7 @@ function animalGeometry(type, variant) { // one geometry per species and colour 
   const key = type + "|" + variant; if (geoCache.has(key)) return geoCache.get(key);
   const S = SPECIES[type] || SPECIES.Sheep, r = rng(variant * 17 + 3);
   const g = S.kind === KIND.bird ? bird(S, r, variant) : S.kind === KIND.hopper ? rabbit(S, r, variant) : quadruped(S, r, variant);
-  geoCache.set(key, g); return g;
+  g.userData.shared = true; geoCache.set(key, g); return g; // shared across world rebuilds
 }
 
 /* ---------- shader: pose + motion from the shared clock ---------- */

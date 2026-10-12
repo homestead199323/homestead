@@ -1,10 +1,35 @@
-// CACHE_NAME contains a build-time placeholder that is replaced with a unique
-// build ID by scripts/inject-build-id.js in the postbuild step.
-// In dev (vite serve), the literal '__BUILD_ID__' stays — that's intentional
-// and stable across reloads.
-const CACHE_NAME = 'myterra-__BUILD_ID__';
-const ASSETS = [
+// Service worker — offline shell + hashed-asset cache.
+//
+// Two caches (2026-10-12 rewrite):
+//   SHELL  'myterra-shell-<build>'  the HTML, manifest, icons and the other
+//          same-origin files that are NOT content-hashed. Replaced per build.
+//   ASSETS 'myterra-assets'         everything under /assets/ (content-hashed,
+//          immutable). Kept ACROSS builds — a deploy only downloads the chunks
+//          whose hash changed instead of all ~350 files again — and pruned on
+//          activate to the current build's list.
+// The build placeholders below are filled in by scripts/inject-build-id.js
+// (postbuild). In dev (vite serve) the literals stay — that's intentional.
+//
+// Install must not fail because one icon failed to download (addAll of 350
+// files used to abort the whole install, leaving the previous worker — or no
+// worker — in place): only the app shell + entry chunks are required, the
+// rest is best effort.
+const BUILD_ID = '__BUILD_ID__';
+const SHELL_CACHE = 'myterra-shell-' + BUILD_ID;
+const ASSET_CACHE = 'myterra-assets';
+// Required for the app to open offline: entry JS/CSS + the map chunk.
+const CRITICAL_ASSETS = [
+  /* __PRECACHE_CRITICAL__ */
+];
+// Everything else in /assets/ (icons, art) — fetched if possible, in the background.
+const OPTIONAL_ASSETS = [
   /* __PRECACHE_ASSETS__ */
+];
+// Not content-hashed (manual pages): best effort into the per-build shell cache.
+const OPTIONAL_SHELL = [
+  /* __PRECACHE_SHELL__ */
+];
+const SHELL = [
   '/',
   '/app.html',
   '/manifest.json',
@@ -13,25 +38,56 @@ const ASSETS = [
   '/icons/icon-512.png'
 ];
 
+async function cacheMissing(cache, urls) {
+  const missing = [];
+  for (const url of urls) {
+    if (!(await cache.match(url))) missing.push(url);
+  }
+  return missing;
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const shell = await caches.open(SHELL_CACHE);
+    await shell.addAll(SHELL);
+    const assets = await caches.open(ASSET_CACHE);
+    // Hashed files already present from a previous build are reused as-is.
+    const critical = await cacheMissing(assets, CRITICAL_ASSETS);
+    await assets.addAll(critical);
+    const optional = await cacheMissing(assets, OPTIONAL_ASSETS);
+    // Best effort, a few at a time; a failure here never blocks the install.
+    const queue = optional.map((url) => [assets, url]).concat(OPTIONAL_SHELL.map((url) => [shell, url]));
+    const worker = async () => {
+      while (queue.length) {
+        const [cache, url] = queue.shift();
+        try { await cache.add(url); } catch (e) { /* fetched on demand later */ }
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter((k) => k !== SHELL_CACHE && k !== ASSET_CACHE)
+      .map((k) => caches.delete(k)));
+    // Drop hashed files that no longer exist in this build.
+    const keep = new Set(CRITICAL_ASSETS.concat(OPTIONAL_ASSETS));
+    if (keep.size) {
+      const assets = await caches.open(ASSET_CACHE);
+      const cached = await assets.keys();
+      await Promise.all(cached
+        .filter((req) => !keep.has(new URL(req.url).pathname))
+        .map((req) => assets.delete(req)));
+    }
+    await self.clients.claim();
+  })());
 });
 
-// Fetch strategy (2026-06-10 fix — was cache-first for EVERYTHING, which kept
-// serving stale builds: a cached app.html referenced old hashed bundles, so
-// returning users ran outdated code until the SW itself cycled. Now:
+// Fetch strategy:
 // - Only same-origin GETs are handled; everything else passes through.
 // - HTML / navigations: NETWORK-FIRST with cache fallback. New deploys are
 //   picked up on the next load; the cache is only an offline safety net.
@@ -54,7 +110,7 @@ self.addEventListener('fetch', (event) => {
       fetch(req).then((response) => {
         if (response && response.status === 200) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          caches.open(SHELL_CACHE).then((cache) => cache.put(req, clone));
         }
         return response;
       }).catch(() =>
@@ -69,7 +125,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(req).then((cached) => cached || fetch(req).then((response) => {
         if (response && response.status === 200) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          caches.open(ASSET_CACHE).then((cache) => cache.put(req, clone));
         }
         return response;
       }))
@@ -83,7 +139,7 @@ self.addEventListener('fetch', (event) => {
       const fetchPromise = fetch(req).then((response) => {
         if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          caches.open(SHELL_CACHE).then((cache) => cache.put(req, clone));
         }
         return response;
       }).catch(() => cached);

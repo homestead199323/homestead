@@ -36,7 +36,7 @@ export function layered(mat, n) { mat.polygonOffset = true; mat.polygonOffsetFac
 /* ---------- geometry cache: dimensions are quantised to 5 mm so repeated parts share one buffer ---------- */
 const geos = new Map();
 const q = (v) => Math.round(v * 200) / 200;
-function cached(key, make) { let g = geos.get(key); if (!g) { g = make(); geos.set(key, g); } return g; }
+function cached(key, make) { let g = geos.get(key); if (!g) { g = make(); g.userData.shared = true; geos.set(key, g); } return g; } // shared: survives world rebuilds (see disposeWorld)
 export function rboxGeo(w, h, d, r, seg) {
   const mn = Math.min(w, h, d);
   const rr = Math.min(r ?? Math.min(mn * .24, .32), mn / 2 - .001), s = seg ?? (mn >= .28 ? 2 : 1);
