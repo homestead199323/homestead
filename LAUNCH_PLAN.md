@@ -418,3 +418,41 @@
   Broad Bean "food in ~5 months" in October (matched-plants shot, tour) — `describeSuggestion()` open item.
   Deploy note: Claude on the Mac has lost access to ~/Documents, so this push went from a separate clone
   in ~/myterra-push; the Documents clone needs `git pull`.
+
+- [x] **Pre-launch code audit (2026-10-12, owner request "thorough code analysis, fix all bugs";
+  commits 421b3c5, 7f4668c, 93a8d52, df5a472, cdbcc91, dc9f0a1).** Whole-repo review (shell, sync,
+  auth, payments, task engine, map, nursery, pantry/money, data, PWA, edge functions, DB policies).
+  Fixed: (1) DATA LOSS — AuthGate's 3 s reconcile timeout and any pull error seeded a blank DEF farm,
+  showed onboarding again and the mount-time push overwrote the real cloud farm; now empty / error /
+  timeout are distinguished, 12 s deadline, no push unless the cloud row was confirmed empty, own
+  offline cache or a "Can't reach your farm" retry screen otherwise. (2) Sign-out while offline/unsynced
+  wiped the local cache although supabase-js had kept the session (edits only in memory) — confirm +
+  check the sign-out result. (3) Financials crashed on an entry with a blank date; months bucketed by
+  UTC parse (1st of month a month early in US/CA). (4) DST: `daysBetweenLocalKeys` undercounted a day
+  all summer; animal stagger `dayNum` and the calendar projection repeated/skipped a day at the clock
+  change (`localDayNumber`); days-to-harvest off by one. (5) "Done today" never listed plot/animal
+  completions (keys split on "-" but ids are UUIDs). (6) Harvest fallback used kg PER PLANT as the whole
+  bed; 0 kg harvests kept. (7) Undo: step ticks now reversible; every Undo reverses its own change on the
+  current farm (functional setData) instead of restoring a stale snapshot. (8) Nursery: deleting a bed
+  planting unlinks its batch; bed-prep follows the real plant-out day. (9) Payments: checkout.completed
+  closes the sheet and polls the entitlement; active/past-due subscribers can't open a second checkout
+  (double billing); checkout failures surface; Permissions-Policy lets Paddle use Apple/Google Pay;
+  webhook handles every subscription.* event, keeps Lifetime, skips out-of-order deliveries via
+  `profiles.paddle_event_at` (migration applied, function v4 deployed). (10) Regional variety lists
+  (`VAR_RO`) were dead since the Phase A extraction — restored. (11) Service worker: install no longer
+  fails on one bad icon, hashed assets persist across deploys (shell cache per build + `myterra-assets`),
+  stale lazy chunk after a deploy reloads once. (12) Grove3D leaked InstancedMesh buffers on every world
+  rebuild. Plus ~25 smaller fixes (Manuals calendar strip, duplicate cities, pantry units/ids/residues,
+  honey/wool collect default, forms, weather timeouts/stale cache, aria labels, badge queue, day tick after
+  midnight) and removal of the unreachable TodayScreen/LivingFarmMap modules. Tests: +9 regression tests
+  (88 + 3), `npm test` now runs under TZ=Europe/London. Verified: ESLint clean, tests on the sandbox in
+  4 time zones and on the Mac, Vite build, Playwright on the dist build (SW install/activate, offline
+  reload, onboarding → every nav page, mobile dock, zero console errors); live deployment
+  `dpl_8PtC3JU48cefEzMJFusx1o2x79Bn` READY — bundle index-DNpdjfXu.js carries the new string markers,
+  Grove3D-DzWhP48N.js has the dispose path, sw.js lists 3 required + 253 optional assets, CSP intact,
+  Permissions-Policy updated; production /app in headless Chromium: sign-in screen, SW activated with
+  both caches, no console errors. Not verified: real-device (phone) run; Paddle checkout end to end
+  (needs a real purchase). Open: Supabase "leaked password protection" is off (dashboard toggle); plan
+  changes for live subscribers go via email until a Paddle customer-portal link exists; the Mac clone
+  holds untracked Finder duplicates (`src/assets/toy/* 2.webp`, `src/app/navigation 2.js`,
+  `src/app/state 2.js`) that bloat local builds (535 vs 253 assets) — delete them.
