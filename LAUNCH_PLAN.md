@@ -404,3 +404,17 @@
   Signed-in production screen checked in the owner's Chrome: the real farm (house, kitchen workshop,
   greenhouse, chicken-coop barn, 11 numbered beds, orchard, beehive) renders in the new style with
   job badges, no console errors on load.
+
+- [x] **Website imagery re-shot in the toy 3D style (2026-10-12, owner request; commit 0184c67).**
+  Every homepage picture and video still showed the old photoreal map. Re-captured from build 2e83498
+  (demo gardens, Open-Meteo mocked, clock fixed to 7 Oct): hero loop + posters (`hero3-*`), 15-second
+  tour 16:9 + 9:16 with posters (`tour3-*`), Balcony/Backyard/Farm maps (`d3-*`), nine phone screens
+  (`p4-*`), final CTA background (`final-bg2.webp`), OG image (`og-image-v5.jpg`); alt text, tour
+  transcript and hero chip (+3 eggs) match the new screens; 28 old landing assets + og-image-v4 removed.
+  Verified: deployment `dpl_6y4spZPMMaixsa6kXDURdQ9KhHiH` READY; www.myterra.farm and
+  myterra-sigma.vercel.app serve the new HTML; all 29 referenced assets 200 with the same byte size as
+  the repo; old names 404; Playwright on the live site at 390 and 1440 px: both videos load and the tour
+  plays in view. Not verified: real iPhone Safari playback. Still on screen (app bug, not website):
+  Broad Bean "food in ~5 months" in October (matched-plants shot, tour) — `describeSuggestion()` open item.
+  Deploy note: Claude on the Mac has lost access to ~/Documents, so this push went from a separate clone
+  in ~/myterra-push; the Documents clone needs `git pull`.
