@@ -1,5 +1,6 @@
 import './launch-fixes.test.js';
 import './weather.test.js';
+import './sky.test.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {companionsFor,relation,growthOf,validatePlantingLayout,bedLength,bedRows,animalZone,freePlantingRows} from '../src/features/quiet/farm-model.js';

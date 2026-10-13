@@ -31,3 +31,5 @@ dist-ssr
 # Playwright local artifacts (screenshots, console logs)
 output/
 .playwright-cli/
+.superpowers/
+tmp/
