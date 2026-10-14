@@ -32,5 +32,7 @@ const data = { ...fixture, farmW: 46, farmH: 26, profile: { ...fixture.profile, 
 // sky overrides for screenshots: ?hour=23&wx=rain&wind=40, or ?fixed=1 for the original fixed afternoon
 const q = new URLSearchParams(location.search);
 const skyOverride = q.has("hour") || q.has("wx") || q.has("wind") || q.has("fixed") ? { hour: q.has("hour") ? +q.get("hour") : null, wx: q.get("wx") || undefined, windKmh: q.has("wind") ? +q.get("wind") : undefined, fixed: q.get("fixed") === "1" } : null;
+// phone branches for Playwright: ?coarse=1 forces the coarse-pointer tier, ?full=1 opens full screen on mount
+window.__g3harness = { coarse: q.get('coarse') === '1', full: q.get('full') === '1' };
 export default function Preview() { const [d, setD] = useState(data); return <main style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}><GroveScene data={d} setData={setD} skyOverride={skyOverride} /></main>; }
 createRoot(document.getElementById("root")).render(<Preview />);

@@ -35,6 +35,11 @@ import { WX, buildClouds, buildPrecip, RAIN_SPAN } from "./weather-fx";
 import { ORNAMENTS, wheelbarrow, barrel, crates, birdbath, mailbox, scarecrow, tractor, ladder, fruitCrate, rake, lilyPads, reeds, jetty, silo, cloche, hoseReel, hayScatter } from "./props3d";
 
 const CAM = { az: -22, el: 54, fov: 28 };
+// Phone UX tier (preview tile, bottom bar, label density): a coarse pointer, i.e. fingers. The dev harness can
+// force it (?coarse=1) so Playwright at phone size exercises the phone branches without device emulation.
+// The render-quality tier (`mobile` in the engine) is wider: coarse pointer OR a short screen side.
+const HARNESS = import.meta.env.DEV && typeof window !== "undefined" ? window.__g3harness || null : null;
+const isCoarse = () => HARNESS?.coarse === true || (typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches);
 // growth stages (farm-model STAGES): Planned, Sown, Seedling, Growing, Maturing, Harvest window
 const STAGE_CSS = ["#c3cbc4", "#dcca92", "#a9dd8c", "#5fb24d", "#c1d44f", "#f7c552"];
 const dayNum = (key) => { const [y, m, d] = String(key || "").split("-").map(Number); return Date.UTC(y || 1970, (m || 1) - 1, d || 1) / 864e5; };
@@ -1442,11 +1447,17 @@ class FarmControls {
     else if (e.key === "Home" || e.key === "r") { this.hooks.reset?.(); e.preventDefault(); }
   }
   fit(fW, fH, margin, animate, zoom = 1) {
-    const t = new THREE.Vector3(fW / 2, 0, fH / 2), theta = CAM.az * DEG, phi = CAM.el * DEG, mx = Math.max(margin * .6, 1.7), corners = [];
+    // a portrait screen looking at a landscape farm (or the reverse) turns the camera to look straight down
+    // the farm's long axis (from the west), so the farm fills the screen's height instead of a 45 % band;
+    // the usual 22° three-quarter view would project the turned farm to a near-square box
+    const portrait = this.size.h > this.size.w, turn = portrait !== (fH > fW);
+    const t = new THREE.Vector3(fW / 2, 0, fH / 2), theta = (turn ? -90 : CAM.az) * DEG, phi = CAM.el * DEG, mx = Math.max(margin * .6, 1.7), corners = [];
     [[-mx, -mx], [fW + mx, -mx], [fW + mx, fH + mx], [-mx, fH + mx]].forEach(([x, z]) => corners.push(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, 2.5, z)));
     const saved = { target: this.target.clone(), dist: this.dist, theta: this.theta, phi: this.phi };
     this.target.copy(t); this.theta = theta; this.phi = phi; let dist = Math.max(fW, fH) * 1.6;
     for (let k = 0; k < 6; k++) { this.dist = dist; this.update(); let m = 0; corners.forEach((c) => { const v = c.clone().project(this.camera); m = Math.max(m, Math.abs(v.x), Math.abs(v.y)); }); dist *= m / .985; }
+    let y0 = 1, y1 = -1; this.dist = dist; this.update(); corners.forEach((c) => { const v = c.clone().project(this.camera); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); });
+    this.homeTurn = turn; this.homeFrac = (y1 - y0) / 2; // share of the viewport height the farm spans at the home view (harness check)
     const pad = Math.max(margin, 2);
     this.lim = { minDist: Math.max(2.5, dist * .1), maxDist: dist * 1.35, minPhi: 26 * DEG, maxPhi: 82 * DEG, x0: -pad, x1: fW + pad, z0: -pad, z1: fH + pad };
     this.home = { target: t.clone(), dist: dist * zoom, theta, phi }; this.fitDist = dist;
@@ -1460,7 +1471,8 @@ export default function Grove3D(props) {
   const { data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge, onShowCrops, weather = null, skyOverride = null } = props;
   const liveSky = data.mapStyle?.liveSky !== "off", lat = typeof data.cityGeo?.lat === "number" ? data.cityGeo.lat : null, lng = typeof data.cityGeo?.lng === "number" ? data.cityGeo.lng : null; // "Live sky" setting; the town's geocode drives the sun
   const host = useRef(null), labels = useRef(null), tipRef = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
-  const [full, setFull] = useState(false);
+  const [full, setFull] = useState(() => HARNESS?.full === true);
+  const [mobile] = useState(isCoarse); // phone tier: drives the CSS (`g3-coarse`) and the preview tile
   const [ahead, setAhead] = useState(0); // growth preview: days from today
   const [timeOpen, setTimeOpen] = useState(false);
   // Read per render so the stages move on after midnight (App re-renders on
@@ -1516,7 +1528,7 @@ export default function Grove3D(props) {
     let renderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" }); }
     catch (err) { void err; latest.current.onUnavailable?.(); return; }
-    const mobile = (typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches) || Math.min(screen.width, screen.height) < 820;
+    const coarse = isCoarse(), mobile = coarse || Math.min(screen.width, screen.height) < 820;
     const DPR = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2), LOW = Math.min(DPR, mobile ? 1.15 : 1.25);
     renderer.setPixelRatio(DPR);
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.shadowMap.autoUpdate = false; // static scene: shadows render once
@@ -1538,7 +1550,7 @@ export default function Grove3D(props) {
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     const IDLE_MS = mobile ? 1000 / 20 : 1000 / 30; // idle animation rate; gestures and camera moves render every frame
     const st = { renderer, scene, camera, sun, world: null, hits: [], plotHits: [], dims: null, fitted: false, anchors: {}, highlight: null, pickGroup: null, picked: null, calls: 0, animating: false };
-    st.reduced = reduced; st.mobile = mobile; state.current = st;
+    st.reduced = reduced; st.mobile = mobile; st.coarse = coarse; state.current = st;
     if (import.meta.env?.DEV && typeof window !== "undefined") window.__g3 = st; // dev-only inspection hook
     // the sky (sky.js) owns every light value; FIXED_SKY reproduces the map's original fixed afternoon
     st.sky = FIXED_SKY;
@@ -1590,7 +1602,7 @@ export default function Grove3D(props) {
         byId.set(n.dataset.zone, n);
         items.push({ id: n.dataset.zone, x: (f0.x + f1.x) / 2, y: (f0.y + f1.y) / 2, on: f0.on && f1.on, px: maxX - minX, w: a.w * ls, h: 20 * ls, badge: badge ? 24 * ls : 0, area: a.area, sel: a.sel, jobs: badge ? 1 : 0 });
       });
-      placeLabels(items, { W: S.W, H: S.H, far, mobile: st.mobile }).forEach(({ id, x, y, show }) => {
+      placeLabels(items, { W: S.W, H: S.H, far, mobile: st.coarse }).forEach(({ id, x, y, show }) => {
         const n = byId.get(id);
         n.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%) translateY(-2px) scale(${ls.toFixed(3)})`; n.style.display = show ? "" : "none";
       });
@@ -1770,7 +1782,7 @@ export default function Grove3D(props) {
     document.body.classList.toggle("g3-full-open", full);
     const key = (e) => { if (e.key === "Escape" && full) setFull(false); };
     window.addEventListener("keydown", key);
-    if (st) { st.size(); st.reset(true, full && host.current && host.current.clientWidth < host.current.clientHeight ? .78 : 1); }
+    if (st) { st.size(); st.reset(true); }
     return () => { window.removeEventListener("keydown", key); if (full) { document.body.style.overflow = prev === "hidden" ? "" : prev; document.body.classList.remove("g3-full-open"); } };
   }, [full]);
   useEffect(() => { if (!hint) return; const t = setTimeout(() => latest.current.dismissHint?.(), 6000); return () => clearTimeout(t); }, [hint]);
@@ -1779,7 +1791,7 @@ export default function Grove3D(props) {
     ? { position: "fixed", inset: 0, zIndex: 6500, overflow: "hidden", touchAction: "none", background: "#b4c69d" }
     : { position: "relative", width: "100%", overflow: "hidden", touchAction: "pan-y" };
   return (
-    <div className={`g3-host${full ? " full" : ""}`} ref={host} style={hostStyle}>
+    <div className={`g3-host${full ? " full" : ""}${mobile ? " g3-coarse" : ""}`} ref={host} style={hostStyle}>
       <div ref={labels} className="g3-labels" style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1 }}>
         {zones.map((z) => {
           const list = tasksByZone[z.id] || [];
