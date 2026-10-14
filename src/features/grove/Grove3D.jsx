@@ -14,6 +14,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Plus, Minus, Compass, Maximize2, Minimize2, X, Sprout } from "lucide-react";
+import { pinchIntent } from "./gestures";
 import { growthOf, animalZone, bedRows, layoutPlots, STAGES } from "../quiet/farm-model";
 import { plantingRows } from "../quiet/planting-plan";
 import { plantedRows, plantPosition } from "./aerial-layout";
@@ -1326,7 +1327,7 @@ class FarmControls {
   beginPinch() {
     const [a, b] = [...this.pointers.values()]; this.update();
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    this.pinch = { d0: Math.hypot(b.x - a.x, b.y - a.y) || 1, a0: Math.atan2(b.y - a.y, b.x - a.x), mid0: mid, dist0: this.dist, theta0: this.theta, phi0: this.phi, anchor: this.groundAt(mid.x, mid.y, new THREE.Vector3()), rotating: false, rotOff: 0, tilting: false, tiltOff: 0 };
+    this.pinch = { d0: Math.hypot(b.x - a.x, b.y - a.y) || 1, a0: Math.atan2(b.y - a.y, b.x - a.x), mid0: mid, dist0: this.dist, theta0: this.theta, phi0: this.phi, anchor: this.groundAt(mid.x, mid.y, new THREE.Vector3()), intent: null, t0: performance.now(), rotOff: 0, tiltOff: 0 };
     this.pan = null;
   }
   onMove(e) {
@@ -1349,11 +1350,11 @@ class FarmControls {
     const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ang = Math.atan2(b.y - a.y, b.x - a.x), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     this.dist = clamp((S.dist0 * S.d0) / d, this.lim.minDist, this.lim.maxDist);
     let da = ang - S.a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
-    if (!S.rotating && Math.abs(da) > 6 * DEG) { S.rotating = true; S.rotOff = da; }
-    if (S.rotating) this.theta = S.theta0 + (da - S.rotOff);
     const dyMid = mid.y - S.mid0.y;
-    if (!S.tilting && Math.abs(dyMid) > 16 && Math.abs(d - S.d0) < 40) { S.tilting = true; S.tiltOff = dyMid; }
-    if (S.tilting) this.phi = clamp(S.phi0 + (dyMid - S.tiltOff) * .0045, this.lim.minPhi, this.lim.maxPhi);
+    // the first clear movement decides the gesture and locks it: zoom (above) always applies; rotate and tilt only once chosen
+    if (!S.intent) { S.intent = pinchIntent({ d: S.d0, ang: S.a0, midY: S.mid0.y }, { d, ang, midY: mid.y }, { dt: performance.now() - S.t0 }); if (S.intent) { S.rotOff = da; S.tiltOff = dyMid; } }
+    if (S.intent === "rotate") this.theta = S.theta0 + (da - S.rotOff);
+    if (S.intent === "tilt") this.phi = clamp(S.phi0 + (dyMid - S.tiltOff) * .0045, this.lim.minPhi, this.lim.maxPhi);
     if (S.anchor) this.anchor(mid.x, mid.y, S.anchor); else { this.clampView(); this.update(); }
   }
   onUp(e) {
