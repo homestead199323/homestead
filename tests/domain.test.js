@@ -83,7 +83,7 @@ test('Modern offset rows retain exact spacing, partial final row and half-pitch 
 });
 test('New layouts reject invalid counts, overflow and overlapping beds without replacing plantings',()=>{
  const bed={...z,hM:2};const a=planPlanting(bed,[],{plantCount:14},tomato);assert.equal(a.error,'');const saved={id:'a',zone:'bed',plantCount:a.count,layout:a.layout};
- assert.match(planPlanting(bed,[saved],{plantCount:14},tomato).error,/free bed width/);
+ {const r=planPlanting(bed,[saved],{plantCount:14},tomato);assert.match(r.error,/largest free strip/);assert.equal(r.problem.kind,'space');}
  assert.match(planPlanting(bed,[saved],{plantCount:1,startM:.1},tomato).error,/overlaps/);
  assert.equal(planPlanting(bed,[saved],{plantCount:14},tomato,'a').error,'');
  for(const plantCount of [-1,0,1.5,Infinity])assert(planPlanting(bed,[],{plantCount},tomato).error);
@@ -839,4 +839,43 @@ test('Removed plantings: pre-memory harvested ones keep their history, same-week
   assert(rotationCheck(r,'bed1','Kale','2027-04-01'),'rotation still warns next year');
   const oops={id:'o',crop:'Potato',zone:'bed1',status:'planted',plantDate:'2026-09-28'};
   assert.equal(recordRemoval(fixture,oops,'2026-09-30'),fixture);
+});
+
+// Planting form clarity (2026-10-14): the planner explains what does not fit, offers one-tap fixes, and can be forced.
+const carrot=CROP_MAP.get('Carrot'),garlic=CROP_MAP.get('Garlic');
+const narrow={id:'nb',type:'veg',name:'Narrow',xM:0,yM:0,wM:4,hM:0.8,rowCount:2};
+const taken=[{id:'old',zone:'nb',crop:'Lettuce',status:'planted',plantCount:30,layout:{version:2,pattern:'rows',spacingCM:20,rowSpacingCM:20,startM:.1,alongStartM:0,rowCount:2,lengthM:4}}];
+test('Planting that cannot fit says what is free, which field to change, and can be forced',()=>{
+  const input={mode:'plants',plantCount:10,spacingCM:15,rowSpacingCM:15,pattern:'rows',axis:'horizontal',lengthM:4};
+  const plan=planPlanting(narrow,taken,input,carrot);
+  assert.ok(plan.error,'fails');assert.equal(plan.problem.kind,'space');
+  assert.ok(Math.abs(plan.problem.free.widthM-.1)<.011,'free width ≈ 0.10 m: '+plan.problem.free.widthM);
+  assert.ok(Math.abs(plan.problem.need.widthM-.15)<1e-9,'needs 0.15 m');
+  assert.ok(plan.problem.fixes.length>=1,'offers a fix');assert.equal(plan.problem.fixes[0].field,'spacingCM');
+  assert.equal(plan.problem.fixes[0].patch.spacingCM,10);assert.ok(plan.problem.canForce);
+  const forced=planPlanting(narrow,taken,{...input,force:true},carrot);
+  assert.equal(forced.error,'');assert.ok(forced.layout.forced);assert.equal(forced.count,10);assert.equal(forced.layout.startM,.1);
+});
+test('Shorten-rows fix uses the longest free strip',()=>{
+  const bed={id:'b',type:'veg',name:'Bed',xM:0,yM:0,wM:4,hM:1,rowCount:2};
+  const used=[{id:'old',zone:'b',crop:'Lettuce',status:'planted',plantCount:30,layout:{version:2,pattern:'rows',spacingCM:20,rowSpacingCM:20,startM:.1,alongStartM:0,rowCount:4,lengthM:3}}];
+  const plan=planPlanting(bed,used,{mode:'plants',plantCount:8,spacingCM:10,rowSpacingCM:10,pattern:'rows',axis:'horizontal',lengthM:4},carrot);
+  assert.equal(plan.problem.kind,'space');assert.ok(Math.abs(plan.problem.free.lengthM-1)<1e-6,'1 m free along: '+plan.problem.free.lengthM);
+  const fix=plan.problem.fixes.find(f=>f.field==='lengthM');assert.ok(fix,'shorten fix');assert.equal(fix.patch.lengthM,1);
+  assert.equal(planPlanting(bed,used,{mode:'plants',plantCount:8,spacingCM:10,rowSpacingCM:10,pattern:'rows',axis:'horizontal',...fix.patch},carrot).error,'');
+});
+test('Row length follows the plant count until the grower sets it',()=>{
+  const bed={id:'g',type:'veg',name:'Garlic bed',xM:0,yM:0,wM:10,hM:1,rowCount:2};
+  const a=plantingInput({mode:'plants',plantCount:10,spacingCM:9.5,pattern:'offset'},garlic,bed);
+  assert.equal(a.lengthM,1.2);assert.ok(a.lengthAuto);
+  assert.equal(plantingInput({mode:'plants',plantCount:200,spacingCM:9.5,pattern:'offset'},garlic,bed).lengthM,10);
+  const own=plantingInput({mode:'plants',plantCount:10,spacingCM:9.5,pattern:'offset',lengthM:5},garlic,bed);assert.equal(own.lengthM,5);assert.ok(!own.lengthAuto);
+  assert.equal(plantingInput({mode:'rows',rowCount:2,spacingCM:9.5,pattern:'offset'},garlic,bed).lengthM,undefined,'rows mode keeps the bed length');
+  const plan=planPlanting(bed,[],a,garlic);assert.equal(plan.error,'');assert.equal(plan.rows,1);assert.equal(plan.layout.lengthM,1.2);
+});
+test('Bad numbers point at their field and cannot be forced',()=>{
+  const bed={id:'b',type:'veg',name:'Bed',xM:0,yM:0,wM:4,hM:1,rowCount:2};
+  const p=planPlanting(bed,[],{mode:'plants',plantCount:0,spacingCM:10,rowSpacingCM:10,pattern:'rows',axis:'horizontal'},carrot);
+  assert.equal(p.problem.kind,'input');assert.equal(p.problem.field,'plantCount');assert.ok(!p.problem.canForce);
+  assert.equal(planPlanting(bed,[],{mode:'plants',plantCount:5,spacingCM:0,rowSpacingCM:10,pattern:'rows'},carrot).problem.field,'spacingCM');
 });

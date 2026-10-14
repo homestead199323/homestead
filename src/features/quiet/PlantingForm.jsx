@@ -90,13 +90,15 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
           potTray: form.potTray,
         })
       : null;
-  function save() {
+  const forcedPlan = plan?.problem?.canForce ? planPlanting(zone, data.garden.plots, { ...input, force: true }, crop) : null;
+  function save(force = false) {
     if (!crop || !zone) {
       setError("Choose a crop and its growing area.");
       return;
     }
-    if (plan.error) {
-      setError(plan.error);
+    const chosen = force && forcedPlan && !forcedPlan.error ? forcedPlan : plan;
+    if (chosen.error) {
+      setError(chosen.error);
       return;
     }
     if (!fromSeed && form.plantDate && form.plantDate > todayLocalKey()) {
@@ -111,12 +113,12 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
         varietyNote: variety?.note || "",
         name,
         zone: zone.id,
-        layout: plan.layout,
+        layout: chosen.layout,
         plantingPattern: input.pattern,
-        plantCount: plan.count,
-        qty: plan.count,
+        plantCount: chosen.count,
+        qty: chosen.count,
         measureType: "plants",
-        expectedYieldKg: yieldKg,
+        expectedYieldKg: force ? null : yieldKg,
         plantDate: fromSeed ? "" : form.plantDate,
         harvestDate:
           !fromSeed && form.plantDate ? addDaysToLocalKey(form.plantDate, variety?.days || crop.days) : "",
@@ -130,8 +132,8 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
       garden: { ...data.garden, plots: [...data.garden.plots, plot] },
       log: appendLog(data.log, {
         text: fromSeed
-          ? `🌱 Planned ${name} (${plan.count} plants) from seed in the nursery`
-          : `🌱 ${form.plantDate ? "Planted" : "Planned"} ${name} (${plan.count} plants)`,
+          ? `🌱 Planned ${name} (${chosen.count} plants) from seed in the nursery`
+          : `🌱 ${form.plantDate ? "Planted" : "Planned"} ${name} (${chosen.count} plants)${force ? " — placed over other plantings" : ""}`,
       }),
     };
     if (fromSeed) {
@@ -139,7 +141,7 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
         crop,
         variety: form.variety,
         zoneId: nurseryId,
-        plants: plan.count,
+        plants: chosen.count,
         plantOutDate,
         plotId: plot.id,
         targetZoneId: zone.id,
@@ -415,7 +417,12 @@ export default function PlantingForm({ data, setData, initial = {}, onClose }) {
         <Btn v="secondary" onClick={onClose}>
           Cancel
         </Btn>
-        <Btn onClick={save} dis={!crop || !zone}>
+        {forcedPlan && !forcedPlan.error && (
+          <Btn v="secondary" onClick={() => save(true)} title="Save it at the start of the bed even though it overlaps other plantings">
+            Plant anyway
+          </Btn>
+        )}
+        <Btn onClick={() => save(false)} dis={!crop || !zone}>
           Save planting
         </Btn>
       </div>

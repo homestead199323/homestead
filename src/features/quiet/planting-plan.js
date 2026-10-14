@@ -69,7 +69,7 @@ export function gridCapacity(length, spacing, pattern, row) {
   );
 }
 export function planPlanting(zone, plots, input, crop, excludeId) {
-  const fail = (error) => ({ error, count: 0, rows: 0 });
+  const fail = (error, field = null) => ({ error, count: 0, rows: 0, problem: { kind: "input", field, canForce: false, fixes: [] } });
   if (!cropFitsZone(crop, zone))
     return fail(
       zone?.type === "orchard"
@@ -85,12 +85,12 @@ export function planPlanting(zone, plots, input, crop, excludeId) {
     ),
     rowGap = rowSpacingCM / 100;
   if (!(spacing > 0) || !Number.isFinite(spacing) || !(rowGap > 0) || !Number.isFinite(rowGap))
-    return fail("Enter positive plant and row spacing.");
+    return fail("Enter positive plant and row spacing.", !(spacing > 0) || !Number.isFinite(spacing) ? "spacingCM" : "rowSpacingCM");
   const byRows = input.mode === "rows" && !random,
     value = Number(byRows ? input.rowCount : input.plantCount);
   if (!Number.isInteger(value) || value < 1)
-    return fail(`Enter a whole number of ${byRows ? "rows" : "plants"} greater than zero.`);
-  if (value > 100000 || (byRows && value > 1000)) return fail("Use a smaller planting group.");
+    return fail(`Enter a whole number of ${byRows ? "rows" : "plants"} greater than zero.`, byRows ? "rowCount" : "plantCount");
+  if (value > 100000 || (byRows && value > 1000)) return fail("Use a smaller planting group.", byRows ? "rowCount" : "plantCount");
   const yieldFactor = crowdingFactor(crop, spacingCM, random ? spacingCM : rowSpacingCM);
   if (random) {
     if (zone.type !== "orchard") return fail("Scattered planting is available in orchards.");
@@ -112,16 +112,16 @@ export function planPlanting(zone, plots, input, crop, excludeId) {
   const alongMax = vertical ? zone.hM : zone.wM,
     cross = vertical ? zone.wM : zone.hM;
   const placeRows = (length) => {
-    if (!(length > 0.2) || length > alongMax + EPS) return fail(`Row length must fit within ${alongMax} m.`);
+    if (!(length > 0.2) || length > alongMax + EPS) return fail(`Row length must be between 0.3 and ${alongMax} m (the bed's length).`, "lengthM");
     const capacities = [];
     let count = 0;
     while ((byRows ? capacities.length < value : count < value) && capacities.length < 1000) {
       const capacity = gridCapacity(length, spacing, pattern, capacities.length);
-      if (!capacity) return fail("The row is too short for this spacing and pattern.");
+      if (!capacity) return fail("The row is too short for even one plant at this spacing.", "lengthM");
       capacities.push(capacity);
       count += capacity;
     }
-    if (!byRows && count < value) return fail("This planting needs too many rows.");
+    if (!byRows && count < value) return fail("This many plants would need more than 1000 rows.", "plantCount");
     const rows = capacities.length,
       height = spacing + (rows - 1) * rowGap;
     const rectAt = (c, a) =>
@@ -131,21 +131,45 @@ export function planPlanting(zone, plots, input, crop, excludeId) {
     const taken = occupiedRects(zone, plots, excludeId);
     const fits = (c, a) =>
       c >= 0.1 - EPS && c + height <= cross - 0.1 + EPS && a >= -EPS && a + length <= alongMax + EPS;
-    const tooWide = () => ({
-      ...fail(
-        `${rows} rows need ${height.toFixed(2)} m of free bed width at this spacing. Reduce plants/rows or spacing, or expand the bed.`,
-      ),
-      rows,
-      count: byRows ? count : value,
-      tooWide: true,
-    });
+    const forcedAt = () => { // "Plant anyway": the first spot that is inside the bed, other plantings ignored
+      const c = 0.1, a = 0;
+      return height <= cross - 0.2 + EPS && length <= alongMax + EPS ? [c, a] : null;
+    };
+    const tooWide = () => {
+      const free = freeStrip(taken, vertical, cross, alongMax, height);
+      const n = byRows ? count : value, needW = height, needL = length;
+      const fixes = [];
+      // 1. shorter rows that fit the longest free strip (the same plants wrap onto more rows)
+      if (free.lengthM >= 0.3 && free.lengthM < length - EPS) {
+        const L = Math.floor(free.lengthM * 10) / 10;
+        if (!placeRows(L).error) fixes.push({ field: "lengthM", label: `Shorten rows to ${L} m`, patch: { lengthM: L } });
+      }
+      // 2. fewer rows / fewer plants that fit the free width and length
+      const rowsFit = Math.max(0, Math.floor((free.widthM - spacing) / rowGap + EPS) + 1), L2 = Math.min(length, Math.max(0.3, Math.floor(free.lengthM * 10) / 10));
+      if (rowsFit >= 1 && free.lengthM >= 0.3) {
+        let cap = 0; for (let r = 0; r < rowsFit; r++) cap += gridCapacity(L2, spacing, pattern, r);
+        if (byRows && rowsFit < rows) fixes.push({ field: "rowCount", label: `Use ${rowsFit} row${rowsFit === 1 ? "" : "s"}`, patch: { mode: "rows", rowCount: rowsFit, lengthM: L2 < length ? L2 : input.lengthM } });
+        else if (!byRows && cap >= 1 && cap < n) fixes.push({ field: "plantCount", label: `Plant ${cap} instead`, patch: { mode: "plants", plantCount: cap, lengthM: L2 < length ? L2 : input.lengthM } });
+      }
+      // 3. closer spacing so the rows fit the free width (one row: the plant spacing itself)
+      if (rows === 1 && free.widthM >= 0.03 && free.widthM < spacing - EPS) { const s = Math.floor(free.widthM * 100); if (s >= 1) fixes.push({ field: "spacingCM", label: `Spacing ${s} cm`, patch: { spacingCM: s, rowSpacingCM: pattern === "offset" ? undefined : input.rowSpacingCM } }); }
+      else if (rows > 1 && free.widthM >= spacing + EPS) { const g = Math.floor(((free.widthM - spacing) / (rows - 1)) * 100); if (g >= 1 && g < rowSpacingCM) fixes.push({ field: "rowSpacingCM", label: `Rows ${g} cm apart`, patch: { rowSpacingCM: g } }); }
+      const bedFull = free.widthM < 0.03 || free.lengthM < 0.3;
+      const error = bedFull
+        ? `This bed has no free space left for new rows. ${fixes.length ? "" : "Harvest or remove a planting first, or plant anyway."}`.trim()
+        : `This planting needs a strip ${needL.toFixed(1)} m long and ${(needW * 100).toFixed(0)} cm wide. The largest free strip here is ${free.lengthM.toFixed(1)} m × ${(free.widthM * 100).toFixed(0)} cm.`;
+      return { error, count: n, rows, tooWide: true, problem: { kind: "space", need: { widthM: needW, lengthM: needL }, free, fixes, canForce: !!forcedAt() } };
+    };
     let start, alongStart;
-    if (input.startM !== undefined && input.startM !== "") {
+    if (input.force) {
+      const at = forcedAt(); if (!at) return fail(`This planting is bigger than the bed itself (${rows} rows × ${length} m).`, rows > 1 ? "rowCount" : "lengthM");
+      [start, alongStart] = at;
+    } else if (input.startM !== undefined && input.startM !== "") {
       start = Number(input.startM);
       alongStart = Number(input.alongStartM) || 0;
       if (!Number.isFinite(start) || !fits(start, alongStart)) return tooWide();
       if (taken.some((r) => overlaps(r, rectAt(start, alongStart))))
-        return fail("This planting overlaps an existing crop. Choose free space.");
+        return { ...fail("This spot overlaps an existing planting. Choose free space."), problem: { kind: "space", need: { widthM: height, lengthM: length }, free: freeStrip(taken, vertical, cross, alongMax, height), fixes: [], canForce: !!forcedAt() } };
     } else {
       // First free spot, scanning across the bed, then along it. Plantings in either direction can share a bed.
       const crossStarts = [...new Set([0.1, ...taken.map((r) => (vertical ? r.x1 : r.y1) + 0.1)])].sort(
@@ -176,6 +200,7 @@ export function planPlanting(zone, plots, input, crop, excludeId) {
       lengthM: length,
       mode: byRows ? "rows" : "plants",
     };
+    if (input.force) layout.forced = true;
     if (zone.type === "orchard") {
       const existing = layoutPlots(zone, plots)
         .filter((p) => p.id !== excludeId && p.layout.pattern === "scatter")
@@ -196,12 +221,13 @@ export function planPlanting(zone, plots, input, crop, excludeId) {
     }
     return { count, rows, error: "", height, layout, yieldFactor, rect: rectAt(start, alongStart) };
   };
-  const chosen = input.lengthM !== undefined && input.lengthM !== "" && input.lengthM !== null;
-  const first = placeRows(chosen ? Number(input.lengthM) : alongMax);
+  const chosen = input.lengthM !== undefined && input.lengthM !== "" && input.lengthM !== null && !input.lengthAuto;
+  const first = placeRows(chosen || input.lengthAuto ? Math.min(Number(input.lengthM), alongMax) : alongMax);
   if (chosen || !first.error || !first.tooWide) return first;
   // No full-length spot: shorten rows in 10 cm steps until the planting fits the free space.
+  const from = input.lengthAuto ? Math.min(Number(input.lengthM), alongMax) : alongMax;
   for (
-    let length = Math.floor((alongMax - 0.1) * 10) / 10;
+    let length = Math.floor((from - 0.1) * 10) / 10;
     length > 0.25;
     length = Math.round((length - 0.1) * 10) / 10
   ) {
@@ -210,6 +236,27 @@ export function planPlanting(zone, plots, input, crop, excludeId) {
     if (!next.tooWide) break;
   }
   return first;
+}
+/** The largest free strip in a bed for rows of a given width: { widthM, lengthM } in bed-local metres.
+    widthM is the free cross-space at the best spot (capped at the bed), lengthM how far rows can run there. */
+export function freeStrip(taken, vertical, cross, alongMax, height) {
+  const rects = taken.map((r) => (vertical ? { c0: r.x0, c1: r.x1, a0: r.y0, a1: r.y1 } : { c0: r.y0, c1: r.y1, a0: r.x0, a1: r.x1 }));
+  const crossStarts = [...new Set([0.1, ...rects.map((r) => r.c1 + 0.1)])].filter((c) => c <= cross - 0.1 + EPS).sort((a, b) => a - b);
+  const alongStarts = [...new Set([0, ...rects.map((r) => r.a1)])].filter((a) => a < alongMax - EPS).sort((a, b) => a - b);
+  let best = { widthM: 0, lengthM: 0 };
+  crossStarts.forEach((c) => {
+    // free width at c: up to the next planting above it (or the bed edge)
+    const w0 = Math.min(cross - 0.1 - c, ...rects.filter((r) => r.c0 >= c - EPS).map((r) => r.c0 - 0.1 - c).filter((w) => w > 0));
+    const h = Math.min(height, Math.max(0, w0));
+    alongStarts.forEach((a) => {
+      const blockers = rects.filter((r) => r.c0 < c + h - EPS && r.c1 > c + EPS);
+      if (blockers.some((r) => r.a0 < a + EPS && r.a1 > a + EPS)) return; // the strip starts inside a planting
+      const L = Math.min(alongMax - a, ...blockers.filter((r) => r.a0 >= a - EPS).map((r) => r.a0 - a));
+      const score = (len, wid) => Math.min(len, 50) * 10 + wid;
+      if (L > EPS && w0 > EPS && score(L, w0) > score(best.lengthM, best.widthM)) best = { widthM: Math.round(w0 * 1000) / 1000, lengthM: Math.round(L * 1000) / 1000 };
+    });
+  });
+  return best;
 }
 // Stable, bounded best-candidate placement. Saved coordinates are never re-randomized on render.
 export function scatterTrees(zone, plots, count, spacing, excludeId, seedText = "") {
@@ -340,5 +387,13 @@ export function plantingInput(form, crop, zone) {
       : pattern === "offset"
         ? Math.round(Number(spacingCM) * (Math.sqrt(3) / 2) * 10) / 10
         : guide.rowCM;
-  return { ...form, pattern, spacingCM, rowSpacingCM, axis: form.axis || axisOf(zone, form) };
+  const axis = form.axis || axisOf(zone, form), vertical = axis === "vertical", alongMax = zone ? (vertical ? zone.hM : zone.wM) : 0;
+  const ownLength = form.lengthM !== undefined && form.lengthM !== "" && form.lengthM !== null;
+  let lengthM = form.lengthM, lengthAuto = false;
+  // plants drive the row length: one row of them plus 10 cm each end, never longer than the bed
+  const n = Number(form.plantCount);
+  if (!ownLength && pattern !== "scatter" && (form.mode || "plants") === "plants" && Number.isInteger(n) && n >= 1 && Number(spacingCM) > 0 && alongMax > 0) {
+    lengthM = Math.min(alongMax, Math.max(0.3, Math.ceil((n * Number(spacingCM) / 100 + 0.2) * 10) / 10)); lengthAuto = true;
+  }
+  return { ...form, pattern, spacingCM, rowSpacingCM, axis, lengthM, lengthAuto };
 }
