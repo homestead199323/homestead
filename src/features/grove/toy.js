@@ -10,6 +10,21 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import { TOY, STAGE_HEX } from "./palette";
 
 export const HPI = Math.PI / 2;
+/* NIGHT (0..1) — set by Grove3D's sky; window glass and lamps glow warm as it rises */
+export const NIGHT = { value: 0 };
+export function nightGlow(mat) {
+  if (mat.userData.nightGlow) return mat; mat.userData.nightGlow = true;
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, r) => {
+    if (prev) prev(sh, r);
+    sh.uniforms.uNight = NIGHT;
+    sh.fragmentShader = sh.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform float uNight;")
+      .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uNight * vec3(1., .82, .48) * .55;");
+  };
+  mat.customProgramCacheKey = () => "g3night";
+  return mat;
+}
 export const UP = new THREE.Vector3(0, 1, 0);
 
 /* ---------- palette: the shared map palette (palette.js) as numbers for three.js ---------- */

@@ -24,8 +24,9 @@ import { taskGlyph } from "./zone-tasks";
 import { buildHerd } from "./animals3d";
 import { GROUND_TONES, pathTones } from "./palette";
 import { TREE_RE } from "./crop-families";
-import { PAL, STAGE_COLOR, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
+import { PAL, STAGE_COLOR, NIGHT, nightGlow, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
 import { cropScale, buildCrops } from "./crops3d";
+import { skyState, FIXED_SKY } from "./sky";
 import { ORNAMENTS, wheelbarrow, barrel, crates, birdbath, mailbox, scarecrow, tractor, ladder, fruitCrate, rake, lilyPads, reeds, jetty, silo, cloche, hoseReel, hayScatter } from "./props3d";
 
 const CAM = { az: -22, el: 54, fov: 28 };
@@ -82,8 +83,9 @@ function materials() {
     wood: flat(PAL.wood), woodMid: flat(PAL.woodMid), woodDark: flat(PAL.woodDark), woodPale: flat(PAL.woodPale), bark: flat(0x9a7656),
     terracotta: flat(PAL.terracotta), slate: flat(PAL.slate), slateDark: flat(PAL.slateDark), zinc: flat(PAL.zinc, { rough: .6, metal: .15 }), metal: flat(PAL.metal, { rough: .5, metal: .3 }), dark: flat(PAL.dark), ink: flat(0x4a3f36),
     barn: flat(PAL.barn), barnDark: flat(PAL.barnDark), green: flat(PAL.green), greenLight: flat(PAL.greenLight), greenDeep: flat(PAL.greenDeep), brass: flat(0xd9b35c, { rough: .4, metal: .5 }), red: flat(0xd9574a),
-    glass: flat(PAL.glass, { transparent: true, opacity: .34, rough: .12, physical: true, env: 1.5, side: THREE.DoubleSide, depthWrite: false }),
-    winGlass: flat(0x9fc9dc, { rough: .18, metal: .05, physical: true, env: 1.4 }),
+    glass: nightGlow(flat(PAL.glass, { transparent: true, opacity: .34, rough: .12, physical: true, env: 1.5, side: THREE.DoubleSide, depthWrite: false })),
+    winGlass: nightGlow(flat(0x9fc9dc, { rough: .18, metal: .05, physical: true, env: 1.4 })),
+    lamp: nightGlow(flat(0xd9b35c, { rough: .4, metal: .5 })),
     water: flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4 }), ripple: flat(PAL.ripple, { transparent: true, opacity: .5, depthWrite: false }),
     solar: flat(PAL.solar, { rough: .25, metal: .3, physical: true, env: 1.3 }), solarFrame: flat(PAL.solarFrame, { rough: .5, metal: .2 }),
     hedge: foliage(flat(PAL.hedge, { rough: .95 }), { sway: .02, freq: .6, from: .4 }),
@@ -371,7 +373,7 @@ function building(g, w, d, kind, M, { clay = false, tag = (m) => m, ctx = null, 
     for (let i = 0; i < nE; i++) { const u = (i - (nE - 1) / 2) * 2.0; windowAt(dg, put, "W", u, wy, ww, wh, M); windowAt(dg, put, "E", u, wy, ww, wh, M); }
     const nN = Math.max(0, Math.floor((w - 1.0) / 2.2));
     for (let i = 0; i < nN; i++) windowAt(dg, put, "N", (i - (nN - 1) / 2) * 2.2, wy, ww, wh, M);
-    dg.add(put(rm(.1, .16, .1, M.brass, .03), "S", door / 2 + .32, doorH - .2, .07)); // a lamp beside the door
+    dg.add(put(rm(.1, .16, .1, M.lamp, .03), "S", door / 2 + .32, doorH - .2, .07)); // a lamp beside the door (glows at night)
     // window boxes with flowers under the front windows, a doormat on the step, a downpipe down the front corner
     for (let k = 0; ; k++) { const u = door / 2 + .6 + ww / 2 + k * 1.95; if (u + ww / 2 + .9 > w / 2) break; [u, -u].forEach((uu) => { dg.add(put(rm(ww + .1, .2, .22, M.woodDark, .04), "S", uu, wy - wh / 2 - .26, .16)); for (let i = 0; i < 4; i++) { const b = put(new THREE.Mesh(sphereGeo(9, 7), M.flower[(k * 4 + i) % M.flower.length]), "S", uu - ww / 2 + .12 + i * (ww - .24) / 3, wy - wh / 2 - .1, .2); b.scale.set(.07, .06, .07); dg.add(b); } }); }
     dg.add(put(rm(door * .9, .025, .5, M.woodDark, .008), "S", 0, .17, .4, { cast: false }));
@@ -1411,7 +1413,8 @@ class FarmControls {
 
 /* ---------- component ---------- */
 export default function Grove3D(props) {
-  const { data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge, onShowCrops } = props;
+  const { data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge, onShowCrops, weather = null, skyOverride = null } = props;
+  const liveSky = data.mapStyle?.liveSky !== "off", lat = typeof data.cityGeo?.lat === "number" ? data.cityGeo.lat : null; // "Live sky" setting; latitude from the town's geocode
   const host = useRef(null), labels = useRef(null), tipRef = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
   const [full, setFull] = useState(false);
   const [ahead, setAhead] = useState(0); // growth preview: days from today
@@ -1461,7 +1464,7 @@ export default function Grove3D(props) {
   };
   const dismissHint = () => { setHint(false); try { sessionStorage.setItem("g3-hint", "1"); } catch { /* private mode */ } };
   const showCoop = (kind) => setCoop(kind);
-  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, pickRow, todayKey }; }); // the engine reads the newest props from here
+  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, pickRow, todayKey, liveSky, lat, skyOverride }; }); // the engine reads the newest props from here
   useEffect(() => { if (!coop) return; const t = setTimeout(() => setCoop(null), 1800); return () => clearTimeout(t); }, [coop]);
   // renderer, lights and controls: created once
   useEffect(() => {
@@ -1482,7 +1485,7 @@ export default function Grove3D(props) {
     const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture; scene.environmentIntensity = .22; pmrem.dispose();
     const camera = new THREE.PerspectiveCamera(CAM.fov, 1, 1, 4000);
     // bright, soft, toy-box light: a white sky with a pale green bounce, one warm sun with faint soft shadows
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x9fb48a, .85));
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x9fb48a, .85); scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xfff3e4, 2.1); sun.castShadow = true;
     sun.shadow.mapSize.set(mobile ? 2048 : 3072, mobile ? 2048 : 3072); sun.shadow.radius = 4; sun.shadow.bias = -.0003; sun.shadow.normalBias = .04; sun.shadow.intensity = .62;
     scene.add(sun); scene.add(sun.target);
@@ -1491,8 +1494,21 @@ export default function Grove3D(props) {
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     const IDLE_MS = mobile ? 1000 / 20 : 1000 / 30; // idle animation rate; gestures and camera moves render every frame
     const st = { renderer, scene, camera, sun, world: null, hits: [], plotHits: [], dims: null, fitted: false, anchors: {}, highlight: null, pickGroup: null, picked: null, calls: 0, animating: false };
-    state.current = st;
+    st.reduced = reduced; state.current = st;
     if (import.meta.env?.DEV && typeof window !== "undefined") window.__g3 = st; // dev-only inspection hook
+    // the sky (sky.js) owns every light value; FIXED_SKY reproduces the map's original fixed afternoon
+    st.sky = FIXED_SKY;
+    st.applySky = (s) => {
+      st.sky = s;
+      hemi.color.set(s.hemiSky); hemi.groundColor.set(s.hemiGround); hemi.intensity = s.hemiIntensity;
+      sun.color.set(s.sunColor); sun.intensity = s.sunIntensity; sun.shadow.intensity = s.shadowIntensity;
+      renderer.toneMappingExposure = s.exposure; scene.environmentIntensity = s.envIntensity;
+      scene.background = new THREE.Color(s.fog);
+      if (st.fogRange) scene.fog = new THREE.Fog(s.fog, st.fogRange.near * (s.fogNear ?? 1), st.fogRange.far);
+      NIGHT.value = clamp((3 - s.elevation) / 9, 0, 1); // windows and lamps come on as the sun sets
+      if (st.dims) st.setupSun(); else renderer.shadowMap.needsUpdate = true;
+      st.requestRender();
+    };
     const project = (x, y, z, out) => { const v = out.set(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * S.W, y: ((1 - v.y) / 2) * S.H, on: v.z < 1 }; };
     const pv = new THREE.Vector3();
     st.render = (now = performance.now()) => {
@@ -1570,13 +1586,13 @@ export default function Grove3D(props) {
     st.reset = (animate, zoom = 1) => {
       const { fW, fH, margin } = st.dims; controls.fit(fW, fH, margin, animate, zoom);
       const far = Math.min(controls.fitDist * 5.0, Math.max(fW, fH) * 16 * .9), near = Math.min(controls.fitDist * 2.4, far / 1.4);
-      scene.fog = new THREE.Fog(PAL.page, near, far); // the ground fades into the page colour beyond the farthest allowed zoom-out
+      st.fogRange = { near, far }; scene.fog = new THREE.Fog(st.sky.fog, near * (st.sky.fogNear ?? 1), far); // the ground fades into the backdrop beyond the farthest allowed zoom-out
       st.requestRender();
     };
     st.setupSun = () => {
       const { fW, fH, margin } = st.dims, t = new THREE.Vector3(fW / 2, 0, fH / 2), big = Math.max(fW, fH);
-      // a high afternoon sun: short, soft shadows that read as volume without darkening the scene
-      sun.position.copy(t).add(new THREE.Vector3(.55, 1.25, -.35).normalize().multiplyScalar(big * 2)); sun.target.position.copy(t);
+      // the sun's direction comes from the sky state (a high afternoon sun by default: short, soft shadows)
+      sun.position.copy(t).add(new THREE.Vector3(...st.sky.sunDir).normalize().multiplyScalar(big * 2)); sun.target.position.copy(t);
       const e = big * .85 + margin * 2, sc = sun.shadow.camera; sc.left = -e; sc.right = e; sc.top = e; sc.bottom = -e; sc.near = 1; sc.far = big * 6; sc.updateProjectionMatrix();
       renderer.shadowMap.needsUpdate = true;
     };
@@ -1662,6 +1678,24 @@ export default function Grove3D(props) {
     return () => clearTimeout(t);
   }, [sceneKey]);
   useEffect(() => { state.current?.select(selectedId); }, [selectedId]);
+  // the sky follows the clock: recomputed once a minute (shadows re-render then), and at once when the
+  // weather, the Live sky setting, the town or a harness override changes
+  const overrideKey = JSON.stringify(skyOverride);
+  useEffect(() => {
+    const st = state.current; if (!st) return undefined;
+    const tick = () => {
+      const o = latest.current.skyOverride; let date = new Date(), wx = latest.current.weather, live = latest.current.liveSky;
+      if (o) {
+        if (o.fixed) live = false;
+        if (o.hour != null) date.setHours(o.hour, 0, 0, 0);
+        if (o.wx || o.windKmh != null) wx = { code: { clear: 0, overcast: 3, rain: 61, snow: 73 }[o.wx] ?? 0, windKmh: o.windKmh ?? 10, windDeg: o.windDeg ?? 240, temp: o.temp ?? 15 };
+      }
+      st.applySky(skyState({ date, lat: latest.current.lat ?? 50, weather: wx && wx.ok !== false ? wx : null, liveSky: live, reduced: st.reduced }));
+    };
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, [weather, liveSky, lat, overrideKey]);
   useEffect(() => { state.current?.pick?.(picked); }, [picked, sceneKey]);
   useEffect(() => { state.current?.requestRender(); }, [tasksByZone]);
   // full-screen mode: the map takes the whole viewport, page scroll locked, Escape closes

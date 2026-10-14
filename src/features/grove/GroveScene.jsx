@@ -367,6 +367,8 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
 export default function GroveScene({
   data,
   setData,
+  weather = null,
+  skyOverride = null,
   tasksByZone = {},
   onEditLayout,
   onPlantInZone,
@@ -660,7 +662,7 @@ export default function GroveScene({
           <Suspense fallback={<div style={{ width: "100%", aspectRatio: "1 / 0.64" }} />}>
             <Grove3D data={data} zones={zones} roads={allPaths} crops={cropMap} fW={fW} fH={fH} margin={margin} env={env}
               pathTexture={pathTexture} roadWidth={roadWidth} tasksByZone={tasksByZone} selectedId={selectedId}
-              onZoneOpen={open} onBadge={setTaskZone} interactive={canInteract} onUnavailable={() => setNoGL(true)} onShowCrops={onShowCrops} />
+              onZoneOpen={open} onBadge={setTaskZone} interactive={canInteract} onUnavailable={() => setNoGL(true)} onShowCrops={onShowCrops} weather={weather} skyOverride={skyOverride} />
           </Suspense>
         ) : (
         <svg

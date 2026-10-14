@@ -517,11 +517,16 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
     let active = true;
     if (!city) { setForecastState(null); return undefined; }
     setForecastState({ loading: true }); // new town: never show the old town's week
-    const load = () => fetchForecast(city).then((f) => { if (active) setForecastState(f || { ok: false, error: "exception" }); });
+    const load = () => fetchForecast(city).then((f) => {
+      if (!active) return;
+      setForecastState(f || { ok: false, error: "exception" });
+      // the town's latitude drives the 3D map's sun; stored once per town so the map works offline too
+      if (f && f.ok && typeof f.lat === "number" && typeof f.lng === "number") setData((d) => d && (d.cityGeo?.lat !== f.lat || d.cityGeo?.lng !== f.lng) ? { ...d, cityGeo: { lat: f.lat, lng: f.lng } } : d);
+    });
     load();
     const id = setInterval(load, 60 * 60 * 1000);
     return () => { active = false; clearInterval(id); };
-  }, [city]);
+  }, [city, setData]);
   // Day tick: a PWA left open overnight must move on to the new day. Every
   // screen reads todayLocalKey() per render, so one state change here is
   // enough to refresh the plan, the calendar projection and the 3D map.

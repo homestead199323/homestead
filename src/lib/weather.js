@@ -200,6 +200,10 @@ export async function fetchWeather(cityName) {
       hint: buildHint(cw.temperature, cw.weathercode, hourlyPrecip),
       location: geo.name,
       country: geo.country,
+      lat: geo.lat, lng: geo.lng,
+      windKmh: typeof cw.windspeed === "number" ? cw.windspeed : null, // km/h, the API's default unit
+      windDeg: typeof cw.winddirection === "number" ? cw.winddirection : null, // meteorological: where the wind blows from
+      isDay: cw.is_day === 1,
       fetchedAt: Date.now(),
     };
     writeCache(cityName, result);
@@ -259,7 +263,7 @@ export async function fetchForecast(cityName) {
     if (!res.ok) return usable(hit) ? hit : { ok: false, error: "api_error" };
     const parsed = parseForecast(await res.json());
     if (!parsed) return usable(hit) ? hit : { ok: false, error: "api_error" };
-    const result = { ok: true, ...parsed, location: geo.name, fetchedAt: Date.now() };
+    const result = { ok: true, ...parsed, location: geo.name, lat: geo.lat, lng: geo.lng, fetchedAt: Date.now() };
     saveForecastCache({ [key]: result }); // one city at a time — keeps storage small
     return result;
   } catch (e) {

@@ -47,7 +47,7 @@ function StarterKit({data,setData}) {
 
 export default function GroveHome({data,setData,setPage,tasks,forecast,forecastState,alerts}) {
   const [walk,setWalk]=useState(false),[weather,setWeather]=useState(null),[taskZone,setTaskZone]=useState(null);
-  useEffect(()=>{let active=true;if(data.city)fetchWeather(data.city).then(w=>{if(active)setWeather(w);});return()=>{active=false;};},[data.city]);
+  useEffect(()=>{let active=true;if(data.city)fetchWeather(data.city).then(w=>{if(active&&w&&w.ok)setWeather(w);});return()=>{active=false;};},[data.city]); // a failed refetch keeps the last good weather
   const due=tasks.filter(t=>t.daysOut===0&&!['forecast','upcoming'].includes(t.type));
   const markers=tasksByZone(tasks,data);
   const zoneOf=t=>Object.keys(markers).find(id=>markers[id].some(x=>x.key===t.key));
@@ -61,7 +61,7 @@ export default function GroveHome({data,setData,setPage,tasks,forecast,forecastS
         <div><h1>{title}</h1><p>{weather?.ok?<><Sun size={13}/> {weather.temp}°C · {data.city}</>:new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})}</p></div>
         <div className="q-row"><span className="q-streak"><Leaf size={13}/>{data.gamify?.streak||0} day streak</span><button className="q-edit-button" aria-label="Edit farm layout" title="Edit layout" onClick={()=>setPage('map',{edit:true})}><Pencil size={17}/></button></div>
       </header>
-      <GroveScene data={data} setData={setData} tasksByZone={markers} onOpenTasks={()=>setPage('tasks')} taskZoneId={taskZone} onTaskZone={setTaskZone} showEditButton={false} showHelperText={false} noBorder onPlantInZone={zone=>setPage('crops',{zone})} onShowCrops={()=>setPage('crops')}
+      <GroveScene data={data} setData={setData} weather={weather} tasksByZone={markers} onOpenTasks={()=>setPage('tasks')} taskZoneId={taskZone} onTaskZone={setTaskZone} showEditButton={false} showHelperText={false} noBorder onPlantInZone={zone=>setPage('crops',{zone})} onShowCrops={()=>setPage('crops')}
         onEditLayout={()=>setPage('map',{edit:true})} onStartGuide={()=>setData({...data,setupDone:false})}/>
       {!empty&&<section className="q-today-dock">
         <button className="q-today-link" onClick={()=>setPage('tasks')}><span><strong>Today</strong><small>{due.length===0?'Nothing due':due.length===1?'1 job':`${due.length} jobs`}{issues?` · ${issues} areas to revisit`:due.length?' · a little care goes a long way':''}</small>{week.status==='over'&&<small className="mt-over">This week is ~{hm(week.over)} over your time. Tap to see how to trim.</small>}</span><ChevronRight size={18}/></button>

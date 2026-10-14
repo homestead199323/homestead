@@ -717,6 +717,7 @@ function Setup({data, setData:saveData, onPlantInZone, onBack}) {
                 ['groundColor','Ground color',[['natural','Natural'],['dry','Warm / dry'],['deep','Deep green']]],
                 ['pathMaterial','Path material',[['gravel','Gravel'],['stone','Stone'],['earth','Earth']]],
                 ['pathColor','Path color',[['light','Light'],['warm','Warm sand'],['dark','Slate']]],
+                ['liveSky','Live sky',[['on','On — follows the clock and weather'],['off','Off — fixed afternoon']]],
               ].map(([key,label,options])=><label key={key}>{label}<select value={data.mapStyle?.[key]||options[0][0]} onChange={e=>setData({...data,mapStyle:{...data.mapStyle,[key]:e.target.value}})}>{options.map(([value,text])=><option key={value} value={value}>{text}</option>)}</select></label>)}</div></section>
 
               <div style={{fontSize:11, fontWeight:700, color:C.t2, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:6}}>Climate region</div>

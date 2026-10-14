@@ -28,5 +28,8 @@ const data = { ...fixture, farmW: 46, farmH: 26, profile: { ...fixture.profile, 
   livestock: { animals: [{ id: "goats", type: "Goat", zone: "field", count: 4 }, { id: "hens", type: "Chicken", zone: "coop", count: 4 }] },
   ornaments: [{ id: "t1", type: "tree", xM: 28, yM: 20 }, { id: "sh", type: "shed", xM: 31, yM: 20 }, { id: "rk", type: "rock", xM: 34, yM: 21 }, { id: "bn", type: "bench", xM: 36, yM: 21 }, { id: "wp", type: "woodpile", xM: 38, yM: 21 }, { id: "hb", type: "haybale", xM: 40, yM: 20 }],
   mapLines: [{ id: "f1", kind: "fence", points: [{ xM: 30, yM: 16 }, { xM: 44, yM: 16 }, { xM: 44, yM: 24 }] }, { id: "g1", kind: "gate", points: [{ xM: 44, yM: 24 }, { xM: 44, yM: 25.5 }] }, { id: "p1", kind: "path", points: [{ xM: 30, yM: 17 }, { xM: 43, yM: 23 }] }] };
-export default function Preview() { const [d, setD] = useState(data); return <main style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}><GroveScene data={d} setData={setD} /></main>; }
+// sky overrides for screenshots: ?hour=23&wx=rain&wind=40, or ?fixed=1 for the original fixed afternoon
+const q = new URLSearchParams(location.search);
+const skyOverride = q.has("hour") || q.has("wx") || q.has("wind") || q.has("fixed") ? { hour: q.has("hour") ? +q.get("hour") : null, wx: q.get("wx") || undefined, windKmh: q.has("wind") ? +q.get("wind") : undefined, fixed: q.get("fixed") === "1" } : null;
+export default function Preview() { const [d, setD] = useState(data); return <main style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}><GroveScene data={d} setData={setD} skyOverride={skyOverride} /></main>; }
 createRoot(document.getElementById("root")).render(<Preview />);

@@ -18,5 +18,8 @@ const data = { ...fixture, farmW: 36, farmH: 30, profile: { ...fixture.profile, 
     { id: "hens", type: "Chicken", zone: "coop", count: 5 }, { id: "ducks", type: "Duck", zone: "coop", count: 2 }, { id: "geese", type: "Goose", zone: "coop", count: 2 },
     { id: "turkey", type: "Turkey", zone: "barn", count: 2 }, { id: "quail", type: "Quail", zone: "barn", count: 3 }, { id: "gf", type: "Guinea Fowl", zone: "barn", count: 2 }, { id: "rab", type: "Rabbit", zone: "barn", count: 3 },
   ] } };
-export default function Preview() { const [d, setD] = useState(data); return <main style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}><GroveScene data={d} setData={setD} /></main>; }
+// sky overrides for screenshots: ?hour=23&wx=rain&wind=40, or ?fixed=1 for the original fixed afternoon
+const q = new URLSearchParams(location.search);
+const skyOverride = q.has("hour") || q.has("wx") || q.has("wind") || q.has("fixed") ? { hour: q.has("hour") ? +q.get("hour") : null, wx: q.get("wx") || undefined, windKmh: q.has("wind") ? +q.get("wind") : undefined, fixed: q.get("fixed") === "1" } : null;
+export default function Preview() { const [d, setD] = useState(data); return <main style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}><GroveScene data={d} setData={setD} skyOverride={skyOverride} /></main>; }
 createRoot(document.getElementById("root")).render(<Preview />);
