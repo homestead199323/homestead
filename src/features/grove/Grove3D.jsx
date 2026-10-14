@@ -24,9 +24,10 @@ import { taskGlyph } from "./zone-tasks";
 import { buildHerd } from "./animals3d";
 import { GROUND_TONES, pathTones } from "./palette";
 import { TREE_RE } from "./crop-families";
-import { PAL, STAGE_COLOR, NIGHT, nightGlow, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
+import { PAL, STAGE_COLOR, NIGHT, WIND, nightGlow, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
 import { cropScale, buildCrops } from "./crops3d";
-import { skyState, FIXED_SKY } from "./sky";
+import { skyState, FIXED_SKY, vaneAngle, cloudCount, precipCount } from "./sky";
+import { WX, buildClouds, buildPrecip, RAIN_SPAN } from "./weather-fx";
 import { ORNAMENTS, wheelbarrow, barrel, crates, birdbath, mailbox, scarecrow, tractor, ladder, fruitCrate, rake, lilyPads, reeds, jetty, silo, cloche, hoseReel, hayScatter } from "./props3d";
 
 const CAM = { az: -22, el: 54, fov: 28 };
@@ -44,24 +45,28 @@ const TIME = { value: 0 }; // seconds, shared by every animated material
 /* foliage(mat, { sway, freq }) — a gentle wobble of the upper part of tree crowns and hedges */
 function foliage(mat, { sway = .05, freq = .25, from = 1.2 } = {}) {
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { uTime: TIME, uSway: { value: sway } });
+    Object.assign(sh.uniforms, { uTime: TIME, uSway: { value: sway }, uWind: WIND });
     sh.vertexShader = sh.vertexShader
-      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uSway;")
+      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uSway; uniform vec3 uWind;")
       .replace("#include <begin_vertex>", `#include <begin_vertex>
-float g3w = sin(uTime * 1.4 + position.x * ${freq.toFixed(2)} + position.z * ${(freq * .8).toFixed(2)}) + .5 * sin(uTime * 2.3 + position.z * ${(freq * 1.4).toFixed(2)});
-transformed.x += g3w * clamp((position.y - ${from.toFixed(2)}) * .35, 0., 1.) * uSway;`);
+{ float g3ph = dot(position.xz, uWind.xy) * .35 - uTime * (1.2 + uWind.z * 1.8);
+  float g3w = sin(g3ph + position.x * ${freq.toFixed(2)}) + .5 * sin(uTime * 2.3 + position.z * ${(freq * 1.4).toFixed(2)});
+  float g3a = clamp((position.y - ${from.toFixed(2)}) * .35, 0., 1.) * uSway * (.5 + uWind.z) * 1.6;
+  transformed.xz += (uWind.xy * (.7 + .3 * g3w) * .5 + vec2(g3w * .5, 0.)) * g3a; }`);
   };
   mat.customProgramCacheKey = () => `g3f|${sway}|${freq}|${from}`;
   return mat;
 }
 /* motion(sh) — instanced spheres that hover (bees, anim 1) or rise, grow and fade (smoke, anim 3) */
 function motionShader(sh) {
-  Object.assign(sh.uniforms, { uTime: TIME });
+  Object.assign(sh.uniforms, { uTime: TIME, uWind: WIND, uCenter: WX.center });
   sh.vertexShader = sh.vertexShader
-    .replace("#include <common>", "#include <common>\nuniform float uTime; attribute float g3anim; attribute float g3phase; varying float g3va;")
+    .replace("#include <common>", "#include <common>\nuniform float uTime; uniform vec3 uWind; uniform vec3 uCenter; attribute float g3anim; attribute float g3phase; varying float g3va;")
     .replace("#include <begin_vertex>", `#include <begin_vertex>
 g3va = 1.;
-if (g3anim > 2.5) { float g3t = fract(uTime * .09 + g3phase); transformed *= .5 + g3t * 2.2; transformed.y += g3t * 2.4; transformed.x += g3t * g3t * 1.2 + sin(g3t * 5. + g3phase * 6.28) * .16; g3va = (1. - g3t) * smoothstep(0., .12, g3t) * .7; }
+if (g3anim > 6.5) { float g3t = fract(uTime * .085 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.x += sin(uTime * 1.3 + g3phase * 6.28) * .4; transformed.z += cos(uTime * 1.1 + g3phase * 5.1) * .4; transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 2.5 + uCenter.xz; }
+else if (g3anim > 5.5) { float g3t = fract(uTime * .65 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 3. + uCenter.xz; }
+else if (g3anim > 2.5) { float g3t = fract(uTime * .09 + g3phase); transformed *= .5 + g3t * 2.2; transformed.y += g3t * 2.4; transformed.xz += uWind.xy * uWind.z * g3t * 2.6 + vec2(sin(g3t * 5. + g3phase * 6.28) * .16, 0.); g3va = (1. - g3t) * smoothstep(0., .12, g3t) * .7; }
 else if (g3anim > .5) { transformed.y += sin(uTime * 2.1 + g3phase * 6.28) * .05; transformed.x += cos(uTime * .9 + g3phase * 6.28) * .07; transformed.z += sin(uTime * 1.3 + g3phase * 3.1) * .05; }`);
   sh.fragmentShader = sh.fragmentShader
     .replace("#include <common>", "#include <common>\nvarying float g3va;")
@@ -101,7 +106,7 @@ function materials() {
     selectEdge: layered(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .95, depthWrite: false }), 15),
     pick: layered(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .3, depthWrite: false }), 16),
     pickEdge: layered(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .95, depthWrite: false }), 17),
-    smoke: motionMat(PAL.smoke, true), bee: motionMat(PAL.bee, false),
+    smoke: motionMat(PAL.smoke, true), bee: motionMat(PAL.bee, false), rain: Object.assign(motionMat(0xeef6f9, false), { transparent: true, opacity: .75 }), snow: motionMat(0xffffff, false),
   };
 }
 
@@ -558,7 +563,9 @@ function barnZone(g, z, ctx, tag) {
     [-1, 1].forEach((s) => { for (let i = 0; i < 3; i++) rbox(g, .5, .05, .04, M.slateDark, cx, cy - .18 + i * .16, bcz + s * .38, { r: .012, cast: false }); });
     const cap = new THREE.Mesh(hipRoofGeo(.75, .75, .32, .12, true).geo, M.slateDark); cap.position.set(cx, cy + .31, bcz); cap.castShadow = true; g.add(cap);
     bar(g, [cx, cy + .6, bcz], [cx, cy + 1.1, bcz], .018, M.metal, { seg: 6, cast: false });
-    rbox(g, .34, .05, .02, M.metal, cx, cy + 1.08, bcz, { ry: .6, r: .008, cast: false }); rbox(g, .12, .12, .02, M.metal, cx + .17, cy + 1.08, bcz, { ry: .6, r: .008, cast: false });
+    const vane = new THREE.Group(); vane.position.set(cx, cy + 1.08, bcz); vane.rotation.y = .6; g.add(vane); // the arrow's tip points to local −x; applySky turns it into the wind
+    rbox(vane, .34, .05, .02, M.metal, 0, 0, 0, { r: .008, cast: false }); rbox(vane, .12, .12, .02, M.metal, .17, 0, 0, { r: .008, cast: false });
+    if (ctx.vanes) { ctx.vanes.push(vane); vane.children.forEach((m) => ctx.keep.push(m)); }
   }
   dg.traverse((m) => { if (m.isMesh) tag(m); });
   // the yard: trampled earth, a concrete apron at the door, post-and-rail fence with a gate,
@@ -1138,7 +1145,7 @@ function buildWorld(ctx) {
   // everything collected across the zones is drawn once for the whole farm
   buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M); buildMotion(world, ctx, M);
   buildCrops(world, ctx.plants, TIME);
-  bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron])); // the terrain keeps its vertex colours
+  bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron, ...ctx.keep])); // the terrain keeps its vertex colours; the vanes stay live
   const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd); // every animal, one draw call, moving in the vertex shader
   return world;
 }
@@ -1148,7 +1155,7 @@ function buildWorld(ctx) {
 export function buildZoneIcon({ zone, data, crops, todayKey }) {
   const M = materials(), d = { ...data, zones: [zone] };
   const ctx = { data: d, zones: [zone], roads: [], crops, fW: zone.xM + zone.wM, fH: zone.yM + zone.hM, margin: 2, env: "farm", pathTexture: "gravel", roadWidth: .5, todayKey, hits: [], plotHits: [], M,
-    plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
+    plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: null, keep: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
   ctx.heightAt = () => 0;
   const world = new THREE.Group(); world.add(buildZone(zone, ctx));
   const DETAIL = { barrel, crates, birdbath, tractor };
@@ -1506,15 +1513,29 @@ export default function Grove3D(props) {
       scene.background = new THREE.Color(s.fog);
       if (st.fogRange) scene.fog = new THREE.Fog(s.fog, st.fogRange.near * (s.fogNear ?? 1), st.fogRange.far);
       NIGHT.value = clamp((3 - s.elevation) / 9, 0, 1); // windows and lamps come on as the sun sets
+      WIND.value.set(s.windDir[0], s.windDir[1], s.windStrength);
+      (st.vanes || []).forEach((v) => { v.rotation.y = vaneAngle(s.windDir); });
+      st.setWeatherFx(s);
       if (st.dims) st.setupSun(); else renderer.shadowMap.needsUpdate = true;
       st.requestRender();
     };
+    // clouds and rain/snow live in the scene (not the world) so a world rebuild keeps them
+    st.fx = { clouds: null, cloudKey: "", precip: null, precipKey: "" };
+    st.setWeatherFx = (s) => {
+      const fx = st.fx, dims = st.dims || { fW: 40, fH: 30 }, R = Math.max(dims.fW, dims.fH) / 2 + 30;
+      const nC = cloudCount(s.cloud, { mobile }), ck = `${nC}|${R}`;
+      if (ck !== fx.cloudKey) { if (fx.clouds) { scene.remove(fx.clouds); fx.clouds.geometry.dispose(); fx.clouds.material.dispose(); } fx.clouds = buildClouds(dims.fW, dims.fH, nC, R); if (fx.clouds) scene.add(fx.clouds); fx.cloudKey = ck; }
+      const nP = precipCount(s.precip, { mobile, reduced: st.reduced }), pk = `${s.precip}|${nP}`;
+      if (pk !== fx.precipKey) { if (fx.precip) { scene.remove(fx.precip); fx.precip.dispose(); fx.precip.geometry.dispose(); } fx.precip = st.M ? buildPrecip(s.precip, nP, s.precip === "snow" ? st.M.snow : st.M.rain) : null; if (fx.precip) scene.add(fx.precip); fx.precipKey = fx.precip ? pk : ""; }
+    };
     const project = (x, y, z, out) => { const v = out.set(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * S.W, y: ((1 - v.y) / 2) * S.H, on: v.z < 1 }; };
     const pv = new THREE.Vector3();
+    let lastNow = 0;
     st.render = (now = performance.now()) => {
       dirty = false;
-      // shared clock for the shader effects; the harvest halo breathes
-      if (animOn) TIME.value = now / 1000;
+      // shared clock for the shader effects; the harvest halo breathes; clouds drift downwind
+      if (animOn) { const dt = lastNow ? Math.min(.1, (now - lastNow) / 1000) : 0; TIME.value = now / 1000; WX.drift.value += dt * (.3 + .3 * WIND.value.z); }
+      lastNow = now; WX.center.value.copy(controls.target);
       if (st.M) st.M.glow.emissiveIntensity = .45 + .3 * Math.sin(TIME.value * 2.2);
       renderer.render(scene, camera); st.calls = renderer.info.render.calls;
       // zone names sit on the thing they name — the centre of its footprint at the height of its roof or
@@ -1654,6 +1675,7 @@ export default function Grove3D(props) {
       ro.disconnect(); controls.dispose(); renderer.domElement.removeEventListener("webglcontextlost", lost);
       renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerleave", onLeave); renderer.domElement.removeEventListener("pointerdown", onLeave); clearTimeout(hoverTimer);
       if (st.world) disposeWorld(st.world);
+      if (st.fx?.clouds) { st.fx.clouds.geometry.dispose(); st.fx.clouds.material.dispose(); } if (st.fx?.precip) { st.fx.precip.dispose(); st.fx.precip.geometry.dispose(); }
       renderer.dispose(); if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement); state.current = null;
     };
   }, []);
@@ -1666,12 +1688,13 @@ export default function Grove3D(props) {
     const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
     st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
     const ctx = { data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, todayKey: P.todayKey || todayLocalKey(), hits: st.hits, plotHits: st.plotHits, M: st.M,
-      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
-    const t0 = performance.now(); st.world = buildWorld(ctx); st.herd = ctx.herd; st.buildMs = performance.now() - t0;
+      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: [], keep: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
+    const t0 = performance.now(); st.world = buildWorld(ctx); st.herd = ctx.herd; st.vanes = ctx.vanes; st.buildMs = performance.now() - t0;
+    st.vanes.forEach((v) => { v.rotation.y = vaneAngle(st.sky.windDir); });
     st.scene.add(st.world);
     st.anchors = Object.fromEntries(P.zones.map((z) => [z.id, { cx: z.xM + z.wM / 2, cz: z.yM + z.hM / 2, h: 0, corners: [[z.xM, z.yM], [z.xM + z.wM, z.yM], [z.xM + z.wM, z.yM + z.hM], [z.xM, z.yM + z.hM]], area: z.wM * z.hM, sel: 0, w: Math.min(23, z.name.length) * 6 + 16 }]));
     st.hits.forEach((h) => { const a = st.anchors[h.userData.zoneId]; if (a) a.h = Math.min(6, h.userData.bounds.h); }); // label height: roof ridge, bed edge…
-    st.setupSun();
+    st.setupSun(); st.fx.cloudKey = ""; st.fx.precipKey = ""; st.setWeatherFx(st.sky);
     if (dimsChanged) st.fitted = false;
     st.size(); st.select(P.selectedId); setBusy(false); st.setAnim();
     const t = setTimeout(() => { st.renderer.shadowMap.needsUpdate = true; st.requestRender(); }, 600);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {sunPosition,skyState,FIXED_SKY,weatherOf,windToScene} from '../src/features/grove/sky.js';
+import {sunPosition,skyState,FIXED_SKY,weatherOf,windToScene,precipCount,cloudCount,vaneAngle} from '../src/features/grove/sky.js';
 
 const near=(a,b,tol,msg)=>assert.ok(Math.abs(a-b)<=tol,`${msg}: ${a} vs ${b} (±${tol})`);
 const finite=(o)=>Object.entries(o).forEach(([k,v])=>{if(typeof v==='number')assert.ok(Number.isFinite(v),`${k} finite`);if(Array.isArray(v))v.forEach((x,i)=>assert.ok(Number.isFinite(x),`${k}[${i}] finite`));});
@@ -29,4 +29,14 @@ test('sky: preset blend monotonic',()=>{
 });
 test('sky: liveSky off is the fixed look whatever the clock',()=>{
   const s=skyState({date:new Date(2026,0,1,2,0),lat:51.5,liveSky:false});assert.deepEqual(s.sunDir,FIXED_SKY.sunDir);assert.equal(s.night,0);
+});
+test('weather fx: particle and cloud counts',()=>{
+  assert.equal(precipCount('rain',{mobile:false,reduced:false}),400);assert.equal(precipCount('rain',{mobile:true,reduced:false}),200);
+  assert.equal(precipCount('snow',{mobile:false,reduced:false}),260);assert.equal(precipCount('snow',{mobile:true,reduced:false}),130);
+  assert.equal(precipCount('snow',{mobile:false,reduced:true}),0);assert.equal(precipCount('none',{mobile:false,reduced:false}),0);
+  assert.equal(cloudCount(0,{mobile:false}),0);assert.equal(cloudCount(.3,{mobile:false}),0);assert.equal(cloudCount(1,{mobile:false}),6);assert.equal(cloudCount(.85,{mobile:true}),3);assert.ok(cloudCount(.4,{mobile:true})>=2);
+});
+test('weather fx: vane points into the wind',()=>{
+  // air moving toward +x (scene) → the arrow tip points to −x; rotation.y = atan2(−dz, dx)
+  near(vaneAngle([1,0]),0,1e-9,'east wind');near(vaneAngle([0,1]),-Math.PI/2,1e-9,'wind toward +z');
 });

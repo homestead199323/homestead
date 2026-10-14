@@ -93,3 +93,17 @@ export const FIXED_SKY = Object.freeze({
   fog: "#b4c69d", fogNear: 1, exposure: .92, shadowIntensity: .62, envIntensity: .22, night: 0, elevation: 55, cloud: 0, precip: "none",
   windDir: CALM.windDir, windStrength: .15, tempC: 15, reduced: false,
 });
+
+/* weather effects — pure counts and angles (weather-fx.js builds the meshes) */
+export function precipCount(kind, { mobile = false, reduced = false } = {}) {
+  if (reduced) return 0;
+  const base = kind === "rain" ? 400 : kind === "snow" ? 260 : 0;
+  return mobile ? base / 2 : base;
+}
+export function cloudCount(cloud, { mobile = false } = {}) {
+  if (!(cloud > .3)) return 0;
+  const n = Math.round(3 + 3 * (cloud - .3) / .7);
+  return mobile ? Math.max(2, Math.round(n / 2)) : n;
+}
+/** rotation.y for the cupola vane: the arrow (tip toward local −x) points into the wind; windDir is where the air moves toward. */
+export function vaneAngle(windDir) { return Math.atan2(-windDir[1], windDir[0]); }

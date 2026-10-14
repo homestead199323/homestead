@@ -12,6 +12,8 @@ import { TOY, STAGE_HEX } from "./palette";
 export const HPI = Math.PI / 2;
 /* NIGHT (0..1) — set by Grove3D's sky; window glass and lamps glow warm as it rises */
 export const NIGHT = { value: 0 };
+/* WIND — (dirX, dirZ, strength 0..1): where the air moves toward in scene space; set by Grove3D's sky */
+export const WIND = { value: new THREE.Vector3(.72, -.69, .15) };
 export function nightGlow(mat) {
   if (mat.userData.nightGlow) return mat; mat.userData.nightGlow = true;
   const prev = mat.onBeforeCompile;

@@ -9,7 +9,7 @@
    MARKER: GROVE_CROPS_3D_V1
    ═══════════════════════════════════════════ */
 import * as THREE from "three";
-import { Parts, clamp01 } from "./toy";
+import { Parts, clamp01, WIND } from "./toy";
 
 const HPI = Math.PI / 2;
 function rng(seed) { let t = (Math.floor(seed * 1000003) ^ 0x5bd1e995) >>> 0; return () => { t = (t + 0x6d2b79f5) >>> 0; let x = Math.imul(t ^ (t >>> 15), 1 | t); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
@@ -234,12 +234,13 @@ export function cropMaterials(TIME) {
   if (cropMat) return { mat: cropMat, depth: cropDepth };
   cropMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .92, metalness: 0 });
   cropMat.onBeforeCompile = (sh) => {
-    sh.uniforms.uTime = TIME;
+    sh.uniforms.uTime = TIME; sh.uniforms.uWind = WIND;
     sh.vertexShader = sh.vertexShader
-      .replace("#include <common>", "#include <common>\nuniform float uTime;")
+      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform vec3 uWind;")
       .replace("#include <begin_vertex>", `#include <begin_vertex>
-{ vec3 g3c = instanceMatrix[3].xyz; float g3w = sin(uTime * 1.5 + g3c.x * .9 + g3c.z * .7) + .5 * sin(uTime * 2.6 + g3c.z * 1.3);
-  transformed.x += g3w * smoothstep(.0, .5, position.y) * .035; }`);
+{ vec3 g3c = instanceMatrix[3].xyz; float g3ph = dot(g3c.xz, uWind.xy) * .35 - uTime * (1.2 + uWind.z * 1.8);
+  float g3w = sin(g3ph + g3c.x * .4) + .5 * sin(uTime * 2.6 + g3c.z * 1.3);
+  transformed.xz += (uWind.xy * (.7 + .3 * g3w) * .5 + vec2(g3w * .5, 0.)) * smoothstep(.0, .5, position.y) * .035 * (.5 + uWind.z) * 2.; }`);
   };
   cropMat.customProgramCacheKey = () => "g3crop";
   cropDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
