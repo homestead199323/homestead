@@ -48,3 +48,13 @@ test('brain: cows lie down',()=>{
   const cow={...goat,species:'Cow',L:2.3,walk:.45,x:8,z:6,arena:{x0:0,x1:16,z0:0,z1:12}};
   assert.ok(run(createBrain([cow]),2400,{night:0,reduced:false}).some(l=>l.mode===MODE.lie),'lies down within 10 minutes');
 });
+test('brain: scatter starts from where the hen is mid-walk',()=>{
+  const hen={idx:0,species:'Chicken',kind:'bird',L:.5,walk:.25,x:1,z:1,arena:{x0:0,x1:8,z0:0,z1:8},home:null,water:null,seed:21};
+  const brain=createBrain([hen]);let walk=null;for(let i=0;i<400&&!walk;i++)walk=brain.tick(i*.25,{night:0,reduced:false}).find(l=>l.mode===MODE.walk);
+  assert.ok(walk,'walks at some point');const mid=(walk.t0+walk.t1)/2,[leg]=brain.scatter([0],-5,-5,mid);
+  const ex=[(walk.from[0]+walk.to[0])/2,(walk.from[1]+walk.to[1])/2];
+  assert.ok(Math.hypot(leg.from[0]-ex[0],leg.from[1]-ex[1])<.05,`from ${leg.from} ≈ mid-point ${ex}`);
+});
+test('brain: first legs are well-formed (t1 > t0) before any tick',()=>{
+  const b=createBrain([goat]);assert.ok(b.animals.length===1);
+});

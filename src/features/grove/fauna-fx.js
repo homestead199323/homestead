@@ -39,7 +39,7 @@ export function buildSwallows(center, count, mat) {
   const an = new Float32Array(count).fill(4), ph = new Float32Array(count);
   for (let i = 0; i < count; i++) { M4.makeTranslation(center[0], 0, center[1]); im.setMatrixAt(i, M4); ph[i] = r(); }
   geo.setAttribute("g3anim", new THREE.InstancedBufferAttribute(an, 1)); geo.setAttribute("g3phase", new THREE.InstancedBufferAttribute(ph, 1));
-  im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = true; im.receiveShadow = false; im.name = "g3swallows";
+  im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = false; im.receiveShadow = false; im.name = "g3swallows"; // static shadow map: no shadow from a moving bird
   return im;
 }
 /** butterflies: one per flower spot ([x, z]), fluttering in a .6 m sphere above it, in three palette colours */

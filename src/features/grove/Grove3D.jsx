@@ -82,7 +82,7 @@ function motionShader(sh) {
     .replace("#include <common>", "#include <common>\nuniform float uTime; uniform vec3 uWind; uniform vec3 uCenter; attribute float g3anim; attribute float g3phase; varying float g3va;")
     .replace("#include <begin_vertex>", `#include <begin_vertex>
 g3va = 1.;
-if (g3anim > 7.5) { float g3H = floor(g3phase) / 100., g3ph = fract(g3phase); float g3T = 8. + g3ph * 4.; float g3t = fract(uTime / g3T + g3ph); float g3fall = clamp(g3t / .07, 0., 1.); transformed.y -= g3H * g3fall * g3fall; float g3roll = clamp((g3t - .07) / .1, 0., 1.); transformed.x += g3roll * .3 * cos(g3ph * 6.28); transformed.z += g3roll * .3 * sin(g3ph * 6.28); g3va = 1. - smoothstep(.8, .92, g3t); }
+if (g3anim > 7.5) { float g3H = floor(g3phase) / 100., g3ph = fract(g3phase); float g3T = 8. + g3ph * 4.; float g3t = fract(uTime / g3T + g3ph); float g3fall = clamp(g3t / .07, 0., 1.); transformed.y -= g3H * g3fall * g3fall; float g3roll = clamp((g3t - .07) / .1, 0., 1.); transformed.x += g3roll * g3H * .12 * cos(g3ph * 6.28); transformed.z += g3roll * g3H * .12 * sin(g3ph * 6.28); g3va = 1. - smoothstep(.8, .92, g3t); }
 else if (g3anim > 6.5) { float g3t = fract(uTime * .085 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.x += sin(uTime * 1.3 + g3phase * 6.28) * .4; transformed.z += cos(uTime * 1.1 + g3phase * 5.1) * .4; transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 2.5 + uCenter.xz; }
 else if (g3anim > 5.5) { float g3t = fract(uTime * .65 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 3. + uCenter.xz; }
 else if (g3anim > 4.5) { float g3f = sin(uTime * 56.5 + g3phase * 6.28); vec3 g3p0 = position; g3p0.y += abs(position.x) * g3f * .9; g3p0.x *= 1. - abs(g3f) * .5; float g3h = uTime * .7 + g3phase * 6.28; float g3c = cos(g3h), g3s = sin(g3h); transformed = vec3(g3p0.x * g3c + g3p0.z * g3s, g3p0.y, -g3p0.x * g3s + g3p0.z * g3c) + vec3(sin(uTime * .9 + g3phase * 6.28) * .3, sin(uTime * 1.7 + g3phase * 3.) * .2 + .2, cos(uTime * .7 + g3phase * 5.) * .3); }
@@ -198,7 +198,7 @@ function fruitTree(g, ctx, x, z, size, stage, name, seed, M, off) {
   if (stage < 5) return; // like the crop rows, a tree shows its harvest: fruit and a gold halo appear only in the harvest window
   ctx.growth.glows.push({ p: [off[0] + x, .012, off[1] + z], tree: true, s: [r * 2.2 + 1.2, r * 2.2 + 1.2, 1] });
   const top = r * .55 + .3 + r * .9, n = Math.round(26 * Math.min(1, r / 1.2)), list = ctx.fruit.get(color) || []; ctx.fruit.set(color, list);
-  if (ctx.fruitDrop) { const dl = ctx.fruitDrop.get(color) || []; ctx.fruitDrop.set(color, dl); const dropY = top - r * .25, h = Math.max(.3, dropY - .05); dl.push({ p: [off[0] + x + .35 * r, dropY, off[1] + z + .25 * r], s: fr * Math.min(1, .55 + r * .4), phase: Math.floor(h * 100) + srand(seed * 5 + 2) }); }
+  if (ctx.fruitDrop) { const dl = ctx.fruitDrop.get(color) || []; ctx.fruitDrop.set(color, dl); const dropY = top - r * .25, h = Math.max(.3, dropY - .05); const ds = fr * Math.min(1, .55 + r * .4); dl.push({ p: [off[0] + x + .35 * r, dropY, off[1] + z + .25 * r], s: ds, phase: Math.floor(h / ds * 100) + srand(seed * 5 + 2) }); } // the fall is written in instance-local units
   for (let i = 0; i < n; i++) {
     // on the surface of the main crown (an r·.92 sphere squashed to .86 in y), upper and side faces, so the fruit shows
     const a = srand(seed * 7 + i * 3) * 6.283, b = -.35 + srand(seed * 11 + i * 5) * 1.35, fs = fr * Math.min(1, .55 + r * .4), R = r * .92 + fs * .35;
@@ -984,14 +984,14 @@ function buildGrowth(g, ctx, M) { // stage markers and harvest halos for the who
 }
 function buildMotion(g, ctx, M) { // chimney smoke, bees and falling fruit: instanced spheres animated in the vertex shader
   const jobs = [["smoke", M.smoke, 3, ctx.motion.smoke], ["bees", M.bee, 1, ctx.motion.bees]];
-  if (ctx.fruitDrop) ctx.fruitDrop.forEach((list, color) => jobs.push(["drop", M.fruitDrop(color), 8, list]));
+  if (ctx.fruitDrop && !ctx.device?.reduced) ctx.fruitDrop.forEach((list, color) => jobs.push(["drop", M.fruitDrop(color), 8, list]));
   jobs.forEach(([key, mat, anim, list]) => {
     if (!list.length) return;
     const geo = new THREE.SphereGeometry(1, 10, 8), im = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), S = new THREE.Vector3(), Q = new THREE.Quaternion(), P = new THREE.Vector3();
     const an = new Float32Array(list.length), ph = new Float32Array(list.length);
     list.forEach((it, i) => { P.set(it.p[0], it.p[1], it.p[2]); S.set(it.s, key === "bees" ? it.s * .7 : it.s, key === "bees" ? it.s * 1.3 : it.s); M4.compose(P, Q, S); im.setMatrixAt(i, M4); an[i] = anim; ph[i] = it.phase; });
     geo.setAttribute("g3anim", new THREE.InstancedBufferAttribute(an, 1)); geo.setAttribute("g3phase", new THREE.InstancedBufferAttribute(ph, 1));
-    im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = key === "bees" || key === "drop"; im.receiveShadow = false; if (key === "smoke") im.renderOrder = 2;
+    im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = key === "bees"; // the shadow map is static: moving fruit must not cast im.receiveShadow = false; if (key === "smoke") im.renderOrder = 2;
     g.add(im);
   });
 }
@@ -1164,7 +1164,7 @@ function buildWorld(ctx) {
   if (balcony) { // a stone slab: no grass, no wild flowers
     buildFences(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M); buildMotion(world, ctx, M);
     buildCrops(world, ctx.plants, TIME);
-    bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron]));
+    bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron, ...ctx.keep]));
     const herd = buildHerd(ctx.herd, TIME); if (herd) { world.add(herd.mesh); ctx.herdMesh = herd; }
     return world;
   }
@@ -1456,7 +1456,7 @@ class FarmControls {
 /* ---------- component ---------- */
 export default function Grove3D(props) {
   const { data, zones, roads, crops, fW, fH, margin, env, pathTexture, roadWidth, tasksByZone = {}, selectedId, onZoneOpen, onBadge, onShowCrops, weather = null, skyOverride = null } = props;
-  const liveSky = data.mapStyle?.liveSky !== "off", lat = typeof data.cityGeo?.lat === "number" ? data.cityGeo.lat : null; // "Live sky" setting; latitude from the town's geocode
+  const liveSky = data.mapStyle?.liveSky !== "off", lat = typeof data.cityGeo?.lat === "number" ? data.cityGeo.lat : null, lng = typeof data.cityGeo?.lng === "number" ? data.cityGeo.lng : null; // "Live sky" setting; the town's geocode drives the sun
   const host = useRef(null), labels = useRef(null), tipRef = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
   const [full, setFull] = useState(false);
   const [ahead, setAhead] = useState(0); // growth preview: days from today
@@ -1506,7 +1506,7 @@ export default function Grove3D(props) {
   };
   const dismissHint = () => { setHint(false); try { sessionStorage.setItem("g3-hint", "1"); } catch { /* private mode */ } };
   const showCoop = (kind) => setCoop(kind);
-  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, pickRow, todayKey, liveSky, lat, skyOverride }; }); // the engine reads the newest props from here
+  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, pickRow, todayKey, liveSky, lat, lng, skyOverride }; }); // the engine reads the newest props from here
   useEffect(() => { if (!coop) return; const t = setTimeout(() => setCoop(null), 1800); return () => clearTimeout(t); }, [coop]);
   // renderer, lights and controls: created once
   useEffect(() => {
@@ -1754,12 +1754,12 @@ export default function Grove3D(props) {
         if (o.hour != null) date.setHours(o.hour, 0, 0, 0);
         if (o.wx || o.windKmh != null) wx = { code: { clear: 0, overcast: 3, rain: 61, snow: 73 }[o.wx] ?? 0, windKmh: o.windKmh ?? 10, windDeg: o.windDeg ?? 240, temp: o.temp ?? 15 };
       }
-      st.applySky(skyState({ date, lat: latest.current.lat ?? 50, weather: wx && wx.ok !== false ? wx : null, liveSky: live, reduced: st.reduced }));
+      st.applySky(skyState({ date, lat: latest.current.lat ?? 50, lng: o && o.hour != null ? null : latest.current.lng, weather: wx && wx.ok !== false ? wx : null, liveSky: live, reduced: st.reduced }));
     };
     tick();
     const id = setInterval(tick, 60000);
     return () => clearInterval(id);
-  }, [weather, liveSky, lat, overrideKey]);
+  }, [weather, liveSky, lat, lng, overrideKey]);
   useEffect(() => { state.current?.pick?.(picked); }, [picked, sceneKey]);
   useEffect(() => { state.current?.requestRender(); }, [tasksByZone]);
   // full-screen mode: the map takes the whole viewport, page scroll locked, Escape closes

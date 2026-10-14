@@ -40,3 +40,13 @@ test('weather fx: vane points into the wind',()=>{
   // air moving toward +x (scene) → the arrow tip points to −x; rotation.y = atan2(−dz, dx)
   near(vaneAngle([1,0]),0,1e-9,'east wind');near(vaneAngle([0,1]),-Math.PI/2,1e-9,'wind toward +z');
 });
+test('sky: longitude and summer time — Brussels 21:00 CEST is still daylight',()=>{
+  // 2026-06-21 19:00 UTC = 21:00 CEST; solar time at 4.35° E ≈ 19:17 → the sun is still up (~+5°)
+  const d=new Date(Date.UTC(2026,5,21,19,0));
+  assert.ok(sunPosition(d,50.85,4.35).elevation>2,'sun up with longitude');
+  assert.ok(sunPosition(new Date(Date.UTC(2026,5,21,10,0)),51.5,-0.12).elevation>52,'London 11:00 BST (10:00 solar) ≈ 54°');
+});
+test('sky: liveSky off is calm whatever the forecast',()=>{
+  const s=skyState({date:new Date(2026,0,1,2,0),lat:51.5,liveSky:false,weather:{code:61,windKmh:60,windDeg:90}});
+  assert.equal(s.windStrength,FIXED_SKY.windStrength);assert.deepEqual(s.windDir,FIXED_SKY.windDir);assert.equal(s.precip,'none');assert.equal(s.cloud,0);
+});

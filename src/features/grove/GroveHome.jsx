@@ -47,7 +47,7 @@ function StarterKit({data,setData}) {
 
 export default function GroveHome({data,setData,setPage,tasks,forecast,forecastState,alerts}) {
   const [walk,setWalk]=useState(false),[weather,setWeather]=useState(null),[taskZone,setTaskZone]=useState(null);
-  useEffect(()=>{let active=true;if(data.city)fetchWeather(data.city).then(w=>{if(active&&w&&w.ok)setWeather(w);});return()=>{active=false;};},[data.city]); // a failed refetch keeps the last good weather
+  useEffect(()=>{let active=true;setWeather(null);if(data.city)fetchWeather(data.city).then(w=>{if(active&&w&&w.ok)setWeather(w);});return()=>{active=false;};},[data.city]); // a new town starts blank; a failed refetch of the same town keeps the last good weather
   const due=tasks.filter(t=>t.daysOut===0&&!['forecast','upcoming'].includes(t.type));
   const markers=tasksByZone(tasks,data);
   const zoneOf=t=>Object.keys(markers).find(id=>markers[id].some(x=>x.key===t.key));

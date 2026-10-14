@@ -11,11 +11,13 @@ const toHex = (c) => "#" + c.map((v) => Math.round(clamp(v, 0, 1) * 255).toStrin
 const mixHex = (a, b, t) => toHex(hex(a).map((v, i) => v + (hex(b)[i] - v) * t));
 const mix = (a, b, t) => a + (b - a) * t;
 
-/** Solar elevation/azimuth for a local clock time (treated as solar time) and latitude. */
-export function sunPosition(date, latDeg) {
-  const start = new Date(date.getFullYear(), 0, 0), doy = Math.floor((date - start) / 864e5);
+/** Solar elevation/azimuth for a clock time and latitude. With a longitude the hour is true solar time (UTC + lng/15,
+    so summer time and the town's place in its zone are right); without one the local clock stands in for solar time. */
+export function sunPosition(date, latDeg, lngDeg = null) {
+  const solar = Number.isFinite(lngDeg);
+  const start = solar ? Date.UTC(date.getUTCFullYear(), 0, 0) : new Date(date.getFullYear(), 0, 0), doy = Math.floor((date - start) / 864e5);
   const decl = 23.44 * DEG * Math.sin(2 * Math.PI * (284 + doy) / 365);
-  const hours = date.getHours() + date.getMinutes() / 60, ha = (hours - 12) * 15 * DEG, lat = latDeg * DEG;
+  const hours = solar ? ((date.getUTCHours() + date.getUTCMinutes() / 60 + lngDeg / 15) % 24 + 24) % 24 : date.getHours() + date.getMinutes() / 60, ha = (hours - 12) * 15 * DEG, lat = latDeg * DEG;
   const sinEl = Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(ha);
   const el = Math.asin(clamp(sinEl, -1, 1));
   const cosAz = (Math.sin(decl) - Math.sin(el) * Math.sin(lat)) / Math.max(1e-6, Math.cos(el) * Math.cos(lat));
@@ -70,10 +72,10 @@ export function weatherOf(w) {
 }
 
 /** The whole light/weather state Grove3D applies. */
-export function skyState({ date = new Date(), lat = 50, weather = null, liveSky = true, reduced = false, elevationOverride = null } = {}) {
+export function skyState({ date = new Date(), lat = 50, lng = null, weather = null, liveSky = true, reduced = false, elevationOverride = null } = {}) {
+  if (!liveSky) return { ...FIXED_SKY, reduced }; // off = the fixed afternoon, clear and calm, whatever the forecast (spec §1)
   const wx = weatherOf(weather);
-  if (!liveSky) return { ...FIXED_SKY, windDir: wx.windDir, windStrength: wx.windStrength, tempC: wx.tempC, reduced };
-  const pos = sunPosition(date, Number.isFinite(lat) ? lat : 50);
+  const pos = sunPosition(date, Number.isFinite(lat) ? lat : 50, lng);
   const el = elevationOverride == null ? pos.elevation : elevationOverride;
   const night = clamp(-el / 6, 0, 1), p = presetAt(el);
   // below the horizon the "moon" lights the scene: the sun's azimuth mirrored through north, 40° up

@@ -16,6 +16,7 @@ export function rng(seed) { let t = (Math.floor(seed * 1000003) ^ 0x5bd1e995) >>
 const between = (r, a, b) => a + r() * (b - a);
 const inRect = (x, z, A, pad = 0) => x >= A.x0 + pad && x <= A.x1 - pad && z >= A.z0 + pad && z <= A.z1 - pad;
 const clampRect = (x, z, A, pad = 0) => [Math.min(A.x1 - pad, Math.max(A.x0 + pad, x)), Math.min(A.z1 - pad, Math.max(A.z0 + pad, z))];
+const smooth = (t) => { const u = Math.min(1, Math.max(0, t)); return u * u * (3 - 2 * u); }; // GLSL smoothstep, as the shader interpolates
 const roomy = (A, pad) => !!A && A.x1 - A.x0 > 2 * pad + .05 && A.z1 - A.z0 > 2 * pad + .05;
 
 /**
@@ -30,7 +31,7 @@ export function createBrain(animals) {
   const leg = (s, to, mode, dur, now, param = 0) => {
     const from = [s.x, s.z], dx = to[0] - from[0], dz = to[1] - from[1];
     if (mode === MODE.walk || mode === MODE.scatter) { if (Math.hypot(dx, dz) > 1e-4) s.heading = Math.atan2(dx, dz); }
-    s.x = to[0]; s.z = to[1]; s.mode = mode; s.until = now + dur;
+    s.x = to[0]; s.z = to[1]; s.mode = mode; s.until = now + dur; s.leg = { from, to: [to[0], to[1]], t0: now, t1: now + dur };
     return { idx: s.idx, from, to: [to[0], to[1]], t0: now, t1: now + dur, mode, param, heading: s.heading };
   };
   const still = (s, mode, dur, now, param = 0) => leg(s, [s.x, s.z], mode, dur, now, param);
@@ -81,10 +82,11 @@ export function createBrain(animals) {
     scatter(idxs, x, z, now) {
       const out = [];
       idxs.forEach((idx) => {
-        const s = S.find((q) => q.idx === idx); if (!s || s.mode === MODE.inside || !s.arena) return;
+        const s = S.find((q) => q.idx === idx); if (!s || s.mode === MODE.inside || !roomy(s.arena, s.pad)) return;
+        if (s.leg && now < s.leg.t1) { const u = smooth((now - s.leg.t0) / Math.max(1e-6, s.leg.t1 - s.leg.t0)); s.x = s.leg.from[0] + (s.leg.to[0] - s.leg.from[0]) * u; s.z = s.leg.from[1] + (s.leg.to[1] - s.leg.from[1]) * u; } // where it is right now, mid-leg
         let dx = s.x - x, dz = s.z - z, d = Math.hypot(dx, dz);
         if (d < 1e-3) { const a = s.r() * 6.2832; dx = Math.sin(a); dz = Math.cos(a); d = 1; }
-        const run = s.L * between(s.r, 1.5, 2.5), to = clampRect(s.x + dx / d * run, s.z + dz / d * run, s.arena, Math.min(s.pad, (s.arena.x1 - s.arena.x0) / 2 - .01));
+        const run = s.L * between(s.r, 1.5, 2.5), to = clampRect(s.x + dx / d * run, s.z + dz / d * run, s.arena, s.pad);
         out.push(leg(s, to, MODE.scatter, between(s.r, 1.3, 1.7), now));
       });
       return out;

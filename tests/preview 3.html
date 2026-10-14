@@ -1,0 +1,6 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module">
+// Explicit development fixture, excluded from the production build.
+import {fixture} from './fixture.js';
+if(!localStorage.getItem('quiet_fixture')){localStorage.setItem('hfm_data_v7',JSON.stringify(fixture));localStorage.setItem('hfm_page','home');localStorage.setItem('quiet_fixture','1');}
+await import('/src/main.jsx');
+</script></body></html>

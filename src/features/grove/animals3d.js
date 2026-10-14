@@ -286,7 +286,7 @@ export function buildHerd(items, TIME) {
     const g = animalGeometry(it.type, variant).clone(), n = g.attributes.position.count;
     const gait = 6.2832 * S.walk / (S.L * (S.kind === KIND.bird ? .32 : .5)), stride = S.kind === KIND.bird ? .45 : .32, graze = S.graze ?? 0, bobH = S.kind === KIND.hopper ? S.L * .22 : S.L * .012;
     const a = new Float32Array(n * 4), b = new Float32Array(n * 4), q = new Float32Array(n * 4), l1 = new Float32Array(n * 4), l2 = new Float32Array(n * 4), ph = r();
-    for (let i = 0; i < n; i++) { a.set([it.x, it.z, it.heading, S.kind], i * 4); b.set([ph, S.H || S.L * .6, it.heading, 0], i * 4); q.set([gait, stride, graze, bobH], i * 4); l1.set([it.x, it.z, it.x, it.z], i * 4); }
+    for (let i = 0; i < n; i++) { a.set([it.x, it.z, it.heading, S.kind], i * 4); b.set([ph, S.H || S.L * .6, it.heading, 0], i * 4); q.set([gait, stride, graze, bobH], i * 4); l1.set([it.x, it.z, it.x, it.z], i * 4); l2.set([0, 1, 0, 0], i * 4); }
     g.setAttribute("g3a", new THREE.BufferAttribute(a, 4)); g.setAttribute("g3b", new THREE.BufferAttribute(b, 4)); g.setAttribute("g3q", new THREE.BufferAttribute(q, 4));
     g.setAttribute("g3l1", new THREE.BufferAttribute(l1, 4)); g.setAttribute("g3l2", new THREE.BufferAttribute(l2, 4));
     g.setAttribute("g3y", new THREE.BufferAttribute(new Float32Array(n).fill(it.y || 0), 1));
