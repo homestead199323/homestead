@@ -213,42 +213,49 @@ function animalGeometry(type, variant) { // one geometry per species and colour 
 }
 
 /* ---------- shader: pose + motion from the shared clock ---------- */
-const GLSL_HEAD = `uniform float uTime; attribute vec4 g3a; attribute vec4 g3b; attribute vec4 g3p; attribute vec4 g3q; attribute float g3y;
+const GLSL_HEAD = `uniform float uTime; attribute vec4 g3a; attribute vec4 g3b; attribute vec4 g3p; attribute vec4 g3q; attribute float g3y; attribute vec4 g3l1; attribute vec4 g3l2;
 mat3 g3rx(float a){ float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
 mat3 g3ry(float a){ float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
-void g3pose(out mat3 Rp, out mat3 Rh, out vec3 off) {
-  float part = g3p.x, kind = g3a.w, ph = g3b.w;
-  float walking = step(.001, g3b.z);
-  float f = fract((uTime * g3b.z + ph * 6.2832) / 6.2832);
-  float mv = walking * smoothstep(0., .05, f) * (1. - smoothstep(.52, .57, f));
-  float ang = clamp(f / .57, 0., 1.) * 6.2832;
-  vec2 pos = vec2(g3b.x * cos(ang), g3b.y * sin(ang));
-  vec2 tng = vec2(-g3b.x * sin(ang), g3b.y * cos(ang));
-  float heading = walking > .5 ? atan(tng.x, tng.y) : g3a.z;
-  float gt = uTime * g3q.x + ph * 6.2832;
+// legs (herd-brain.js): g3l1 = (fromX, fromZ, toX, toZ), g3l2 = (t0, t1, mode, param); g3b = (phase, bodyH, heading, 0)
+// modes: 0 stand, 1 graze/peck, 2 walk, 3 lie, 4 swim, 5 scatter, 6 inside (hidden)
+void g3pose(out mat3 Rp, out mat3 Rh, out vec3 off, out float vis, out float lie) {
+  float part = g3p.x, kind = g3a.w, ph = g3b.x, H = g3b.y;
+  float t0 = g3l2.x, t1 = g3l2.y, mode = g3l2.z, param = g3l2.w;
+  float u = smoothstep(t0, t1, uTime), ease = smoothstep(t0, t0 + .6, uTime);
+  vec2 pos = mix(g3l1.xy, g3l1.zw, u);
+  float moving = (mode == 2. || mode == 5.) ? step(t0, uTime) * (1. - step(t1, uTime)) : 0.;
+  float speedMul = mode == 5. ? 2.5 : 1.;
+  float gt = uTime * g3q.x * speedMul + ph * 6.2832;
   float legOff = (part == 3. || part == 6.) ? 0. : 3.1416;
-  float swing = sin(gt + legOff) * g3q.y * mv;
-  float bob = abs(sin(gt)) * g3q.w * mv;
-  float gz = .5 + .5 * sin(uTime * .31 + ph * 6.2832);
-  float down = smoothstep(.35, .7, gz) * (1. - mv);
+  float swim = mode == 4. ? 1. : 0.;
+  float swing = sin(gt + legOff) * g3q.y * moving * (1. - swim);
+  float bob = abs(sin(gt)) * g3q.w * moving;
+  float down = mode == 1. ? ease : 0.;
   float nib = down * sin(uTime * 5.5 + ph * 9.) * .05;
-  float peck = (1. - mv) * max(0., sin(uTime * 4.5 + ph * 7.)) * step(.55, .5 + .5 * sin(uTime * .6 + ph * 6.2832)) * g3q.z;
-  float strut = mv * sin(gt) * .12;
-  float headA = kind == 1. ? peck + strut : kind == 2. ? sin(uTime * 1.3 + ph * 6.) * .08 : down * g3q.z + nib;
-  float tailA = sin(uTime * 1.4 + ph * 6.2832) * .32 + sin(uTime * 3.3 + ph * 4.) * .1;
+  float peck = down * max(0., sin(uTime * 4.5 + ph * 7.)) * g3q.z;
+  float strut = moving * sin(gt) * .12;
+  float headUp = mode == 5. ? -.35 : 0.;
+  lie = mode == 3. ? ease : 0.;
+  float chew = lie * sin(uTime * 3. + ph * 4.) * .03;
+  float headA = kind == 1. ? peck + strut + headUp : kind == 2. ? sin(uTime * 1.3 + ph * 6.) * .08 : down * g3q.z + nib + chew;
+  float tailA = sin(uTime * 1.4 + ph * 6.2832) * .32 + sin(uTime * 3.3 + ph * 4.) * .1 + (mode == 5. ? .5 : 0.);
   float a = part == 1. ? headA : (part >= 3. && part <= 6.) ? (kind == 2. ? 0. : swing) : 0.;
   Rp = part == 7. ? g3ry(tailA) : g3rx(a);
-  Rh = g3ry(heading);
-  off = vec3(g3a.x + pos.x * walking, bob + g3y, g3a.y + pos.y * walking);
+  Rh = g3ry(g3b.z);
+  float y = g3y + bob - lie * .35 * H + swim * (param - g3y + sin(uTime * 1.7 + ph * 6.) * .02);
+  off = vec3(pos.x, y, pos.y);
+  vis = mode == 6. ? 0. : 1.;
 }`;
 export function animalShader(sh, depth) {
   Object.assign(sh.uniforms, { uTime: sh.uniforms.uTime || { value: 0 } });
   sh.vertexShader = sh.vertexShader
     .replace("#include <common>", "#include <common>\n" + GLSL_HEAD)
     .replace("#include <begin_vertex>", `#include <begin_vertex>
-{ mat3 Rp, Rh; vec3 off; g3pose(Rp, Rh, off); vec3 lp = g3p.yzw + Rp * (position - g3p.yzw); transformed = Rh * lp + off; }`);
+{ mat3 Rp, Rh; vec3 off; float vis, lie; g3pose(Rp, Rh, off, vis, lie);
+  vec3 p0 = (g3p.x >= 3. && g3p.x <= 6.) ? g3p.yzw + (position - g3p.yzw) * mix(1., .25, lie) : position;
+  vec3 lp = g3p.yzw + Rp * (p0 - g3p.yzw); transformed = mix(off, Rh * lp + off, vis); }`);
   if (!depth) sh.vertexShader = sh.vertexShader.replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>
-{ mat3 Rp, Rh; vec3 off; g3pose(Rp, Rh, off); objectNormal = Rh * (Rp * objectNormal); }`);
+{ mat3 Rp, Rh; vec3 off; float vis, lie; g3pose(Rp, Rh, off, vis, lie); objectNormal = Rh * (Rp * objectNormal); }`);
 }
 let mats = null;
 export function animalMaterials(TIME) {
@@ -262,31 +269,43 @@ export function animalMaterials(TIME) {
 
 /* ---------- the herd: one mesh for every animal on the farm ----------
    items: [{ type, x, z, y?, heading, arena: { x0, x1, z0, z1 } | null, seed }] in world metres (y: a raised floor).
-   Each animal gets a colour variant, a walking loop that fits inside its arena (or stands
+   Each animal gets a colour variant and a first leg (standing at its spot); herd-brain.js then
+   decides the legs (wander, graze, lie, swim, scatter, roost) and applyLegs writes them (or stands
    still when there is no room), a gait speed from its size and a random phase. */
+/** what the brain needs to know about a species */
+export function speciesInfo(type) {
+  const S = SPECIES[type] || SPECIES.Sheep;
+  return { kind: S.kind === KIND.bird ? "bird" : S.kind === KIND.hopper ? "hopper" : "grazer", L: S.L, H: S.H || S.L * .6, walk: S.walk };
+}
+/** items: [{ type, x, z, y?, heading, seed, variant? }]; returns { mesh, ranges: [{ idx, start, count }], l1, l2, b } — null without animals */
 export function buildHerd(items, TIME) {
   if (!items.length) return null;
-  const { mat, depth } = animalMaterials(TIME), geos = [];
-  items.forEach((it) => {
+  const { mat, depth } = animalMaterials(TIME), geos = [], ranges = []; let start = 0;
+  items.forEach((it, idx) => {
     const S = SPECIES[it.type] || SPECIES.Sheep, r = rng(it.seed * 31 + 7), variant = it.variant ?? Math.floor(r() * 4);
     const g = animalGeometry(it.type, variant).clone(), n = g.attributes.position.count;
-    // walking loop: an ellipse around the base position, clipped to the arena
-    let rx = 0, rz = 0, speed = 0;
-    const A = it.arena;
-    if (A && r() < .72) {
-      const want = S.L * (1.2 + r() * 1.8), wz = S.L * (.8 + r() * 1.4), pad = S.L * .55;
-      rx = Math.min(want, it.x - A.x0 - pad, A.x1 - it.x - pad); rz = Math.min(wz, it.z - A.z0 - pad, A.z1 - it.z - pad);
-      if (rx > S.L * .5 && rz > S.L * .35) { const per = 6.2832 * Math.sqrt((rx * rx + rz * rz) / 2); speed = 6.2832 / (per / S.walk / .57 + 4 + r() * 8); } else { rx = rz = 0; }
-    }
     const gait = 6.2832 * S.walk / (S.L * (S.kind === KIND.bird ? .32 : .5)), stride = S.kind === KIND.bird ? .45 : .32, graze = S.graze ?? 0, bobH = S.kind === KIND.hopper ? S.L * .22 : S.L * .012;
-    const a = new Float32Array(n * 4), b = new Float32Array(n * 4), q = new Float32Array(n * 4), ph = r();
-    for (let i = 0; i < n; i++) { a.set([it.x, it.z, it.heading, S.kind], i * 4); b.set([rx, rz, speed, ph], i * 4); q.set([gait, stride, graze, bobH], i * 4); }
+    const a = new Float32Array(n * 4), b = new Float32Array(n * 4), q = new Float32Array(n * 4), l1 = new Float32Array(n * 4), l2 = new Float32Array(n * 4), ph = r();
+    for (let i = 0; i < n; i++) { a.set([it.x, it.z, it.heading, S.kind], i * 4); b.set([ph, S.H || S.L * .6, it.heading, 0], i * 4); q.set([gait, stride, graze, bobH], i * 4); l1.set([it.x, it.z, it.x, it.z], i * 4); }
     g.setAttribute("g3a", new THREE.BufferAttribute(a, 4)); g.setAttribute("g3b", new THREE.BufferAttribute(b, 4)); g.setAttribute("g3q", new THREE.BufferAttribute(q, 4));
+    g.setAttribute("g3l1", new THREE.BufferAttribute(l1, 4)); g.setAttribute("g3l2", new THREE.BufferAttribute(l2, 4));
     g.setAttribute("g3y", new THREE.BufferAttribute(new Float32Array(n).fill(it.y || 0), 1));
-    geos.push(g);
+    ranges.push({ idx, start, count: n }); start += n; geos.push(g);
   });
   const merged = mergeGeometries(geos, false); geos.forEach((g) => g.dispose());
   const mesh = new THREE.Mesh(merged, mat);
   mesh.castShadow = true; mesh.receiveShadow = true; mesh.customDepthMaterial = depth; mesh.frustumCulled = false; mesh.name = "herd";
-  return mesh;
+  return { mesh, ranges, l1: merged.attributes.g3l1, l2: merged.attributes.g3l2, b: merged.attributes.g3b };
+}
+/** writes the brain's new legs into the herd's vertex ranges (only those ranges are re-uploaded) */
+export function applyLegs(herd, legs) {
+  if (!herd || !legs.length) return;
+  const { l1, l2, b, ranges } = herd;
+  legs.forEach((leg) => {
+    const rg = ranges[leg.idx]; if (!rg) return;
+    const A1 = l1.array, A2 = l2.array, B = b.array;
+    for (let i = rg.start, e = rg.start + rg.count; i < e; i++) { const k = i * 4; A1[k] = leg.from[0]; A1[k + 1] = leg.from[1]; A1[k + 2] = leg.to[0]; A1[k + 3] = leg.to[1]; A2[k] = leg.t0; A2[k + 1] = leg.t1; A2[k + 2] = leg.mode; A2[k + 3] = leg.param; B[k + 2] = leg.heading; }
+    l1.addUpdateRange(rg.start * 4, rg.count * 4); l2.addUpdateRange(rg.start * 4, rg.count * 4); b.addUpdateRange(rg.start * 4, rg.count * 4);
+  });
+  l1.needsUpdate = true; l2.needsUpdate = true; b.needsUpdate = true;
 }

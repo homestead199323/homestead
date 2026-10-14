@@ -21,7 +21,9 @@ import { srand } from "./sceneMath";
 import { todayLocalKey } from "../../lib/utils";
 import { isPlantZone } from "../farm/living/visuals";
 import { taskGlyph } from "./zone-tasks";
-import { buildHerd } from "./animals3d";
+import { buildHerd, applyLegs, speciesInfo } from "./animals3d";
+import { createBrain } from "./herd-brain";
+import { buildSwallows, buildButterflies, swallowCount, butterflyCount } from "./fauna-fx";
 import { GROUND_TONES, pathTones } from "./palette";
 import { TREE_RE } from "./crop-families";
 import { PAL, STAGE_COLOR, NIGHT, WIND, nightGlow, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
@@ -66,14 +68,16 @@ function motionShader(sh) {
 g3va = 1.;
 if (g3anim > 6.5) { float g3t = fract(uTime * .085 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.x += sin(uTime * 1.3 + g3phase * 6.28) * .4; transformed.z += cos(uTime * 1.1 + g3phase * 5.1) * .4; transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 2.5 + uCenter.xz; }
 else if (g3anim > 5.5) { float g3t = fract(uTime * .65 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 3. + uCenter.xz; }
+else if (g3anim > 4.5) { float g3f = sin(uTime * 56.5 + g3phase * 6.28); vec3 g3p0 = position; g3p0.y += abs(position.x) * g3f * .9; g3p0.x *= 1. - abs(g3f) * .5; float g3h = uTime * .7 + g3phase * 6.28; float g3c = cos(g3h), g3s = sin(g3h); transformed = vec3(g3p0.x * g3c + g3p0.z * g3s, g3p0.y, -g3p0.x * g3s + g3p0.z * g3c) + vec3(sin(uTime * .9 + g3phase * 6.28) * .3, sin(uTime * 1.7 + g3phase * 3.) * .2 + .2, cos(uTime * .7 + g3phase * 5.) * .3); }
+else if (g3anim > 3.5) { float w1 = .16 + g3phase * .08, w2 = w1 * 1.5, A = 9. + g3phase * 6., B = 6. + g3phase * 4.; vec2 g3c2 = vec2(A * sin(uTime * w1 + g3phase * 6.28), B * sin(uTime * w2)); vec2 g3v = vec2(A * w1 * cos(uTime * w1 + g3phase * 6.28), B * w2 * cos(uTime * w2)); float g3hd = atan(g3v.x, g3v.y); float g3f = sin(uTime * 37.7 + g3phase * 6.28) * .6; vec3 g3p0 = position; g3p0.y += abs(position.x) * sin(g3f); g3p0.x *= cos(g3f); float g3bk = clamp((g3v.x * B * w2 * w2 * sin(uTime * w2) - g3v.y * A * w1 * w1 * sin(uTime * w1 + g3phase * 6.28)) * .6, -.6, .6); g3p0 = vec3(g3p0.x * cos(g3bk) - g3p0.y * sin(g3bk), g3p0.x * sin(g3bk) + g3p0.y * cos(g3bk), g3p0.z); float g3ch = cos(g3hd), g3sh = sin(g3hd); transformed = vec3(g3p0.x * g3ch + g3p0.z * g3sh, g3p0.y, -g3p0.x * g3sh + g3p0.z * g3ch) + vec3(g3c2.x, 9. + g3phase * 4. + sin(uTime * .8 + g3phase * 6.28) * .6, g3c2.y); }
 else if (g3anim > 2.5) { float g3t = fract(uTime * .09 + g3phase); transformed *= .5 + g3t * 2.2; transformed.y += g3t * 2.4; transformed.xz += uWind.xy * uWind.z * g3t * 2.6 + vec2(sin(g3t * 5. + g3phase * 6.28) * .16, 0.); g3va = (1. - g3t) * smoothstep(0., .12, g3t) * .7; }
 else if (g3anim > .5) { transformed.y += sin(uTime * 2.1 + g3phase * 6.28) * .05; transformed.x += cos(uTime * .9 + g3phase * 6.28) * .07; transformed.z += sin(uTime * 1.3 + g3phase * 3.1) * .05; }`);
   sh.fragmentShader = sh.fragmentShader
     .replace("#include <common>", "#include <common>\nvarying float g3va;")
     .replace("#include <alphatest_fragment>", "diffuseColor.a *= g3va;\n#include <alphatest_fragment>");
 }
-function motionMat(color, smoke) {
-  const m = new THREE.MeshStandardMaterial({ color, roughness: 1, transparent: smoke, opacity: 1, depthWrite: !smoke, emissive: smoke ? 0xffffff : 0x000000, emissiveIntensity: smoke ? .25 : 0 });
+function motionMat(color, smoke, vertexColors = false) {
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 1, transparent: smoke, opacity: 1, depthWrite: !smoke, emissive: smoke ? 0xffffff : 0x000000, emissiveIntensity: smoke ? .25 : 0, vertexColors });
   m.forceSinglePass = true; m.onBeforeCompile = motionShader; m.customProgramCacheKey = () => "g3motion"; return m;
 }
 
@@ -106,7 +110,7 @@ function materials() {
     selectEdge: layered(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .95, depthWrite: false }), 15),
     pick: layered(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .3, depthWrite: false }), 16),
     pickEdge: layered(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .95, depthWrite: false }), 17),
-    smoke: motionMat(PAL.smoke, true), bee: motionMat(PAL.bee, false), rain: Object.assign(motionMat(0xeef6f9, false), { transparent: true, opacity: .75 }), snow: motionMat(0xffffff, false),
+    smoke: motionMat(PAL.smoke, true), bee: motionMat(PAL.bee, false), rain: Object.assign(motionMat(0xeef6f9, false), { transparent: true, opacity: .75 }), snow: motionMat(0xffffff, false), swallow: motionMat(0xffffff, false, true), butterfly: motionMat(0xffffff, false),
   };
 }
 
@@ -498,7 +502,7 @@ function coopZone(g, z, ctx, tag) {
     ORNAMENTS.flowers(g, .45, d - .5, { seed: z.id.length, s: .55 });
   }
   tube(g, .22, .22, .55, M.zinc, hx + hw + .36, .275, hz + .4, { seg: 16 }); tube(g, .24, .24, .05, M.zinc, hx + hw + .36, .575, hz + .4, { seg: 16, cast: false });
-  return { arena: { x0: .35, x1: w - .35, z0: Math.min(runZ0, d - 1.2), z1: runZ1 }, inside: [{ x: hx + hw * .4, y: floorY, z: hz + hd * .45 }, { x: hx + hw * .75, y: floorY, z: hz + hd * .7 }] };
+  return { arena: { x0: .35, x1: w - .35, z0: Math.min(runZ0, d - 1.2), z1: runZ1 }, home: { x: px, z: fz + .55 }, inside: [{ x: hx + hw * .4, y: floorY, z: hz + hd * .45 }, { x: hx + hw * .75, y: floorY, z: hz + hd * .7 }] };
 }
 function barnZone(g, z, ctx, tag) {
   const { M } = ctx, w = z.wM, d = z.hM, cx = w / 2, off = [z.xM, z.yM];
@@ -928,14 +932,17 @@ function buildZone(z, ctx) {
     } else A = { x0: .4, x1: w - .4, z0: .4, z1: d - .4 };
     const arena = { x0: z.xM + A.x0, x1: z.xM + A.x1, z0: z.yM + A.z0, z1: z.yM + A.z1 };
     const inside = housing?.inside || []; let used = 0; // a few animals stand indoors, on the house floor or in a stall
+    const home = housing?.home ? { x: z.xM + housing.home.x, z: z.yM + housing.home.z } : null;
+    const pond = (data.zones || []).find((q) => q.type === "water" && q.xM < arena.x1 + 1 && q.xM + q.wM > arena.x0 - 1 && q.yM < arena.z1 + 1 && q.yM + q.hM > arena.z0 - 1);
+    const ins = pond ? Math.max(.4, Math.min(pond.wM, pond.hM) * .22) : 0, water = pond && pond.wM > 2 * ins + .5 && pond.hM > 2 * ins + .5 ? { x0: pond.xM + ins, x1: pond.xM + pond.wM - ins, z0: pond.yM + ins, z1: pond.yM + pond.hM - ins, y: .36 } : null;
     animals.slice(0, 5).forEach((a, i) => {
       if (a.type === "Bee") return;
       const bird = /chicken|duck|goose|turkey|quail|guinea/i.test(a.type), n = Math.min(bird ? 12 : 9, a.count || 1);
       for (let j = 0; j < n; j++) {
-        if (j === 0 && n >= 3 && used < inside.length) { const p = inside[used++]; ctx.herd.push({ type: a.type, x: z.xM + p.x, y: p.y, z: z.yM + p.z, heading: srand(i * 17 + 5) * 6.283, arena: null, seed: z.id.length * 97 + i * 13 + 50, variant: i % 4 }); continue; }
+        if (j === 0 && n >= 3 && used < inside.length) { const p = inside[used++]; ctx.herd.push({ type: a.type, zone: z.id, x: z.xM + p.x, y: p.y, z: z.yM + p.z, heading: srand(i * 17 + 5) * 6.283, arena: null, home: null, water: null, seed: z.id.length * 97 + i * 13 + 50, variant: i % 4 }); continue; }
         const x = arena.x0 + (arena.x1 - arena.x0) * (.08 + srand(i * 31 + j + 10) * .84);
         const zz = arena.z0 + (arena.z1 - arena.z0) * (.1 + srand(i * 29 + j + 5) * .8);
-        ctx.herd.push({ type: a.type, x, z: zz, heading: srand(i * 17 + j * 3 + 1) * 6.283, arena, seed: z.id.length * 97 + i * 13 + j, variant: (i + j) % 4 });
+        ctx.herd.push({ type: a.type, zone: z.id, x, z: zz, heading: srand(i * 17 + j * 3 + 1) * 6.283, arena, home, water, seed: z.id.length * 97 + i * 13 + j, variant: (i + j) % 4 });
       }
     });
   }
@@ -1134,7 +1141,7 @@ function buildWorld(ctx) {
     buildFences(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M); buildMotion(world, ctx, M);
     buildCrops(world, ctx.plants, TIME);
     bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron]));
-    const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd);
+    const herd = buildHerd(ctx.herd, TIME); if (herd) { world.add(herd.mesh); ctx.herdMesh = herd; }
     return world;
   }
   const open = (i, seed) => { for (let k = 0; k < 6; k++) { const x = -margin * .6 + srand(seed + i * 3 + k) * (fW + margin * 1.2), y = -margin * .6 + srand(seed + i * 5 + k + 1) * (fH + margin * 1.2); if (!inZone(x, y) && !onRoad(x, y)) return [x, y]; } return [null, null]; };
@@ -1146,7 +1153,11 @@ function buildWorld(ctx) {
   buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildGrowth(world, ctx, M); buildFruit(world, ctx, M); buildMotion(world, ctx, M);
   buildCrops(world, ctx.plants, TIME);
   bake(world, new Set([...ctx.hits, ...ctx.plotHits, ctx.ground, ctx.apron, ...ctx.keep])); // the terrain keeps its vertex colours; the vanes stay live
-  const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd); // every animal, one draw call, moving in the vertex shader
+  const herd = buildHerd(ctx.herd, TIME); if (herd) { world.add(herd.mesh); ctx.herdMesh = herd; } // every animal, one draw call, moving in the vertex shader
+  // swallows over the farm, butterflies over the flowers (fauna-fx.js) — shown or hidden by the sky state
+  const spots = [...zones.filter((z) => z.type === "beehive" || z.type === "herbs").map((z) => [z.xM + z.wM / 2, z.yM + z.hM / 2]), ...heads.flat().slice(0, 6).map((h) => [h.p[0], h.p[2]])];
+  const sw = buildSwallows([fW / 2, fH / 2], swallowCount(ctx.device), M.swallow), bf = buildButterflies(spots, butterflyCount(spots.length, ctx.device), M.butterfly);
+  if (sw) world.add(sw); if (bf) world.add(bf); ctx.fauna = { swallows: sw, butterflies: bf };
   return world;
 }
 /* One area on its own, no terrain or farm boundary: the source of the app's small area icons
@@ -1163,7 +1174,7 @@ export function buildZoneIcon({ zone, data, crops, todayKey }) {
   buildFences(world, ctx, M); buildTufts(world, ctx, M); buildPots(world, ctx, M); buildFruit(world, ctx, M);
   ctx.motion.smoke = []; buildMotion(world, ctx, M);
   buildCrops(world, ctx.plants, TIME);
-  const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd);
+  const herd = buildHerd(ctx.herd, TIME); if (herd) world.add(herd.mesh);
   return world;
 }
 /* One fruit tree on its own at a growth stage, for the crop icons (tree-<key>-<stage>.webp). */
@@ -1501,7 +1512,7 @@ export default function Grove3D(props) {
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     const IDLE_MS = mobile ? 1000 / 20 : 1000 / 30; // idle animation rate; gestures and camera moves render every frame
     const st = { renderer, scene, camera, sun, world: null, hits: [], plotHits: [], dims: null, fitted: false, anchors: {}, highlight: null, pickGroup: null, picked: null, calls: 0, animating: false };
-    st.reduced = reduced; state.current = st;
+    st.reduced = reduced; st.mobile = mobile; state.current = st;
     if (import.meta.env?.DEV && typeof window !== "undefined") window.__g3 = st; // dev-only inspection hook
     // the sky (sky.js) owns every light value; FIXED_SKY reproduces the map's original fixed afternoon
     st.sky = FIXED_SKY;
@@ -1525,6 +1536,7 @@ export default function Grove3D(props) {
       const fx = st.fx, dims = st.dims || { fW: 40, fH: 30 }, R = Math.max(dims.fW, dims.fH) / 2 + 30;
       const nC = cloudCount(s.cloud, { mobile }), ck = `${nC}|${R}`;
       if (ck !== fx.cloudKey) { if (fx.clouds) { scene.remove(fx.clouds); fx.clouds.geometry.dispose(); fx.clouds.material.dispose(); } fx.clouds = buildClouds(dims.fW, dims.fH, nC, R); if (fx.clouds) scene.add(fx.clouds); fx.cloudKey = ck; }
+      if (st.fauna) { const day = s.night < .5 && s.precip === "none"; if (st.fauna.swallows) st.fauna.swallows.visible = day; if (st.fauna.butterflies) st.fauna.butterflies.visible = day && s.tempC >= 8; }
       const nP = precipCount(s.precip, { mobile, reduced: st.reduced }), pk = `${s.precip}|${nP}`;
       if (pk !== fx.precipKey) { if (fx.precip) { scene.remove(fx.precip); fx.precip.dispose(); fx.precip.geometry.dispose(); } fx.precip = st.M ? buildPrecip(s.precip, nP, s.precip === "snow" ? st.M.snow : st.M.rain) : null; if (fx.precip) scene.add(fx.precip); fx.precipKey = fx.precip ? pk : ""; }
     };
@@ -1565,6 +1577,7 @@ export default function Grove3D(props) {
     // throttled, frames during gestures and camera moves are not
     const frame = (now) => {
       animRaf = 0; if (!animOn) return;
+      if (st.brain && now - st.brainAt >= 250) { st.brainAt = now; const legs = st.brain.tick(now / 1000, { night: st.sky.night, reduced: st.reduced }); if (legs.length) { applyLegs(st.herdMesh, legs); dirty = true; } }
       if (dirty || controls.interacting || now - lastFrame >= IDLE_MS) { lastFrame = now; st.render(now); }
       animRaf = requestAnimationFrame(frame);
     };
@@ -1593,6 +1606,7 @@ export default function Grove3D(props) {
         const hit = ray.intersectObjects(st.hits, false)[0];
         if (!hit) return false;
         const z = P.zones.find((q) => q.id === hit.object.userData.zoneId); if (!z) return false;
+        if (z.type === "coop" && st.brain && st.herdMesh) { const idxs = []; st.brain.animals.forEach((a, i) => { if (a.kind === "bird" && (st.herdItems || [])[i]?.zone === z.id) idxs.push(a.idx); }); if (idxs.length) { applyLegs(st.herdMesh, st.brain.scatter(idxs, hit.point.x, hit.point.z, TIME.value)); st.requestRender(); } }
         P.onZoneOpen(e, z); return true;
       },
     });
@@ -1688,9 +1702,12 @@ export default function Grove3D(props) {
     const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
     st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
     const ctx = { data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, todayKey: P.todayKey || todayLocalKey(), hits: st.hits, plotHits: st.plotHits, M: st.M,
-      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: [], keep: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
+      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: [], keep: [], device: { mobile: st.mobile, reduced: st.reduced }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
     const t0 = performance.now(); st.world = buildWorld(ctx); st.herd = ctx.herd; st.vanes = ctx.vanes; st.buildMs = performance.now() - t0;
     st.vanes.forEach((v) => { v.rotation.y = vaneAngle(st.sky.windDir); });
+    st.herdMesh = ctx.herdMesh || null; st.fauna = ctx.fauna || null; st.brainAt = 0; st.herdItems = ctx.herd;
+    st.brain = ctx.herd.length ? createBrain(ctx.herd.map((it, idx) => ({ idx, species: it.type, ...speciesInfo(it.type), x: it.x, z: it.z, heading: it.heading, arena: it.arena, home: it.home, water: it.water, seed: it.seed }))) : null;
+    if (st.brain) applyLegs(st.herdMesh, st.brain.tick(TIME.value, { night: st.sky.night, reduced: st.reduced })); // everyone gets a first leg (stand) at their spot
     st.scene.add(st.world);
     st.anchors = Object.fromEntries(P.zones.map((z) => [z.id, { cx: z.xM + z.wM / 2, cz: z.yM + z.hM / 2, h: 0, corners: [[z.xM, z.yM], [z.xM + z.wM, z.yM], [z.xM + z.wM, z.yM + z.hM], [z.xM, z.yM + z.hM]], area: z.wM * z.hM, sel: 0, w: Math.min(23, z.name.length) * 6 + 16 }]));
     st.hits.forEach((h) => { const a = st.anchors[h.userData.zoneId]; if (a) a.h = Math.min(6, h.userData.bounds.h); }); // label height: roof ridge, bed edge…
