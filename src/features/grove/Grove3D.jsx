@@ -15,6 +15,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Plus, Minus, Compass, Maximize2, Minimize2, X, Sprout } from "lucide-react";
 import { pinchIntent } from "./gestures";
+import { placeLabels } from "./labels";
 import { growthOf, animalZone, bedRows, layoutPlots, STAGES } from "../quiet/farm-model";
 import { plantingRows } from "../quiet/planting-plan";
 import { plantedRows, plantPosition } from "./aerial-layout";
@@ -1575,26 +1576,23 @@ export default function Grove3D(props) {
       lastNow = now; WX.center.value.copy(controls.target);
       if (st.M) st.M.glow.emissiveIntensity = .45 + .3 * Math.sin(TIME.value * 2.2);
       renderer.render(scene, camera); st.calls = renderer.info.render.calls;
-      // zone names sit on the thing they name — the centre of its footprint at the height of its roof or
-      // bed edge — so a row of narrow beds reads unambiguously; they shrink as the camera pulls back and
-      // the biggest areas (and the selected one) win overlaps
+      // zone names hang just above the front edge of the thing they name (the footprint edge nearest the
+      // viewer) so they never cover a roof; they shrink as the camera pulls back; placement (selected →
+      // pending jobs → biggest footprint, no overlaps, far-out size threshold) lives in labels.js
       const ls = (controls.fitDist ? clamp(controls.fitDist / controls.dist, .68, 1.15) : 1) * (S.W < 520 ? .85 : 1), far = ls < .8;
       if (far !== st.far) { st.far = far; el.classList.toggle("g3-far", far); }
-      const nodes = labels.current ? Array.from(labels.current.children) : [], placed = [], items = [];
+      const nodes = latest.current.preview || !labels.current ? [] : Array.from(labels.current.children), items = [], byId = new Map();
       nodes.forEach((n) => {
         const a = st.anchors[n.dataset.zone]; if (!a) return;
-        let minX = 1e9, maxX = -1e9; const c = project(a.cx, a.h || 0, a.cz, pv);
-        a.corners.forEach(([x, z]) => { const q = project(x, 0, z, pv); minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); });
-        items.push({ n, a, x: c.x, y: c.y, on: c.on, px: maxX - minX });
+        let minX = 1e9, maxX = -1e9; const pts = a.corners.map(([x, z]) => { const q = project(x, 0, z, pv); minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); return q; });
+        pts.sort((u, v) => v.y - u.y); const f0 = pts[0], f1 = pts[1]; // the two lowest points on screen = the front edge
+        const badge = !!n.querySelector(".g3-badge");
+        byId.set(n.dataset.zone, n);
+        items.push({ id: n.dataset.zone, x: (f0.x + f1.x) / 2, y: (f0.y + f1.y) / 2, on: f0.on && f1.on, px: maxX - minX, w: a.w * ls, h: 20 * ls, badge: badge ? 24 * ls : 0, area: a.area, sel: a.sel, jobs: badge ? 1 : 0 });
       });
-      items.sort((u, v) => (v.a.sel - u.a.sel) || (v.a.area - u.a.area)).forEach(({ n, a, x: x0, y: y0, on, px }) => {
-        let x = x0, y = y0; const w = a.w * ls, h = 20 * ls, badge = n.querySelector(".g3-badge") ? 24 * ls : 0, box = { x0: x - w / 2 - 3, x1: x + w / 2 + 3 + badge, y0: y - h / 2 - badge * .4, y1: y + h / 2 };
-        const inside = x > 0 && x < S.W && y > 0 && y < S.H && (a.sel || px >= 28);
-        x = clamp(x, w / 2 + 4, S.W - w / 2 - badge - 4); y = clamp(y, h / 2 + badge * .4 + 4, S.H - h / 2 - 4); // the pill never runs off the edge
-        box.x0 = x - w / 2 - 3; box.x1 = x + w / 2 + 3 + badge; box.y0 = y - h / 2 - badge * .4; box.y1 = y + h / 2;
-        const free = a.sel || !placed.some((q) => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0);
-        if (free) placed.push(box);
-        n.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%) scale(${ls.toFixed(3)})`; n.style.display = on && free && inside ? "" : "none";
+      placeLabels(items, { W: S.W, H: S.H, far, mobile: st.mobile }).forEach(({ id, x, y, show }) => {
+        const n = byId.get(id);
+        n.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%) translateY(-2px) scale(${ls.toFixed(3)})`; n.style.display = show ? "" : "none";
       });
     };
     st.requestRender = () => { dirty = true; if (queued || animOn) return; queued = true; requestAnimationFrame(() => { queued = false; if (state.current === st && dirty) st.render(); }); };
