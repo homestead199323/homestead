@@ -63,7 +63,7 @@ const plot = (crop, zone, rows, count, stage = 4) => ({ id: zone.id + crop, zone
 const Z = (id, type, w, h, extra = {}) => ({ id, type, name: id, xM: 0, yM: 0, wM: w, hM: h, rowCount: 4, ...extra });
 const ZONES = [
   [Z("house", "house", 7, 5.5), [], []], [Z("barn", "barn", 8, 6), [], [["Cow", 1], ["Chicken", 3]]], [Z("coop", "coop", 5, 4), [], [["Chicken", 5]]],
-  [Z("storage", "storage", 3.2, 2.6), [], []], [Z("greenhouse", "greenhouse", 4, 6), [], []], [Z("beehive", "beehive", 3.2, 2), [], []],
+  [Z("storage", "storage", 3.2, 2.6), [], []], [Z("yard", "yard", 6, 3.2), [], []], [Z("greenhouse", "greenhouse", 4, 6), [], []], [Z("beehive", "beehive", 3.2, 2), [], []],
   [Z("compost", "compost", 3.3, 2), [], []], [Z("nursery", "nursery", 4.5, 3.2), [], []], [Z("water", "water", 4.5, 3.4, { shape: "oval" }), [], []],
   [Z("pasture", "pasture", 7, 5.5), [], [["Sheep", 3]]], [Z("orchard", "orchard", 6.5, 5.5), [["Apple", 3, 6, 5]], []],
   [Z("veg", "veg", 4.5, 3.4), [["Carrot", 4, 40]], []], [Z("raised", "raised", 3.2, 1.4, { rowCount: 2 }), [["Lettuce", 2, 10]], []],

@@ -7,6 +7,7 @@
    ═══════════════════════════════════════════ */
 export const TOY = {
   page: "#b4c69d",
+  yard: "#d9d2c3", yardRim: "#c9c2b3", // Yard / parking: a pale gravel slab with white bay lines
   meadow: "#6d8f49", meadowB: "#5f7f3e", meadowDry: "#a0a86c", apron: "#75984f",
   lawn: "#72944d", pasture: "#769750", orchard: "#6a8c47",
   path: "#ebe5d8", pathEdge: "#d9d2c3", gravel: "#dfd9ca", stonePath: "#d8d3c8", soilPath: "#cfbca2",

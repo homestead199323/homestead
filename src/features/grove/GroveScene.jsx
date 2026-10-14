@@ -233,6 +233,8 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
       ? TOY.gravel
       : z.type === "water"
         ? TOY.water
+        : z.type === "yard"
+          ? TOY.yard
         : z.type === "container"
           ? TOY.concrete
           : z.type === "veg"
@@ -246,7 +248,7 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
                   : TOY.lawn;
   const shapeProps = {
     fill,
-    stroke: z.type === "water" ? TOY.stone : plant && z.type !== "orchard" ? material : "none",
+    stroke: z.type === "water" ? TOY.stone : z.type === "yard" ? TOY.yardRim : plant && z.type !== "orchard" ? material : "none",
     strokeWidth: z.type === "water" ? 0.34 : z.type === "raised" ? 0.14 : z.type === "herbs" ? 0.24 : plant && z.type !== "orchard" ? 0.1 : 0,
   };
   return (
@@ -273,6 +275,7 @@ function Area({ z, data, crops, id, selected, interactive, onClick, onPointerDow
               {...shapeProps}
             />
           )}
+          {z.type === "yard" && Math.max(w, h) >= 5 && Array.from({ length: Math.floor(Math.max(w, h) / 2.6) - 1 }).map(function (_, i) { const u = (i + 1) * 2.6; return w >= h ? <path key={i} d={`M${u} 0.35V${h - 0.35}`} stroke="#ffffff" strokeWidth=".1" strokeLinecap="round" opacity=".9" /> : <path key={i} d={`M0.35 ${u}H${w - 0.35}`} stroke="#ffffff" strokeWidth=".1" strokeLinecap="round" opacity=".9" />; })}
           {z.type === "raised" &&
             [[0, 0], [w, 0], [0, h], [w, h]].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r=".11" fill={TOY.woodDark} />)}
           {z.type === "water" && (

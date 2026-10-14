@@ -19,6 +19,7 @@ export const ZT = [
   { id: "storage", label: "Storage", fill: "#b39ddb", stroke: "#7e57c2", icon: "📦" },
   { id: "raised", label: "Raised Bed", fill: "#c9a97b", stroke: "#8a6a45", icon: "🪴" },
   { id: "container", label: "Containers", fill: "#d9a17b", stroke: "#b5623f", icon: "🪣" },
+  { id: "yard", label: "Yard / parking", fill: "#e4ddd0", stroke: "#b8b0a2", icon: "🅿️" },
 ];
 
 export const ZT_MAP = new Map(ZT.map(t => [t.id, t]));

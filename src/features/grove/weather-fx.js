@@ -16,6 +16,7 @@ export { precipCount, cloudCount };
 export const WX = {
   center: { value: new THREE.Vector3() }, // the camera target: rain and snow fall round it
   drift: { value: 0 }, // metres the clouds have travelled downwind
+  ripple: { value: 1 }, // pond ripple amplitude: 1 calm, 3 under rain
 };
 export const RAIN_SPAN = 14; // metres: particles fall from this height to the ground
 export const RAIN_RADIUS = 16; // metres: half-width of the box they fall through

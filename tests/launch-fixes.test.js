@@ -104,3 +104,17 @@ test('City list has no duplicate city/country rows',()=>{
   const seen=new Set();
   for(const c of CITY_DB){const k=`${c.city}|${c.country}`.toLowerCase();assert(!seen.has(k),`duplicate ${k}`);seen.add(k);}
 });
+
+// Living map (2026-10-14): the hand-drawn zig-zag "parking" path by the Kitchen workshop becomes a Yard zone.
+import {migrateYardLine,YARD_LINE_POINTS} from '../src/lib/migrations.js';
+test('migration: the workshop zig-zag becomes a yard',()=>{
+  const line={id:'p2',kind:'path',points:YARD_LINE_POINTS.map(([xM,yM])=>({xM,yM}))};
+  const data={zones:[{id:'ws',type:'storage',name:'Kitchen workshop',xM:46,yM:36,wM:10,hM:8}],mapLines:[{id:'p1',kind:'path',points:[{xM:1,yM:1},{xM:2,yM:2}]},line]};
+  const out=migrateYardLine(data);
+  assert.equal(out.mapLines.length,1);assert.equal(out.mapLines[0].id,'p1');
+  const yard=out.zones.find(z=>z.type==='yard');assert.ok(yard);assert.deepEqual([yard.xM,yard.yM,yard.wM,yard.hM],[46,46,33,4]);assert.equal(yard.id,'yard-ws');
+  assert.equal(migrateYardLine(out),out,'idempotent');
+  const changed={...data,mapLines:[{...line,points:line.points.map((p,i)=>i===3?{...p,xM:80}:p)}]};
+  assert.equal(migrateYardLine(changed).mapLines.length,1);assert.ok(!migrateYardLine(changed).zones.some(z=>z.type==='yard'),'a different line is left alone');
+  assert.equal(migrateYardLine({zones:[]}).zones.length,0,'no mapLines → untouched');
+});

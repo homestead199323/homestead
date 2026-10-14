@@ -38,8 +38,15 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - RoomEnvironment at 0.22 for a gentle gradient on matte surfaces. ACES, exposure 0.92. Hemisphere ground bounce `#9fb48a`.
 - No vignette, no mottle, no cloud-shadow layers, no darkening of the ground anywhere.
 
+## 4b. Live sky and weather (2026-10-14, `sky.js`, `weather-fx.js`)
+- The light above is the **fixed afternoon** (`FIXED_SKY`, "Live sky: off" in Settings → Ground & paths). With Live sky on, the sun follows the local clock and the town's latitude (`data.cityGeo`): four presets blended by solar elevation — high (today's look), low (`#ffe2bd`, longer soft shadows), dusk/dawn (`#ffb876`, `#d9c2b2` sky) and night (a `#9fb3d6` "moon" from the mirrored azimuth 40° up, `#5b6a86` sky, exposure 0.8). Night never goes darker than that; window glass and the porch lamp glow warm (`NIGHT` uniform, `nightGlow()` in toy.js). Shadows re-render once a minute.
+- Today's weather (Open-Meteo current conditions) flattens the light when cloudy or foggy (less sun, more sky, fainter shadows, nearer fog) and brings **toy clouds**: 3–6 merged rounded white blobs at 16–20 m drifting downwind, **never casting shadows**. Rain is pale instanced streaks, snow slow white flakes, both falling through a box round the camera target; none under reduced motion, half as many on phones.
+- **Wind** is one uniform (`WIND`: direction the air moves toward, strength 0.15–1 from km/h ÷ 45). Tree, hedge and crop sway scale with it and travel downwind as a gust wave; smoke bends with it; the barn cupola vane turns into it.
+
 ## 5. Motion (all in the vertex shader, one shared clock)
-- Tree crowns and hedges sway (tops only). Crops sway above 40 cm. Smoke rises, grows and fades. Bees hover. Animals walk, graze, swish and peck. Harvest frames breathe.
+- Tree crowns and hedges sway (tops only). Crops sway above 40 cm. Smoke rises, grows and fades. Bees hover. Harvest frames breathe. Pond water ripples gently (×3 in rain). A ripe fruit tree drops a fruit now and then (it rolls, rests, fades).
+- **Animals** (`herd-brain.js` + `animals3d.js`): legs decided by a small brain 4×/s — wander, graze/peck, stand, lie down and chew (cows, sheep, pigs, goats; more at night), swim (ducks and geese on a pond touching their run), scatter when the coop is tapped, and roost: poultry walks to the pop door after dark and is hidden inside until dawn. Pose and interpolation stay in the shader; only changed animals' vertex ranges are re-uploaded.
+- **Swallows** (5, 3 on phones) loop and bank high over the farm; **butterflies** flutter over herb beds, hives and wild flowers — real geometry, one instanced mesh each, hidden at night, in rain or (butterflies) under 8 °C.
 
 ## 6. Growth and status
 - Crops are modelled per family and **per stage**: sprout (sown) → seedling → growing → maturing with small green fruit → harvest window with ripe fruit in full colour. Fruit colour appears only in the harvest window; so does the gold frame round a row and the gold ring round a tree.
@@ -51,6 +58,7 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - **House:** window boxes with flowers under the front windows, a doormat, a downpipe at the front corner (plus the existing porch canopy, lamp, chimney smoke, solar panels, clipped hedge and corner bushes).
 - **Barn:** a round zinc feed silo with a slate dome behind the back corner (barns ≥ 7 m). **Shed:** woodpile and a rake against the side wall, a green water butt at the back.
 - **Pond:** lily pads with pink flowers, reed clumps at the rim, a plank jetty on ponds ≥ 4 × 3 m. **Pasture:** loose hay round the feeder. **Apiary:** wild flowers. **Greenhouse:** a hose reel by the door.
+- **Yard / parking** (zone type `yard`): a pale gravel slab `#d9d2c3` with a `#c9c2b3` rim and white bay lines every 2.6 m along the long side when it is 5 m or longer. No props, no tasks.
 - **Raised beds:** white cloche hoops with a pale cover while every row is still at seedling stage or younger. **Orchard:** at harvest, a ladder against the first ripe tree and a crate of its fruit.
 
 ## 7. UI over the map (`.g3-*` in `quiet.css`)

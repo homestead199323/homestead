@@ -59,6 +59,22 @@ function foliage(mat, { sway = .05, freq = .25, from = 1.2 } = {}) {
   mat.customProgramCacheKey = () => `g3f|${sway}|${freq}|${from}`;
   return mat;
 }
+/* ripple(mat) — a gentle vertex wave on pond water (two crossing waves; ×3 under rain), with the normal tilted so the gloss shimmers */
+function ripple(mat) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, r) => {
+    if (prev) prev(sh, r);
+    Object.assign(sh.uniforms, { uTime: TIME, uRipple: WX.ripple });
+    sh.vertexShader = sh.vertexShader
+      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uRipple;")
+      .replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>
+{ float g3dx = cos(position.x * 3.1 + uTime * 1.7) * 3.1, g3dz = cos(position.z * 2.7 - uTime * 1.3) * 2.7; objectNormal = normalize(objectNormal - vec3(g3dx, 0., g3dz) * uRipple * .024); }`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>
+transformed.y += uRipple * (sin(position.x * 3.1 + uTime * 1.7) + sin(position.z * 2.7 - uTime * 1.3)) * .012;`);
+  };
+  mat.customProgramCacheKey = () => "g3ripple";
+  return mat;
+}
 /* motion(sh) — instanced spheres that hover (bees, anim 1) or rise, grow and fade (smoke, anim 3) */
 function motionShader(sh) {
   Object.assign(sh.uniforms, { uTime: TIME, uWind: WIND, uCenter: WX.center });
@@ -66,7 +82,8 @@ function motionShader(sh) {
     .replace("#include <common>", "#include <common>\nuniform float uTime; uniform vec3 uWind; uniform vec3 uCenter; attribute float g3anim; attribute float g3phase; varying float g3va;")
     .replace("#include <begin_vertex>", `#include <begin_vertex>
 g3va = 1.;
-if (g3anim > 6.5) { float g3t = fract(uTime * .085 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.x += sin(uTime * 1.3 + g3phase * 6.28) * .4; transformed.z += cos(uTime * 1.1 + g3phase * 5.1) * .4; transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 2.5 + uCenter.xz; }
+if (g3anim > 7.5) { float g3H = floor(g3phase) / 100., g3ph = fract(g3phase); float g3T = 8. + g3ph * 4.; float g3t = fract(uTime / g3T + g3ph); float g3fall = clamp(g3t / .07, 0., 1.); transformed.y -= g3H * g3fall * g3fall; float g3roll = clamp((g3t - .07) / .1, 0., 1.); transformed.x += g3roll * .3 * cos(g3ph * 6.28); transformed.z += g3roll * .3 * sin(g3ph * 6.28); g3va = 1. - smoothstep(.8, .92, g3t); }
+else if (g3anim > 6.5) { float g3t = fract(uTime * .085 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.x += sin(uTime * 1.3 + g3phase * 6.28) * .4; transformed.z += cos(uTime * 1.1 + g3phase * 5.1) * .4; transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 2.5 + uCenter.xz; }
 else if (g3anim > 5.5) { float g3t = fract(uTime * .65 + g3phase); transformed.y += ${RAIN_SPAN.toFixed(1)} * (1. - g3t); transformed.xz += uWind.xy * uWind.z * (1. - g3t) * 3. + uCenter.xz; }
 else if (g3anim > 4.5) { float g3f = sin(uTime * 56.5 + g3phase * 6.28); vec3 g3p0 = position; g3p0.y += abs(position.x) * g3f * .9; g3p0.x *= 1. - abs(g3f) * .5; float g3h = uTime * .7 + g3phase * 6.28; float g3c = cos(g3h), g3s = sin(g3h); transformed = vec3(g3p0.x * g3c + g3p0.z * g3s, g3p0.y, -g3p0.x * g3s + g3p0.z * g3c) + vec3(sin(uTime * .9 + g3phase * 6.28) * .3, sin(uTime * 1.7 + g3phase * 3.) * .2 + .2, cos(uTime * .7 + g3phase * 5.) * .3); }
 else if (g3anim > 3.5) { float w1 = .16 + g3phase * .08, w2 = w1 * 1.5, A = 9. + g3phase * 6., B = 6. + g3phase * 4.; vec2 g3c2 = vec2(A * sin(uTime * w1 + g3phase * 6.28), B * sin(uTime * w2)); vec2 g3v = vec2(A * w1 * cos(uTime * w1 + g3phase * 6.28), B * w2 * cos(uTime * w2)); float g3hd = atan(g3v.x, g3v.y); float g3f = sin(uTime * 37.7 + g3phase * 6.28) * .6; vec3 g3p0 = position; g3p0.y += abs(position.x) * sin(g3f); g3p0.x *= cos(g3f); float g3bk = clamp((g3v.x * B * w2 * w2 * sin(uTime * w2) - g3v.y * A * w1 * w1 * sin(uTime * w1 + g3phase * 6.28)) * .6, -.6, .6); g3p0 = vec3(g3p0.x * cos(g3bk) - g3p0.y * sin(g3bk), g3p0.x * sin(g3bk) + g3p0.y * cos(g3bk), g3p0.z); float g3ch = cos(g3hd), g3sh = sin(g3hd); transformed = vec3(g3p0.x * g3ch + g3p0.z * g3sh, g3p0.y, -g3p0.x * g3sh + g3p0.z * g3ch) + vec3(g3c2.x, 9. + g3phase * 4. + sin(uTime * .8 + g3phase * 6.28) * .6, g3c2.y); }
@@ -95,7 +112,8 @@ function materials() {
     glass: nightGlow(flat(PAL.glass, { transparent: true, opacity: .34, rough: .12, physical: true, env: 1.5, side: THREE.DoubleSide, depthWrite: false })),
     winGlass: nightGlow(flat(0x9fc9dc, { rough: .18, metal: .05, physical: true, env: 1.4 })),
     lamp: nightGlow(flat(0xd9b35c, { rough: .4, metal: .5 })),
-    water: flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4 }), ripple: flat(PAL.ripple, { transparent: true, opacity: .5, depthWrite: false }),
+    water: flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4 }), pondWater: ripple(flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4 })),
+    yard: flat(PAL.yard, { rough: .95 }), yardRim: flat(PAL.yardRim, { rough: .95 }),
     solar: flat(PAL.solar, { rough: .25, metal: .3, physical: true, env: 1.3 }), solarFrame: flat(PAL.solarFrame, { rough: .5, metal: .2 }),
     hedge: foliage(flat(PAL.hedge, { rough: .95 }), { sway: .02, freq: .6, from: .4 }),
     leaf: [...PAL.leaf, PAL.leafOlive, PAL.leafCitrus].map((c) => foliage(flat(c, { rough: .95 }), { sway: .06, freq: .25, from: 1.2 })), // 0-3 greens, 4 silvery olive, 5 deep citrus / fig
@@ -105,7 +123,7 @@ function materials() {
     hit: new THREE.MeshBasicMaterial({ visible: false }),
     glow: new THREE.MeshStandardMaterial({ color: 0xffc83d, emissive: 0xffb300, emissiveIntensity: .55, roughness: .5, transparent: true, opacity: .95 }),
     stageTag: STAGE_COLOR.map((c, i) => flat(c, { rough: .6, emissive: i === 5 ? 0x8a6a10 : 0x000000, ei: 1 })), tagPole: flat(PAL.tagPole),
-    fruit: (color) => flat(color, { rough: .45, emissive: color, ei: .1 }),
+    fruit: (color) => flat(color, { rough: .45, emissive: color, ei: .1 }), fruitDrop: (color) => Object.assign(motionMat(color, false), { transparent: true }),
     select: layered(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .22, depthWrite: false }), 14),
     selectEdge: layered(new THREE.MeshBasicMaterial({ color: 0xf7c552, transparent: true, opacity: .95, depthWrite: false }), 15),
     pick: layered(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .3, depthWrite: false }), 16),
@@ -180,6 +198,7 @@ function fruitTree(g, ctx, x, z, size, stage, name, seed, M, off) {
   if (stage < 5) return; // like the crop rows, a tree shows its harvest: fruit and a gold halo appear only in the harvest window
   ctx.growth.glows.push({ p: [off[0] + x, .012, off[1] + z], tree: true, s: [r * 2.2 + 1.2, r * 2.2 + 1.2, 1] });
   const top = r * .55 + .3 + r * .9, n = Math.round(26 * Math.min(1, r / 1.2)), list = ctx.fruit.get(color) || []; ctx.fruit.set(color, list);
+  if (ctx.fruitDrop) { const dl = ctx.fruitDrop.get(color) || []; ctx.fruitDrop.set(color, dl); const dropY = top - r * .25, h = Math.max(.3, dropY - .05); dl.push({ p: [off[0] + x + .35 * r, dropY, off[1] + z + .25 * r], s: fr * Math.min(1, .55 + r * .4), phase: Math.floor(h * 100) + srand(seed * 5 + 2) }); }
   for (let i = 0; i < n; i++) {
     // on the surface of the main crown (an r·.92 sphere squashed to .86 in y), upper and side faces, so the fruit shows
     const a = srand(seed * 7 + i * 3) * 6.283, b = -.35 + srand(seed * 11 + i * 5) * 1.35, fs = fr * Math.min(1, .55 + r * .4), R = r * .92 + fs * .35;
@@ -759,12 +778,10 @@ function buildZone(z, ctx) {
       const wall = tube(g, 1, 1, rimH, sm, cx, rimH / 2, cz, { seg: 44, open: true }); wall.scale.set(w / 2 + t, 1, d / 2 + t); wall.material = flat(PAL.stone, { side: THREE.DoubleSide }); tag(wall);
       const inner = tube(g, 1, 1, rimH, sm, cx, rimH / 2, cz, { seg: 44, open: true, cast: false }); inner.scale.set(w / 2, 1, d / 2); inner.material = wall.material;
       const cop = new THREE.Mesh(new THREE.TorusGeometry(1, t / (w / 2) / 2, 10, 44), cm); cop.rotation.x = -HPI; cop.position.set(cx, rimH, cz); cop.scale.set(w / 2 + t / 2, d / 2 + t / 2, 1); cop.castShadow = true; cop.receiveShadow = true; tag(cop); g.add(cop);
-      tag(disc(g, 1, M.water, cx, rimH - .14, cz, { seg: 44, sx: w / 2, sz: d / 2 }));
-      [.45, .7].forEach((k, i) => ring(g, 1, .012, M.ripple, cx + w * .08 * (i ? -1 : 1), rimH - .13, cz + d * .06, { tube: 4, seg: 36, s: [w / 2 * k, d / 2 * k, 1], cast: false }));
+      { const pw = new THREE.Mesh(new THREE.RingGeometry(.001, 1, 44, 10), M.pondWater); pw.rotation.x = -HPI; pw.position.set(cx, rimH - .14, cz); pw.scale.set(w / 2, d / 2, 1); pw.receiveShadow = true; g.add(pw); tag(pw); } // dense enough to ripple
     } else {
       [[cx, 0, w + t, t], [cx, d, w + t, t], [0, cz, t, d], [w, cz, t, d]].forEach(([x, zz, bw, bd]) => { tag(rbox(g, bw, rimH, bd, sm, x, rimH / 2, zz, { r: .1 })); tag(rbox(g, bw + .1, .1, bd + .1, cm, x, rimH + .02, zz, { r: .045, cast: false })); });
-      tag(plane(g, w, d, M.water, cx, rimH - .14, cz));
-      [.35, .55].forEach((k, i) => ring(g, 1, .012, M.ripple, cx + w * .1 * (i ? -1 : 1), rimH - .13, cz + d * .08 * (i ? 1 : -1), { tube: 4, seg: 36, s: [Math.min(w, d) / 2 * k, Math.min(w, d) / 2 * k, 1], cast: false }));
+      { const pw = new THREE.Mesh(new THREE.PlaneGeometry(w, d, Math.max(4, Math.round(w * 3)), Math.max(4, Math.round(d * 3))), M.pondWater); pw.rotation.x = -HPI; pw.position.set(cx, rimH - .14, cz); pw.receiveShadow = true; g.add(pw); tag(pw); }
     }
     // lily pads on the water, reeds at the rim, a short jetty on bigger ponds
     lilyPads(g, cx - w * .18, cz + d * .12, { seed: z.id.length, n: Math.min(6, Math.max(3, Math.round(w * d / 8))), y: rimH - .13, r: Math.min(w, d) * .22 });
@@ -847,6 +864,11 @@ function buildZone(z, ctx) {
     housing = coopZone(g, z, ctx, tag);
   } else if (z.type === "barn") {
     housing = barnZone(g, z, ctx, tag);
+  } else if (z.type === "yard") { // Yard / parking: a pale gravel slab with a lighter rim and white bay lines along the long side
+    tag(rbox(g, w, .06, d, M.yardRim, cx, .03, cz, { r: .025, cast: false }));
+    tag(rbox(g, w - .2, .05, d - .2, M.yard, cx, .06, cz, { r: .02, cast: false }));
+    const long = Math.max(w, d), nb = long >= 5 ? Math.floor(long / 2.6) - 1 : 0;
+    for (let i = 0; i < nb; i++) { const u = (i + 1) * 2.6; if (w >= d) rbox(g, .14, .02, d - .7, M.white, u, .1, cz, { r: .006, cast: false }); else rbox(g, w - .7, .02, .14, M.white, cx, .1, u, { r: .006, cast: false }); }
   } else if (z.type === "house" || z.type === "storage") {
     building(g, w, d, z.type, M, { clay: z.color === "clay", tag, ctx, off });
   } else if (z.type === "compost") {
@@ -960,14 +982,16 @@ function buildGrowth(g, ctx, M) { // stage markers and harvest halos for the who
   instances(g, capsuleGeo(.022, .48, 7, 2), M.tagPole, G.poles, { cast: false });
   G.tags.forEach((list, st) => instances(g, rboxGeo(.22, .14, .035, .03, 1), M.stageTag[st], list, { cast: false }));
 }
-function buildMotion(g, ctx, M) { // chimney smoke and bees: instanced spheres animated in the vertex shader
-  [["smoke", M.smoke, 3], ["bees", M.bee, 1]].forEach(([key, mat, anim]) => {
-    const list = ctx.motion[key]; if (!list.length) return;
+function buildMotion(g, ctx, M) { // chimney smoke, bees and falling fruit: instanced spheres animated in the vertex shader
+  const jobs = [["smoke", M.smoke, 3, ctx.motion.smoke], ["bees", M.bee, 1, ctx.motion.bees]];
+  if (ctx.fruitDrop) ctx.fruitDrop.forEach((list, color) => jobs.push(["drop", M.fruitDrop(color), 8, list]));
+  jobs.forEach(([key, mat, anim, list]) => {
+    if (!list.length) return;
     const geo = new THREE.SphereGeometry(1, 10, 8), im = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), S = new THREE.Vector3(), Q = new THREE.Quaternion(), P = new THREE.Vector3();
     const an = new Float32Array(list.length), ph = new Float32Array(list.length);
     list.forEach((it, i) => { P.set(it.p[0], it.p[1], it.p[2]); S.set(it.s, key === "bees" ? it.s * .7 : it.s, key === "bees" ? it.s * 1.3 : it.s); M4.compose(P, Q, S); im.setMatrixAt(i, M4); an[i] = anim; ph[i] = it.phase; });
     geo.setAttribute("g3anim", new THREE.InstancedBufferAttribute(an, 1)); geo.setAttribute("g3phase", new THREE.InstancedBufferAttribute(ph, 1));
-    im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = key === "bees"; im.receiveShadow = false; if (key === "smoke") im.renderOrder = 2;
+    im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = key === "bees" || key === "drop"; im.receiveShadow = false; if (key === "smoke") im.renderOrder = 2;
     g.add(im);
   });
 }
@@ -1166,7 +1190,7 @@ function buildWorld(ctx) {
 export function buildZoneIcon({ zone, data, crops, todayKey }) {
   const M = materials(), d = { ...data, zones: [zone] };
   const ctx = { data: d, zones: [zone], roads: [], crops, fW: zone.xM + zone.wM, fH: zone.yM + zone.hM, margin: 2, env: "farm", pathTexture: "gravel", roadWidth: .5, todayKey, hits: [], plotHits: [], M,
-    plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: null, keep: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
+    plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), fruitDrop: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: null, keep: [], fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
   ctx.heightAt = () => 0;
   const world = new THREE.Group(); world.add(buildZone(zone, ctx));
   const DETAIL = { barrel, crates, birdbath, tractor };
@@ -1524,7 +1548,7 @@ export default function Grove3D(props) {
       scene.background = new THREE.Color(s.fog);
       if (st.fogRange) scene.fog = new THREE.Fog(s.fog, st.fogRange.near * (s.fogNear ?? 1), st.fogRange.far);
       NIGHT.value = clamp((3 - s.elevation) / 9, 0, 1); // windows and lamps come on as the sun sets
-      WIND.value.set(s.windDir[0], s.windDir[1], s.windStrength);
+      WIND.value.set(s.windDir[0], s.windDir[1], s.windStrength); WX.ripple.value = s.precip === "rain" ? 3 : 1;
       (st.vanes || []).forEach((v) => { v.rotation.y = vaneAngle(s.windDir); });
       st.setWeatherFx(s);
       if (st.dims) st.setupSun(); else renderer.shadowMap.needsUpdate = true;
@@ -1702,7 +1726,7 @@ export default function Grove3D(props) {
     const dimsChanged = !st.dims || st.dims.fW !== P.fW || st.dims.fH !== P.fH || st.dims.margin !== P.margin;
     st.dims = { fW: P.fW, fH: P.fH, margin: P.margin };
     const ctx = { data: P.data, zones: P.zones, roads: P.roads, crops: P.crops, fW: P.fW, fH: P.fH, margin: P.margin, env: P.env, pathTexture: P.pathTexture, roadWidth: P.roadWidth, todayKey: P.todayKey || todayLocalKey(), hits: st.hits, plotHits: st.plotHits, M: st.M,
-      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: [], keep: [], device: { mobile: st.mobile, reduced: st.reduced }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
+      plants: [], tufts: [], pots: [], herd: [], fruit: new Map(), fruitDrop: new Map(), details: [], motion: { smoke: [], bees: [] }, vanes: [], keep: [], device: { mobile: st.mobile, reduced: st.reduced }, fences: { plain: { posts: [], rails: [] }, picket: { posts: [], caps: [], rails: [] }, rail: { posts: [], bars: [], rails: [] } }, growth: { glows: [], poles: [], tags: [[], [], [], [], [], []] } };
     const t0 = performance.now(); st.world = buildWorld(ctx); st.herd = ctx.herd; st.vanes = ctx.vanes; st.buildMs = performance.now() - t0;
     st.vanes.forEach((v) => { v.rotation.y = vaneAngle(st.sky.windDir); });
     st.herdMesh = ctx.herdMesh || null; st.fauna = ctx.fauna || null; st.brainAt = 0; st.herdItems = ctx.herd;

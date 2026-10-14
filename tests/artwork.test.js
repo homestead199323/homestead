@@ -22,5 +22,5 @@ test('Every crop in the database has a toy icon for each visible growth stage',a
  await icon('crop-planned');await icon('crop-sown');
 });
 test('Every building and area type has a toy tile',async()=>{
- for(const t of ['house','barn','coop','storage','greenhouse','beehive','compost','nursery','water','pasture','orchard','veg','raised','herbs','container'])await icon('zone-'+t);
+ for(const t of ['house','barn','coop','storage','greenhouse','beehive','compost','nursery','water','pasture','orchard','veg','raised','herbs','container','yard'])await icon('zone-'+t);
 });

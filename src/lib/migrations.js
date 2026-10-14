@@ -159,6 +159,22 @@ export function migrateProfile(data) {
 }
 
 // ---------------------------------------------------------------------------
+// migrateYardLine — one farm drew a parking area as a 25-point zig-zag path beside its
+// Kitchen workshop (2026-10). That exact line becomes a Yard zone of the same footprint.
+// ---------------------------------------------------------------------------
+export const YARD_LINE_POINTS = [[55, 46], [46, 46], [46, 48], [79, 48], [79, 46], [56, 46], [46, 46], [46, 50], [79, 50], [79, 48], [74, 48], [74, 50], [74, 46], [74, 50], [74, 46], [65, 46], [65, 50], [70, 50], [70, 46], [60, 46], [60, 50], [55, 50], [55, 46], [51, 46], [51, 50]];
+export function migrateYardLine(data) {
+  const lines = Array.isArray(data.mapLines) ? data.mapLines : [];
+  const same = (l) => (l.kind === "path" || l.type === "path") && Array.isArray(l.points) && l.points.length === YARD_LINE_POINTS.length && l.points.every((p, i) => p.xM === YARD_LINE_POINTS[i][0] && p.yM === YARD_LINE_POINTS[i][1]);
+  const hit = lines.find(same);
+  if (!hit) return data;
+  const zones = Array.isArray(data.zones) ? data.zones : [];
+  const next = { ...data, mapLines: lines.filter((l) => l !== hit) };
+  if (!zones.some((z) => z.id === "yard-ws")) next.zones = [...zones, { id: "yard-ws", type: "yard", name: "Parking", xM: 46, yM: 46, wM: 33, hM: 4 }];
+  return next;
+}
+
+// ---------------------------------------------------------------------------
 // updateGamify — update streak + badge state after any data-mutating action
 // ---------------------------------------------------------------------------
 export function updateGamify(data) {

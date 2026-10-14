@@ -19,7 +19,7 @@ import { buildTaskPlan } from "./lib/task-queue";
 import { fetchForecast } from "./lib/weather";
 import { syncDigests, disablePush, pushPrefs } from "./lib/push";
 import { usePushPrefs } from "./lib/use-push-prefs";
-import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, migrateProfile as migrateProfileBase, updateGamify } from "./lib/migrations";
+import { migrateZones, migratePlotSchema, migrateGamify, migrateCompletions, migrateProfile as migrateProfileBase, migrateYardLine, updateGamify } from "./lib/migrations";
 import { migratePerennials } from "./lib/perennial";
 import { migratePantry } from "./lib/inventory";
 import { migrateMemory } from "./lib/memory";
@@ -27,7 +27,7 @@ import { CROP_MAP } from "./data/crops";
 // migrateMemory last: it reads the pantry log that migratePantry normalises.
 const migrateProfile = (d) => migrateMemory(migratePantry(migratePerennials(migrateProfileBase(d), CROP_MAP, todayLocalKey())), todayLocalKey());
 // Same chain as the local/cloud load paths, for a backup file's raw object.
-const migrateBackup = (d) => migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}})))));
+const migrateBackup = (d) => migrateYardLine(migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones({...DEF, ...d, log: d.log||[], costs: d.costs||{items:[]}}))))));
 import Pantry from "./features/pantry/Pantry";
 import Financials from "./features/financials/Financials";
 import Manuals from "./features/manuals/Manuals";
@@ -234,7 +234,7 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
       initial = migratePlotSchema(initial);
       initial = migrateGamify(initial);
       initial = migrateCompletions(initial);
-      initial = migrateProfile(initial);
+      initial = migrateYardLine(migrateProfile(initial));
       return initial;
     } catch (e) {
       console.error("initData failed, falling back to DEF:", e);
@@ -376,7 +376,7 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
         try {
           let migrated = {...DEF, ...fresh, log: fresh.log||[], costs: fresh.costs||{items:[]}};
           if (!migrated.schemaVersion) migrated = {...migrated, schemaVersion: 7};
-          migrated = migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones(migrated)))));
+          migrated = migrateYardLine(migrateProfile(migrateCompletions(migrateGamify(migratePlotSchema(migrateZones(migrated))))));
           dispatchData({ type: "SET_ALL", data: migrated });
           saveFarm(migrated); // keep local cache aligned; do NOT re-push
         } catch (e) { console.warn("[sync] hydrate from remote failed:", e); }

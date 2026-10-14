@@ -21,10 +21,11 @@ const zones = [
   zone("gh", "greenhouse", "Tall greenhouse", 2, 16, 5, 9),
   zone("raised", "raised", "Raised", 9, 17, 6, 3),
   zone("orchard", "orchard", "Orchard", 17, 16, 10, 8),
+  zone("yard", "yard", "Parking", 29, 17, 9, 3.4),
 ];
 const plot = (crop, z, start, rowCount, count) => ({ id: z + "-" + start, zone: z, crop, status: "planted", plantDate: "2026-01-01", observedStage: 4, plantCount: count, layout: { startRow: start, rowCount, pattern: "rows", lengthM: zones.find((a) => a.id === z).wM } });
 const data = { ...fixture, farmW: 46, farmH: 26, profile: { ...fixture.profile, environment: "farm" }, zones,
-  garden: { plots: [plot("Olive", "orchard", 1, 3, 12), plot("Carrot", "veg", 1, 4, 60), plot("Rosemary", "herbs", 1, 2, 20), plot("Tomato", "gh", 1, 3, 30), plot("Lettuce", "raised", 1, 3, 30)] },
+  garden: { plots: [{ ...plot("Olive", "orchard", 1, 3, 12), observedStage: 5 }, plot("Carrot", "veg", 1, 4, 60), plot("Rosemary", "herbs", 1, 2, 20), plot("Tomato", "gh", 1, 3, 30), plot("Lettuce", "raised", 1, 3, 30)] },
   livestock: { animals: [{ id: "goats", type: "Goat", zone: "field", count: 4 }, { id: "hens", type: "Chicken", zone: "coop", count: 4 }] },
   ornaments: [{ id: "t1", type: "tree", xM: 28, yM: 20 }, { id: "sh", type: "shed", xM: 31, yM: 20 }, { id: "rk", type: "rock", xM: 34, yM: 21 }, { id: "bn", type: "bench", xM: 36, yM: 21 }, { id: "wp", type: "woodpile", xM: 38, yM: 21 }, { id: "hb", type: "haybale", xM: 40, yM: 20 }],
   mapLines: [{ id: "f1", kind: "fence", points: [{ xM: 30, yM: 16 }, { xM: 44, yM: 16 }, { xM: 44, yM: 24 }] }, { id: "g1", kind: "gate", points: [{ xM: 44, yM: 24 }, { xM: 44, yM: 25.5 }] }, { id: "p1", kind: "path", points: [{ xM: 30, yM: 17 }, { xM: 43, yM: 23 }] }] };
