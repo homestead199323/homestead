@@ -456,3 +456,28 @@
   changes for live subscribers go via email until a Paddle customer-portal link exists; the Mac clone
   holds untracked Finder duplicates (`src/assets/toy/* 2.webp`, `src/app/navigation 2.js`,
   `src/app/state 2.js`) that bloat local builds (535 vs 253 assets) — delete them.
+
+- [x] **Living farm map (2026-10-14, owner request "improve all 3D rendering, dynamics, logic, UI,
+  mobile" → scope chosen: scene quality & motion; spec `docs/superpowers/specs/2026-10-13-living-farm-map-design.md`,
+  plan `docs/superpowers/plans/2026-10-13-living-farm-map.md`; commits 47f2a16, ebe372f, d69c53b, 80c39e4,
+  9f1a9b8, cdb82fb, bf2e469, dbcc784, 0e47e49).** (1) Live sky: the sun follows the local clock and the
+  town's latitude/longitude (`sky.js`; solar time = UTC + lng/15), four light presets, night with lit
+  windows and the porch lamp; Settings → Ground & paths → "Live sky" (off = the original fixed afternoon,
+  verified 0.07 % scene-pixel diff on the all-zones harness). (2) Weather: `fetchWeather` passes wind,
+  is_day and the geocode; App stores `data.cityGeo`; cloudy/fog flatten the light and bring toy clouds
+  (no shadows); rain/snow instanced; wind drives gust waves, smoke and the barn vane. (3) Animals:
+  `herd-brain.js` legs (wander, graze, lie, swim, scatter on coop tap, roost at night), shader-interpolated,
+  per-range attribute updates; swallows and butterflies. (4) Pond ripple, falling fruit, zone type
+  `yard` ("Yard / parking") with icon, flat-map and 3D rendering; `migrateYardLine` replaces the one
+  25-point zig-zag path (x 46–79, y 46–50) with a Parking yard. Verified: ESLint clean, `npm test`
+  112 + 3 pass, Vite build, harness 170–179 draw calls / ≤ 714 k tris, zoo brain tick 0.005 ms, Playwright
+  iPhone-13 emulation (counts halved, 0 console errors), fresh-reviewer pass with 4 Important findings
+  fixed (0e47e49). Live: `dpl_5jYPVJ7xkxSsYffCSCDYShL2Jw58` READY, index-iqAHL638.js + Grove3D-E6kU0c3l.js
+  carry "Live sky", "Yard / parking", "g3rain", "herd-brain", "g3cloud", "g3ripple", "g3night", CSP
+  unchanged; owner farm shows the Parking slab, 0 console errors. NOT verified: a real phone; persistence
+  of the migrated farm and `cityGeo` on the owner account (it is read-only — "subscription ended" banner —
+  and the cached forecast predates `lat/lng`, so the sun runs at 50° N until the 3 h cache expires).
+  Deferred minors (reviewer): swim height assumes rim .5; roosting only for coop-zone poultry; behaviour
+  weights differ slightly from the spec; brain resets on world rebuild; herd shadows lag (static shadow
+  map, once a minute); dusk light clamps at 4° then jumps to the moon; weather not refetched while open;
+  fruit drop = one draw call per colour. Next slice: crops legible at the home view.
