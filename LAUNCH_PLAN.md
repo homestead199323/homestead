@@ -481,3 +481,24 @@
   weights differ slightly from the spec; brain resets on world rebuild; herd shadows lag (static shadow
   map, once a minute); dusk light clamps at 4° then jumps to the moon; weather not refetched while open;
   fruit drop = one draw call per colour. Next slice: crops legible at the home view.
+
+- [x] **Phone map (2026-10-25, owner request "continue 3D improvements" → scope chosen: phone rendering & UX;
+  spec `docs/superpowers/specs/2026-10-14-phone-map-design.md`, plan `docs/superpowers/plans/2026-10-14-phone-map.md`;
+  commits f10af3d, 95f1854, 1a125c1, efbb43d, bb302df).** Owner's phone complaints: "too small to read / use" and
+  "pinch also rotates/tilts by accident" (iPhone 14+). (1) Pinch intent lock (`gestures.js`): the first clear
+  two-finger movement decides zoom / rotate (≥ 15° twist, < 8 % scale) / tilt (≥ 24 px parallel drift) and locks;
+  zoom always applies; undecided → zoom after 180 ms. (2) Labels (`labels.js`): pills hang above the front edge of
+  the footprint instead of the roof; order selected → pending jobs → biggest; no overlaps; far out on phones a
+  zone needs 64 px of screen width for a name (28 px elsewhere). (3) Portrait full screen looks straight down the
+  farm's long axis (θ −90°): the all-zones farm spans 58 % of a 390×844 screen (was 38 %); phone controls become
+  a centred 48 px bottom bar; desktop camera verified pixel-identical. Phone UX tier = coarse pointer only (host
+  class `g3-coarse`); the short-screen rule stays only for render quality. (4) Phone inline map = live 4:3 preview
+  tile: no gestures/labels/controls, "Open map" pill + job badge, one tap opens full screen, close restores the
+  home view (dist ratio 1.000). (5) Found and fixed a pre-existing bug: `flat()` shared the trough and pond
+  materials and `ripple()` re-wrapped itself on every world build → uTime/uRipple declared twice → invalid
+  program → pond vanished after any rebuild (planting, day tick, growth preview). Verified: ESLint clean,
+  `npm test` 142 pass, Vite build, harness `?coarse=1` / `?full=1` at 390×844 (`tmp/phone-tile-after.png`,
+  `tmp/phone-full-after2.png`), 0 shader errors across two rebuilds, 25/25 GL programs linked.
+  NOT verified: a real phone (owner check pending: tile tap, portrait fill, pinch feel, bottom bar).
+  Note: Mac builds run with NODE_ENV=development, which makes Vite's `import.meta.env.DEV` true locally —
+  dev-only hooks (`window.__g3`, `__g3harness`) appear in local `dist/` but not in Vercel's bundle.

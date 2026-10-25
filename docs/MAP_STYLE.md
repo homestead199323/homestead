@@ -64,6 +64,13 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 ## 7. UI over the map (`.g3-*` in `quiet.css`)
 - Floating panels (growth preview, crop card) never run under the control column; zone labels are clamped inside the view and drop out when their area's centre leaves it.
 - The same white cards as the rest of the app: `var(--color-card)`, hairline `var(--color-border)`, `var(--shadow)`-style soft shadow, brand green for selected / pressed, orange job badges. Dark mode follows the tokens. Never dark translucent pills.
+- Zone name pills hang 2 px above the **front edge** of the footprint (the edge nearest the viewer), never on a roof. Placement is `labels.js`: selected → pending jobs → biggest footprint; a placed pill rejects overlaps; far out (`ls < .8`) a zone needs 28 px of screen width for a name, 64 px on phones; selected and job-bearing zones always get one.
+
+## 7b. Phones (2026-10-25) — coarse pointer only (`isCoarse()` → host class `g3-coarse`; harness `?coarse=1`)
+- Inline on the home screen the map is a **live preview tile** (aspect ≥ 4:3): no gestures, no pills, no controls, no scroll hint; an "Open map" pill (`.g3-open`) with a job-count badge; one tap anywhere opens full screen; closing it returns to the whole-farm home view. The render-quality tier (`mobile`: coarse pointer OR short screen) is separate and unchanged.
+- Full screen in portrait looks straight down the farm's long axis (θ −90°, `FarmControls.fit` `turn`) so a landscape farm fills the screen's height instead of a 45 % band; Reset returns to it. Desktop keeps the 22° three-quarter view (also for a tall farm on a landscape window: turned).
+- Controls are a centred bottom bar (Growth · + · − · Reset · Exit, 48 px); the growth panel sits above it; the close X stays top-right.
+- Pinch intent lock (`gestures.js`): zoom always applies; rotate needs a ≥ 15° twist with < 8 % scale change; tilt a ≥ 24 px parallel vertical drift; an undecided pinch becomes zoom after 180 ms; the answer is locked until the fingers lift.
 
 ## 8. Performance rules that keep the look affordable
 - Everything static is merged per material (`bake()`); repeated parts are instanced (fences, pots, tufts, crops, fruit, bees, smoke).
@@ -84,4 +91,4 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - The flat produce icons in `FarmIcon.jsx` use the palette's leaf greens.
 
 ## 9. Harnesses (run with Vite, screenshot with Playwright)
-`tests/g3-all.html` (every zone type), `tests/g3-zoo.html` (every animal, coop and barn), `tests/g3-beds.html` (36 narrow numbered beds), `tests/g3-crops.html` (every crop family at growing and harvest stage), `tests/g3-balcony.html` (balcony environment).
+`tests/g3-all.html` (every zone type), `tests/g3-zoo.html` (every animal, coop and barn), `tests/g3-beds.html` (36 narrow numbered beds), `tests/g3-crops.html` (every crop family at growing and harvest stage), `tests/g3-balcony.html` (balcony environment). `g3-all` and `g3-balcony` take `?coarse=1` (phone UX tier) and `?full=1` (full screen on mount) besides the sky overrides; `window.__g3.controls.homeFrac` / `homeTurn` report the home fit (dev only).
