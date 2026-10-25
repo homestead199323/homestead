@@ -414,7 +414,7 @@ test('Walk route: beds are swept in order, never skipped and returned to, and ar
 });
 
 /* ── UX pass 2026-09-28: honest first plan, sowing clock, plans, money, auth copy ── */
-import {sowTiming,suggestCrops,describeSuggestion,buildStarterZone,starterKit,buildSevenDayPlan,starterCount} from '../src/lib/suggest.js';
+import {sowTiming,suggestCrops,describeSuggestion,buildStarterZone,starterAssetZones,starterKit,buildSevenDayPlan,starterCount} from '../src/lib/suggest.js';
 import {isAwaitingSowing,firstStepIdx,toggleStep,startGrowing,waitingLabel,nextStepAfter} from '../src/lib/sowing.js';
 import {planLabel} from '../src/services/payments/plan-label.js';
 import {formatMoney,currencyCode} from '../src/lib/money.js';
@@ -881,4 +881,22 @@ test('Bad numbers point at their field and cannot be forced',()=>{
   const p=planPlanting(bed,[],{mode:'plants',plantCount:0,spacingCM:10,rowSpacingCM:10,pattern:'rows',axis:'horizontal'},carrot);
   assert.equal(p.problem.kind,'input');assert.equal(p.problem.field,'plantCount');assert.ok(!p.problem.canForce);
   assert.equal(planPlanting(bed,[],{mode:'plants',plantCount:5,spacingCM:0,rowSpacingCM:10,pattern:'rows'},carrot).problem.field,'spacingCM');
+});
+
+test('Starter map: farm canvas is the real land (capped), owned assets are placed without overlap',()=>{
+  const f=buildStarterZone('farm',40,25,'min15');
+  assert.equal(f.farmW,40);assert.equal(f.farmH,25);assert.equal(f.partial,false);
+  const huge=buildStarterZone('farm',400,250,'min15');
+  assert.equal(huge.farmW,100);assert.equal(huge.farmH,60);assert.equal(huge.partial,true);
+  const tiny=buildStarterZone('farm',5,5,'min15');assert(tiny.farmW>=16&&tiny.farmH>=10);
+  const z=starterAssetZones('farm',['greenhouse','coop','fruit_trees','compost','tools'],f);
+  assert.deepEqual(z.map(a=>a.type),['greenhouse','coop','orchard','compost']);
+  const rects=[{xM:f.xM,yM:f.yM,wM:f.wM,hM:f.hM},...z];
+  for(const r of rects){assert(r.xM>=0&&r.yM>=0&&r.xM+r.wM<=f.farmW&&r.yM+r.hM<=f.farmH,'inside canvas');}
+  for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){const a=rects[i],b=rects[j];
+    assert(a.xM+a.wM<=b.xM||b.xM+b.wM<=a.xM||a.yM+a.hM<=b.yM||b.yM+b.hM<=a.yM,'no overlap');}
+  assert.equal(starterAssetZones('balcony',['greenhouse'],buildStarterZone('balcony',4,1.5,'min5')).length,0);
+  assert.equal(starterAssetZones('farm',['none'],f).length,0);
+  const small=buildStarterZone('backyard',6,4,'min15');
+  for(const r of starterAssetZones('backyard',['greenhouse','coop','fruit_trees','compost'],small)) assert(r.xM+r.wM<=small.farmW&&r.yM+r.hM<=small.farmH);
 });

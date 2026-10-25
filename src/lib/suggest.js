@@ -177,8 +177,12 @@ export function describeSuggestion(crop, profile, region, date) {
 }
 
 /* ─── Onboarding starter-map + first-week plan (Stage 3) ── */
-// Starter zone spec per environment. Assets do NOT auto-create zones — the
-// Basic zone-cap decision is still open; assets are stored in profile.assets.
+// Starter zone spec per environment. Owned assets (greenhouse, coop, fruit
+// trees, compost, raised bed) also become zones on the starter map — see
+// starterAssetZones. No Basic zone cap exists yet (new users are on the Pro
+// trial); if one is added, decide how these starter zones count against it.
+const FARM_CAP_W = 100, FARM_CAP_H = 60;
+
 const ENV_ZONE = {
   balcony:  { type:"container", label:"Balcony Containers", emoji:"🪣", share:0.5,  minA:0.3, maxA:6,  inset:0.25, minW:3,  minH:2, depth:0.45 },
   backyard: { type:"raised",  label:"Raised Bed",         emoji:"🪴", share:0.25, minA:1,   maxA:12, inset:1,    minW:6,  minH:4, depth:1.2 },
@@ -214,11 +218,16 @@ export function buildStarterZone(environment, lengthM, widthM, timeBudget) {
   usable = r1(Math.max(usable, 0.3));
 
   var farmW, farmH, xM, yM, maxW, maxH;
+  var partial = false;
   if (env === "farm") {
     xM = spec.inset; yM = spec.inset;
     var fw = Math.max(1.2, r1(usable / spec.depth));
-    farmW = Math.max(spec.minW, Math.ceil(xM + fw + 8));
-    farmH = Math.max(spec.minH, Math.ceil(yM + spec.depth + 6));
+    // The canvas is the real land (long side across), capped at the app's
+    // default 100 × 60 m farm so the first bed and buildings stay readable.
+    var realW = Math.ceil(Math.max(lengthM, widthM)), realH = Math.ceil(Math.min(lengthM, widthM));
+    partial = realW > FARM_CAP_W || realH > FARM_CAP_H;
+    farmW = Math.max(spec.minW, Math.ceil(xM + fw + 2), Math.min(realW, FARM_CAP_W));
+    farmH = Math.max(spec.minH, Math.ceil(yM + spec.depth + 2), Math.min(realH, FARM_CAP_H));
     maxW = farmW - xM - 2; maxH = farmH - yM - 2;
   } else {
     // Balcony/backyard: the canvas is the real space itself
@@ -234,7 +243,44 @@ export function buildStarterZone(environment, lengthM, widthM, timeBudget) {
   if (wM * hM < usable - 0.05) hM = Math.min(maxH, usable / wM);
   hM = Math.max(0.3, Math.round(hM * 100) / 100);
   usable = r1(wM * hM);
-  return { spec:spec, areaM2:usable, wM:wM, hM:hM, xM:xM, yM:yM, farmW:farmW, farmH:farmH };
+  return { spec:spec, areaM2:usable, wM:wM, hM:hM, xM:xM, yM:yM, farmW:farmW, farmH:farmH, partial:partial };
+}
+
+// Things the person said they already have (onboarding "assets" step) become
+// real areas on the starter map, packed in rows beside the first bed.
+// Sizes are typical for the space; anything that does not fit is left off
+// (they can add it later with the map pencil). Balconies get none.
+const ASSET_ZONES = {
+  farm: [
+    { asset:"greenhouse",  type:"greenhouse", name:"Greenhouse",   emoji:"🏡", wM:8,  hM:4 },
+    { asset:"coop",        type:"coop",       name:"Chicken Coop", emoji:"🐔", wM:3,  hM:2.5 },
+    { asset:"fruit_trees", type:"orchard",    name:"Fruit Trees",  emoji:"🍎", wM:10, hM:8 },
+    { asset:"raised_bed",  type:"raised",     name:"Raised Bed",   emoji:"🪴", wM:3,  hM:1.2 },
+    { asset:"compost",     type:"compost",    name:"Compost",      emoji:"♻",  wM:2,  hM:1.5 },
+  ],
+  backyard: [
+    { asset:"greenhouse",  type:"greenhouse", name:"Greenhouse",   emoji:"🏡", wM:3,  hM:2 },
+    { asset:"coop",        type:"coop",       name:"Chicken Coop", emoji:"🐔", wM:2,  hM:1.5 },
+    { asset:"fruit_trees", type:"orchard",    name:"Fruit Trees",  emoji:"🍎", wM:4,  hM:3 },
+    { asset:"compost",     type:"compost",    name:"Compost",      emoji:"♻",  wM:1,  hM:1 },
+  ],
+};
+
+export function starterAssetZones(environment, assets, zp) {
+  var list = ASSET_ZONES[environment] || [];
+  var owned = assets || [];
+  var gap = environment === "farm" ? 2 : 0.6;
+  var edge = environment === "farm" ? 2 : 0.5;
+  var out = [];
+  var x = zp.xM + zp.wM + gap, y = zp.yM, rowH = zp.hM;
+  list.forEach(function(a) {
+    if (!owned.includes(a.asset)) return;
+    if (x + a.wM > zp.farmW - edge) { x = zp.xM; y = y + rowH + gap; rowH = 0; }
+    if (x + a.wM > zp.farmW - edge || y + a.hM > zp.farmH - edge) return;
+    out.push({ asset:a.asset, type:a.type, name:a.name, emoji:a.emoji, xM:r1(x), yM:r1(y), wM:a.wM, hM:a.hM, areaM2:r1(a.wM * a.hM) });
+    x = x + a.wM + gap; rowH = Math.max(rowH, a.hM);
+  });
+  return out;
 }
 
 /**

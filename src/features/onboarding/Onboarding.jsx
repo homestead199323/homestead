@@ -14,7 +14,7 @@ import { getRegionalCrop } from "../../lib/regional";
 import { uid } from "../../lib/storage";
 import FarmIcon from "../../components/FarmIcon";
 import { todayLocalKey, addDaysToLocalKey } from "../../lib/utils";
-import { suggestCrops, describeSuggestion, buildStarterZone, buildSevenDayPlan, starterKit, starterCount, toNum, ftToM, r1 } from "../../lib/suggest";
+import { suggestCrops, describeSuggestion, buildStarterZone, starterAssetZones, buildSevenDayPlan, starterKit, starterCount, toNum, ftToM, r1 } from "../../lib/suggest";
 import { planPlanting, plantingInput } from "../quiet/planting-plan";
 import { expectedYield } from "../../lib/farm-calc";
 import { sowVerb, waitingLabel } from "../../lib/sowing";
@@ -627,7 +627,9 @@ function ScreenMap({ environment, draft, dims, onNext, onBack }) {
   return (
     <>
       <h2 style={S.heading}>Here's your starter map</h2>
-      <p style={S.sub}>Your space at its real size, with a first {environment === "balcony" ? "row of planters" : "bed"} sized for the time you have.</p>
+      <p style={S.sub}>{draft.zp.partial
+        ? "A " + draft.zp.farmW + " × " + draft.zp.farmH + " m part of your land to start with"
+        : "Your space at its real size"}, with a first {environment === "balcony" ? "row of planters" : "bed"} sized for the time you have.</p>
       <div style={{borderRadius:16,overflow:"hidden",border:"1.5px solid " + C.bdr,marginBottom:12,background:C.card}}>
         <GroveScene data={draft.data} setData={noop} interactive={false} showEditButton={false} showHelperText={false} noBorder/>
       </div>
@@ -645,9 +647,14 @@ function ScreenMap({ environment, draft, dims, onNext, onBack }) {
             : "Nothing planted yet — add crops any time from the Crops screen."}
           {later.length > 0 && <div>Planned for later: {later.map(function(p){ return p.crop; }).join(", ")}</div>}
         </div>
+        {draft.extras.length > 0 && (
+          <div style={{fontSize:13, color:C.t2, lineHeight:1.6, marginTop:8, paddingTop:8, borderTop:"1px solid " + C.bdr}}>
+            Also on your map: {draft.extras.map(function(z){ return z.name; }).join(" · ")}
+          </div>
+        )}
       </div>
       <div style={{...S.hint, marginBottom:20}}>
-        Move it, resize it or add a greenhouse, coop or trees any time with the pencil on your map.
+        Move, resize or add areas any time with the pencil on your map.
       </div>
       <button style={S.btnPrimary(true)} onClick={onNext}>Looks good</button>
       <button style={S.btnBack} onClick={onBack}>← Back</button>
@@ -787,12 +794,17 @@ function buildDraft(a) {
     environment: a.environment, assets: a.assets, zone: zone,
     picks: plots.map(function(p){ return { name: p.crop, count: p.plantCount, verb: sowVerb(p.steps), later: !!p.sowFrom }; }),
   });
+  var extras = starterAssetZones(a.environment, a.assets, zp).map(function(az, i) {
+    return { id: a.assetIds[i], name: az.name, emoji: az.emoji, type: az.type, areaM2: az.areaM2,
+      soilType: "loam", notes: "", xM: az.xM, yM: az.yM, wM: az.wM, hM: az.hM };
+  });
+  var zones = [zone].concat(extras);
   var data = {
-    ...DEF, setupDone: true, region: a.region, zones: [zone], garden: { plots: plots },
+    ...DEF, setupDone: true, region: a.region, zones: zones, garden: { plots: plots },
     farmW: zp.farmW, farmH: zp.farmH,
     profile: { ...DEF.profile, environment: a.environment },
   };
-  return { zp: zp, zone: zone, plots: plots, kit: kit, data: data };
+  return { zp: zp, zone: zone, zones: zones, extras: extras, plots: plots, kit: kit, data: data };
 }
 
 /* ─── Main export ────────────────────────────────────────── */
@@ -817,7 +829,7 @@ export default function Onboarding({ onComplete }) {
   var [assets, setAssets] = useState([]);
   var [selected, setSelected] = useState([]);
   // Stable ids so the preview map and the saved farm are the same objects.
-  var [ids] = useState(function() { return { zone: uid(), plots: Array.from({length: 6}, function(){ return uid(); }) }; });
+  var [ids] = useState(function() { return { zone: uid(), plots: Array.from({length: 6}, function(){ return uid(); }), assets: Array.from({length: 6}, function(){ return uid(); }) }; });
 
   // Normalised metric dimensions
   var lenM = unit === "imperial" ? ftToM(toNum(lenStr)) : toNum(lenStr);
@@ -848,7 +860,7 @@ export default function Onboarding({ onComplete }) {
 
   var draft = useMemo(function() {
     return buildDraft({
-      zp: zonePlan, zoneId: ids.zone, plotIds: ids.plots, selected: selected, region: region,
+      zp: zonePlan, zoneId: ids.zone, plotIds: ids.plots, assetIds: ids.assets, selected: selected, region: region,
       profile: profileDraft, people: people, environment: environment || "farm", assets: assets,
     });
   }, [zonePlan, ids, selected, region, profileDraft, people, environment, assets]);
@@ -880,7 +892,7 @@ export default function Onboarding({ onComplete }) {
     var update = {
       region: region,
       city: city.trim(),
-      zones: [draft.zone],
+      zones: draft.zones,
       garden: { plots: draft.plots },
       farmW: zp.farmW,
       farmH: zp.farmH,
