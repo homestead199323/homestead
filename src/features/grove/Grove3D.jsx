@@ -1473,6 +1473,10 @@ export default function Grove3D(props) {
   const host = useRef(null), labels = useRef(null), tipRef = useRef(null), state = useRef(null), latest = useRef(props), fullRef = useRef(false);
   const [full, setFull] = useState(() => HARNESS?.full === true);
   const [mobile] = useState(isCoarse); // phone tier: drives the CSS (`g3-coarse`) and the preview tile
+  // On phones the inline map is a live preview tile (no gestures, no labels, no controls): one tap opens the
+  // full-screen map, which is the real phone map. Desktop keeps the interactive inline map.
+  const preview = mobile && !full;
+  const jobs = Object.values(tasksByZone).reduce((n, l) => n + (l?.length || 0), 0);
   const [ahead, setAhead] = useState(0); // growth preview: days from today
   const [timeOpen, setTimeOpen] = useState(false);
   // Read per render so the stages move on after midnight (App re-renders on
@@ -1520,7 +1524,7 @@ export default function Grove3D(props) {
   };
   const dismissHint = () => { setHint(false); try { sessionStorage.setItem("g3-hint", "1"); } catch { /* private mode */ } };
   const showCoop = (kind) => setCoop(kind);
-  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, pickRow, todayKey, liveSky, lat, lng, skyOverride }; }); // the engine reads the newest props from here
+  useEffect(() => { latest.current = { ...props, dismissHint, showCoop, showTip, pickRow, todayKey, liveSky, lat, lng, skyOverride, preview }; }); // the engine reads the newest props from here
   useEffect(() => { if (!coop) return; const t = setTimeout(() => setCoop(null), 1800); return () => clearTimeout(t); }, [coop]);
   // renderer, lights and controls: created once
   useEffect(() => {
@@ -1647,7 +1651,7 @@ export default function Grove3D(props) {
     });
     st.controls = controls; controls.setCooperative(!fullRef.current);
     st.size = () => {
-      const d = st.dims || { fW: 3, fH: 2, margin: 1 }, ratio = clamp((d.fH + 2 * d.margin) / (d.fW + 2 * d.margin), .62, .8);
+      const d = st.dims || { fW: 3, fH: 2, margin: 1 }, ratio = clamp((d.fH + 2 * d.margin) / (d.fW + 2 * d.margin), latest.current.preview ? .72 : .62, .8); // the preview tile is at least 4:3 so the farm fills it
       S.W = el.clientWidth || 600; S.H = fullRef.current ? (el.clientHeight || Math.round(S.W * ratio)) : Math.round(Math.min(S.W * ratio, Math.max(220, (window.innerHeight || 800) * .78)));
       renderer.setSize(S.W, S.H); camera.aspect = S.W / S.H; camera.updateProjectionMatrix(); controls.size = { w: S.W, h: S.H };
       if (!st.fitted && st.dims) { st.reset(false); st.fitted = true; } else controls.update();
@@ -1775,16 +1779,21 @@ export default function Grove3D(props) {
   useEffect(() => { state.current?.requestRender(); }, [tasksByZone]);
   // full-screen mode: the map takes the whole viewport, page scroll locked, Escape closes
   useEffect(() => {
-    fullRef.current = full; const st = state.current;
+    fullRef.current = full; const st = state.current, el = host.current, isPreview = mobile && !full;
     st?.controls?.setCooperative(!full);
+    if (st?.controls) st.controls.enabled = !isPreview; // the preview tile takes no gestures: one tap opens full screen
+    let tap = null;
+    const down = (e) => { tap = { x: e.clientX, y: e.clientY, t: performance.now() }; };
+    const up = (e) => { const t = tap; tap = null; if (!t || e.type === "pointercancel") return; if (Math.hypot(e.clientX - t.x, e.clientY - t.y) < 8 && performance.now() - t.t < 400 && !(e.target instanceof Element && e.target.closest("button"))) setFull(true); };
+    if (isPreview && el) { el.addEventListener("pointerdown", down); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up); setAhead(0); setTimeOpen(false); setPicked(null); }
     const prev = document.body.style.overflow; if (full) document.body.style.overflow = "hidden";
     // Hide the bottom navigation and assistant button while the map owns the screen.
     document.body.classList.toggle("g3-full-open", full);
     const key = (e) => { if (e.key === "Escape" && full) setFull(false); };
     window.addEventListener("keydown", key);
-    if (st) { st.size(); st.reset(true); }
-    return () => { window.removeEventListener("keydown", key); if (full) { document.body.style.overflow = prev === "hidden" ? "" : prev; document.body.classList.remove("g3-full-open"); } };
-  }, [full]);
+    if (st) { st.size(); st.reset(!isPreview); } // back to the tile: the whole farm, no animation
+    return () => { window.removeEventListener("keydown", key); if (el) { el.removeEventListener("pointerdown", down); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); } if (full) { document.body.style.overflow = prev === "hidden" ? "" : prev; document.body.classList.remove("g3-full-open"); } };
+  }, [full, mobile]);
   useEffect(() => { if (!hint) return; const t = setTimeout(() => latest.current.dismissHint?.(), 6000); return () => clearTimeout(t); }, [hint]);
   const ctl = (f) => { const st = state.current; if (st?.controls) f(st.controls, st); };
   const hostStyle = full
@@ -1793,7 +1802,7 @@ export default function Grove3D(props) {
   return (
     <div className={`g3-host${full ? " full" : ""}${mobile ? " g3-coarse" : ""}`} ref={host} style={hostStyle}>
       <div ref={labels} className="g3-labels" style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1 }}>
-        {zones.map((z) => {
+        {!preview && zones.map((z) => {
           const list = tasksByZone[z.id] || [];
           return (
             <div key={z.id} data-zone={z.id} className={`g3-label${selectedId === z.id ? " on" : ""}`} style={{ position: "absolute", left: 0, top: 0, display: "none", pointerEvents: "auto", whiteSpace: "nowrap" }}>
@@ -1810,18 +1819,24 @@ export default function Grove3D(props) {
           );
         })}
       </div>
-      <div ref={tipRef} className="g3-tip" style={{ display: "none" }} role="tooltip" />
-      {ahead > 0 && <div className="g3-preview" role="status">Preview · {new Date(todayKey + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })} · in {ahead} days</div>}
-      <div className="g3-ctl" role="group" aria-label="Map view controls">
+      {!preview && <div ref={tipRef} className="g3-tip" style={{ display: "none" }} role="tooltip" />}
+      {preview && (
+        <div className="g3-open-wrap">
+          {jobs > 0 && <button type="button" className="g3-open-badge" onClick={() => setFull(true)}>{jobs} job{jobs === 1 ? "" : "s"}</button>}
+          <button type="button" className="g3-open" aria-label="Open the farm map" onClick={() => setFull(true)}><Maximize2 size={16} /><span>Open map</span></button>
+        </div>
+      )}
+      {!preview && ahead > 0 && <div className="g3-preview" role="status">Preview · {new Date(todayKey + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })} · in {ahead} days</div>}
+      {!preview && <div className="g3-ctl" role="group" aria-label="Map view controls">
         {/* Visible words under the icons (UX audit 2026-09-28: a calendar icon didn't say "growth preview"). */}
         <button type="button" className="g3-btn g3-lbl" aria-label="Growth preview and legend" title="See how your plants grow over the coming weeks" aria-pressed={timeOpen} onClick={() => setTimeOpen(!timeOpen)}><Sprout size={17} /><span aria-hidden="true">Growth</span></button>
         <button type="button" className="g3-btn g3-zoom" aria-label="Zoom in" title="Zoom in" onClick={() => ctl((c) => c.zoomBy(.66))}><Plus size={18} /></button>
         <button type="button" className="g3-btn g3-zoom" aria-label="Zoom out" title="Zoom out" onClick={() => ctl((c) => c.zoomBy(1 / .66))}><Minus size={18} /></button>
         <button type="button" className="g3-btn g3-lbl" aria-label="Reset view" title="Show the whole map again" onClick={() => ctl((c, st) => st.reset(true))}><Compass size={17} /><span aria-hidden="true">Reset</span></button>
         <button type="button" className="g3-btn g3-lbl" aria-label={full ? "Exit full screen" : "Full screen map"} title={full ? "Exit full screen" : "Open the map full screen"} aria-pressed={full} onClick={() => setFull(!full)}>{full ? <Minimize2 size={17} /> : <Maximize2 size={17} />}<span aria-hidden="true">{full ? "Exit" : "Expand"}</span></button>
-      </div>
+      </div>}
       {full && <button type="button" className="g3-btn g3-close" aria-label="Close full screen map" onClick={() => setFull(false)}><X size={20} /></button>}
-      {timeOpen && (
+      {!preview && timeOpen && (
         <div className="g3-time" role="group" aria-label="Growth preview">
           <div className="g3-time-row">
             <strong>{ahead ? `In ${ahead} days` : "Today"}</strong>
@@ -1837,7 +1852,7 @@ export default function Grove3D(props) {
           </div>
         </div>
       )}
-      {picked && pickInfo && (
+      {!preview && picked && pickInfo && (
         <div className="g3-crop" role="dialog" aria-label={`${picked.crop} details`}>
           <div className="g3-crop-head">
             <span className="g3-crop-emoji" aria-hidden="true">{pickInfo.c?.emoji || "🌱"}</span>
@@ -1858,8 +1873,8 @@ export default function Grove3D(props) {
           {onShowCrops && <button type="button" className="g3-chip" onClick={onShowCrops}>Open Crops →</button>}
         </div>
       )}
-      {hint && !busy && !picked && <div className="g3-hint" aria-hidden="true">Drag to move · pinch or scroll to zoom · two fingers to turn</div>}
-      {coop && <div className="g3-coop" role="status">{coop === "touch" ? "Use two fingers to move the map, or open it full screen" : "Hold ⌘ / Ctrl and scroll to zoom the map"}</div>}
+      {!preview && hint && !busy && !picked && <div className="g3-hint" aria-hidden="true">Drag to move · pinch or scroll to zoom · two fingers to turn</div>}
+      {!preview && coop && <div className="g3-coop" role="status">{coop === "touch" ? "Use two fingers to move the map, or open it full screen" : "Hold ⌘ / Ctrl and scroll to zoom the map"}</div>}
       {busy && <div className="g3-busy" aria-live="polite">Building your farm…</div>}
     </div>
   );
