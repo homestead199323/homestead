@@ -1272,6 +1272,7 @@ class FarmControls {
   }
   view() { return { target: this.target.toArray(), dist: this.dist, theta: this.theta, phi: this.phi }; }
   setCooperative(on) { this.cooperative = on; this.dom.style.touchAction = on ? "pan-y" : "none"; }
+  setEnabled(on) { this.enabled = on; if (!on) { this.pointers.clear(); this.pan = null; this.pinch = null; this.tapStart = null; this.stopMotion(); this.interact(false); } } // a finger still down when the map is disabled must not keep panning it
   update() {
     const { target, dist, theta, phi } = this;
     this.camera.position.set(target.x + Math.sin(theta) * Math.cos(phi) * dist, target.y + Math.sin(phi) * dist, target.z + Math.cos(theta) * Math.cos(phi) * dist);
@@ -1321,7 +1322,7 @@ class FarmControls {
     this.pan = null;
   }
   onMove(e) {
-    const P = this.pointers.get(e.pointerId); if (!P) return;
+    const P = this.enabled ? this.pointers.get(e.pointerId) : null; if (!P) return;
     const p = this.local(e), dx = p.x - P.x, dy = p.y - P.y; P.x = p.x; P.y = p.y;
     if (this.tapStart) this.tapStart.moved = Math.max(this.tapStart.moved, Math.hypot(p.x - this.tapStart.x, p.y - this.tapStart.y));
     if (this.pointers.size === 2 && this.pinch) this.movePinch();
@@ -1446,7 +1447,7 @@ class FarmControls {
     this.lim = { minDist: Math.max(2.5, dist * .1), maxDist: dist * 1.35, minPhi: 26 * DEG, maxPhi: 82 * DEG, x0: -pad, x1: fW + pad, z0: -pad, z1: fH + pad };
     this.home = { target: t.clone(), dist: dist * zoom, theta, phi }; this.fitDist = dist;
     if (animate) { this.target.copy(saved.target); this.dist = saved.dist; this.theta = saved.theta; this.phi = saved.phi; this.clampView(); this.animateTo(this.home, 600); }
-    else { this.dist = dist * zoom; this.clampView(); this.update(); }
+    else { this.stopMotion(); cancelAnimationFrame(this.raf); this.dist = dist * zoom; this.clampView(); this.update(); } // an instant fit also ends any animation or fling still running
   }
 }
 
@@ -1585,10 +1586,10 @@ export default function Grove3D(props) {
       nodes.forEach((n) => {
         const a = st.anchors[n.dataset.zone]; if (!a) return;
         let minX = 1e9, maxX = -1e9; const pts = a.corners.map(([x, z]) => { const q = project(x, 0, z, pv); minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x); return q; });
-        pts.sort((u, v) => v.y - u.y); const f0 = pts[0], f1 = pts[1]; // the two lowest points on screen = the front edge
+        pts.sort((u, v) => v.y - u.y); const f0 = pts[0], f1 = pts[1], c = project(a.cx, 0, a.cz, pv); // the two lowest points on screen = the front edge
         const badge = !!n.querySelector(".g3-badge");
         byId.set(n.dataset.zone, n);
-        items.push({ id: n.dataset.zone, x: (f0.x + f1.x) / 2, y: (f0.y + f1.y) / 2, on: f0.on && f1.on, px: maxX - minX, w: a.w * ls, h: 20 * ls, badge: badge ? 24 * ls : 0, area: a.area, sel: a.sel, jobs: badge ? 1 : 0 });
+        items.push({ id: n.dataset.zone, x: (f0.x + f1.x) / 2, y: (f0.y + f1.y) / 2, cx: c.x, cy: c.y, on: f0.on && f1.on && c.on, px: maxX - minX, w: a.w * ls, h: 20 * ls, badge: badge ? 24 * ls : 0, area: a.area, sel: a.sel, jobs: badge ? 1 : 0 });
       });
       placeLabels(items, { W: S.W, H: S.H, far, mobile: st.coarse }).forEach(({ id, x, y, show }) => {
         const n = byId.get(id);
@@ -1638,7 +1639,7 @@ export default function Grove3D(props) {
       const d = st.dims || { fW: 3, fH: 2, margin: 1 }, ratio = clamp((d.fH + 2 * d.margin) / (d.fW + 2 * d.margin), latest.current.preview ? .72 : .62, .8); // the preview tile is at least 4:3 so the farm fills it
       S.W = el.clientWidth || 600; S.H = fullRef.current ? (el.clientHeight || Math.round(S.W * ratio)) : Math.round(Math.min(S.W * ratio, Math.max(220, (window.innerHeight || 800) * .78)));
       renderer.setSize(S.W, S.H); camera.aspect = S.W / S.H; camera.updateProjectionMatrix(); controls.size = { w: S.W, h: S.H };
-      if (!st.fitted && st.dims) { st.reset(false); st.fitted = true; } else controls.update();
+      if ((!st.fitted || latest.current.preview) && st.dims) { st.reset(false); st.fitted = true; } else controls.update(); // the tile has no Reset, so it re-fits on every resize (phone rotation)
       st.requestRender();
     };
     st.reset = (animate, zoom = 1) => {
@@ -1765,18 +1766,22 @@ export default function Grove3D(props) {
   useEffect(() => {
     fullRef.current = full; const st = state.current, el = host.current, isPreview = mobile && !full;
     st?.controls?.setCooperative(!full);
-    if (st?.controls) st.controls.enabled = !isPreview; // the preview tile takes no gestures: one tap opens full screen
+    st?.controls?.setEnabled(!isPreview); // the preview tile takes no gestures: one tap opens full screen
+    // Open on `click`, not `pointerup`: the browser fires click after pointerup, and if full screen were already
+    // open by then the click would land on whatever full-screen control sits under the finger (Exit, the X).
+    // The browser already suppresses click after a scroll or a long press; the 8 px / 400 ms check is a backstop.
     let tap = null;
     const down = (e) => { tap = { x: e.clientX, y: e.clientY, t: performance.now() }; };
-    const up = (e) => { const t = tap; tap = null; if (!t || e.type === "pointercancel") return; if (Math.hypot(e.clientX - t.x, e.clientY - t.y) < 8 && performance.now() - t.t < 400 && !(e.target instanceof Element && e.target.closest("button"))) setFull(true); };
-    if (isPreview && el) { el.addEventListener("pointerdown", down); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up); setAhead(0); setTimeOpen(false); setPicked(null); }
+    const cancel = () => { tap = null; };
+    const click = (e) => { const t = tap; tap = null; if (!t) return; if (Math.hypot(e.clientX - t.x, e.clientY - t.y) < 8 && performance.now() - t.t < 700 && !(e.target instanceof Element && e.target.closest("button"))) setFull(true); };
+    if (isPreview && el) { el.addEventListener("pointerdown", down); el.addEventListener("pointercancel", cancel); el.addEventListener("click", click); setAhead(0); setTimeOpen(false); setPicked(null); }
     const prev = document.body.style.overflow; if (full) document.body.style.overflow = "hidden";
     // Hide the bottom navigation and assistant button while the map owns the screen.
     document.body.classList.toggle("g3-full-open", full);
     const key = (e) => { if (e.key === "Escape" && full) setFull(false); };
     window.addEventListener("keydown", key);
     if (st) { st.size(); st.reset(!isPreview); } // back to the tile: the whole farm, no animation
-    return () => { window.removeEventListener("keydown", key); if (el) { el.removeEventListener("pointerdown", down); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); } if (full) { document.body.style.overflow = prev === "hidden" ? "" : prev; document.body.classList.remove("g3-full-open"); } };
+    return () => { window.removeEventListener("keydown", key); if (el) { el.removeEventListener("pointerdown", down); el.removeEventListener("pointercancel", cancel); el.removeEventListener("click", click); } if (full) { document.body.style.overflow = prev === "hidden" ? "" : prev; document.body.classList.remove("g3-full-open"); } };
   }, [full, mobile]);
   useEffect(() => { if (!hint) return; const t = setTimeout(() => latest.current.dismissHint?.(), 6000); return () => clearTimeout(t); }, [hint]);
   const ctl = (f) => { const st = state.current; if (st?.controls) f(st.controls, st); };

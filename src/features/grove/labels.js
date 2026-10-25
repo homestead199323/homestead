@@ -10,15 +10,19 @@
 
 export const LABEL = { minPx: 28, minPxFarMobile: 64, pad: 3, edge: 4 };
 
-/** items: [{ id, x, y, w, h, badge, px, area, sel, jobs, on }]; opts: { W, H, far, mobile }.
-    Returns one { id, x, y, show } per item, in the input order; x/y are the clamped anchor. */
+/** items: [{ id, x, y, cx, cy, w, h, badge, px, area, sel, jobs, on }]; opts: { W, H, far, mobile }.
+    (x, y) is the front-edge anchor the pill hangs from; (cx, cy) is the footprint centre on screen and decides
+    whether the zone counts as on screen (defaults to the anchor), so a zone you zoom into keeps its name while
+    its centre is in view even when its front edge has left the bottom. Returns one { id, x, y, show } per item,
+    in the input order; x/y are the clamped anchor. */
 export function placeLabels(items, { W, H, far = false, mobile = false }) {
   const minPx = far && mobile ? LABEL.minPxFarMobile : LABEL.minPx;
   const order = items.map((it, i) => ({ it, i })).sort((u, v) => (v.it.sel - u.it.sel) || ((v.it.jobs ? 1 : 0) - (u.it.jobs ? 1 : 0)) || (v.it.area - u.it.area));
   const placed = [], out = new Array(items.length);
   for (const { it, i } of order) {
     const { w, h, badge = 0 } = it;
-    const inside = it.x > 0 && it.x < W && it.y > 0 && it.y < H && (it.sel || it.jobs || it.px >= minPx);
+    const cx = it.cx ?? it.x, cy = it.cy ?? it.y;
+    const inside = cx > 0 && cx < W && cy > 0 && cy < H && (it.sel || it.jobs || it.px >= minPx);
     const x = clamp(it.x, w / 2 + LABEL.edge, W - w / 2 - badge - LABEL.edge), y = clamp(it.y, h + badge * .4 + LABEL.edge, H - LABEL.edge);
     const box = { x0: x - w / 2 - LABEL.pad, x1: x + w / 2 + LABEL.pad + badge, y0: y - h - badge * .4, y1: y };
     const free = it.sel || !placed.some((q) => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0);

@@ -44,3 +44,10 @@ test('labels: result keeps input order', () => {
   const r = placeLabels([it('z', { x: 60 }), it('a', { x: 200, sel: 1 })], opt);
   assert.deepEqual(r.map((q) => q.id), ['z', 'a']);
 });
+test('labels: a zone whose centre is on screen keeps its name when its front edge leaves the bottom', () => {
+  const [r] = placeLabels([it('a', { x: 200, y: 900, cx: 200, cy: 600 })], opt);
+  assert.equal(r.show, true); assert.ok(r.y <= 800 - 4);
+});
+test('labels: a zone whose centre has left the screen is hidden even if its front edge is on it', () => {
+  assert.equal(placeLabels([it('a', { x: 200, y: 700, cx: 200, cy: -40 })], opt)[0].show, false);
+});

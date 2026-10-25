@@ -487,7 +487,7 @@
   commits f10af3d, 95f1854, 1a125c1, efbb43d, bb302df).** Owner's phone complaints: "too small to read / use" and
   "pinch also rotates/tilts by accident" (iPhone 14+). (1) Pinch intent lock (`gestures.js`): the first clear
   two-finger movement decides zoom / rotate (≥ 15° twist, < 8 % scale) / tilt (≥ 24 px parallel drift) and locks;
-  zoom always applies; undecided → zoom after 180 ms. (2) Labels (`labels.js`): pills hang above the front edge of
+  zoom always applies; undecided → zoom after 450 ms (reviewer raised it from 180 so slow deliberate twists still turn). (2) Labels (`labels.js`): pills hang above the front edge of
   the footprint instead of the roof; order selected → pending jobs → biggest; no overlaps; far out on phones a
   zone needs 64 px of screen width for a name (28 px elsewhere). (3) Portrait full screen looks straight down the
   farm's long axis (θ −90°): the all-zones farm spans 58 % of a 390×844 screen (was 38 %); phone controls become

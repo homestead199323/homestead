@@ -70,7 +70,7 @@ Reference that set the direction: Dilum Sanjaya's "WareTrack" warehouse dashboar
 - Inline on the home screen the map is a **live preview tile** (aspect ≥ 4:3): no gestures, no pills, no controls, no scroll hint; an "Open map" pill (`.g3-open`) with a job-count badge; one tap anywhere opens full screen; closing it returns to the whole-farm home view. The render-quality tier (`mobile`: coarse pointer OR short screen) is separate and unchanged.
 - Full screen in portrait looks straight down the farm's long axis (θ −90°, `FarmControls.fit` `turn`) so a landscape farm fills the screen's height instead of a 45 % band; Reset returns to it. Desktop keeps the 22° three-quarter view (also for a tall farm on a landscape window: turned).
 - Controls are a centred bottom bar (Growth · + · − · Reset · Exit, 48 px); the growth panel sits above it; the close X stays top-right.
-- Pinch intent lock (`gestures.js`): zoom always applies; rotate needs a ≥ 15° twist with < 8 % scale change; tilt a ≥ 24 px parallel vertical drift; an undecided pinch becomes zoom after 180 ms; the answer is locked until the fingers lift.
+- Pinch intent lock (`gestures.js`): zoom always applies; rotate needs a ≥ 15° twist with < 8 % scale change; tilt a ≥ 24 px parallel vertical drift; an undecided pinch becomes zoom after 450 ms (review: zoom already applies while undecided, so a long settle costs nothing and keeps slow deliberate twists); the answer is locked until the fingers lift.
 
 ## 8. Performance rules that keep the look affordable
 - Everything static is merged per material (`bake()`); repeated parts are instanced (fences, pots, tufts, crops, fruit, bees, smoke).

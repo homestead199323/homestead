@@ -6,7 +6,7 @@
    zoomed never turns or tips by accident (the complaint this fixes), while a
    deliberate twist still turns it. Pure: no DOM, no three.js. */
 
-export const PINCH = { rotDeg: 15, scale: .08, driftPx: 24, rotMaxDeg: 8, settleMs: 180 };
+export const PINCH = { rotDeg: 15, scale: .08, driftPx: 24, rotMaxDeg: 8, settleMs: 450 }; // settle is long: zoom already applies while undecided, so waiting only costs a late deliberate twist
 
 const DEG = 180 / Math.PI;
 
