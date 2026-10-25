@@ -1,0 +1,80 @@
+{
+ "punch": 0.045,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "PART 1",
+  "text": "I let a farming app design my entire farm",
+  "until": 3.4
+ },
+ "endcard": {
+  "secs": 2.8,
+  "lines": [
+   "PART 2",
+   "First seeds go in",
+   "Follow so you don't miss it"
+  ]
+ },
+ "clips": [
+  {
+   "from": "orbit2",
+   "to": "orbit2_end",
+   "vo": "hook",
+   "speed": 0.85
+  },
+  {
+   "from": "land+0.25",
+   "to": "sun",
+   "speed": 1.4,
+   "vo": "land"
+  },
+  {
+   "from": "sun",
+   "to": "fast",
+   "speed": 1.2,
+   "vo": "sun"
+  },
+  {
+   "from": "fast",
+   "to": "wants",
+   "speed": 3.4
+  },
+  {
+   "from": "wants",
+   "to": "plants",
+   "speed": 1.3,
+   "vo": "wants"
+  },
+  {
+   "from": "plants",
+   "to": "build_load",
+   "speed": 0.95,
+   "vo": "plants"
+  },
+  {
+   "from": "build+0.3",
+   "to": "plan",
+   "speed": 1.0,
+   "vo": "build",
+   "sfx": "riser",
+   "sfx_at": -0.9
+  },
+  {
+   "from": "plan",
+   "to": "home_load",
+   "speed": 1.1,
+   "vo": "plan"
+  },
+  {
+   "from": "game+0.4",
+   "to": "popup_end-0.6",
+   "speed": 1.0,
+   "vo": "game"
+  },
+  {
+   "from": "orbit2_end",
+   "to": "orbit2",
+   "reverse": true,
+   "vo": "cta"
+  }
+ ]
+}

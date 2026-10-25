@@ -1,0 +1,6 @@
+out/
+tts/
+*.wav
+episodes/*/frames/
+episodes/*/*.mp4
+episodes/*/durs.json

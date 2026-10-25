@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'ios']), // ios/ holds the Capacitor shell — its App/public/ carries generated (minified) web assets after cap sync
+  // ios/ holds the Capacitor shell — its App/public/ carries generated (minified) web assets after cap sync.
+  // marketing/ holds the Node/Python short-video generator, not app code.
+  globalIgnores(['dist', 'ios', 'marketing']),
   {
     files: ['scripts/**/*.js'],
     languageOptions: {

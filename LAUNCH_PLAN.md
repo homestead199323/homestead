@@ -502,3 +502,16 @@
   NOT verified: a real phone (owner check pending: tile tap, portrait fill, pinch feel, bottom bar).
   Note: Mac builds run with NODE_ENV=development, which makes Vite's `import.meta.env.DEV` true locally —
   dev-only hooks (`window.__g3`, `__g3harness`) appear in local `dist/` but not in Vercel's bundle.
+- [x] **Onboarding starter map = real land + owned assets (2026-10-25, commit a32b4e6).** Farm canvas was a box
+  around the first bed (40×25 m land showed "Your farm 17 × 12 m" under "your space at its real size"); it is now the
+  entered land, capped at 100×60 m with "A 100 × 60 m part of your land" when bigger. Ticked greenhouse / chicken
+  coop / fruit trees / compost / raised bed become zones packed beside the first bed (farm + backyard sizes; left off
+  if they don't fit; balconies none). Verified: ESLint, 143+3 tests (new regression test), Vite build (sandbox + Mac),
+  Playwright run through onboarding at 390 px (map shows all four areas, "Also on your map" line), production
+  dpl_5mYkkHMDjGRNbmkYyrMb2ZLYTvtQ READY, live bundle index-c0CWUE3Q.js carries the new strings. NOT verified: a real
+  phone. Open: no Basic zone cap exists yet — if one is added, decide how these starter zones count.
+  Seen, not fixed: growth-preview panel re-wraps (+3 mo drops to a 2nd line) when the label changes from "Today" to
+  "In 60 days".
+- [x] **Short-video generator (2026-10-25).** `marketing/video/` records the real app frame by frame (frozen clock,
+  1/30 s per frame) and edits 9:16 shorts with AI voice, captions, finger marks, loop ending. Viral rules:
+  `marketing/video/PLAYBOOK.md`. Part 1 ("I let a farming app design my entire farm") rendered, 35 s.
