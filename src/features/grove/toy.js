@@ -27,6 +27,25 @@ export function nightGlow(mat) {
   mat.customProgramCacheKey = () => "g3night";
   return mat;
 }
+/* ripple(mat, { time, ripple }) — a gentle vertex wave on pond water (two crossing waves; ×3 under rain), with the
+   normal tilted so the gloss shimmers. Idempotent: `materials()` runs on every world build and flat() shares
+   materials, so a second call must not wrap the first (that declared uTime/uRipple twice → invalid program). */
+export function ripple(mat, { time, ripple: amount }) {
+  if (mat.userData.ripple) return mat; mat.userData.ripple = true;
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, r) => {
+    if (prev) prev(sh, r);
+    Object.assign(sh.uniforms, { uTime: time, uRipple: amount });
+    sh.vertexShader = sh.vertexShader
+      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uRipple;")
+      .replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>
+{ float g3dx = cos(position.x * 3.1 + uTime * 1.7) * 3.1, g3dz = cos(position.z * 2.7 - uTime * 1.3) * 2.7; objectNormal = normalize(objectNormal - vec3(g3dx, 0., g3dz) * uRipple * .024); }`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>
+transformed.y += uRipple * (sin(position.x * 3.1 + uTime * 1.7) + sin(position.z * 2.7 - uTime * 1.3)) * .012;`);
+  };
+  mat.customProgramCacheKey = () => "g3ripple";
+  return mat;
+}
 export const UP = new THREE.Vector3(0, 1, 0);
 
 /* ---------- palette: the shared map palette (palette.js) as numbers for three.js ---------- */
@@ -36,8 +55,9 @@ export const STAGE_COLOR = STAGE_HEX.map(num);
 
 /* ---------- materials: one flat matte material per colour, shared by the whole scene ---------- */
 const mats = new Map();
-export function flat(color, { rough = .88, metal = 0, side = THREE.FrontSide, transparent = false, opacity = 1, emissive = 0, ei = 0, vertexColors = false, depthWrite = true, physical = false, env = 1 } = {}) {
-  const key = [color, rough, metal, side, transparent ? 1 : 0, opacity, emissive, ei, vertexColors ? 1 : 0, depthWrite ? 1 : 0, physical ? 1 : 0, env].join("|");
+export function flat(color, { rough = .88, metal = 0, side = THREE.FrontSide, transparent = false, opacity = 1, emissive = 0, ei = 0, vertexColors = false, depthWrite = true, physical = false, env = 1, variant = "" } = {}) {
+  // `variant` separates materials that share every option but get different shader patches (pond water vs trough water)
+  const key = [color, rough, metal, side, transparent ? 1 : 0, opacity, emissive, ei, vertexColors ? 1 : 0, depthWrite ? 1 : 0, physical ? 1 : 0, env, variant].join("|");
   let m = mats.get(key);
   if (!m) {
     const Mat = physical ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;

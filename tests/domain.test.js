@@ -4,6 +4,7 @@ import './sky.test.js';
 import './herd-brain.test.js';
 import './gestures.test.js';
 import './labels.test.js';
+import './toy.test.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {companionsFor,relation,growthOf,validatePlantingLayout,bedLength,bedRows,animalZone,freePlantingRows} from '../src/features/quiet/farm-model.js';

@@ -28,7 +28,7 @@ import { createBrain } from "./herd-brain";
 import { buildSwallows, buildButterflies, swallowCount, butterflyCount } from "./fauna-fx";
 import { GROUND_TONES, pathTones } from "./palette";
 import { TREE_RE } from "./crop-families";
-import { PAL, STAGE_COLOR, NIGHT, WIND, nightGlow, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
+import { PAL, STAGE_COLOR, NIGHT, WIND, nightGlow, ripple, flat, layered, rbox, box, ball, tube, ring, disc, plane, pill, bar, instances, rboxGeo, sphereGeo, capsuleGeo, cylGeo, HPI, clamp, clamp01, smoothstep } from "./toy";
 import { cropScale, buildCrops } from "./crops3d";
 import { skyState, FIXED_SKY, vaneAngle, cloudCount, precipCount } from "./sky";
 import { WX, buildClouds, buildPrecip, RAIN_SPAN } from "./weather-fx";
@@ -64,22 +64,6 @@ function foliage(mat, { sway = .05, freq = .25, from = 1.2 } = {}) {
   transformed.xz += (uWind.xy * (.7 + .3 * g3w) * .5 + vec2(g3w * .5, 0.)) * g3a; }`);
   };
   mat.customProgramCacheKey = () => `g3f|${sway}|${freq}|${from}`;
-  return mat;
-}
-/* ripple(mat) — a gentle vertex wave on pond water (two crossing waves; ×3 under rain), with the normal tilted so the gloss shimmers */
-function ripple(mat) {
-  const prev = mat.onBeforeCompile;
-  mat.onBeforeCompile = (sh, r) => {
-    if (prev) prev(sh, r);
-    Object.assign(sh.uniforms, { uTime: TIME, uRipple: WX.ripple });
-    sh.vertexShader = sh.vertexShader
-      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uRipple;")
-      .replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>
-{ float g3dx = cos(position.x * 3.1 + uTime * 1.7) * 3.1, g3dz = cos(position.z * 2.7 - uTime * 1.3) * 2.7; objectNormal = normalize(objectNormal - vec3(g3dx, 0., g3dz) * uRipple * .024); }`)
-      .replace("#include <begin_vertex>", `#include <begin_vertex>
-transformed.y += uRipple * (sin(position.x * 3.1 + uTime * 1.7) + sin(position.z * 2.7 - uTime * 1.3)) * .012;`);
-  };
-  mat.customProgramCacheKey = () => "g3ripple";
   return mat;
 }
 /* motion(sh) — instanced spheres that hover (bees, anim 1) or rise, grow and fade (smoke, anim 3) */
@@ -119,7 +103,7 @@ function materials() {
     glass: nightGlow(flat(PAL.glass, { transparent: true, opacity: .34, rough: .12, physical: true, env: 1.5, side: THREE.DoubleSide, depthWrite: false })),
     winGlass: nightGlow(flat(0x9fc9dc, { rough: .18, metal: .05, physical: true, env: 1.4 })),
     lamp: nightGlow(flat(0xd9b35c, { rough: .4, metal: .5 })),
-    water: flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4 }), pondWater: ripple(flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4 })),
+    water: flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4 }), pondWater: ripple(flat(PAL.water, { rough: .14, metal: 0, physical: true, env: 1.4, variant: "pond" }), { time: TIME, ripple: WX.ripple }),
     yard: flat(PAL.yard, { rough: .95 }), yardRim: flat(PAL.yardRim, { rough: .95 }),
     solar: flat(PAL.solar, { rough: .25, metal: .3, physical: true, env: 1.3 }), solarFrame: flat(PAL.solarFrame, { rough: .5, metal: .2 }),
     hedge: foliage(flat(PAL.hedge, { rough: .95 }), { sway: .02, freq: .6, from: .4 }),
