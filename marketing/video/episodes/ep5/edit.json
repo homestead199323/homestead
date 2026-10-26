@@ -1,0 +1,59 @@
+{
+ "punch": 0,
+ "xfade": 8,
+ "layout": "frame",
+ "hook": {
+  "pill": "PART 5",
+  "text": "I sold my first harvest. The app did the books",
+  "until": 3.0
+ },
+ "endcard": {
+  "secs": 2.6,
+  "lines": [
+   "PART 6",
+   "The frost warning night",
+   "Follow so you don't miss it"
+  ]
+ },
+ "clips": [
+  {
+   "from": "sold-0.3",
+   "to": "money+1.2",
+   "speed": 1.0,
+   "vo": "hook"
+  },
+  {
+   "from": "today+0.3",
+   "to": "sell",
+   "speed": 1.15,
+   "vo": "pantry"
+  },
+  {
+   "from": "sell",
+   "to": "filled",
+   "speed": 1.0,
+   "vo": "sell"
+  },
+  {
+   "from": "filled",
+   "to": "money-0.4",
+   "speed": 1.0,
+   "vo": "sold"
+  },
+  {
+   "from": "money",
+   "to": "end",
+   "speed": 0.9,
+   "vo": "money"
+  },
+  {
+   "from": "end-0.3",
+   "to": "end",
+   "speed": 1.0,
+   "freeze": 2.8,
+   "vo": "cta",
+   "sfx": "riser",
+   "sfx_at": -0.6
+  }
+ ]
+}

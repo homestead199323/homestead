@@ -7,11 +7,12 @@ const { chromium, devices } = require('playwright');
 const fs = require('fs');
 
 class Rec {
-  static async open({ out, fps = 30, time = '2027-04-17T10:30:00+01:00', url = 'http://127.0.0.1:5179/app.html' }) {
+  static async open({ out, fps = 30, time = '2027-04-17T10:30:00+01:00', url = 'http://127.0.0.1:5179/app.html', storage = null }) {
     const r = new Rec(); r.out = out; r.fps = fps; r.n = 0; r.events = []; r.marks = {}; r.recording = true;
     fs.mkdirSync(out, { recursive: true });
     r.browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
     r.ctx = await r.browser.newContext({ ...devices['iPhone 14'], viewport: { width: 390, height: 693 }, timezoneId: 'Europe/London', locale: 'en-GB' });
+    if (storage) await r.ctx.addInitScript((kv) => { try { if (!localStorage.getItem('__seeded')) { for (const k in kv) localStorage.setItem(k, kv[k]); localStorage.setItem('__seeded', '1'); } } catch (e) {} }, storage);
     await r.ctx.clock.install({ time: new Date(time) });
     r.p = await r.ctx.newPage();
     r.p.on('pageerror', e => console.log('PAGEERROR', e.message));

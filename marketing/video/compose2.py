@@ -87,11 +87,25 @@ for o, s in enumerate(src): inv.setdefault(s, o)
 
 def ease(x): return 0.5 - 0.5 * math.cos(math.pi * max(0.0, min(1.0, x)))
 
+# optional short dissolves between clips (edit.json "xfade": frames). Outgoing side holds its last frame.
+XK = int(ED.get('xfade', 0)); xf = {}
+for ci, (o0, c) in enumerate(clip_at):
+    if ci == 0 or c.get('cut') or XK <= 0: continue
+    ps = src[o0 - 1]
+    for k in range(XK):
+        if o0 + k < N: xf[o0 + k] = (ease((k + 1) / (XK + 1)), ps)
+
+# "layout": "frame" puts the app in a window under a reserved text band, so pills, hooks and captions
+# never cover the app. Default "overlay" keeps the old full-screen layout.
+FRAME = ED.get('layout') == 'frame'
+AW = 844; AH = int(round(AW * 2079 / 1170)); AX = (W - AW) // 2; AY = H - AH; SCA = AW / 390
+TOP_PILL_Y = 160; CAP_TOP = 285
+
 cache = {}
 def load(i):
     if i not in cache:
         if len(cache) > 6: cache.pop(next(iter(cache)))
-        cache[i] = Image.open(f'{D}/frames/{i:05d}.jpg').convert('RGB').resize((W, H), Image.LANCZOS)
+        cache[i] = Image.open(f'{D}/frames/{i:05d}.jpg').convert('RGB').resize((AW, AH) if FRAME else (W, H), Image.LANCZOS)
     return cache[i]
 
 def text_w(d, s, f): return d.textlength(s, font=f)
@@ -111,12 +125,56 @@ def wrap(d, s, f, maxw):
         else: out.append(cur); cur = w
     return out + [cur]
 
+def draw_frame_text(d, t):
+    """Text for layout 'frame': everything lives in the band above the app window."""
+    hk = ED.get('hook') or {}; ec = ED.get('endcard'); in_end = bool(ec and t >= TOTAL - ec['secs'])
+    pill = hk.get('pill'); 
+    if in_end and ec['lines']: pill = 'NEXT · ' + ec['lines'][0]
+    if pill:
+        pw = text_w(d, pill, F_PILL) + 52
+        d.rounded_rectangle([(W - pw) / 2, TOP_PILL_Y, (W + pw) / 2, TOP_PILL_Y + 62], radius=31, fill=(31, 92, 60, 245))
+        d.text(((W - text_w(d, pill, F_PILL)) / 2, TOP_PILL_Y + 8), pill, font=F_PILL, fill=(255, 255, 255))
+    if hk and t < hk['until'] and not in_end:
+        for size in (62, 56, 50, 46):
+            f = ImageFont.truetype(FONT, size); hl = wrap(d, hk['text'], f, 900)
+            if len(hl) <= 2: break
+        draw_box(d, hl, f, 318, (255, 255, 255, 245), (17, 24, 20), pad=22, r=26)
+        return
+    if in_end:
+        k = min(1.0, (t - (TOTAL - ec['secs'])) / 0.3)
+        if len(ec['lines']) > 1:
+            f = ImageFont.truetype(FONT, 66); l = ec['lines'][1]
+            d.text(((W - text_w(d, l, f)) / 2, 262), l, font=f, fill=(255, 255, 255, int(255 * k)), stroke_width=6, stroke_fill=(17, 24, 20, int(255 * k)))
+        if len(ec['lines']) > 2:
+            f = ImageFont.truetype(FONT, 42); l = ec['lines'][2]
+            d.text(((W - text_w(d, l, f)) / 2, 352), l, font=f, fill=(255, 214, 10, int(255 * k)), stroke_width=5, stroke_fill=(17, 24, 20, int(255 * k)))
+        return
+    act = next((g for g, ws in groups.items() if ws[0][0] <= t < ws[-1][1] + 0.12), None)
+    if act is not None:
+        ws = groups[act]; line = [w for (_, _, _, w) in ws]; sp = 20; size = 68
+        f = ImageFont.truetype(FONT, size); widths = [text_w(d, w.upper(), f) for w in line]; tot = sum(widths) + sp * (len(line) - 1)
+        if tot > 940: size = int(size * 940 / tot); f = ImageFont.truetype(FONT, size); widths = [text_w(d, w.upper(), f) for w in line]; tot = sum(widths) + sp * (len(line) - 1)
+        x = (W - tot) / 2; y = CAP_TOP + (68 - size) / 2
+        for (t0, t1, k2, w), ww in zip(ws, widths):
+            col = HILITE if t0 <= t < t1 + 0.05 else (255, 255, 255)
+            d.text((x, y), w.upper(), font=f, fill=col, stroke_width=6, stroke_fill=(17, 24, 20)); x += ww + sp
+
+APP_MASK = Image.new('L', (AW, AH), 0)
+ImageDraw.Draw(APP_MASK).rounded_rectangle([0, 0, AW - 1, AH + 80], radius=46, fill=255)
 enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}',
                         '-r', str(FPS), '-i', '-', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '19',
                         '-pix_fmt', 'yuv420p', f'{D}/video.mp4'], stdin=subprocess.PIPE)
 for o in range(N):
     s = src[o]; t = o / FPS
     im = load(s)
+    if o in xf: im = Image.blend(load(xf[o][1]), im, xf[o][0])
+    if FRAME:
+        bg = im.resize((54, 96), Image.BILINEAR).resize((W, H), Image.BICUBIC)
+        bg = Image.blend(bg, Image.new('RGB', (W, H), (14, 30, 22)), 0.62)
+        sh = Image.new('RGBA', (W, H), (0, 0, 0, 0)); ImageDraw.Draw(sh).rounded_rectangle([AX - 6, AY - 6, AX + AW + 6, AY + AH + 60], radius=52, fill=(0, 0, 0, 110))
+        bg = Image.alpha_composite(bg.convert('RGBA'), sh).convert('RGB')
+        bg.paste(im, (AX, AY), APP_MASK)
+        im = bg
     # punch-in zoom around taps happening near this source frame
     z, cx, cy = 1.0, W / 2, H / 2
     for e in taps:
@@ -124,7 +182,9 @@ for o in range(N):
         if -8 <= dfr <= 14:
             k = math.exp(-((dfr - 2) / 7.0) ** 2) * ED.get('punch', 0.045)
             if k > z - 1: z, cx, cy = 1 + k, e['x'] * SC, e['y'] * SC
-    if z > 1.001:
+    if FRAME:
+        mapx = lambda x: AX + x * SCA; mapy = lambda y: AY + y * SCA
+    elif z > 1.001:
         cw, ch = W / z, H / z
         x0 = min(max(cx - cw / 2, 0), W - cw); y0 = min(max(cy - ch / 2, 0), H - ch)
         im = im.resize((W, H), Image.BILINEAR, box=(x0, y0, x0 + cw, y0 + ch))
@@ -150,37 +210,41 @@ for o in range(N):
             u = ease((s - e['f0']) / max(1, e['f1'] - e['f0']))
             px, py = mapx(e['x0'] + (e['x1'] - e['x0']) * u), mapy(e['y0'] + (e['y1'] - e['y0']) * u)
             d.ellipse([px - 30, py - 30, px + 30, py + 30], fill=(255, 255, 255, 150), outline=(40, 40, 40, 80), width=3)
-    # hook (first frames)
-    hk = ED.get('hook')
-    if hk and t < hk['until']:
-        if hk.get('pill'):
-            pw = text_w(d, hk['pill'], F_PILL) + 48
-            d.rounded_rectangle([(W - pw) / 2, 200, (W + pw) / 2, 262], radius=31, fill=(31, 92, 60, 235))
-            d.text(((W - text_w(d, hk['pill'], F_PILL)) / 2, 208), hk['pill'], font=F_PILL, fill=(255, 255, 255))
-        draw_box(d, wrap(d, hk['text'], F_HOOK, 880), F_HOOK, 380, (255, 255, 255, 245), (17, 24, 20))
-    # end card
-    ec = ED.get('endcard')
-    if ec and t >= TOTAL - ec['secs']:
-        # fade in, then out over the last 0.35 s so the final frame matches frame 1 (seamless loop)
-        k = min(1.0, (t - (TOTAL - ec['secs'])) / 0.35, max(0.0, (TOTAL - 0.05 - t) / 0.35))
-        d.rectangle([0, 0, W, H], fill=(10, 20, 14, int(120 * k)))
-        for i, l in enumerate(ec['lines']):
-            f = F_END if i == 0 else F_CAP
-            if k > 0.02:
-                d.text(((W - text_w(d, l, f)) / 2, 330 + i * 120), l, font=f, fill=(255, 255, 255, int(255 * k)), stroke_width=7, stroke_fill=(17, 24, 20, int(255 * k)))
-    # captions: active 3-word group, current word highlighted
-    act = next((g for g, ws in groups.items() if ws[0][0] <= t < ws[-1][1] + 0.12), None)
-    if act is not None:
-        ws = groups[act]; line = [w for (_, _, _, w) in ws]
-        widths = [text_w(d, w.upper(), F_CAP) for w in line]; sp = 22
-        tot = sum(widths) + sp * (len(line) - 1); scale = min(1.0, 940 / tot)
-        f = F_CAP if scale == 1.0 else ImageFont.truetype(FONT, int(74 * scale))
-        widths = [text_w(d, w.upper(), f) for w in line]; tot = sum(widths) + sp * (len(line) - 1)
-        x = (W - tot) / 2; y = ED.get('cap_y', 1330)
-        for (t0, t1, k, w), ww in zip(ws, widths):
-            col = HILITE if t0 <= t < t1 + 0.05 else (255, 255, 255)
-            d.text((x, y), w.upper(), font=f, fill=col, stroke_width=7, stroke_fill=(17, 24, 20))
-            x += ww + sp
+    if FRAME:
+        draw_frame_text(d, t)
+    else:
+        # hook (first frames)
+        hk = ED.get('hook')
+        if hk and t < hk['until']:
+            if hk.get('pill'):
+                pw = text_w(d, hk['pill'], F_PILL) + 48
+                d.rounded_rectangle([(W - pw) / 2, 200, (W + pw) / 2, 262], radius=31, fill=(31, 92, 60, 235))
+                d.text(((W - text_w(d, hk['pill'], F_PILL)) / 2, 208), hk['pill'], font=F_PILL, fill=(255, 255, 255))
+            hl = wrap(d, hk['text'], F_HOOK, 880); bh = F_HOOK.size * 1.2 * len(hl) + 26 * 1.6
+            draw_box(d, hl, F_HOOK, max(380, 296 + bh / 2), (255, 255, 255, 245), (17, 24, 20))
+        # end card
+        ec = ED.get('endcard')
+        if ec and t >= TOTAL - ec['secs']:
+            # fade in, then out over the last 0.35 s so the final frame matches frame 1 (seamless loop)
+            k = min(1.0, (t - (TOTAL - ec['secs'])) / 0.35, max(0.0, (TOTAL - 0.05 - t) / 0.35))
+            d.rectangle([0, 0, W, H], fill=(10, 20, 14, int(120 * k)))
+            for i, l in enumerate(ec['lines']):
+                f = F_END if i == 0 else F_CAP
+                if k > 0.02:
+                    d.text(((W - text_w(d, l, f)) / 2, 330 + i * 120), l, font=f, fill=(255, 255, 255, int(255 * k)), stroke_width=7, stroke_fill=(17, 24, 20, int(255 * k)))
+        # captions: active 3-word group, current word highlighted
+        act = next((g for g, ws in groups.items() if ws[0][0] <= t < ws[-1][1] + 0.12), None)
+        if act is not None:
+            ws = groups[act]; line = [w for (_, _, _, w) in ws]
+            widths = [text_w(d, w.upper(), F_CAP) for w in line]; sp = 22
+            tot = sum(widths) + sp * (len(line) - 1); scale = min(1.0, 940 / tot)
+            f = F_CAP if scale == 1.0 else ImageFont.truetype(FONT, int(74 * scale))
+            widths = [text_w(d, w.upper(), f) for w in line]; tot = sum(widths) + sp * (len(line) - 1)
+            x = (W - tot) / 2; y = ED.get('cap_y', 1330)
+            for (t0, t1, k, w), ww in zip(ws, widths):
+                col = HILITE if t0 <= t < t1 + 0.05 else (255, 255, 255)
+                d.text((x, y), w.upper(), font=f, fill=col, stroke_width=7, stroke_fill=(17, 24, 20))
+                x += ww + sp
     enc.stdin.write(im.tobytes())
 enc.stdin.close(); enc.wait()
 

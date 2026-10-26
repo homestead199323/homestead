@@ -1,5 +1,5 @@
 {
- "punch": 0.045,
+ "punch": 0,
  "cap_y": 1330,
  "hook": {
   "pill": "PART 1",
@@ -76,5 +76,7 @@
    "reverse": true,
    "vo": "cta"
   }
- ]
+ ],
+ "layout": "frame",
+ "xfade": 6
 }

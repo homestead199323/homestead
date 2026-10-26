@@ -1,0 +1,65 @@
+{
+ "punch": 0,
+ "xfade": 8,
+ "layout": "frame",
+ "hook": {
+  "pill": "PART 4",
+  "text": "My first harvest, in a farming app",
+  "until": 3.6
+ },
+ "endcard": {
+  "secs": 2.6,
+  "lines": [
+   "PART 5",
+   "Selling the surplus",
+   "Follow so you don't miss it"
+  ]
+ },
+ "clips": [
+  {
+   "from": "badge-0.2",
+   "to": "zuc+1.5",
+   "speed": 1.0,
+   "vo": "hook"
+  },
+  {
+   "from": "today+0.2",
+   "to": "jobs",
+   "speed": 1.0,
+   "vo": "jobs"
+  },
+  {
+   "from": "jobs",
+   "to": "badge-0.5",
+   "speed": 0.9,
+   "vo": "tap"
+  },
+  {
+   "from": "badge-0.5",
+   "to": "zuc",
+   "speed": 1.0,
+   "vo": "badge"
+  },
+  {
+   "from": "zuc+0.3",
+   "to": "progress",
+   "speed": 1.3,
+   "vo": "more"
+  },
+  {
+   "from": "progress",
+   "to": "end",
+   "speed": 1.0,
+   "vo": "prog"
+  },
+  {
+   "from": "end-0.3",
+   "to": "end",
+   "speed": 1.0,
+   "freeze": 2.8,
+   "vo": "cta",
+   "sfx": "riser",
+   "sfx_at": -0.6
+  }
+ ]
+}

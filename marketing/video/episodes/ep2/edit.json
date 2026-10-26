@@ -1,0 +1,73 @@
+{
+ "punch": 0,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "PART 2",
+  "text": "A farming app showed me my harvest before I planted a seed",
+  "until": 3.6
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "PART 3",
+   "The chickens move in",
+   "Follow so you don't miss it"
+  ]
+ },
+ "clips": [
+  {
+   "from": "grow0",
+   "to": "grow_end",
+   "speed": 1.3,
+   "vo": "hook"
+  },
+  {
+   "from": "home+0.2",
+   "to": "walk-0.2",
+   "speed": 0.9,
+   "vo": "today"
+  },
+  {
+   "from": "walk",
+   "to": "s2",
+   "speed": 1.0,
+   "vo": "walk"
+  },
+  {
+   "from": "s2",
+   "to": "s3",
+   "speed": 0.95,
+   "vo": "tips"
+  },
+  {
+   "from": "s3",
+   "to": "map_load",
+   "speed": 1.6,
+   "vo": "done"
+  },
+  {
+   "from": "map_load+0.3",
+   "to": "grow0",
+   "speed": 2.4,
+   "vo": "zoom"
+  },
+  {
+   "from": "grow0",
+   "to": "grow_end",
+   "speed": 1.0,
+   "vo": "grow",
+   "vo_delay": 0.3,
+   "sfx": "riser",
+   "sfx_at": -0.6
+  },
+  {
+   "from": "grow_end",
+   "to": "grow0-0.07",
+   "reverse": true,
+   "speed": 2.0,
+   "vo": "cta"
+  }
+ ],
+ "layout": "frame",
+ "xfade": 6
+}

@@ -1,0 +1,54 @@
+{
+ "punch": 0,
+ "xfade": 8,
+ "cap_y": 1480,
+ "hook": {
+  "pill": "PART 3",
+  "text": "I added four chickens to my farm",
+  "until": 3.6
+ },
+ "endcard": {
+  "secs": 2.4,
+  "lines": [
+   "PART 4",
+   "My first harvest",
+   "Follow so you don't miss it"
+  ]
+ },
+ "clips": [
+  {
+   "from": "typed-2.0",
+   "to": "added+1.0",
+   "speed": 1.1,
+   "vo": "hook"
+  },
+  {
+   "from": "animals-0.3",
+   "to": "typed-1.0",
+   "speed": 1.0,
+   "vo": "pick"
+  },
+  {
+   "from": "added+0.5",
+   "to": "jobs_end",
+   "speed": 1.0,
+   "vo": "jobs"
+  },
+  {
+   "from": "animals2+0.2",
+   "to": "end",
+   "speed": 1.0,
+   "vo": "eggs"
+  },
+  {
+   "from": "end-0.3",
+   "to": "end",
+   "speed": 1.0,
+   "freeze": 2.0,
+   "vo": "cta",
+   "sfx": "riser",
+   "sfx_at": -0.6
+  }
+ ],
+ "layout": "frame"
+}
