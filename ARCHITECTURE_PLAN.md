@@ -385,6 +385,7 @@ Architecture as built:
 - [x] Add email login. *(verified live: signup → session → farm persisted)*
 - [ ] Add Google login. *(NOT DONE — button wired + UI present, but no Google Cloud OAuth client configured; clicking it errors. Independent of everything else, can be done anytime.)*
 - [x] ~~Let users keep using app without login.~~ *(OVERRIDDEN by 2026-05-09 decision — mandatory sign-in wall.)*
+- [x] Demo mode (2026-10-26, commit `7da5b97`, verified live). "Try the demo first" on the sign-in wall and `/app?demo` deep link (landing hero + final CTA, TikTok). AuthGate phase `demo`: local cache only, owner stamp `demo`, no entitlement fetch, no cloud push, AI assistant off (needs a session), Pro screens open. Demo banner + every upgrade path → "Create free account"; `reconcileAndReady` adopts the demo farm ONLY into an empty cloud row (fresh signup) — an existing cloud farm always wins and the demo farm is discarded. Settings in demo: "Exit demo", no sign-out / reminders / delete. **Unverified:** the demo→signup handoff end-to-end on production (needs a real signup; local flows verified in Chrome).
 - [x] Add cloud backup for logged-in users. *(pushFarm on every setData + initial push on mount + flush on beforeunload)*
 - [x] Keep local offline data as source of truth. *(storage.js localStorage path untouched; sync rides alongside, 3s reconcile timeout falls back to local)*
 
