@@ -1,22 +1,21 @@
-# Part 2 — post copy
+# Part 2 — post copy (v2, warm language)
 
-**TikTok caption** (keyword first)
-Farming app showed me my harvest before I planted a seed 🌱 Part 2: strawberries, zucchini, radish go in, then the 3-month growth preview. Demo farm, dates simulated. Part 3: the chickens move in.
-
-**Hashtags** (5-7, add to caption)
+**TikTok caption** (website is mandatory in every caption)
+What if you could see your harvest before you plant a single seed? 🌱
+Strawberries, zucchini and radish go in, and the app shows how your bed grows over three months. Small steps, and you're never guessing.
+Demo farm, so you can see how it works. Your real garden comes first, the app follows you.
+Try it free for 7 days: myterra.farm
+Part 3 tomorrow: the chickens move in.
 #gardening #growyourownfood #beginnergardener #raisedbeds #vegetablegarden #homestead #ukgarden
 
 **Pinned comment**
-Farming app for beginners: MyTerra (7-day free trial, link in bio)
+Your real farm, in your pocket 🌱 Free 7-day trial, no card: myterra.farm
 
 **YouTube Shorts / Reels title**
-A farming app showed me my harvest before I planted a seed (Part 2)
+See your harvest before you plant a seed (Part 2)
 
 **AI label**
 Turn ON TikTok's "AI-generated content" toggle (synthetic voice).
 
-**Next episode**
-Part 3: chickens
-
-**Recut hook variants** (use only if the 72h check says hook problem; see 06-posting/PLAN.md)
-(fill in at recut time; write 3 new hook lines using a different formula than v1)
+**Files**
+v1.mp4 = old language ("app designs your farm"). v2.mp4 = current. Post v2.

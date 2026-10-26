@@ -3,7 +3,7 @@
  "cap_y": 1330,
  "hook": {
   "pill": "PART 2",
-  "text": "A farming app showed me my harvest before I planted a seed",
+  "text": "See your harvest before you plant a single seed",
   "until": 3.6
  },
  "endcard": {
@@ -11,7 +11,7 @@
   "lines": [
    "PART 3",
    "The chickens move in",
-   "Follow so you don't miss it"
+   "Follow along with me"
   ]
  },
  "clips": [

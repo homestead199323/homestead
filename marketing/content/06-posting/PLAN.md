@@ -2,6 +2,9 @@
 
 ## 0. Not started yet. Nothing is posted. Nothing is scheduled.
 
+## 0b. Language
+All copy follows 06-posting/COPY.md. Message: put YOUR real land in the app; the app follows you. Website myterra.farm in every caption. Post v2.mp4 files (v1 = old "app designs your farm" language).
+
 ## 1. Account
 - Use a NEW dedicated MyTerra account. Do not post on the Cooking Class Tirana account
   (Chrome on the Mac is logged into it: 4 posts, last one Jul 2024, cooking audience).

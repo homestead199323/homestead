@@ -4,7 +4,7 @@
  "layout": "frame",
  "hook": {
   "pill": "PART 5",
-  "text": "I sold my first harvest. The app did the books",
+  "text": "Selling your extra veg? The app keeps the books",
   "until": 3.0
  },
  "endcard": {
@@ -12,7 +12,7 @@
   "lines": [
    "PART 6",
    "The frost warning night",
-   "Follow so you don't miss it"
+   "Follow along with me"
   ]
  },
  "clips": [

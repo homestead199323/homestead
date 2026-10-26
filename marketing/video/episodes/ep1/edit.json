@@ -3,15 +3,15 @@
  "cap_y": 1330,
  "hook": {
   "pill": "PART 1",
-  "text": "I let a farming app design my entire farm",
+  "text": "Got a bit of land and no idea where to start",
   "until": 3.4
  },
  "endcard": {
   "secs": 2.8,
   "lines": [
    "PART 2",
-   "First seeds go in",
-   "Follow so you don't miss it"
+   "Planting the first seeds",
+   "Follow along with me"
   ]
  },
  "clips": [

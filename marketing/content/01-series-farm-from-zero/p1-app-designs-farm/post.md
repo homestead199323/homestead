@@ -1,22 +1,21 @@
-# Part 1 — post copy
+# Part 1 — post copy (v2, warm language)
 
-**TikTok caption** (keyword first)
-Farming app designed my entire farm from zero 🌱 Part 1 of a demo farm built with no experience. 40×25 m, UK weather, 15 min a day. Demo farm in the app, dates simulated. Part 2: the first seeds go in.
-
-**Hashtags** (5-7, add to caption)
+**TikTok caption** (website is mandatory in every caption)
+Got a bit of land and no idea where to start? 🌱
+Tell MyTerra what you have (your size, your sun, your greenhouse, your coop) and it helps you see it, so you can finally begin. No experience needed. Beginners are very welcome 💚
+This is a demo farm so you can see how it works. Yours will look like yours.
+Try it free for 7 days: myterra.farm
+Part 2 tomorrow: the first seeds go in.
 #gardening #homestead #growyourownfood #beginnergardener #allotment #farmlife #ukgarden
 
 **Pinned comment**
-Farming app for total beginners: MyTerra (7-day free trial, link in bio)
+Your real farm, in your pocket 🌱 Free 7-day trial, no card: myterra.farm
 
 **YouTube Shorts / Reels title**
-I let a farming app design my entire farm (Part 1)
+Got land and no idea where to start? (Part 1)
 
 **AI label**
 Turn ON TikTok's "AI-generated content" toggle (synthetic voice).
 
-**Next episode**
-Part 2: first seeds
-
-**Recut hook variants** (use only if the 72h check says hook problem; see 06-posting/PLAN.md)
-(fill in at recut time; write 3 new hook lines using a different formula than v1)
+**Files**
+v1.mp4 = old language ("app designs your farm"). v2.mp4 = current. Post v2.

@@ -4,15 +4,15 @@
  "cap_y": 1480,
  "hook": {
   "pill": "PART 3",
-  "text": "I added four chickens to my farm",
+  "text": "Add your chickens. The app remembers the rest",
   "until": 3.6
  },
  "endcard": {
   "secs": 2.4,
   "lines": [
    "PART 4",
-   "My first harvest",
-   "Follow so you don't miss it"
+   "Our first harvest",
+   "Follow along with me"
   ]
  },
  "clips": [

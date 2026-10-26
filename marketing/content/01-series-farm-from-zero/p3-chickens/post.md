@@ -1,22 +1,21 @@
-# Part 3 — post copy
+# Part 3 — post copy (v2, warm language)
 
-**TikTok caption** (keyword first)
-Farming app for chickens: add 4 hens and it builds the daily jobs 🐔 Feed, water, collect eggs, and the eggs land in your pantry. Part 3. Demo farm, dates simulated. Part 4: first harvest.
-
-**Hashtags** (5-7, add to caption)
+**TikTok caption** (website is mandatory in every caption)
+Thinking about chickens? 🐔
+Add yours, and the app remembers what they need: feed, water, eggs. One tap puts the eggs in your pantry. You don't have to hold it all in your head.
+Demo farm, so you can see how it works.
+Try it free for 7 days: myterra.farm
+Part 4 tomorrow: the harvest.
 #backyardchickens #chickens #homestead #growyourownfood #beginnerfarmer #farmlife #ukgarden
 
 **Pinned comment**
-Farming app that tracks chickens and eggs: MyTerra (link in bio)
+Your real farm, in your pocket 🌱 Free 7-day trial, no card: myterra.farm
 
 **YouTube Shorts / Reels title**
-I added 4 chickens and the farming app built their daily jobs (Part 3)
+Adding chickens to your farm app (Part 3)
 
 **AI label**
 Turn ON TikTok's "AI-generated content" toggle (synthetic voice).
 
-**Next episode**
-Part 4: first harvest
-
-**Recut hook variants** (use only if the 72h check says hook problem; see 06-posting/PLAN.md)
-(fill in at recut time; write 3 new hook lines using a different formula than v1)
+**Files**
+v1.mp4 = old language ("app designs your farm"). v2.mp4 = current. Post v2.

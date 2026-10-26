@@ -4,15 +4,15 @@
  "layout": "frame",
  "hook": {
   "pill": "PART 4",
-  "text": "My first harvest, in a farming app",
+  "text": "Your first harvest deserves a moment",
   "until": 3.6
  },
  "endcard": {
   "secs": 2.6,
   "lines": [
    "PART 5",
-   "Selling the surplus",
-   "Follow so you don't miss it"
+   "Selling the extra",
+   "Follow along with me"
   ]
  },
  "clips": [

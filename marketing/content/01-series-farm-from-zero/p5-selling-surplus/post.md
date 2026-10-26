@@ -1,22 +1,21 @@
-# Part 5 — post copy
+# Part 5 — post copy (v2, warm language)
 
-**TikTok caption** (keyword first)
-Farming app that does your farm books 💷 Sell from the pantry, set a price per kilo, and it lands in Financials as income. Part 5. Demo farm, sale is a demo entry. Part 6: the frost warning night.
-
-**Hashtags** (5-7, add to caption)
+**TikTok caption** (website is mandatory in every caption)
+Growing more than you can eat? 💚
+Sell the extra from your pantry, set your price, and it lands in Financials as income. No spreadsheet to build.
+Demo farm and a demo sale, so you can see how it works.
+Try it free for 7 days: myterra.farm
+Part 6: the frost warning night.
 #smallfarm #homestead #sellyourproduce #growyourownfood #farmlife #smallbusiness #gardening
 
 **Pinned comment**
-Farm bookkeeping without a spreadsheet: MyTerra (link in bio)
+Your real farm, in your pocket 🌱 Free 7-day trial, no card: myterra.farm
 
 **YouTube Shorts / Reels title**
-Farming app did the books on my first harvest sale (Part 5)
+Selling your extra veg, books done (Part 5)
 
 **AI label**
 Turn ON TikTok's "AI-generated content" toggle (synthetic voice).
 
-**Next episode**
-Part 6: frost warning
-
-**Recut hook variants** (use only if the 72h check says hook problem; see 06-posting/PLAN.md)
-(fill in at recut time; write 3 new hook lines using a different formula than v1)
+**Files**
+v1.mp4 = old language ("app designs your farm"). v2.mp4 = current. Post v2.
