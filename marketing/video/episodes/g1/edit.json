@@ -1,0 +1,66 @@
+{
+ "punch": 0,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "GARDEN 1",
+  "text": "A garden, and no idea where to begin?",
+  "until": 3.8
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "GARDEN 2",
+   "What to plant first",
+   "Follow along with me"
+  ]
+ },
+ "clips": [
+  {
+   "from": "dims_in+0.6",
+   "to": "dims_done+0.5",
+   "speed": 0.8,
+   "vo": "hook",
+   "freeze": 0.98
+  },
+  {
+   "from": "space_in",
+   "to": "dims_in",
+   "speed": 1.326,
+   "vo": "space"
+  },
+  {
+   "from": "dims_in",
+   "to": "sun_in",
+   "speed": 1.316,
+   "vo": "size"
+  },
+  {
+   "from": "sun_in",
+   "to": "exp_in",
+   "speed": 1.772,
+   "vo": "sun"
+  },
+  {
+   "from": "exp_in",
+   "to": "time_in",
+   "speed": 0.8,
+   "vo": "exp",
+   "freeze": 1.4
+  },
+  {
+   "from": "time_in",
+   "to": "time_done+0.3",
+   "speed": 1.153,
+   "vo": "time"
+  },
+  {
+   "from": "dims_done+0.5",
+   "to": "dims_in+0.6",
+   "reverse": true,
+   "speed": 0.929,
+   "vo": "cta"
+  }
+ ],
+ "layout": "frame",
+ "xfade": 6
+}

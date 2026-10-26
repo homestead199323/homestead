@@ -1,0 +1,58 @@
+{
+ "punch": 0,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "GARDEN 3",
+  "text": "Your first shopping list, already written",
+  "until": 3.8
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "GARDEN 4",
+   "Sowing, and the calendar",
+   "Follow along with me"
+  ]
+ },
+ "clips": [
+  {
+   "from": "kit-0.2",
+   "to": "kit_done+0.6",
+   "speed": 1.211,
+   "vo": "hook"
+  },
+  {
+   "from": "plan",
+   "to": "plan_kit",
+   "speed": 0.853,
+   "vo": "kit"
+  },
+  {
+   "from": "plan_kit",
+   "to": "plan_end",
+   "speed": 1.569,
+   "vo": "days"
+  },
+  {
+   "from": "plan_end",
+   "to": "kit",
+   "speed": 2.2,
+   "vo": "today"
+  },
+  {
+   "from": "kit",
+   "to": "kit_done+0.6",
+   "speed": 2.2,
+   "vo": "tick"
+  },
+  {
+   "from": "kit_done+0.6",
+   "to": "kit-0.2",
+   "reverse": true,
+   "speed": 1.722,
+   "vo": "cta"
+  }
+ ],
+ "layout": "frame",
+ "xfade": 6
+}

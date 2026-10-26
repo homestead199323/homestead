@@ -1,0 +1,17 @@
+id,series,title,file,status,planned_slot_uk,posted_at,tiktok_url,check_due_72h,views,avg_watch_s,full_watch_pct,likes,comments,shares,saves,verdict,action,version_live
+P1,farm-from-zero,App designs the farm,01-series-farm-from-zero/p1-app-designs-farm/v2.mp4,under_review_by_tiktok,Tue W1 11:00,2026-10-26T12:15+01:00 (submitted; not public until review passes),,recompute: 72h after review passes (earliest 2026-10-29 12:15 Tirana),,,,,,,,,,"v1 (old language, under review) -> replace with v2"
+P2,farm-from-zero,First seeds + growth preview,01-series-farm-from-zero/p2-first-seeds/v2.mp4,ready,Wed W1 11:00,,,,,,,,,,,,,v1
+P3,farm-from-zero,Chickens move in,01-series-farm-from-zero/p3-chickens/v2.mp4,ready,Thu W1 11:00,,,,,,,,,,,,,v1
+P4,farm-from-zero,First harvest,01-series-farm-from-zero/p4-first-harvest/v2.mp4,ready,Tue W2 11:00,,,,,,,,,,,,,v1
+P5,farm-from-zero,Selling the surplus,01-series-farm-from-zero/p5-selling-surplus/v2.mp4,ready,Wed W2 11:00,,,,,,,,,,,,,v1
+P6,farm-from-zero,Frost warning night,01-series-farm-from-zero/p6-frost-warning-night/,not_built,Thu W2 11:00,,,,,,,,,,,,,
+B1,balcony,"The questions (size, sun, time)",02-balcony/b1-questions/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+B2,balcony,"What grows in pots",02-balcony/b2-what-grows-in-pots/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+B3,balcony,"Shopping list + first week",02-balcony/b3-shopping-list/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+B4,balcony,"First sowing + calendar",02-balcony/b4-first-sowing/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+B5,balcony,"Balcony in three months",02-balcony/b5-three-months-ahead/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+G1,garden,"The questions (size, sun, time)",03-garden/g1-questions/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+G2,garden,"What to plant first",03-garden/g2-what-to-plant-first/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+G3,garden,"Shopping list + first week",03-garden/g3-shopping-list/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+G4,garden,"Sow once, calendar fills in",03-garden/g4-sow-and-calendar/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1
+G5,garden,"Morning walk",03-garden/g5-morning-walk/v1.mp4,rendered_not_posted,unscheduled (Dervis decides order),,,,,,,,,,,,,v1

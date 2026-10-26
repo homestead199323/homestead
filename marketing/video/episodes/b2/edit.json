@@ -1,0 +1,60 @@
+{
+ "punch": 0,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "BALCONY 2",
+  "text": "What actually grows on a balcony?",
+  "until": 3.8
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "BALCONY 3",
+   "Your first week, planned",
+   "Follow along with me"
+  ]
+ },
+ "clips": [
+  {
+   "from": "crops_picked-2.4",
+   "to": "crops_picked+0.5",
+   "speed": 0.8,
+   "vo": "hook",
+   "freeze": 0.44
+  },
+  {
+   "from": "crops_in",
+   "to": "crops_picked-2.4",
+   "speed": 1.0,
+   "vo": "crops"
+  },
+  {
+   "from": "crops_picked-2.4",
+   "to": "map",
+   "speed": 1.363,
+   "vo": "picks"
+  },
+  {
+   "from": "map",
+   "to": "planters",
+   "speed": 1.024,
+   "vo": "map"
+  },
+  {
+   "from": "planters",
+   "to": "end",
+   "speed": 0.8,
+   "vo": "planters",
+   "freeze": 0.12
+  },
+  {
+   "from": "crops_picked+0.5",
+   "to": "crops_picked-2.4",
+   "reverse": true,
+   "speed": 1.277,
+   "vo": "cta"
+  }
+ ],
+ "layout": "frame",
+ "xfade": 6
+}

@@ -1,0 +1,58 @@
+{
+ "punch": 0,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "GARDEN 4",
+  "text": "Sow once. The calendar fills in",
+  "until": 3.8
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "GARDEN 5",
+   "A short morning walk",
+   "Follow along with me"
+  ]
+ },
+ "clips": [
+  {
+   "from": "s1",
+   "to": "bars+0.6",
+   "speed": 1.241,
+   "vo": "hook"
+  },
+  {
+   "from": "home+0.3",
+   "to": "plan+0.5",
+   "speed": 2.2,
+   "vo": "job"
+  },
+  {
+   "from": "plan+0.5",
+   "to": "bars",
+   "speed": 2.2,
+   "vo": "sow"
+  },
+  {
+   "from": "bars",
+   "to": "bars2+0.8",
+   "speed": 1.136,
+   "vo": "bars"
+  },
+  {
+   "from": "bars2+0.8",
+   "to": "end",
+   "speed": 2.2,
+   "vo": "cal"
+  },
+  {
+   "from": "bars+0.6",
+   "to": "s1",
+   "reverse": true,
+   "speed": 1.386,
+   "vo": "cta"
+  }
+ ],
+ "layout": "frame",
+ "xfade": 6
+}

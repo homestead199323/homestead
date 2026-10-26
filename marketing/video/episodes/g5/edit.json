@@ -1,0 +1,58 @@
+{
+ "punch": 0,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "GARDEN 5",
+  "text": "A short morning walk, one stop at a time",
+  "until": 3.8
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "MORE SOON",
+   "Real growing, step by step",
+   "Follow along with me"
+  ]
+ },
+ "clips": [
+  {
+   "from": "s1+0.3",
+   "to": "s1+3.6",
+   "speed": 1.078,
+   "vo": "hook"
+  },
+  {
+   "from": "home+0.3",
+   "to": "walk",
+   "speed": 1.866,
+   "vo": "start"
+  },
+  {
+   "from": "walk",
+   "to": "s2",
+   "speed": 2.2,
+   "vo": "stops"
+  },
+  {
+   "from": "s2",
+   "to": "walk_end",
+   "speed": 2.2,
+   "vo": "look"
+  },
+  {
+   "from": "walk_end",
+   "to": "end",
+   "speed": 0.862,
+   "vo": "done"
+  },
+  {
+   "from": "s1+3.6",
+   "to": "s1+0.3",
+   "reverse": true,
+   "speed": 1.711,
+   "vo": "cta"
+  }
+ ],
+ "layout": "frame",
+ "xfade": 6
+}

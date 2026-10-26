@@ -1,0 +1,52 @@
+{
+ "hook": {
+  "pill": "BALCONY 5",
+  "text": "Your balcony in three months",
+  "until": 3.8
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "GARDEN 1",
+   "Now, the garden version",
+   "Follow along with me"
+  ]
+ },
+ "clips": [
+  {
+   "from": "g2",
+   "to": "zoomed+1.2",
+   "vo": "hook",
+   "smin": 0.8,
+   "smax": 1.6
+  },
+  {
+   "from": "home+0.3",
+   "to": "map+0.8",
+   "vo": "open"
+  },
+  {
+   "from": "map+0.8",
+   "to": "g1",
+   "vo": "slide"
+  },
+  {
+   "from": "g1",
+   "to": "zoomed",
+   "vo": "zoom"
+  },
+  {
+   "from": "zoomed",
+   "to": "end",
+   "vo": "full"
+  },
+  {
+   "from": "zoomed+1.2",
+   "to": "g2",
+   "reverse": true,
+   "vo": "cta",
+   "smin": 0.9,
+   "smax": 2.4
+  }
+ ]
+}

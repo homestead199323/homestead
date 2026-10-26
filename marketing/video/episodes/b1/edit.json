@@ -1,0 +1,66 @@
+{
+ "punch": 0,
+ "cap_y": 1330,
+ "hook": {
+  "pill": "BALCONY 1",
+  "text": "No garden? Start with your balcony",
+  "until": 3.8
+ },
+ "endcard": {
+  "secs": 2.5,
+  "lines": [
+   "BALCONY 2",
+   "Plants that suit your space",
+   "Follow along with me"
+  ]
+ },
+ "clips": [
+  {
+   "from": "dims_in+1.0",
+   "to": "dims_done+0.5",
+   "speed": 0.8,
+   "vo": "hook",
+   "freeze": 0.11
+  },
+  {
+   "from": "space_in",
+   "to": "dims_in",
+   "speed": 1.285,
+   "vo": "space"
+  },
+  {
+   "from": "dims_in",
+   "to": "sun_in",
+   "speed": 1.672,
+   "vo": "size"
+  },
+  {
+   "from": "sun_in",
+   "to": "exp_in",
+   "speed": 1.772,
+   "vo": "sun"
+  },
+  {
+   "from": "exp_in",
+   "to": "time_in",
+   "speed": 0.8,
+   "vo": "exp",
+   "freeze": 1.1
+  },
+  {
+   "from": "time_in",
+   "to": "time_done+0.3",
+   "speed": 1.063,
+   "vo": "time"
+  },
+  {
+   "from": "dims_done+0.5",
+   "to": "dims_in+1.0",
+   "reverse": true,
+   "speed": 0.901,
+   "vo": "cta"
+  }
+ ],
+ "layout": "frame",
+ "xfade": 6
+}
