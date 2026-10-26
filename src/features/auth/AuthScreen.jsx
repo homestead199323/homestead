@@ -27,7 +27,7 @@ const COPY = {
   reset: { title: "Choose a new password", sub: "You're almost back in. Pick something you'll remember.", cta: "Save new password" },
 };
 
-export default function AuthScreen({ initialMode, initialNotice, onPasswordUpdated }) {
+export default function AuthScreen({ initialMode, initialNotice, onPasswordUpdated, onTryDemo }) {
   const [mode, setMode] = useState(() => initialMode || initialAuthMode(typeof window !== "undefined" ? window.location.search : ""));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -193,6 +193,13 @@ export default function AuthScreen({ initialMode, initialNotice, onPasswordUpdat
               <a href="/terms" target="_blank" rel="noopener" style={{color:C.green,fontWeight:600}}>Terms of Service</a>
               {" "}and{" "}
               <a href="/privacy" target="_blank" rel="noopener" style={{color:C.green,fontWeight:600}}>Privacy Policy</a>.
+            </div>
+          )}
+
+          {onTryDemo && (mode === "signup" || mode === "signin") && (
+            <div style={{textAlign:"center",marginTop:16,paddingTop:14,borderTop:`1px solid ${C.bdr}`}}>
+              <div style={{fontSize:12,color:C.t2,marginBottom:2}}>Not ready for an account?</div>
+              <button type="button" onClick={function(){ onTryDemo(); }} style={linkBtn}>Try the demo first — no sign-up needed</button>
             </div>
           )}
 

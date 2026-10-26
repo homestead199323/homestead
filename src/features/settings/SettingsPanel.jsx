@@ -24,7 +24,7 @@ function fileDay(ms) {
    (desktop) and the account menu (mobile).
    ═══════════════════════════════════════════ */
 export default function SettingsPanel({
-  onClose, data, setData, exportData, readBackup, restoreBackup, darkMode, setDarkMode, onSignOut, plan, onUpgrade, ent, onAccountDeleted,
+  onClose, data, setData, exportData, readBackup, restoreBackup, darkMode, setDarkMode, onSignOut, plan, onUpgrade, ent, onAccountDeleted, onExitDemo,
 }) {
   const [email, setEmail] = useState("");
   const [methods, setMethods] = useState({ password: true, google: false });
@@ -88,7 +88,7 @@ export default function SettingsPanel({
       <div style={sectionLabel}>Account</div>
       <Card style={{ marginBottom: 18, padding: "14px 16px" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.t2, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>Email</div>
-        <div style={{ fontSize: 14, color: C.text, marginBottom: 12, wordBreak: "break-all" }}>{email || "Local account"}</div>
+        <div style={{ fontSize: 14, color: C.text, marginBottom: 12, wordBreak: "break-all" }}>{email || (onExitDemo ? "Demo — no account yet" : "Local account")}</div>
         <Inp label="Name of your space" placeholder={defaultSpaceTitle(data)} value={data.farmName || ""} onChange={(e) => setData({ ...data, farmName: e.target.value })} />
         {(plan || !onSignOut) && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 14 }}>
@@ -184,6 +184,11 @@ export default function SettingsPanel({
         </Card>
       )}
 
+      {onExitDemo && (
+        <button type="button" onClick={onExitDemo} style={{ ...rowBtn, color: C.red }}>
+          <span style={ico}><LogOut size={17} strokeWidth={1.8} /></span> Exit demo
+        </button>
+      )}
       {/* Sign out */}
       {onSignOut && (
         <button type="button" onClick={onSignOut} style={{ ...rowBtn, color: C.red }}>

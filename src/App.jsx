@@ -213,7 +213,23 @@ const AccountSheet = React.memo(function AccountSheet({page, setPage, onClose, o
   );
 });
 
-function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDeleted }) {
+// Demo mode (no account). The farm lives in this browser's cache only,
+// stamped with DEMO_OWNER so a later sign-in never mistakes it for a user's
+// farm. Full write access, Pro screens open; the AI assistant stays off (it
+// needs a session). Nothing is ever fetched or pushed.
+const DEMO_OWNER = "demo";
+const DEMO_ENT = { plan: "demo", state: "demo", canWrite: true, isPro: true, trialDaysLeft: 0 };
+
+function DemoBanner({ onSignup }) {
+  return (
+    <div role="status" style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:C.gp,border:`1px solid ${C.bdr}`,borderRadius:12,padding:"8px 12px",marginBottom:14,fontFamily:F.body}}>
+      <span style={{fontSize:12.5,color:C.text,fontWeight:500,flex:1,minWidth:180}}>Demo mode — this farm lives only on this device. Create a free account to keep it and get 7 days of Pro.</span>
+      <button type="button" onClick={onSignup} style={{border:"none",background:C.green,color:"#fff",cursor:"pointer",borderRadius:10,padding:"7px 12px",fontSize:12.5,fontWeight:700,fontFamily:F.body,whiteSpace:"nowrap"}}>Create free account</button>
+    </div>
+  );
+}
+
+function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDeleted, demo, onExitDemo, onDemoSignup }) {
   // Lazy initializer — loads data synchronously, no loading flash
   // Wrapped in try-catch: if storage is corrupt or migration throws, fall back to DEF
   // instead of crashing the reducer with undefined state.
@@ -275,11 +291,18 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
   // 'unknown' (no cache yet, fetch pending) is treated optimistically as
   // unlocked — the farms RLS is the real security boundary, and blocking a
   // paying user on a network blip is worse than letting a write bounce.
-  const [ent, setEnt] = useState(() => getCachedEntitlement());
+  const [ent, setEnt] = useState(() => demo ? DEMO_ENT : getCachedEntitlement());
   const entRef = useRef(ent);
   useEffect(() => { entRef.current = ent; }, [ent]);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  // In the demo there is nothing to buy: every "upgrade" path leads to
+  // creating the free account instead (the demo farm comes along).
+  const openUpgrade = useCallback(() => {
+    if (demo) { if (onDemoSignup) onDemoSignup(); return; }
+    setUpgradeOpen(true);
+  }, [demo, onDemoSignup]);
   useEffect(() => {
+    if (demo) return undefined;
     let on = true;
     fetchEntitlement().then((e) => { if (on) setEnt(e); });
     const refresh = () => {
@@ -288,7 +311,7 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
     };
     window.addEventListener("focus", refresh);
     return () => { on = false; window.removeEventListener("focus", refresh); };
-  }, []);
+  }, [demo]);
   // Checkout completed: the plan is unlocked by the Paddle webhook a few
   // seconds later. Close the plan sheet and re-check the entitlement until it
   // changes (up to ~90 s), so the user isn't left on the picker, read-only,
@@ -320,7 +343,8 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
     return () => { cancelled = true; if (timer) clearTimeout(timer); unsub(); };
   }, []);
   const locked = ent.state !== "unknown" && !ent.canWrite;
-  const aiAllowed = ent.state === "unknown" || hasFeature(ent, "ai");
+  const aiAllowed = !demo && (ent.state === "unknown" || hasFeature(ent, "ai"));
+  const planText = demo ? "Demo" : planLabel(ent);
   const analyticsAllowed = ent.state === "unknown" || hasFeature(ent, "analytics");
   // Ref mirror so the stable setData callback (empty deps) sees the live
   // lock without being re-created on every entitlement change.
@@ -442,9 +466,9 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
     dataRef.current = persistable; // keep functional updates in the same tick consistent
     dispatchData({type:'SET_ALL', data: persistable});
     saveFarm(persistable);
-    pushFarm(persistable); // cloud backup (debounced, offline-aware, no-op when signed out)
+    if (!demo) pushFarm(persistable); // cloud backup (debounced, offline-aware); never from the demo
     // silent save — no UI indicator
-  }, []);
+  }, [demo]);
 
   // Phase 8.4 — when a badge is dismissed, mark it celebrated so it never
   // shows again, then pop it off the queue. The next updateGamify pass will
@@ -568,7 +592,7 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
       case "manuals": return <Manuals data={data}/>;
       case "plan": return <PlanScreen data={data} setData={setData} setPage={setPage}/>;
       case "progress": return <ProgressScreen data={data} setPage={setPage}/>;
-      case "insights": return <InsightsScreen data={data} setPage={setPage} locked={!analyticsAllowed} onUpgrade={() => setUpgradeOpen(true)}/>;
+      case "insights": return <InsightsScreen data={data} setPage={setPage} locked={!analyticsAllowed} onUpgrade={openUpgrade}/>;
       case "feedback": return <FeedbackSurvey setPage={setPage}/>;
       case "admin": return <AdminDashboard/>;
       default: return <GroveHome data={data} setData={setData} setPage={setPage} tasks={tasks} forecast={forecast} forecastState={forecastState} alerts={plan.alerts}/>;
@@ -626,20 +650,20 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
           {/* Nothing renders under the first-run setup: the 3D map would otherwise
               animate behind it and drain a phone's battery for no one. */}
           {!showOnboarding && viewW < 1024 && <SectionBar page={page} setPage={setPage} onAccount={isMobile ? () => setAccountOpen(true) : null}/>}
-          {!showOnboarding && <TrialBanner ent={ent} onUpgrade={() => setUpgradeOpen(true)}/>}
+          {!showOnboarding && (demo ? <DemoBanner onSignup={openUpgrade}/> : <TrialBanner ent={ent} onUpgrade={openUpgrade}/>)}
           {!showOnboarding && pg()}
         </main>
       </div>
       {isMobile&&!showOnboarding&&<BottomNav page={page} setPage={setPage} taskCount={taskCount}/>}
-      {isMobile&&accountOpen&&<AccountSheet page={page} setPage={setPage} isAdmin={isAdmin} title={spaceTitle(data)} plan={planLabel(ent)} onUpgrade={()=>setUpgradeOpen(true)} onClose={()=>setAccountOpen(false)} onOpenSettings={()=>{setAccountOpen(false);setSettingsOpen(true);}}/>}
+      {isMobile&&accountOpen&&<AccountSheet page={page} setPage={setPage} isAdmin={isAdmin} title={spaceTitle(data)} plan={planText} onUpgrade={openUpgrade} onClose={()=>setAccountOpen(false)} onOpenSettings={()=>{setAccountOpen(false);setSettingsOpen(true);}}/>}
       {showFeedbackPrompt && <FeedbackPrompt onOpen={() => { setShowFeedbackPrompt(false); setPage("feedback"); }} onDismiss={() => { setShowFeedbackPrompt(false); try { markFeedbackDismissed(); } catch(e) { console.warn("Could not save feedback dismissal state:", e); } }}/>}
       <BadgeCelebration queue={badgeQueue} onDismiss={dismissBadge}/>
       {!showOnboarding && (aiAllowed
         ? <AIAssistant data={data} setData={setData} lift={page === "home"}/>
-        : <LockedAssistantFab lift={page === "home"} onClick={() => setUpgradeOpen(true)}/>)}
+        : <LockedAssistantFab lift={page === "home"} onClick={openUpgrade}/>)}
       <Toaster/>
       <UpgradeSheet open={upgradeOpen} onClose={() => setUpgradeOpen(false)} ent={ent}/>
-      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} readBackup={readBackup} restoreBackup={restoreBackup} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={onSignOut} plan={planLabel(ent)} ent={ent} onAccountDeleted={onAccountDeleted} onUpgrade={()=>{setSettingsOpen(false);setUpgradeOpen(true);}}/>}
+      {settingsOpen && <SettingsPanel onClose={()=>setSettingsOpen(false)} data={data} setData={setData} exportData={exportData} readBackup={readBackup} restoreBackup={restoreBackup} darkMode={darkMode} setDarkMode={setDarkMode} onSignOut={demo ? null : onSignOut} onExitDemo={demo ? onExitDemo : null} plan={planText} ent={ent} onAccountDeleted={demo ? null : onAccountDeleted} onUpgrade={()=>{setSettingsOpen(false);openUpgrade();}}/>}
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}/>}
     </>
   );
@@ -669,7 +693,7 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
 const RECONCILE_TIMEOUT_MS = 12000;
 
 function AuthGate() {
-  const [phase, setPhase] = useState("checking"); // checking | signedout | recovery | reconciling | unreachable | ready
+  const [phase, setPhase] = useState("checking"); // checking | signedout | recovery | reconciling | unreachable | ready | demo
   // Opened from a password-reset email: hold the recovery session on the
   // "choose a new password" screen instead of walking straight into the app.
   const recoveryRef = useRef(recoveryInUrl);
@@ -695,6 +719,38 @@ function AuthGate() {
   // wizard reset to step 0, open overlays closed, "Loading your farm…" flash).
   const reconciledFor = useRef(null);
 
+  // Demo mode — try the app without an account (see DEMO_OWNER above).
+  const [authMode, setAuthMode] = useState(undefined);
+  const demoHandoffRef = useRef(false);
+  const startDemo = useCallback(() => {
+    try {
+      const owner = loadFarmOwner();
+      if (owner && owner !== DEMO_OWNER) clearFarm(); // never adopt another account's cache
+      saveFarmOwner(DEMO_OWNER);
+    } catch (e) { /* ignore */ }
+    resetSync();
+    setCloudData(null);
+    setAllowLocal(true);
+    setSeedCloud(false);
+    setSessionKey(k => k + 1);
+    setPhase("demo");
+  }, []);
+  const exitDemo = useCallback(() => {
+    try { flushFarm(); } catch (e) { /* ignore */ }
+    setAuthMode(undefined);
+    setAuthNotice("");
+    setPhase("signedout");
+  }, []);
+  // "Create free account" from inside the demo: reconcileAndReady hands the
+  // local demo farm to the new account when its cloud row is empty.
+  const demoSignup = useCallback(() => {
+    try { flushFarm(); } catch (e) { /* ignore */ }
+    demoHandoffRef.current = true;
+    setAuthMode("signup");
+    setAuthNotice("Create your free account and the farm you built in the demo comes with you.");
+    setPhase("signedout");
+  }, []);
+
   // Local-only escape hatch: if env vars are absent, never gate, and allow
   // the local cache (single-user, no accounts — original pre-Phase-5 behavior).
   useEffect(() => {
@@ -716,6 +772,7 @@ function AuthGate() {
     // Decide what to seed from, then mount. The cloud is the source of truth;
     // this device's cache is only ever used when it belongs to THIS user.
     const mount = (cloud, local, seed) => {
+      setAuthMode(undefined);
       setCloudData(cloud);
       setAllowLocal(local);
       setSeedCloud(seed);
@@ -735,9 +792,15 @@ function AuthGate() {
         localBelongsToUser = owner === userId;
       } catch (e) { localBelongsToUser = false; }
 
+      // Demo → account handoff: the demo farm is adopted ONLY into an empty
+      // cloud row (fresh signup). A farm already in the cloud always wins.
+      let handoff = false;
+      try { handoff = demoHandoffRef.current && loadFarmOwner() === DEMO_OWNER; } catch (e) { handoff = false; }
+      demoHandoffRef.current = false;
+
       // If local belongs to a different (or no) user, wipe it now so a stale
       // cache can't leak into this account or get pushed up under the wrong id.
-      if (!localBelongsToUser) {
+      if (!localBelongsToUser && !handoff) {
         try { clearFarm(); } catch (e) { /* ignore */ }
       }
 
@@ -747,6 +810,7 @@ function AuthGate() {
 
       if (pulled.source === "cloud" && pulled.data) {
         // Cloud has a real saved farm — use it. Nothing to push back.
+        if (handoff) { try { clearFarm(); } catch (e) { /* ignore */ } } // demo farm discarded
         try { saveFarmOwner(userId); } catch (e) { /* ignore */ }
         noteAppliedUpdatedAt(pulled.updatedAt || 0);
         mount(pulled.data, false, false);
@@ -759,7 +823,7 @@ function AuthGate() {
         // otherwise start clean from DEF — and push that seed up once.
         try { saveFarmOwner(userId); } catch (e) { /* ignore */ }
         noteAppliedUpdatedAt(pulled.updatedAt || 0);
-        mount(null, localBelongsToUser, true);
+        mount(null, localBelongsToUser || handoff, true);
         return;
       }
 
@@ -800,6 +864,8 @@ function AuthGate() {
           reconciledFor.current = session.user.id;
           reconcileAndReady();
         }
+      } else if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo")) {
+        startDemo(); // landing / TikTok link: /app?demo
       } else {
         setPhase("signedout");
       }
@@ -828,13 +894,13 @@ function AuthGate() {
         setCloudData(null);
         resetSync(); // server-side sign-outs / token revocation take this path too
         resetEntitlement(); // Phase 8.2 — a paid user's offline-grace cache must not leak to the next account
-        setPhase("signedout");
+        setPhase(p => p === "demo" ? p : "signedout");
       }
       // TOKEN_REFRESHED / USER_UPDATED: no view change needed.
     });
 
     return () => { active = false; unsub(); };
-  }, [reconcileAndReady]);
+  }, [reconcileAndReady, startDemo]);
 
   // New password saved: drop the recovery hold and open the farm as a normal sign-in.
   const finishRecovery = useCallback(async () => {
@@ -962,8 +1028,12 @@ function AuthGate() {
     return <AuthScreen initialMode="reset" onPasswordUpdated={finishRecovery}/>;
   }
 
+  if (phase === "demo") {
+    return <AppInner key={"demo-" + sessionKey} cloudData={null} allowLocal={true} seedCloud={false} demo onExitDemo={exitDemo} onDemoSignup={demoSignup} onSignOut={null} onAccountDeleted={null}/>;
+  }
+
   if (phase === "signedout") {
-    return <AuthScreen initialNotice={authNotice}/>;
+    return <AuthScreen key={authMode || "default"} initialMode={authMode} initialNotice={authNotice} onTryDemo={startDemo}/>;
   }
 
   // ready
