@@ -220,16 +220,32 @@ const AccountSheet = React.memo(function AccountSheet({page, setPage, onClose, o
 const DEMO_OWNER = "demo";
 const DEMO_ENT = { plan: "demo", state: "demo", canWrite: true, isPro: true, trialDaysLeft: 0 };
 
-function DemoBanner({ onSignup }) {
+// No session → open the demo, EXCEPT when the visitor clearly wants the
+// auth screen: a ?signup / ?signin / ?reset link (pricing cards, "Sign in"),
+// an expired email link, or a returning user whose own farm is cached on
+// this device (they get "Sign in", never a demo that would replace it).
+function wantsAuthScreen() {
+  try {
+    if (recoveryInUrl || authLinkError) return true;
+    const q = new URLSearchParams(window.location.search);
+    if (q.has("demo")) return false;
+    if (q.has("signup") || q.has("signin") || q.has("reset") || q.get("mode")) return true;
+    const owner = loadFarmOwner();
+    return !!(owner && owner !== DEMO_OWNER);
+  } catch (e) { return true; }
+}
+
+function DemoBanner({ onSignup, onSignin }) {
   return (
     <div role="status" style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:C.gp,border:`1px solid ${C.bdr}`,borderRadius:12,padding:"8px 12px",marginBottom:14,fontFamily:F.body}}>
       <span style={{fontSize:12.5,color:C.text,fontWeight:500,flex:1,minWidth:180}}>Demo mode — this farm lives only on this device. Create a free account to keep it and get 7 days of Pro.</span>
+      {onSignin && <button type="button" onClick={onSignin} style={{border:`1px solid ${C.bdr}`,background:"transparent",color:C.text,cursor:"pointer",borderRadius:10,padding:"7px 12px",fontSize:12.5,fontWeight:600,fontFamily:F.body,whiteSpace:"nowrap"}}>Sign in</button>}
       <button type="button" onClick={onSignup} style={{border:"none",background:C.green,color:"#fff",cursor:"pointer",borderRadius:10,padding:"7px 12px",fontSize:12.5,fontWeight:700,fontFamily:F.body,whiteSpace:"nowrap"}}>Create free account</button>
     </div>
   );
 }
 
-function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDeleted, demo, onExitDemo, onDemoSignup }) {
+function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDeleted, demo, onExitDemo, onDemoSignup, onDemoSignin }) {
   // Lazy initializer — loads data synchronously, no loading flash
   // Wrapped in try-catch: if storage is corrupt or migration throws, fall back to DEF
   // instead of crashing the reducer with undefined state.
@@ -650,7 +666,7 @@ function AppInner({ cloudData, allowLocal, seedCloud, onSignOut, onAccountDelete
           {/* Nothing renders under the first-run setup: the 3D map would otherwise
               animate behind it and drain a phone's battery for no one. */}
           {!showOnboarding && viewW < 1024 && <SectionBar page={page} setPage={setPage} onAccount={isMobile ? () => setAccountOpen(true) : null}/>}
-          {!showOnboarding && (demo ? <DemoBanner onSignup={openUpgrade}/> : <TrialBanner ent={ent} onUpgrade={openUpgrade}/>)}
+          {!showOnboarding && (demo ? <DemoBanner onSignup={openUpgrade} onSignin={onDemoSignin}/> : <TrialBanner ent={ent} onUpgrade={openUpgrade}/>)}
           {!showOnboarding && pg()}
         </main>
       </div>
@@ -743,6 +759,13 @@ function AuthGate() {
   }, []);
   // "Create free account" from inside the demo: reconcileAndReady hands the
   // local demo farm to the new account when its cloud row is empty.
+  const demoSignin = useCallback(() => {
+    try { flushFarm(); } catch (e) { /* ignore */ }
+    demoHandoffRef.current = true;
+    setAuthMode("signin");
+    setAuthNotice("");
+    setPhase("signedout");
+  }, []);
   const demoSignup = useCallback(() => {
     try { flushFarm(); } catch (e) { /* ignore */ }
     demoHandoffRef.current = true;
@@ -864,8 +887,8 @@ function AuthGate() {
           reconciledFor.current = session.user.id;
           reconcileAndReady();
         }
-      } else if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo")) {
-        startDemo(); // landing / TikTok link: /app?demo
+      } else if (!wantsAuthScreen()) {
+        startDemo(); // no account needed to look around (TikTok / landing traffic)
       } else {
         setPhase("signedout");
       }
@@ -1029,7 +1052,7 @@ function AuthGate() {
   }
 
   if (phase === "demo") {
-    return <AppInner key={"demo-" + sessionKey} cloudData={null} allowLocal={true} seedCloud={false} demo onExitDemo={exitDemo} onDemoSignup={demoSignup} onSignOut={null} onAccountDeleted={null}/>;
+    return <AppInner key={"demo-" + sessionKey} cloudData={null} allowLocal={true} seedCloud={false} demo onExitDemo={exitDemo} onDemoSignup={demoSignup} onDemoSignin={demoSignin} onSignOut={null} onAccountDeleted={null}/>;
   }
 
   if (phase === "signedout") {
